@@ -8,12 +8,14 @@
   (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -42,16 +44,17 @@
 (defn- save-execution-metadata!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (when-not (:cache_hit query-execution)
-    (query/save-query-and-update-average-execution-time! query query-hash running-time))
-  (if-not context
-    (log/warn "Cannot save QueryExecution, missing :context")
-    (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))))
+  (tracing/with-span :db-app "db-app.save-query-execution" {}
+    (when-not (:cache_hit query-execution)
+      (query/save-query-and-update-average-execution-time! query query-hash running-time))
+    (if-not context
+      (log/warn "Cannot save QueryExecution, missing :context")
+      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query)))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info]
-  (let [execution-info' (analytics/include-sdk-info execution-info)]
+  (let [execution-info' (analytics.core/include-sdk-info execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
@@ -89,7 +92,7 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
                :parameterized))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
@@ -123,7 +126,7 @@
 (mu/defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
@@ -142,6 +145,9 @@
      :action_id         action-id
      :card_id           card-id
      :dashboard_id      dashboard-id
+     :transform_id      transform-id
+     :lens_id           lens-id
+     :lens_params       lens-params
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
@@ -171,7 +177,7 @@
           rff   :- ::qp.schema/rff]
     ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
     ;; This has to live somewhere and while processing each query seems like a natural place.
-    (analytics/set! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
+    (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))

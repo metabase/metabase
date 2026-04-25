@@ -12,11 +12,11 @@ Before running Loki tests locally, ensure that both Storybook and Docker are run
 
 ### Commands
 
-- Run Visual Tests: `yarn test-visual:loki` (Note: do not commit screenshots from this, use the CI variant below, they will be more consistent)
-- Run Visual Tests in CI: `yarn test-visual:loki:ci`
-- Update failing snapshots: `yarn test-visual:loki-approve-diff`
-- Generate an HTML Report: `yarn test-visual:loki-report`
-- Generate and Open Report: `yarn test-visual:loki-report-open`
+- Run Visual Tests: `bun run test-visual:loki` (Note: do not commit screenshots from this, use the CI variant below, they will be more consistent)
+- Run Visual Tests in CI: `bun run test-visual:loki:ci`
+- Update failing snapshots: `bun run test-visual:loki-approve-diff`
+- Generate an HTML Report: `bun run test-visual:loki-report`
+- Generate and Open Report: `bun run test-visual:loki-report-open`
 
 ## CI
 
@@ -29,3 +29,5 @@ If the differences are intentional or caused by a flake, update the reference sn
 ## Adding new tests
 
 Adding new test is as simple as adding new stories. As of today, we use visual tests only for charts, however, you can use it for any other stories. Make sure the `storiesFilter` value in `loki.config.js` includes the stories you want to have as visual tests.
+
+Before merging, run the [Loki Visual Stress Test](https://github.com/metabase/metabase/actions/workflows/loki-stress-test-flake-fix.yml) workflow to verify your new test isn't flaky. Enter your story filter pattern and run it 50 times.

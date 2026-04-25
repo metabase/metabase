@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -7,11 +7,11 @@ import { formatCreatorMessage } from "metabase/account/notifications/components/
 import {
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
-} from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
-import { isNotFalsy } from "metabase/lib/types";
+} from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,
   NotificationCardSendCondition,
@@ -46,8 +46,6 @@ export const AlertListItem = ({
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
 
-  const [showHoverActions, setShowHoverActions] = useState(false);
-
   const { emailHandler, slackHandler, hookHandlers } =
     getNotificationHandlersGroupedByTypes(alert.handlers);
   const subscription = alert.subscriptions[0];
@@ -70,14 +68,6 @@ export const AlertListItem = ({
     onDelete(alert);
   };
 
-  const handleMouseEnter = () => {
-    setShowHoverActions(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShowHoverActions(false);
-  };
-
   return (
     <Box
       className={cx(
@@ -86,8 +76,6 @@ export const AlertListItem = ({
       )}
       p="1rem"
       onClick={handleEdit}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
         {formatTitle(alert.payload.send_condition)}
@@ -136,23 +124,21 @@ export const AlertListItem = ({
           </Group>
         )}
       </Stack>
-      {showHoverActions && (
-        <div className={S.actionButtonContainer}>
-          {canEdit ? (
-            <AlertListItemActionButton
-              label={t`Delete this alert`}
-              iconName="trash"
-              onClick={handleDelete}
-            />
-          ) : (
-            <AlertListItemActionButton
-              label={t`Unsubscribe from this`}
-              iconName="unsubscribe"
-              onClick={handleUnsubscribe}
-            />
-          )}
-        </div>
-      )}
+      <div className={S.actionButtonContainer}>
+        {canEdit ? (
+          <AlertListItemActionButton
+            label={t`Delete this alert`}
+            iconName="trash"
+            onClick={handleDelete}
+          />
+        ) : (
+          <AlertListItemActionButton
+            label={t`Unsubscribe from this`}
+            iconName="unsubscribe"
+            onClick={handleUnsubscribe}
+          />
+        )}
+      </div>
     </Box>
   );
 };

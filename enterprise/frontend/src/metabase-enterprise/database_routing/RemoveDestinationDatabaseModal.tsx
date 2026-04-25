@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 export const RemoveDestinationDatabaseModal = ({
   params,

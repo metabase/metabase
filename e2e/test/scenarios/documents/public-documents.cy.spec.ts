@@ -390,11 +390,11 @@ describe("scenarios > documents > public", () => {
       .should("exist")
       .should("be.visible")
       .should("have.attr", "href")
-      .and("contain", "https://www.metabase.com/powered-by-metabase");
+      .and("contain", "https://www.metabase.com?");
   });
 
   it("should not display footer for premium", () => {
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     // Create a document
     createTestDocument(

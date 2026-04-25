@@ -12,15 +12,12 @@ const { H } = cy;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
-const suiteTitle =
-  "scenarios > embedding > sdk iframe embed setup > get code step";
-
-describe(suiteTitle, () => {
+describe("scenarios > embedding > sdk iframe embed setup > get code step", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
 
@@ -157,6 +154,18 @@ describe(suiteTitle, () => {
         event_detail:
           "experience=dashboard,snippetType=frontend,authSubType=user-session",
       });
+    });
+  });
+
+  it("should track embed_wizard_options_completed with settings=default properly (metabase#68285)", () => {
+    navigateToGetCodeStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
     });
   });
 

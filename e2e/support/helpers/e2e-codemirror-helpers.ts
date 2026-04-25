@@ -1,3 +1,5 @@
+import { metaKey } from "./e2e-browser-helpers";
+
 type TypeOptions = {
   delay?: number;
   focus?: boolean;
@@ -11,7 +13,15 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return cy.get(`[data-testid=${testId}] .cm-content`);
     },
     focus() {
-      helpers.get().should("be.visible").click("right");
+      helpers.get().should("be.visible").click("right", {
+        /**
+         * We want to click on the right, because we want the caret to be positioned at the end of the editor.
+         * Alternative approach with pressing End key for moving the caret to the end made
+         * repro for (metabase#49882-2, metabase#15892) fail in CI every time.
+         * Hence force: true.
+         */
+        force: true,
+      });
       helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       return helpers;
     },
@@ -20,8 +30,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers;
     },
     selectAll() {
-      const isMac = Cypress.platform === "darwin";
-      const metaKey = isMac ? "Meta" : "Control";
       helpers.focus();
       cy.realPress([metaKey, "A"]);
       return helpers;
@@ -52,9 +60,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
 
         return helpers;
       }
-
-      const isMac = Cypress.platform === "darwin";
-      const metaKey = isMac ? "Meta" : "Control";
 
       const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
@@ -171,6 +176,13 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       // Avoid flakiness with CodeMirror not accepting the suggestion immediately
       cy.wait(300);
       helpers.type(`{${key}}`, { focus: false });
+    },
+    rejectCompletion() {
+      helpers.completions().should("be.visible");
+
+      // Avoid flakiness with CodeMirror not processing the escape immediately
+      cy.wait(300);
+      cy.realPress(["Escape"]);
     },
     selectCompletion(name: string) {
       helpers.completions().should("be.visible");

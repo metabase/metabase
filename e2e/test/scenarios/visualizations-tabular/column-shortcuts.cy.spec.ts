@@ -21,7 +21,7 @@ const DATE_CASES = [
   },
   {
     option: "Day of week",
-    value: "Tuesday",
+    value: "Friday",
     example: "Monday, Tuesday",
     expressions: ["day-name", "get-day-of-week"],
   },
@@ -39,8 +39,8 @@ const DATE_CASES = [
   },
   {
     option: "Year",
-    value: "2,025",
-    example: "2023, 2024",
+    value: "2,028",
+    example: "2026, 2027",
     expressions: ["get-year"],
   },
 ];
@@ -132,7 +132,7 @@ describe("extract shortcut", () => {
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
-        value: "2,025",
+        value: "2,028",
       });
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Year").click();
@@ -143,7 +143,7 @@ describe("extract shortcut", () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
-      cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
+      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
     });
   });
 
@@ -334,13 +334,13 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .should("have.text", newColumn)
     .should("be.visible");
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("columnheader").last().should("have.text", newColumn);
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
@@ -376,7 +376,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
 
     cy.wait(`@${requestAlias}`);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("columnheader")
       .last()
       .should("have.text", newColumn)
@@ -388,9 +388,9 @@ describe("scenarios > visualizations > combine shortcut", () => {
   }
 
   function selectColumn(index: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().findAllByTestId("column-input").eq(index).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(name).click();
   }
 

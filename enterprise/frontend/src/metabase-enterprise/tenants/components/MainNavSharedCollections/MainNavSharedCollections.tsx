@@ -10,24 +10,29 @@ import type { CreateCollectionProperties } from "metabase/collections/components
 import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
-import { tenantSpecificCollections } from "metabase/lib/urls";
 import {
   PaddedSidebarLink,
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
+import {
+  tenantSpecificCollections,
+  tenantUsersPersonalCollections,
+} from "metabase/utils/urls";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 import type { Collection } from "metabase-types/api";
 
 export const MainNavSharedCollections = ({
+  canAccessTenantSpecificCollections,
   canCreateSharedCollection,
   sharedTenantCollections,
 }: {
+  canAccessTenantSpecificCollections: boolean;
   canCreateSharedCollection: boolean;
   sharedTenantCollections: Collection[] | undefined;
 }) => {
@@ -106,7 +111,9 @@ export const MainNavSharedCollections = ({
     sharedTenantCollectionTree.length > 0;
 
   const shouldShowSharedCollectionsSection =
-    hasVisibleSharedTenantCollections || canCreateSharedCollection;
+    hasVisibleSharedTenantCollections ||
+    canCreateSharedCollection ||
+    canAccessTenantSpecificCollections;
 
   return (
     <>
@@ -139,9 +146,17 @@ export const MainNavSharedCollections = ({
               showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
             }
           />
-          {isAdmin && (
+          {canAccessTenantSpecificCollections && (
             <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
               {t`Tenant collections`}
+            </PaddedSidebarLink>
+          )}
+          {isAdmin && (
+            <PaddedSidebarLink
+              icon="group"
+              url={tenantUsersPersonalCollections()}
+            >
+              {t`Tenant users' personal collections`}
             </PaddedSidebarLink>
           )}
         </SidebarSection>

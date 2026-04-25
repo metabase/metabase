@@ -6,16 +6,16 @@ import { useEffect, useMemo } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
 import { TestWrapper } from "./ui";
@@ -75,7 +75,7 @@ export const SdkVisualizationWrapper = ({
   theme?: MetabaseTheme;
   initialStore?: State;
 }) => (
-  <Box fz="0.875rem">
+  <Box fz="0.875rem" className="mb-wrapper" data-mantine-color-scheme="light">
     <VisualizationWrapper initialStore={initialStore}>
       <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
     </VisualizationWrapper>
@@ -116,7 +116,14 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
-    <Box w={1000} h={600} bg={theme?.colors?.background}>
+    <Box
+      w={1000}
+      h={600}
+      // @ts-expect-error story file
+      bg={theme?.colors?.background}
+      className="mb-wrapper"
+      data-mantine-color-scheme="light"
+    >
       <VisualizationWrapper>
         <SdkThemeProvider theme={theme}>
           <Visualization rawSeries={rawSeries} width={500} />

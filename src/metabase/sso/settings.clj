@@ -6,7 +6,8 @@
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.string :as u.str])
   (:import
    (com.unboundid.ldap.sdk DN)))
 
@@ -144,6 +145,89 @@
   :export? false
   :default 15.0)
 
+;;; ------------------------------------------------ Slack Connect ------------------------------------------------
+
+(defsetting slack-connect-client-id
+  (deferred-tru "Client ID for your Slack app. Get this from https://api.slack.com/apps")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :audit      :getter)
+
+(defsetting slack-connect-client-secret
+  (deferred-tru "Client Secret for your Slack app")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :audit      :no-value
+  :getter     (fn []
+                (-> (setting/get-value-of-type :string :slack-connect-client-secret)
+                    (u.str/mask 4))))
+
+(defn unobfuscated-slack-connect-client-secret
+  "Get the unobfuscated value of [[slack-connect-client-secret]]."
+  []
+  (setting/get-value-of-type :string :slack-connect-client-secret))
+
+(def slack-connect-auth-mode-sso
+  "Authentication mode for full SSO login."
+  "sso")
+
+(def slack-connect-auth-mode-link-only
+  "Authentication mode for account linking only (no session creation)."
+  "link-only")
+
+(defsetting slack-connect-authentication-mode
+  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" or \"link-only\" (default)")
+  :type       :string
+  :export?    false
+  :default    slack-connect-auth-mode-link-only
+  :audit      :getter
+  :encryption :no
+  :setter     (fn [new-value]
+                (when (and new-value
+                           (not (contains? #{slack-connect-auth-mode-sso slack-connect-auth-mode-link-only} new-value)))
+                  (throw (ex-info (tru "Invalid authentication mode. Must be \"sso\" or \"link-only\"")
+                                  {:status-code 400})))
+                (setting/set-value-of-type! :string :slack-connect-authentication-mode new-value)))
+
+(defsetting slack-connect-user-provisioning-enabled
+  (deferred-tru "When a user logs in via Slack Connect, create a Metabase account for them automatically if they don''t have one.")
+  :type    :boolean
+  :export? false
+  :default true
+  :getter  (fn []
+             (if (= (slack-connect-authentication-mode) slack-connect-auth-mode-link-only)
+               false
+               (setting/get-value-of-type :boolean :slack-connect-user-provisioning-enabled)))
+  :audit   :getter)
+
+(defsetting slack-connect-attribute-team-id
+  (deferred-tru "Slack OIDC claim for the team/workspace ID")
+  :default    "https://slack.com/team_id"
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :getter)
+
+(defsetting slack-connect-configured
+  (deferred-tru "Are the mandatory Slack Connect settings configured?")
+  :type    :boolean
+  :export? false
+  :default false
+  :setter  :none
+  :getter  (fn [] (boolean
+                   (and (slack-connect-client-id)
+                        (slack-connect-client-secret)))))
+
+(defsetting slack-connect-enabled
+  (deferred-tru "Is Slack Connect authentication configured and enabled?")
+  :type    :boolean
+  :export? false
+  :default false
+  :audit   :getter
+  :getter  (fn []
+             (if (slack-connect-configured)
+               (setting/get-value-of-type :boolean :slack-connect-enabled)
+               false)))
+
 ;;;
 ;;; Google Auth
 ;;;
@@ -187,6 +271,16 @@
                     (setting/set-value-of-type! :boolean :google-auth-enabled new-value))
                   (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
 
+(defsetting oidc-allowed-networks
+  (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
+  :type :keyword
+  :default :allow-all
+  :export? false
+  :setter (fn [new-value]
+            (when (some? new-value)
+              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
+            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+
 (defn- ee-sso-configured? []
   (when config/ee-available?
     (setting/get :other-sso-enabled?)))
@@ -197,6 +291,28 @@
   (or (google-auth-enabled)
       (ldap-enabled)
       (ee-sso-configured?)))
+
+(defn sso-source-enabled?
+  "Returns true if the given SSO source's authentication provider is currently enabled.
+   When a provider is disabled (e.g., after license downgrade), returns false so users
+   can fall back to password authentication."
+  [sso-source]
+  (boolean
+   (case (keyword sso-source)
+     :google (google-auth-enabled)
+     :ldap   (ldap-enabled)
+     ;; Enterprise SSO providers: setting/get respects the :feature flag on each
+     ;; setting — returning the default (false) when the feature is unlicensed (e.g.,
+     ;; after license downgrade), so users aren't locked out of password reset.
+     ;; Exception: :scim-enabled has no :feature guard, so it returns the stored value
+     ;; regardless of license status.
+     :saml   (setting/get :saml-enabled)
+     :jwt    (setting/get :jwt-enabled)
+     :oidc   (setting/get :oidc-enabled?)
+     :slack  (setting/get :slack-connect-enabled)
+     :scim   (setting/get :scim-enabled)
+     ;; Unknown sso_source -- treat as disabled to allow password reset
+     false)))
 
 (define-multi-setting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")

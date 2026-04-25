@@ -8,15 +8,16 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { color } from "metabase/lib/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction, fetchData } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/redux";
 import { DatabaseSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+
+import { createEntity, entityCompatibleQuery, fetchData } from "./utils";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -33,7 +34,7 @@ export const Databases = createEntity({
   nameOne: "database",
   nameMany: "databases",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchDatabaseMetadata") {
         return {
@@ -46,7 +47,7 @@ export const Databases = createEntity({
       };
     },
     useListQuery: useListDatabasesQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

@@ -45,10 +45,8 @@
   "If this is a nested column, add metadata about the parent column."
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
-  (if-not parent-id
-    metadata
-    (let [parent-metadata                     (lib.metadata/field metadata-providerable parent-id)
-          {parent-name         :name
+  (if-some [parent-metadata (when parent-id (lib.metadata/field metadata-providerable parent-id))]
+    (let [{parent-name         :name
            parent-nfc-path     :nfc-path
            parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
           new-name                            (str parent-name
@@ -63,7 +61,8 @@
                  :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
                  :display-name                           new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
-                 :metabase.lib.field/simple-display-name new-display-name)))))
+                 :lib/simple-display-name new-display-name)))
+    metadata))
 
 (mu/defn- field-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   "Metadata about the field from the metadata provider."
@@ -135,9 +134,8 @@
   #{:base-type
     :effective-type
     :display-name
-    :metabase.lib.query/transformation-added-base-type
-    :metabase.lib.field/original-effective-type
-    :metabase.lib.field/original-temporal-unit})
+    :lib/transformation-added-base-type
+    :lib/original-effective-type})
 
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.
@@ -149,7 +147,7 @@
   the stage where the join was performed. Subsequent stages are supposed to use field name refs, e.g.
   `My_Join__CATEGORY` or something like that. Historically a lot of field refs use IDs plus `:join-alias` well beyond
   the stage where the join originally happened... this is fine (since we can easily resolve it) but we do not want
-  metadata to include `:metabase.lib.join/join-alias` in this case since it means the join happened in the current
+  metadata to include `:lib/join-alias` in this case since it means the join happened in the current
   stage. If we include it incorrectly then it is liable to break code downstream and 'double-dip' the desired alias
   calculation code (e.g. we might spit out `My_Join__My_Join__CATEGORY`).
 
@@ -157,16 +155,16 @@
   previous stage (in which case having `:source-field` in the first place was probably incorrect). If appropriate it
   is propagated by [[resolve-in-implicit-join]]."
   {:lib/uuid                :lib/source-uuid
-   :binning                 :metabase.lib.field/binning
+   :binning                 :lib/binning
    :source-field-join-alias :fk-join-alias
    :source-field-name       :fk-field-name
-   :temporal-unit           :metabase.lib.field/temporal-unit
+   :temporal-unit           :lib/temporal-unit
    ;; display-name gets copied to both display-name and lib/ref-display-name
    :display-name            :lib/ref-display-name
    :name                    :lib/ref-name})
 
 (defn- opts-fn-inherited-temporal-unit
-  "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+  "`:inherited-temporal-unit` is transferred from `:temporal-unit` ref option only when
   the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
 
   TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works. (Other documentation here was not mine.)
@@ -227,33 +225,31 @@
                   [k v])))
         opts-metadata-fns))
 
-(def ^:private model-propagated-keys
-  #{:lib/card-id
-    :lib/model-display-name
-    :lib/original-display-name
-    :lib/original-expression-name
-    :lib/original-fk-field-id
-    :lib/original-fk-field-name
-    :lib/original-fk-join-alias
-    :lib/original-join-alias
-    :lib/original-name
-    :lib/type
-    :active
-    :base-type
-    :converted-timezone
-    :description
-    :display-name
-    :fingerprint
-    :id
-    :semantic-type
-    :table-id
-    :visibility-type})
-
 (def ^:private regular-card-propagated-keys
   #{:lib/card-id
+    :lib/from-model?
     :active
     :fingerprint
     :visibility-type})
+
+(def ^:private model-propagated-keys
+  (set/union
+   regular-card-propagated-keys
+   #{:lib/original-display-name
+     :lib/original-expression-name
+     :lib/original-fk-field-id
+     :lib/original-fk-field-name
+     :lib/original-fk-join-alias
+     :lib/original-join-alias
+     :lib/original-name
+     :lib/type
+     :base-type
+     :converted-timezone
+     :description
+     :display-name
+     :id
+     :semantic-type
+     :table-id}))
 
 (declare resolve-in-previous-stage-returned-columns-and-update-keys)
 
@@ -275,8 +271,11 @@
             ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
             ;; returned
             (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
-              (let [col (assoc col :lib/source :source/card, :lib/card-id card-id)
-                    propagated-keys (if (= (:type card) :model)
+              (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
+                    model?          (= (:type card) :model)
+                    col             (cond-> col
+                                      model? (assoc :lib/from-model? true))
+                    propagated-keys (if model?
                                       model-propagated-keys
                                       regular-card-propagated-keys)]
                 (select-keys col propagated-keys))))))
@@ -333,7 +332,8 @@
         (if-some [source-cols (or (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                                     (lib.metadata.calculation/returned-columns query previous-stage-number))
                                   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
-                                    (lib.metadata.calculation/returned-columns query (lib.metadata/card query source-card-id))))]
+                                    (when-some [card (lib.metadata/card query source-card-id)]
+                                      (lib.metadata.calculation/returned-columns query card))))]
           (let [previous-stage-cols (filter #(= (:lib/original-join-alias %) join-alias)
                                             source-cols)]
             ;; try to resolve by what is PROBABLY the correct name in a previous stage e.g. `Join` + `COLUMN` becomes
@@ -346,6 +346,14 @@
             (log/debug "Unable to resolve in previous stage =(")
             nil))))))
 
+(mr/def ::source-field-info
+  "The subset of field ref options that identify which implicit join a ref refers to: `:source-field` (the FK field ID,
+  required), and optionally `:source-field-name` and `:source-field-join-alias` for disambiguation."
+  [:map
+   [:source-field            ::lib.schema.id/field]
+   [:source-field-name       {:optional true} :string]
+   [:source-field-join-alias {:optional true} :string]])
+
 (mu/defn- resolve-in-implicit-join-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   "First, try to resolve the implicit join from the previous stage columns -- the join might have already been
   performed there and `:source-field` was specified incorrectly. (You're only supposed to specify this in the stage
@@ -354,15 +362,25 @@
   in the metadata instead of the usual `:source-field` => `:fk-field-id` mapping, otherwise we're liable to construct
   incorrect desired column aliases. [[lib.field.util/update-keys-for-col-from-previous-stage]] should take care of the
   renaming."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-field-id :- ::lib.schema.id/field
-   id-or-name      :- ::id-or-name]
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   source-field-info :- ::source-field-info
+   id-or-name        :- ::id-or-name]
   (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-    ;; only look for columns from the previous stage that were originally implicitly joined using the same FK. (It is
-    ;; possible to implicitly join the same Table more than once with different FKs.)
-    (let [previous-stage-cols (filter #(= ((some-fn :fk-field-id :lib/original-fk-field-id) %)
-                                          source-field-id)
+    (let [{:keys [source-field source-field-name source-field-join-alias]} source-field-info
+          ;; only look for columns from the previous stage that were originally implicitly joined using the same FK.
+          ;; (It is possible to implicitly join the same Table more than once with different FKs.)
+          ;; When :source-field-name or :source-field-join-alias are present, also match on :fk-field-name /
+          ;; :fk-join-alias to disambiguate columns that share the same FK field ID.
+          previous-stage-cols (filter (fn [col]
+                                        (and (= ((some-fn :fk-field-id :lib/original-fk-field-id) col)
+                                                source-field)
+                                             (or (nil? source-field-name)
+                                                 (= ((some-fn :fk-field-name :lib/original-fk-field-name) col)
+                                                    source-field-name))
+                                             (or (nil? source-field-join-alias)
+                                                 (= ((some-fn :fk-join-alias :lib/original-fk-join-alias) col)
+                                                    source-field-join-alias))))
                                       (lib.metadata.calculation/returned-columns query previous-stage-number))]
       (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name))))
 
@@ -449,17 +467,18 @@
                    ::fallback-metadata?     true))))))
 
 (mu/defn- resolve-in-implicit-join :- [:maybe ::lib.metadata.calculation/visible-column]
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-field-id :- ::lib.schema.id/field
-   id-or-name      :- ::id-or-name]
-  (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
-              (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
-  (or (resolve-in-implicit-join-previous-stage query stage-number source-field-id id-or-name)
-      (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
-      ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
-      ;; implicit join is happening in the current stage.
-      (resolve-in-implicit-join-current-stage query source-field-id id-or-name)))
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   source-field-info :- ::source-field-info
+   id-or-name        :- ::id-or-name]
+  (let [source-field-id (:source-field source-field-info)]
+    (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
+                (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
+    (or (resolve-in-implicit-join-previous-stage query stage-number source-field-info id-or-name)
+        (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
+        ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
+        ;; implicit join is happening in the current stage.
+        (resolve-in-implicit-join-current-stage query source-field-id id-or-name))))
 
 (mu/defn- resolve-in-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   [query                 :- ::lib.schema/query
@@ -546,12 +565,13 @@
 
     ;; we maybe have incorrectly used a field name ref when we should have used a field ID ref.
     ;;
-    ;; TODO (Cam 8/15/25) -- what happpens if this field is marked inactive? It won't come back from
+    ;; TODO (Cam 8/15/25) -- what happens if this field is marked inactive? It won't come back from
     ;; `returned-columns`... we'd get fallback metadata, right?
     (and source-table-id
          (string? id-or-name))
-    (m/find-first #(= (:name %) id-or-name)
-                  (lib.metadata.calculation/returned-columns query (lib.metadata/table query source-table-id)))
+    (when-some [table (lib.metadata/table query source-table-id)]
+      (m/find-first #(= (:name %) id-or-name)
+                    (lib.metadata.calculation/returned-columns query table)))
 
     (= (:lib/type stage) :mbql.stage/native)
     (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
@@ -610,48 +630,56 @@
 
 (declare resolve-from-previous-stage-or-source)
 
+(def ^:private ^:dynamic *in-deduplicated-column-resolution?* false)
+
 (defn- resolve-nonexistent-deduplicated-column-name
-  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
+  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter.
+  Uses a dynamic guard to prevent mutual recursion with [[resolve-from-previous-stage-or-source]]
+  which could cause a StackOverflowError for large suffixes (e.g. `name_5000`)."
   [query stage-number id-or-name]
-  (when (string? id-or-name)
+  (when (and (string? id-or-name)
+             (not *in-deduplicated-column-resolution?*))
     (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
-      (let [suffix     (parse-long suffix)
-            new-suffix (dec suffix)
-            ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`
-            new-name   (if (<= new-suffix 1)
-                         original-name
-                         (str original-name \_ new-suffix))]
-        (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
-        (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
-          (if (::fallback-metadata? resolved)
-            (do
-              (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
-              nil)
-            (do
-              (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
-              resolved)))))))
+      (binding [*in-deduplicated-column-resolution?* true]
+        (loop [current-suffix (dec (parse-long suffix))]
+          (let [new-name (if (<= current-suffix 1)
+                           original-name
+                           (str original-name \_ current-suffix))]
+            (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
+            (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
+              (if (::fallback-metadata? resolved)
+                (do
+                  (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  (when (> current-suffix 1)
+                    (recur (dec current-suffix))))
+                (do
+                  (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  resolved)))))))))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
    stage-number :- :int
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
-  (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
-                (do
-                  (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
-                  (resolve-ref-missing-join-alias query stage-number id-or-name))
-                ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
-                ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
-                ;; let QP code worry about that.
-                (fallback-metadata-for-field query stage-number id-or-name)
-                ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
-                ;; expression.
-                (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
+  (let [col (or ;; Allow nested dedup resolution for other columns encountered through card resolution,
+                ;; join resolution, etc. Only the direct dedup call below should be blocked by the guard.
+             (binding [*in-deduplicated-column-resolution?* false]
+               (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
+                   (do
+                     (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
+                     (resolve-ref-missing-join-alias query stage-number id-or-name))
+                      ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
+                      ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
+                      ;; let QP code worry about that.
+                   (fallback-metadata-for-field query stage-number id-or-name)
+                      ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
+                      ;; expression.
+                   (maybe-resolve-expression-in-current-stage query stage-number id-or-name)))
                 ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
-                ;; so forth
-                (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
+                ;; so forth. The *in-deduplicated-column-resolution?* guard prevents re-entry here.
+             (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
-                (fallback-metadata id-or-name))]
+             (fallback-metadata id-or-name))]
     (when col
       (merge-metadata [col (additional-metadata-from-source-card query stage-number col)]))))
 
@@ -670,7 +698,7 @@
           (or (when join-alias
                 (resolve-in-join query stage-number join-alias source-field id-or-name))
               (when source-field
-                (resolve-in-implicit-join query stage-number source-field id-or-name))
+                (resolve-in-implicit-join query stage-number opts id-or-name))
               (merge
                (or (resolve-from-previous-stage-or-source query stage-number id-or-name)
                    (fallback-metadata-for-field query stage-number id-or-name)
@@ -681,7 +709,7 @@
                                            (:joins (lib.util/query-stage query stage-number)))
                                      join-alias))
                  {:lib/source                   :source/joins
-                  :metabase.lib.join/join-alias join-alias})))
+                  :lib/join-alias join-alias})))
           (options-metadata opts)
           {:lib/original-ref-style-for-result-metadata-purposes (if (pos-int? id-or-name)
                                                                   :original-ref-style/id

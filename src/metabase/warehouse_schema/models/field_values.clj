@@ -252,15 +252,19 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values :preview_display] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
            visibility-type  :visibility_type
-           has-field-values :has_field_values} field-or-field-id]
+           has-field-values :has_field_values
+           preview-display  :preview_display} field-or-field-id]
       (boolean
        (and
-        (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+        (not (contains? #{:retired :sensitive :hidden} (keyword visibility-type)))
+        ;; preview_display is set to false by sync for fields that shouldn't have FieldValues
+        ;; (e.g. long text fields, JSON columns, auto-cruft columns). Defaults to true if not provided.
+        (not (false? preview-display))
         (not (isa? (keyword base-type) :type/field-values-unsupported))
         (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))
@@ -335,7 +339,7 @@
 
 (defenterprise hash-input-for-database-routing
   "Returns a hash input that will be used for fields subject to database routing"
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.models
   [_field]
   nil)
 
@@ -447,7 +451,8 @@
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-ids]
   (delete-duplicates-and-return-latest!
-   (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil)))
+   (when (seq field-ids)
+     (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
@@ -566,9 +571,8 @@
 (defmethod serdes/entity-id "FieldValues" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (let [field (t2/select-one 'Field :id field_id)]
-    (conj (serdes/generate-path "Field" field)
-          {:model "FieldValues" :id "0"})))
+  (conj (serdes/generate-path "Field" {:id field_id})
+        {:model "FieldValues" :id "0"}))
 
 (defmethod serdes/dependencies "FieldValues" [fv]
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
@@ -596,7 +600,8 @@
                               :export     (constantly ::serdes/skip)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
-                                                       (serdes/*import-field-fk* field-ref)))}}})
+                                                       (serdes/*import-field-fk* field-ref)))}}
+   :defaults {:has_more_values false}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
@@ -614,4 +619,5 @@
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update field-path (dec (count field-path)) str field-values-slug)))
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-values-slug)))))

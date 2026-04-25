@@ -6,14 +6,13 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/collections/components/CollectionContent";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
+import type { IconName } from "metabase/ui";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
-import type { IconName } from "metabase/ui";
+} from "metabase/utils/formatting/datetime-utils";
 import type { CollectionItem } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { SortDirection } from "metabase-types/api/sorting";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
@@ -66,7 +65,7 @@ describe("BaseItemsTable", () => {
             items={items}
             sortingOptions={{
               sort_column: "name",
-              sort_direction: SortDirection.Asc,
+              sort_direction: "asc",
             }}
             onSortingOptionsChange={jest.fn()}
             visibleColumnsMap={VISIBLE_COLUMNS_MAP}

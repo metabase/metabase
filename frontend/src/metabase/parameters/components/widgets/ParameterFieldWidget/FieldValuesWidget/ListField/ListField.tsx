@@ -1,18 +1,17 @@
-import type * as React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import type { InputProps } from "metabase/common/components/Input";
-import Input from "metabase/common/components/Input";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { Input } from "metabase/common/components/Input";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { delay } from "metabase/lib/delay";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Checkbox, Flex, Text } from "metabase/ui";
+import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -22,7 +21,11 @@ import {
   OptionsList,
 } from "./ListField.styled";
 import type { ListFieldProps, Option } from "./types";
-import { getOptionDisplayName, optionMatchesFilter } from "./utils";
+import {
+  getOptionDisplayName,
+  normalizeValuesToOptionKeys,
+  optionMatchesFilter,
+} from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
@@ -45,9 +48,15 @@ export const ListField = ({
   isDashboardFilter,
   isLoading,
 }: ListFieldProps) => {
-  const [selectedValues, setSelectedValues] = useState(new Set(value));
+  const normalizedValue = useMemo(
+    () => normalizeValuesToOptionKeys(value, options),
+    [value, options],
+  );
+  const [selectedValues, setSelectedValues] = useState(
+    new Set(normalizedValue),
+  );
   const [addedOptions, setAddedOptions] = useState<Option[]>(() =>
-    createOptionsFromValuesWithoutOptions(value, options),
+    createOptionsFromValuesWithoutOptions(normalizedValue, options),
   );
 
   const augmentedOptions = useMemo(() => {
@@ -200,7 +209,7 @@ export const ListField = ({
               <Checkbox
                 variant="stacked"
                 label={
-                  <Text c="text-secondary">
+                  <Text c="text-secondary" lh="inherit">
                     {debouncedFilter ? t`Select these` : t`Select all`}
                   </Text>
                 }

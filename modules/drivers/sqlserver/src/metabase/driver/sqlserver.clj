@@ -9,9 +9,9 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -21,11 +21,15 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -34,13 +38,11 @@
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   (java.util UUID)
-   (net.sf.jsqlparser.schema Table)
-   (net.sf.jsqlparser.statement.select PlainSelect Select)))
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -62,7 +64,9 @@
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :workspace                              true
+                              :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -75,6 +79,10 @@
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
+
+(defmethod driver.sql/default-schema :sqlserver
+  [_]
+  "dbo")
 
 (defmethod driver/prettify-native-form :sqlserver
   [_ native-form]
@@ -118,7 +126,13 @@
     :varbinary        :type/*
     :varchar          :type/Text
     :xml              :type/*
-    (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
+    ;; auto-incrementing integer (ie pk) field
+    (keyword "tinyint identity")  :type/Integer
+    (keyword "smallint identity") :type/Integer
+    (keyword "int identity")      :type/Integer
+    (keyword "bigint identity")   :type/BigInteger
+    (keyword "decimal identity")  :type/Decimal
+    (keyword "numeric identity")  :type/Decimal} column-type))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
@@ -159,7 +173,7 @@
        ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
        :loginTimeout       10
        ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
-       ;; to specifying them seperately as with jTDS see also:
+       ;; to specifying them separately as with jTDS see also:
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
        :user               (str (when domain (str domain "\\"))
                                 user)
@@ -241,7 +255,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -287,7 +301,7 @@
   [_driver _unit expr]
   (date-part :dayofyear expr))
 
-;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to orignal type
+;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to original type
 (defn- trunc-week
   [expr]
   (let [original-type (if (= "datetimeoffset" (h2x/type-info->db-type (h2x/type-info expr)))
@@ -591,9 +605,19 @@
         ;; Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
         ;; preserved in results metadata, so downstream questions and query stages can use the column in contexts
         ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
-        maybe-add-cast #(cond-> %
+        ;; For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
+        ;; and then cast it to a :bit. See #53805 for more details.
+        maybe-add-cast #(cond
+                          (sql.qp.boolean-to-comparison/predicate-expression-clause? %)
+                          (-> %
+                              (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
+                              (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
+
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
-                          (driver-api/assoc-field-options ::sql.qp/add-cast :bit))]
+                          (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
+
+                          :else
+                          %)]
     (->> (update query :fields #(mapv maybe-add-cast %))
          (parent-method driver :fields honeysql-form))))
 
@@ -624,6 +648,15 @@
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
+
+;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
+;; escape the `LIKE` metacharacters `%` and `_`.
+(defmethod sql.qp/escape-like-pattern :sqlserver
+  [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "[\\]")
+      (str/replace "%"  "[%]")
+      (str/replace "_"  "[_]")))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -771,8 +804,8 @@
       ;; NULL` for us.
       (let [clause (into [op field]
                          ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
-                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
-                         ;; just use MLv2 metadata or type calculation functions instead.
+                         ;; get the real database type of the expression... maybe when we convert this to MBQL 5 we can
+                         ;; just use Lib metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
                                  (map (fn [[_type val :as expr]]
@@ -787,6 +820,12 @@
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
+
+;; This is used to wrap comparison expressions (e.g. [:> field1 field2]) in a case statement as
+;; SQL server does not have a boolean data type. See #53805 for more details.
+(defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/wrap-in-case]
+  [driver [_tag expr]]
+  [:case (sql.qp/->honeysql driver expr) [:inline 1] :else [:inline 0]])
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
@@ -848,12 +887,12 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (driver-api/replace inner-query
-      ;; remove order by and then recurse in case we need to do more tranformations at another level
-      (m :guard (partial remove-order-by? &parents))
+    (driver-api/replace-lite inner-query
+      ;; remove order by and then recurse in case we need to do more transformations at another level
+      (m :guard (remove-order-by? &parents m))
       (fix-order-bys (dissoc m :order-by))
 
-      (m :guard (partial add-limit? &parents))
+      (m :guard (add-limit? &parents m))
       (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
@@ -981,7 +1020,7 @@
 (defmethod sql.qp/->integer :sqlserver
   [driver value]
   ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
+  ;; if it's a float, conversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (h2x/maybe-cast (sql.qp/integer-dbtype driver)
                   [:round (sql.qp/->float driver value) 0]))
@@ -996,8 +1035,7 @@
   ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
   ;; field automatically, as it represents the login user which may not be a
   ;; valid database user for impersonation (see issue #60665).
-  (let [{:keys [role]} (:details database)]
-    role))
+  (:role (driver.conn/effective-details database)))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
@@ -1027,10 +1065,8 @@
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query sql-query)
-        ^PlainSelect select-body (.getSelectBody parsed-query)]
-    (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query) sql-params]))
+        modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
+    [modified-sql sql-params]))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]
@@ -1077,3 +1113,104 @@
             (if schema
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/init-workspace-isolation! :sqlserver
+  [_driver database workspace]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        username         (driver.u/workspace-isolation-user-name workspace)
+        password         (driver.u/random-workspace-password)
+        escaped-password (sql.u/escape-sql password :ansi)
+        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; SQL Server: create login (server level), then user (database level), then schema
+    (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                              "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
+                         username username escaped-password)
+                 (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
+                         username username username)
+                 (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
+                         schema-name schema-name)
+                 ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
+                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name username)
+                 ;; CREATE TABLE at database level is also required in SQL Server
+                 (format "GRANT CREATE TABLE TO [%s]" username)]]
+      (jdbc/execute! conn-spec [sql]))
+    {:schema           schema-name
+     :database_details {:user     username
+                        :password password}}))
+
+(defmethod driver/destroy-workspace-isolation! :sqlserver
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'DROP TABLE [%s].[' + name + ']; ' "
+                              "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                              "EXEC sp_executesql @sql")
+                         schema-name schema-name)
+                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s]"
+                         schema-name schema-name)
+                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
+                         username username)
+                 ;; Kill all sessions using this login before dropping it
+                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                              "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                              "EXEC sp_executesql @sql")
+                         username)
+                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
+                         username username)]]
+      (jdbc/execute! conn-spec [sql]))))
+
+(defmethod driver/grant-workspace-read-access! :sqlserver
+  [_driver database workspace tables]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        username  (-> workspace :database_details :user)]
+    (when-not username
+      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
+                      {:workspace-id (:id workspace) :step :grant})))
+    ;; Grant SELECT on each specific table only - no schema-level grants
+    (let [qu (sql.u/quote-name :sqlserver :field username)]
+      (doseq [table tables]
+        (jdbc/execute! conn-spec [(format "GRANT SELECT ON %s.%s TO %s"
+                                          (sql.u/quote-name :sqlserver :schema (:schema table))
+                                          (sql.u/quote-name :sqlserver :table (:name table))
+                                          qu)])))))
+
+(defmethod driver/llm-sql-dialect-resource :sqlserver [_]
+  "metabot/prompts/dialects/sqlserver.md")
+
+(defmethod driver/validate-impersonated-query :sqlserver
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
+  [_driver conn-spec & {:as _options}]
+  ;; role is NULL because HAS_PERMS_BY_NAME checks the current user's effective
+  ;; permissions directly rather than querying role-based grants
+  (->> (jdbc/query
+        conn-spec
+        (str/join
+         "\n"
+         ["SELECT"
+          "  NULL AS [role],"
+          "  s.name AS [schema],"
+          "  o.name AS [table],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'SELECT') AS [select],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'UPDATE') AS [update],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'INSERT') AS [insert],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'DELETE') AS [delete]"
+          "FROM sys.objects o"
+          "JOIN sys.schemas s ON o.schema_id = s.schema_id"
+          ;; U = user table, V = view
+          "WHERE o.type IN ('U', 'V')"]))
+       (map (fn [row]
+              (-> row
+                  (update :select pos?)
+                  (update :update pos?)
+                  (update :insert pos?)
+                  (update :delete pos?))))))

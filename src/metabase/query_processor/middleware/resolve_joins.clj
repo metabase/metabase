@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-joins
   "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
   options, and adds information to the query about what joins should be done and how they should be performed."
-  (:refer-clojure :exclude [alias every? mapv empty?])
+  (:refer-clojure :exclude [every? mapv empty?])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -15,10 +15,7 @@
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]
-  ;;; TODO (Cam 9/16/25) -- if we made `:strategy` a required key with a `:default` value in
-  ;;; `:metabase.lib.schema.join/join` then Lib normalization could handle this for us and we wouldn't need QP
-  ;;; middleware to do it. Seems like the better way to deal with defaults. (QUE-2469)
-  (merge {:strategy :left-join}
+  (merge {:strategy lib.schema.join/default-strategy}
          (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
            {:qp/keep-default-join-alias true})
          join))

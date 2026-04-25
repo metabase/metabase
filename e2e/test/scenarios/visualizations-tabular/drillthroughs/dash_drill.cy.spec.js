@@ -30,7 +30,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(DASHBOARD_NAME);
         clickScalarCardTitle(Q2.name);
       });
@@ -39,7 +39,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.log("Assert that the url is correct");
         cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.contains("18,760");
       });
     });
@@ -68,14 +68,14 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(DASHBOARD_NAME);
         clickScalarCardTitle(Q2.name);
       });
 
       it("should result in a correct query result", () => {
         cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("5,755");
       });
     });
@@ -122,7 +122,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
 
       it("should result in a correct query result", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Affiliate");
         H.cartesianChartCircle().should("have.length.of.at.least", 100);
       });
@@ -189,7 +189,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           cy.findByTestId("qb-filters-panel")
             .findByText("Product → Category is Doohickey")
             .should("be.visible");
-          H.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2022
+          H.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2025
         });
       });
     });

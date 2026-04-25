@@ -5,8 +5,8 @@ import { useGetUserQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Stack, Text } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import { AuditApi } from "metabase-enterprise/services";
 import type { User } from "metabase-types/api";
 
@@ -65,7 +65,7 @@ export const UnsubscribeUserModal = ({
             {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
           </Text>
           <Text>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
             {t`This does not affect email distribution lists that are managed outside of Metabase.`}
           </Text>
         </Stack>

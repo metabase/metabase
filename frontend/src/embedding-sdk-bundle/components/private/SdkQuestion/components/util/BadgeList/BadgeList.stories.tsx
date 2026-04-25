@@ -15,7 +15,7 @@ export default {
 };
 
 export const DefaultLayoutBadgeList = {
-  render() {
+  render: function Render() {
     const [items, setItems] = useState(
       Array.from(Array(5).keys()).map((i) => ({
         name: `item ${i}`,

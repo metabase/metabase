@@ -10,7 +10,7 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
+import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Box, Group, Icon, Stack } from "metabase/ui";

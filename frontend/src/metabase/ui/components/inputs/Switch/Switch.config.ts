@@ -42,8 +42,8 @@ const THUMB_SIZES: Record<string, string> = {
 
 const TRACK_PADDING_TOP: Record<string, string> = {
   xs: rem(0),
-  sm: rem(2),
-  md: rem(0),
+  sm: rem(1),
+  md: rem(1),
 };
 
 export const switchOverrides = {

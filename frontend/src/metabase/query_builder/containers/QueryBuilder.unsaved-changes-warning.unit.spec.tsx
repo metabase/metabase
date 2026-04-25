@@ -15,7 +15,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { serializeCardForUrl } from "metabase/lib/card";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCardQueryMetadata,
@@ -371,7 +371,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
         /**
          * When initialRoute is `/model/${TEST_MODEL_CARD.id}/columns`,
-         * the QueryBuilder gets incompletely intialized.
+         * the QueryBuilder gets incompletely initialized.
          * This seems to affect only tests.
          */
         await userEvent.click(await screen.findByText("Columns"));
@@ -602,6 +602,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Visualization" }),
       );
+      await userEvent.click(screen.getByTestId("more-charts-toggle"));
       await userEvent.click(screen.getByTestId("Detail-button"));
       await waitForSaveToBeEnabled();
 

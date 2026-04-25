@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
+import { ExpressionWidget } from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -16,13 +17,14 @@ export const ExpressionStep = ({
   step,
 }: NotebookStepProps): JSX.Element => {
   const { query, stageIndex } = step;
+  const tc = useTranslateContent();
   const expressions = useMemo(
     () => Lib.expressions(query, stageIndex),
     [query, stageIndex],
   );
 
   const renderExpressionName = (expression: Lib.ExpressionClause) => {
-    return Lib.displayInfo(query, stageIndex, expression).longDisplayName;
+    return tc(Lib.displayInfo(query, stageIndex, expression).longDisplayName);
   };
 
   const handleReorderExpression = (

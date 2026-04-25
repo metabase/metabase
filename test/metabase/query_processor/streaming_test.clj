@@ -8,13 +8,13 @@
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+   [metabase.query-processor.test :as qp]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -177,6 +177,7 @@
                                                           ([byytes offset length]
                                                            (.write os ^bytes byytes offset length))))))
                                    :async-context (reify AsyncContext
+                                                    (addListener [_ _])
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (true?
@@ -317,9 +318,10 @@
 
 (defn do-test!
   "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
-  [message {:keys [query viz-settings assertions endpoints user]}]
+  [message {:keys [query viz-settings assertions endpoints user expected-status]}]
   (testing message
-    (let [query-json        (json/encode query)
+    (let [expected-status   (or expected-status 200)
+          query-json        (json/encode query)
           viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
@@ -339,7 +341,7 @@
               (testing endpoint
                 (case endpoint
                   :dataset
-                  (let [results (mt/user-http-request user :post 200
+                  (let [results (mt/user-http-request user :post expected-status
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
                                                       {:format_rows            true
@@ -348,14 +350,14 @@
                     ((-> assertions export-format) results))
 
                   :card
-                  (let [results (mt/user-http-request user :post 200
+                  (let [results (mt/user-http-request user :post expected-status
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
                                                       {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   :dashboard
-                  (let [results (mt/user-http-request user :post 200
+                  (let [results (mt/user-http-request user :post expected-status
                                                       (format "dashboard/%d/dashcard/%d/card/%d/query/%s"
                                                               (u/the-id dashboard)
                                                               (u/the-id dashcard)
@@ -367,13 +369,13 @@
 
                   ;; TODO -- what about the public dashcard endpoint???
                   :public
-                  (let [results (mt/user-http-request user :get 200
+                  (let [results (mt/user-http-request user :get expected-status
                                                       (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
                   :embed
-                  (let [results (mt/user-http-request user :get 200
+                  (let [results (mt/user-http-request user :get expected-status
                                                       (embed-test/card-query-url card (str "/" (name export-format)))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results)))))))))))

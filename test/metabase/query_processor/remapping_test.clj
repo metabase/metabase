@@ -6,11 +6,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -355,7 +355,7 @@
                             ["CATEGORY" nil      "Category"]                  ; products.category
                             ["TITLE_2"  "Orders" "Product → Title"]           ; product.title, remapped from orders.product_id
                             ["sum"      "Orders" "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-                           (map (juxt :name :metabase.lib.join/join-alias :display_name) (mt/cols results))))))
+                           (map (juxt :name :lib/join-alias :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                         ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
@@ -398,7 +398,7 @@
                     {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                      :breakout    [[:field
                                     (mt/id :orders :product_id)
-                                    {:base-type    :type/Integer}]]
+                                    {:base-type :type/Integer}]]
                      :limit       3})]
         (is (= [["Aerodynamic Bronze Hat"     144    5753.63]
                 ["Aerodynamic Concrete Bench" 116   10035.81]
@@ -415,7 +415,7 @@
                            {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                             :breakout    [[:field
                                            (mt/id :orders :product_id)
-                                           {:base-type    :type/Integer}]]
+                                           {:base-type :type/Integer}]]
                             :limit       3})
                          {:pivot_rows [0]
                           :pivot_cols []})]
@@ -562,7 +562,7 @@
                                   (qp/process-query query))))))))
 
 (deftest ^:parallel fk-remapped-should-remap-test
-  (testing (format "Check that we return the title when it's remapped")
+  (testing "Check that we return the title when it's remapped"
     (let [mp (-> (mt/metadata-provider)
                  (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                  (mt/id :products :title)))

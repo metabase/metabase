@@ -7,6 +7,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
@@ -29,7 +30,12 @@
   (ingest-one
     [this path]
     "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
-    corresponding entity."))
+    corresponding entity.")
+
+  (ingest-errors
+    [this]
+    "Return a vector of exceptions that occurred during ingestion (e.g. YAML parse failures).
+    Returns [] if no errors occurred."))
 
 (defn read-timestamps
   "Parses timestamp fields in an entity.
@@ -73,37 +79,51 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
-(def legal-top-level-paths "Known top-level paths for directory with serialization output"
-  #{"actions" "collections" "databases" "snippets" "glossary" "transforms"}) ; But return the hierarchy without labels.
+(def legal-top-level-paths
+  "Known top-level paths for directory with serialization output.
+  We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
+  #{"actions" "channels" "collections" "databases" "glossary" "metabots" "python_libraries" "python-libraries" "snippets" "transforms"})
 
-(defn- ingest-all [^File root-dir]
-  ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.
-  (into {} (for [^File file (file-seq root-dir)
-                 :when (and (.isFile file)
-                            (not (str/starts-with? (.getName file) "."))
-                            (str/ends-with? (.getName file) ".yaml")
-                            (let [rel (.relativize (.toPath root-dir) (.toPath file))]
-                              (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
-                 ;; TODO: only load YAML once.
-                 :let  [hierarchy (try
-                                    (serdes/path (ingest-file file))
-                                    (catch Exception e
-                                      (log/error e "Error reading file" (.getName file))))]
-                 :when hierarchy]
-             [(strip-labels hierarchy) [hierarchy file]])))
+(defn- ingest-all
+  "Returns {:entities {unlabeled-hierarchy [hierarchy File]}, :errors [Exception...]}.
+  Dotfiles are silently skipped (editor temp files, see #41567).
+  Non-dotfile YAML parse failures are collected in :errors."
+  [^File root-dir]
+  (let [errors (atom [])]
+    {:entities (into {} (for [^File file (file-seq root-dir)
+                              :when (and (.isFile file)
+                                         (not (str/starts-with? (.getName file) "."))
+                                         (str/ends-with? (.getName file) ".yaml")
+                                         (let [rel (.relativize (.toPath root-dir) (.toPath file))]
+                                           (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
+                              :let [file-name (.getName file)
+                                    hierarchy (try
+                                                (serdes/path (ingest-file file))
+                                                (catch Exception e
+                                                  (log/warn (u/strip-error e "Error reading file during ingestion"))
+                                                  (swap! errors conj (ex-info (format "Failed to parse file: %s" file-name) {:file file-name} e))
+                                                  nil))]
+                              :when hierarchy]
+                          [(strip-labels hierarchy) [hierarchy file]]))
+     :errors  @errors}))
 
-(deftype YamlIngestion [^File root-dir settings cache]
+(defn- populate-cache! [cache errors-atom ingest-fn]
+  (when-not @cache
+    (let [result (ingest-fn)]
+      (reset! cache (:entities result))
+      (reset! errors-atom (:errors result)))))
+
+(deftype YamlIngestion [^File root-dir settings cache errors-atom]
   Ingestable
   (ingest-list [_]
-    (-> (or @cache (reset! cache (ingest-all root-dir)))
+    (populate-cache! cache errors-atom #(ingest-all root-dir))
+    (-> @cache
         keys
-        ;; add settings ingestion paths
         (concat (for [k (keys settings)]
                   [{:model "Setting" :id (name k)}]))))
 
   (ingest-one [_ serdes-meta]
-    (when-not @cache
-      (reset! cache (ingest-all root-dir)))
+    (populate-cache! cache errors-atom #(ingest-all root-dir))
     (let [{:keys [id]} (first serdes-meta)
           kw-id        (keyword id)]
       (if (= ["Setting"] (mapv :model serdes-meta))
@@ -114,10 +134,13 @@
             (ingest-file (second target))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File (second target))
-                                                       :abs-path serdes-meta} e)))))))))
+                                                       :abs-path serdes-meta} e))))))))
+
+  (ingest-errors [_]
+    (or @errors-atom [])))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by
   [[metabase-enterprise.serialization.v2.storage.yaml]]."
   [root-dir]
-  (->YamlIngestion (io/file root-dir) (yaml/from-file (io/file root-dir "settings.yaml")) (atom nil)))
+  (->YamlIngestion (io/file root-dir) (yaml/from-file (io/file root-dir "settings.yaml")) (atom nil) (atom [])))

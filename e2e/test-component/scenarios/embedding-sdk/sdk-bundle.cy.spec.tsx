@@ -165,25 +165,25 @@ describe(
             rerender(
               <MetabaseProvider
                 authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-                locale="es"
+                locale="en-ZZ"
               >
                 <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
               </MetabaseProvider>,
             );
 
             getSdkRoot().within(() => {
-              cy.findByText("Filtro").should("exist");
+              cy.findByText("[zz] Filter").should("exist");
             });
 
-            // Update props via the imperative API (via window)
+            // Update props via the imperative API (via window).
             cy.window().then((win) => {
               win.METABASE_PROVIDER_PROPS_STORE.setProps({
                 authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-                locale: "fr",
+                locale: "en",
               });
 
               getSdkRoot().within(() => {
-                cy.findByText("Filtre").should("exist");
+                cy.findByText("Filter").should("exist");
               });
             });
           });
@@ -192,16 +192,10 @@ describe(
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
 
-          const MINUTE = 60 * 1000;
-          cy.intercept("GET", "/api/card/*", (request) => {
-            /**
-             * Delay request for 10 min to avoid flakiness. We don't need the request to return, since we're testing the loading state.
-             * From observing the failed test log, it failed at 10.9s, and the timeout for finding the loading indicator was set to 10s.
-             * That means, Cypress started looking for the loading indicator after ~0.9s of the request being delayed.
-             */
-            request.continue(
-              () => new Promise((resolve) => setTimeout(resolve, 10 * MINUTE)),
-            );
+          // Intercept the SDK bundle script and never respond,
+          // keeping loadingState stuck at "Loading" so the Loader is rendered.
+          cy.intercept("GET", "**/app/embedding-sdk.js*", () => {
+            return new Promise(() => {}); // never resolves → request stays pending
           });
 
           mountSdkContent(

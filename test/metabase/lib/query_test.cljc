@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -75,7 +74,7 @@
                      :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
           (lib/query
            meta/metadata-provider
-           (lib.convert/->pMBQL {:type :query
+           (lib.convert/->mbql5 {:type :query
                                  :database (meta/id)
                                  :query {:source-table (meta/id :venues)
                                          :expressions {"math" [:+ 1 1]}
@@ -87,7 +86,7 @@
                                                (lib/expression-ref $q "CC"))]))
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
-          converted-query (lib.convert/->pMBQL
+          converted-query (lib.convert/->mbql5
                            (walk/postwalk
                             (fn [node]
                               (if (map? node)
@@ -104,31 +103,6 @@
                                                  "CC"]]]}]}]}
 
               (lib/query meta/metadata-provider converted-query))))))
-
-(deftest ^:parallel converted-query-leaves-stage-metadata-refs-alone
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
-                  (lib/expression "BirthMonth" (lib/+ 1 1))
-                  (as-> $q (lib/breakout $q (m/find-first #(= (:name %) "BirthMonth") (lib/breakoutable-columns $q))))
-                  (lib/aggregate (lib/count))
-                  (lib/append-stage)
-                  (lib/aggregate (lib/count)))]
-    (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
-            (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
-                                                        [:stages 0 :lib/stage-metadata]
-                                                        {:columns [{:base-type :type/Float,
-                                                                    :display-name "BirthMonth",
-                                                                    :field-ref [:expression
-                                                                                "BirthMonth"
-                                                                                {:base-type :type/Integer}],
-                                                                    :name "BirthMonth",
-                                                                    :lib/type :metadata/column}
-                                                                   {:base-type :type/Integer,
-                                                                    :display-name "Count",
-                                                                    :field-ref [:aggregation 0],
-                                                                    :name "count",
-                                                                    :semantic-type :type/Quantity,
-                                                                    :lib/type :metadata/column}],
-                                                         :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count (lib.tu/venues-query))))
@@ -178,7 +152,7 @@
           false (mock-db-native-perms nil))))))      ; native-permissions not found on the database
 
 (deftest ^:parallel convert-from-legacy-preserve-info-test
-  (testing ":info key should be converted when converting from legacy to pMBQL"
+  (testing ":info key should be converted when converting from legacy to MBQL 5"
     (is (=? {:lib/type     :mbql/query
              :lib/metadata lib.metadata.protocols/cached-metadata-provider?
              :database     (meta/id)

@@ -42,11 +42,11 @@
   [_query _path-type _path clause]
   (lib.util.match/match-lite clause
     [:value
-     (opts :guard (let [{:keys [effective-type]} opts]
-                    (and effective-type
-                         (not (isa? effective-type :type/Text)))))
+     (:and opts {:effective-type (et :guard (and et (not (isa? et :type/Text))))})
      (v :guard string?)]
-    [:value opts (parse-value-for-base-type v (:effective-type opts))]))
+    [:value opts (parse-value-for-base-type v (:effective-type opts))]
+
+    _ nil))
 
 (mu/defn auto-parse-filter-values :- ::lib.schema/query
   "Automatically parse String filter clause values to the appropriate type."

@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { MeasureList, MeasureEditor, MeasureRevisionHistory } = H.DataModel;
@@ -8,8 +9,9 @@ const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 describe("scenarios > data studio > data model > measures", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("POST", "/api/measure").as("createMeasure");
     cy.intercept("PUT", "/api/measure/*").as("updateMeasure");
@@ -30,6 +32,13 @@ describe("scenarios > data studio > data model > measures", () => {
 
       cy.log("verify new measure link and navigation");
       MeasureList.getNewMeasureLink().scrollIntoView().click();
+
+      cy.log("verify measure_create_started event");
+      H.expectUnstructuredSnowplowEvent({
+        event: "measure_create_started",
+        triggered_from: "data_studio_measures_list",
+        target_id: ORDERS_ID,
+      });
 
       cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
     });
@@ -94,6 +103,13 @@ describe("scenarios > data studio > data model > measures", () => {
       cy.log("navigate to new measure page");
       MeasureList.getNewMeasureLink().scrollIntoView().click();
 
+      cy.log("verify measure_create_started event");
+      H.expectUnstructuredSnowplowEvent({
+        event: "measure_create_started",
+        triggered_from: "data_studio_measures_list",
+        target_id: ORDERS_ID,
+      });
+
       cy.log("fill in measure name");
       MeasureEditor.getNameInput().type("Total Revenue");
 
@@ -109,7 +125,17 @@ describe("scenarios > data studio > data model > measures", () => {
 
       cy.log("save measure");
       MeasureEditor.getSaveButton().click();
-      cy.wait("@createMeasure");
+      cy.wait("@createMeasure").then((interception) => {
+        const measureId = interception.response?.body?.id;
+
+        cy.log("verify measure_created success event");
+        H.expectUnstructuredSnowplowEvent({
+          event: "measure_created",
+          triggered_from: "data_studio_measures",
+          result: "success",
+          target_id: measureId,
+        });
+      });
 
       cy.log("verify redirect to edit page and toast");
       H.undoToast().should("contain.text", "Measure created");
@@ -124,7 +150,7 @@ describe("scenarios > data studio > data model > measures", () => {
       verifyMeasureInQueryBuilder("Total Revenue");
     });
 
-    it("should add aggregation and show preview in menu", () => {
+    it("should add aggregation and show explore in menu", () => {
       visitDataStudioMeasures(PRODUCTS_ID);
 
       MeasureList.getNewMeasureLink().scrollIntoView().click();
@@ -138,9 +164,9 @@ describe("scenarios > data studio > data model > measures", () => {
         .findByText(/Average of Price/i)
         .should("exist");
 
-      cy.log("verify preview is available in menu");
+      cy.log("verify explore is available in menu");
       MeasureEditor.getActionsButton().click();
-      H.popover().findByText("Preview").should("be.visible");
+      H.popover().findByText("Explore").should("be.visible");
     });
   });
 
@@ -293,7 +319,7 @@ describe("scenarios > data studio > data model > measures", () => {
         aggregation: ["count"],
       });
       cy.get<number>("@measureId").then((measureId) => {
-        // Fetch the measure to get the current pMBQL definition
+        // Fetch the measure to get the current MBQL 5 definition
         cy.request("GET", `/api/measure/${measureId}`).then(({ body }) => {
           const currentDefinition = body.definition;
 
@@ -314,7 +340,7 @@ describe("scenarios > data studio > data model > measures", () => {
           });
 
           cy.log("update measure aggregation");
-          // Update aggregation in the pMBQL definition
+          // Update aggregation in the MBQL 5 definition
           const updatedDefinition = {
             ...currentDefinition,
             stages: [
@@ -387,6 +413,76 @@ describe("scenarios > data studio > data model > measures", () => {
       H.DependencyGraph.graph()
         .findByText("Dependencies Test Measure")
         .should("be.visible");
+    });
+  });
+
+  describe("Readonly access for data analysts", () => {
+    it("should show measures in list but hide New measure button for non-admin", () => {
+      createTestMeasure({ name: "Readonly Test Measure" });
+
+      H.setUserAsAnalyst(NODATA_USER_ID);
+      cy.signIn("nodata");
+
+      cy.log("verify measure is visible in list");
+      visitDataStudioMeasures(ORDERS_ID);
+      MeasureList.getMeasure("Readonly Test Measure")
+        .scrollIntoView()
+        .should("be.visible");
+
+      cy.log("verify New measure button is not visible");
+      MeasureList.get()
+        .findByRole("link", { name: /New measure/i })
+        .should("not.exist");
+
+      cy.log("verify direct navigation to new measure page is blocked");
+      cy.visit(
+        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures/new`,
+      );
+      cy.url().should("include", "/unauthorized");
+    });
+
+    it("should display measure detail in readonly mode for non-admin", () => {
+      createTestMeasure({
+        name: "Readonly Detail Measure",
+        description: "Test description for readonly",
+      });
+
+      cy.get<number>("@measureId").then((measureId) => {
+        H.setUserAsAnalyst(NODATA_USER_ID);
+        cy.signIn("nodata");
+
+        visitDataModelMeasure(ORDERS_ID, measureId);
+
+        cy.log("verify measure name input is disabled");
+        MeasureEditor.get()
+          .findByDisplayValue("Readonly Detail Measure")
+          .should("be.disabled");
+
+        cy.log("verify description is displayed as plain text");
+        MeasureEditor.get().findByText("Description").should("be.visible");
+        MeasureEditor.get()
+          .findByText("Test description for readonly")
+          .should("be.visible");
+
+        cy.log("verify Save button is not visible");
+        MeasureEditor.get()
+          .findByRole("button", { name: /Save/i })
+          .should("not.exist");
+
+        cy.log("verify Remove measure option is hidden in actions menu");
+        MeasureEditor.getActionsButton().click();
+        H.popover().findByText("Explore").should("be.visible");
+        H.popover().findByText("Remove measure").should("not.exist");
+        cy.realPress("Escape");
+
+        cy.log("verify revision history is still accessible");
+        MeasureEditor.getRevisionHistoryTab().click();
+        MeasureRevisionHistory.get().within(() => {
+          cy.findByText(/created this measure/i)
+            .scrollIntoView()
+            .should("be.visible");
+        });
+      });
     });
   });
 });

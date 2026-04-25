@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Group, type GroupProps } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 import { Breadcrumb } from "./Breadcrumb";
@@ -34,7 +34,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
           <Separator />
 
           <Breadcrumb
-            href={`/browse/databases/${table.db_id}/schema/${table.schema}`}
+            href={`/browse/databases/${table.db_id}/schema/${encodeURIComponent(table.schema)}`}
           >
             {table.schema}
           </Breadcrumb>

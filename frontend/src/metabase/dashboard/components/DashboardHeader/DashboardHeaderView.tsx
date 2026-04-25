@@ -3,8 +3,9 @@ import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import EditBar from "metabase/common/components/EditBar";
-import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";
+import { EditBar } from "metabase/common/components/EditBar";
+import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
@@ -20,19 +21,17 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
-import { getIsNavbarOpen } from "metabase/selectors/app";
+import { useDispatch, useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
 import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { SIDEBAR_WIDTH } from "../Sidebar";
 
 import S from "./DashboardHeaderView.module.css";
 
@@ -58,7 +57,6 @@ export function DashboardHeaderView({
 }: DashboardHeaderViewProps) {
   const { titled } = useDashboardContext();
 
-  const isNavBarOpen = useSelector(getIsNavbarOpen);
   const isEditing = useSelector(getIsEditing);
 
   const [showSubHeader, setShowSubHeader] = useState(true);
@@ -81,11 +79,7 @@ export function DashboardHeaderView({
 
   const _headerButtons = useMemo(
     () => (
-      <Flex
-        className={cx("Header-buttonSection", S.HeaderButtonSection, {
-          [S.isNavBarOpen]: isNavBarOpen,
-        })}
-      >
+      <Flex className={cx("Header-buttonSection", S.HeaderButtonSection)}>
         <DashboardHeaderButtonRow
           canResetFilters={canResetFilters}
           onResetFilters={handleResetFilters}
@@ -93,7 +87,7 @@ export function DashboardHeaderView({
         />
       </Flex>
     ),
-    [canResetFilters, handleResetFilters, isAnalyticsDashboard, isNavBarOpen],
+    [canResetFilters, handleResetFilters, isAnalyticsDashboard],
   );
 
   useEffect(() => {
@@ -106,7 +100,7 @@ export function DashboardHeaderView({
   }, [isLastEditInfoVisible]);
 
   return (
-    <div>
+    <div className={S.DashboardHeader}>
       {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
       {editWarning && (
         <Flex className={cx(CS.wrapper, S.EditWarning)}>
@@ -132,15 +126,14 @@ export function DashboardHeaderView({
             ref={header}
           >
             <FixedWidthContainer
-              className={cx(S.HeaderFixedWidthContainer, {
-                [S.isNavBarOpen]: isNavBarOpen,
-              })}
+              className={S.HeaderFixedWidthContainer}
               data-testid="fixed-width-dashboard-header"
               isFixedWidth={dashboard?.width === "fixed"}
             >
               {titled && (
                 <Box
                   role="heading"
+                  aria-level={1}
                   className={cx(S.HeaderContent, {
                     [S.showSubHeader]: showSubHeader,
                   })}
@@ -180,21 +173,13 @@ export function DashboardHeaderView({
                 </Box>
               )}
 
-              <Flex
-                className={cx(S.HeaderButtonsContainer, {
-                  [S.isNavBarOpen]: isNavBarOpen,
-                })}
-              >
-                {_headerButtons}
-              </Flex>
+              <Flex className={S.HeaderButtonsContainer}>{_headerButtons}</Flex>
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
         <FullWidthContainer className={S.HeaderRow}>
           <FixedWidthContainer
-            className={cx(S.HeaderFixedWidthContainer, {
-              [S.isNavBarOpen]: isNavBarOpen,
-            })}
+            className={S.HeaderFixedWidthContainer}
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >

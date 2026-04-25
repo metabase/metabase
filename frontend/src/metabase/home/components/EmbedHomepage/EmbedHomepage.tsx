@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isEEBuild } from "metabase/lib/utils";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
@@ -22,22 +22,22 @@ export const EmbedHomepage = () => {
   const hasEmbeddingFeature = useHasTokenFeature("embedding");
 
   const embeddingDocsUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- only visible to admins
     getDocsUrl(state, { page: "embedding/start" }),
   );
 
   const learnMoreInteractiveEmbedding = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/interactive-embedding" }),
   );
 
   const learnMoreStaticEmbedding = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
 
   const embedJsDocsUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/embedded-analytics-js" }),
   );
 
@@ -77,7 +77,7 @@ export const EmbedHomepage = () => {
     }
   };
 
-  const variant = isEEBuild() ? "ee" : "oss/starter";
+  const variant = PLUGIN_IS_EE_BUILD.isEEBuild() ? "ee" : "oss";
 
   return (
     <>
@@ -89,7 +89,7 @@ export const EmbedHomepage = () => {
         hasEmbeddingFeature={hasEmbeddingFeature}
         embeddingDocsUrl={embeddingDocsUrl + utmTags}
         analyticsDocsUrl={
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+          // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- only visible to admins
           "https://www.metabase.com/learn/customer-facing-analytics/" + utmTags
         }
         learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}

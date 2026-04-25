@@ -5,10 +5,11 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import Link from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
+import { getCspNonce } from "metabase/utils/csp";
+import * as Urls from "metabase/utils/urls";
 
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
@@ -61,7 +62,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
     <Box ref={buttonContainer}>
       {isCard && clientId ? (
         <ErrorBoundary>
-          <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
+          <GoogleOAuthProvider clientId={clientId} nonce={getCspNonce()}>
             <GoogleLogin
               useOneTap
               onSuccess={handleLogin}

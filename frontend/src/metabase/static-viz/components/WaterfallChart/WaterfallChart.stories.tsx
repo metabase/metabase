@@ -1,11 +1,12 @@
 import type { StoryFn } from "@storybook/react";
+import { updateIn } from "icepick";
 
-import { color } from "metabase/lib/colors";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
+import { color } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
@@ -401,5 +402,25 @@ export const Watermark = {
     rawSeries: data.yAxisFullWithDataLabels as any,
     renderingContext,
     hasDevWatermark: true,
+  },
+};
+
+export const WithGoalLine = {
+  render: Template,
+
+  args: {
+    rawSeries: updateIn(
+      data.yAxisFullWithDataLabels,
+      [0, "card", "visualization_settings"],
+      (settings) => {
+        return {
+          ...settings,
+          "graph.show_goal": true,
+          "graph.goal_value": 250000,
+          "graph.goal_label": "Target",
+        };
+      },
+    ) as any,
+    renderingContext,
   },
 };

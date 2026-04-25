@@ -3,7 +3,6 @@
   logging options are set in [[metabase.core.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the
   logger that clojure.tools.logging uses."
   (:require
-   [amalloy.ring-buffer :refer [ring-buffer]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
@@ -13,6 +12,9 @@
    [metabase.config.core :as config])
   (:import
    (java.lang AutoCloseable)
+   (java.util Queue)
+   (org.apache.commons.collections4 QueueUtils)
+   (org.apache.commons.collections4.queue CircularFifoQueue)
    (org.apache.commons.lang3.exception ExceptionUtils)
    (org.apache.logging.log4j LogManager Level)
    (org.apache.logging.log4j.core Appender LogEvent Logger LoggerContext)
@@ -23,12 +25,13 @@
 
 (def ^:private ^:const max-log-entries 250)
 
-(defonce ^:private messages* (atom (ring-buffer max-log-entries)))
+(defonce ^:private ^Queue messages* (QueueUtils/synchronizedQueue (CircularFifoQueue. (int max-log-entries))))
 
 (defn messages
   "Get the list of currently buffered log entries, from most-recent to oldest."
   []
-  (reverse (seq @messages*)))
+  (locking messages*
+    (rseq (vec messages*))))
 
 (defn- elide-string
   "Elides the string to the specified length, adding '...' if it exceeds that length."
@@ -53,7 +56,7 @@
     (proxy [org.apache.logging.log4j.core.appender.AbstractAppender]
            ["metabase-appender" filter layout false properties]
       (append [event]
-        (swap! messages* conj (event->log-data event))
+        (.add messages* (event->log-data event))
         nil))))
 
 (defonce ^:private has-added-appender? (atom false))

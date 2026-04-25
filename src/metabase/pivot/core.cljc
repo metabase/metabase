@@ -18,7 +18,7 @@
      (js->clj (js/JSON.parse x))))
 
 (defn- ensure-consistent-type
-  "Convert Clojure value that may have ambigous type into canonical type to ensure it can be used as a key.
+  "Convert Clojure value that may have ambiguous type into canonical type to ensure it can be used as a key.
   Does nothing in CLJS."
   [x]
   #?(:cljs x
@@ -147,13 +147,17 @@
             ;; A seq represents a specific path in the tree which is collapsed
             (sequential? collapsed-subtotal)
             (loop [node tree, [c & r] collapsed-subtotal]
-              (let [children (:children node)
-                    idx (perf/map-get (:value->child-pos node) c)
-                    child (perf/list-nth children idx)]
-                (if r
-                  (recur child r)
-                  (do (perf/list-set! children idx (assoc child :isCollapsed true))
-                      tree))))))
+              (if (nil? node)
+                tree
+                (let [children (:children node)
+                      idx (perf/map-get (:value->child-pos node) c)
+                      child (perf/list-nth children idx)]
+                  (if r
+                    (if (nil? child)
+                      tree
+                      (recur child r))
+                    (do (perf/list-set! children idx (assoc child :isCollapsed true))
+                        tree)))))))
         tree
         parsed-collapsed-subtotals))))
 
@@ -443,7 +447,7 @@
                row-tree)))))
 
 (defn display-name-for-col
-  "Translated from frontend/src/metabase/lib/formatting/column.ts"
+  "Translated from frontend/src/metabase/utils/formatting/column.ts"
   [column col-settings format-values?]
   (or (if format-values?
         (or

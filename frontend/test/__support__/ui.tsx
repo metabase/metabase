@@ -1,5 +1,5 @@
 import { Global } from "@emotion/react";
-import type { Reducer, Store } from "@reduxjs/toolkit";
+import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
@@ -11,28 +11,31 @@ import {
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
-import type * as React from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
+import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { RouterProvider } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
+import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import { PUT } from "metabase/utils/api";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";
 
@@ -201,7 +204,7 @@ export function getTestStoreAndWrapper({
   const store = getStore(
     reducers,
     initialState,
-    storeMiddleware,
+    storeMiddleware as Middleware[],
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => {
@@ -228,7 +231,11 @@ export function getTestStoreAndWrapper({
  **/
 const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
-  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
+
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
+
   return <Global styles={[baseStyle, cssVariables]} />;
 };
 
@@ -255,21 +262,41 @@ export function TestWrapper({
   displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
+  const handleUpdateColorScheme = useCallback(async (value: any) => {
+    await PUT("/api/setting/:key")({ key: "color-scheme", value });
+  }, []);
+
+  const [whitelabelColors, setWhitelabelColors] = useState(() =>
+    MetabaseSettings.applicationColors(),
+  );
+
+  const handleUpdateWhitelabelColors = useCallback((nextColors: any) => {
+    mutateColors(nextColors);
+    setWhitelabelColors(nextColors);
+  }, []);
+
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProviderContext.Provider value={{ withCssVariables }}>
-          <ThemeProvider theme={theme} displayTheme={displayTheme}>
-            <GlobalStylesForTest />
+        <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+          <ThemeProviderContext.Provider value={{ withCssVariables }}>
+            <ThemeProvider
+              theme={theme}
+              resolvedColorScheme={displayTheme ?? "light"}
+              whitelabelColors={whitelabelColors}
+              onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
+            >
+              <GlobalStylesForTest />
 
-            <MaybeKBar hasKBar={withKBar}>
-              <MaybeRouter hasRouter={withRouter} history={history}>
-                {children}
-              </MaybeRouter>
-            </MaybeKBar>
-            {withUndos && <UndoListing />}
-          </ThemeProvider>
-        </ThemeProviderContext.Provider>
+              <MaybeKBar hasKBar={withKBar}>
+                <MaybeRouter hasRouter={withRouter} history={history}>
+                  {children}
+                </MaybeRouter>
+              </MaybeKBar>
+              {withUndos && <UndoListing />}
+            </ThemeProvider>
+          </ThemeProviderContext.Provider>
+        </AppColorSchemeProvider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -388,7 +415,8 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 };
 
 /**
- * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
+ * with virtualization to work in tests, like the entity picker
  */
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest
@@ -458,8 +486,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

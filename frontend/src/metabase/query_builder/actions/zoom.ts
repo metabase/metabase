@@ -1,11 +1,11 @@
+import { ZOOM_IN_ROW } from "metabase/redux/query-builder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getPKColumnIndex } from "../selectors";
 
 import { updateUrl } from "./url";
 
-export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
   ({ objectId }: { objectId: ObjectId }) =>
   (dispatch: Dispatch, getState: GetState) => {
@@ -13,5 +13,7 @@ export const zoomInRow =
 
     // don't show object id in url if it is a row index
     const hasPK = getPKColumnIndex(getState()) !== -1;
-    hasPK && dispatch(updateUrl(null, { objectId, replaceState: false }));
+    if (hasPK) {
+      dispatch(updateUrl(null, { objectId, replaceState: false }));
+    }
   };

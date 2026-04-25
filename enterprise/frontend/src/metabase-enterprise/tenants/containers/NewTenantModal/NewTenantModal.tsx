@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Modal } from "metabase/ui";
 import { useCreateTenantMutation } from "metabase-enterprise/api";
@@ -31,6 +31,7 @@ export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
       ...vals,
       name: vals.name ?? "",
       slug: vals.slug ?? "",
+      attributes: vals.attributes ?? {},
     }).unwrap();
     dispatch(addUndo({ message: t`Tenant creation successful` }));
     onClose();

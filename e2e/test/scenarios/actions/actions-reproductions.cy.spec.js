@@ -402,10 +402,9 @@ describe("issue 51020", () => {
 
       H.newButton("Question").click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModalTab("Data").click();
+      H.entityPickerModalItem(0, "Our analytics").click();
       H.entityPickerModalItem(1, "Model 51020").click();
       H.saveQuestion("Question 51020", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -483,7 +482,7 @@ describe("issue 32840", () => {
   it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
     cy.findAllByTestId("cell-data").eq(8).click();
     H.modal().within(() => {
-      cy.findByText("July 19, 2023, 7:44 PM").should("be.visible");
+      cy.findByText("July 19, 2026, 7:44 PM").should("be.visible");
       cy.findByTestId("actions-menu").click();
     });
     H.popover().findByText("Update").should("be.visible").click();
@@ -492,12 +491,12 @@ describe("issue 32840", () => {
       .within(() => {
         cy.findByPlaceholderText("Created At").should(
           "have.value",
-          "2023-07-19T19:44:56",
+          "2026-07-19T19:44:56",
         );
         cy.button("Update").scrollIntoView().click();
       });
     cy.wait("@executeAction");
-    H.modal().findByText("July 19, 2023, 7:44 PM").should("be.visible");
+    H.modal().findByText("July 19, 2026, 7:44 PM").should("be.visible");
   });
 });
 
@@ -528,7 +527,7 @@ const actionButtonContainer = () =>
   cy.findByTestId("action-button-full-container");
 
 const dashCard = () =>
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy
     .findAllByTestId("dashcard-container")
     .last()

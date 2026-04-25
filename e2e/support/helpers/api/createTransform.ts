@@ -31,7 +31,7 @@ export function createTransform(
   }: CreateTransformOptions = {},
 ): Cypress.Chainable<Cypress.Response<Transform>> {
   return cy
-    .request<Transform>("POST", "/api/ee/transform", {
+    .request<Transform>("POST", "/api/transform", {
       name,
       description,
       source,
@@ -39,12 +39,13 @@ export function createTransform(
       tag_ids,
       collection_id,
     })
-    .then(({ body }) => {
+    .then((response) => {
       if (wrapId) {
-        cy.wrap(body.id).as(idAlias);
+        cy.wrap(response.body.id).as(idAlias);
       }
       if (visitTransform) {
-        cy.visit(`/data-studio/transforms/${body.id}`);
+        cy.visit(`/data-studio/transforms/${response.body.id}`);
       }
+      return cy.wrap(response);
     });
 }

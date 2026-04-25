@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -491,6 +492,45 @@
                (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
                                      {:name "some dimension name", :type "external"})))))))
 
+(deftest fk-target-field-cross-database-test
+  (testing "PUT /api/field/:id rejects fk_target_field_id from a different database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Database db2    {:name "db2" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db2)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (= "Target field must belong to the same database"
+             (-> (mt/user-http-request :crowberto :put 400 (format "field/%d" (:id field1))
+                                       {:semantic_type :type/FK :fk_target_field_id (:id field2)})
+                 :errors vals first))))))
+
+(deftest dimension-human-readable-field-cross-database-test
+  (testing "POST /api/field/:id/dimension rejects human_readable_field_id from a different database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Database db2    {:name "db2" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db2)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (= "Target field must belong to the same database"
+             (-> (create-dimension-via-API! (:id field1)
+                                            {:name "test dim" :type "external" :human_readable_field_id (:id field2)}
+                                            :expected-status-code 400)
+                 :errors vals first))))))
+
+(deftest dimension-human-readable-field-same-database-test
+  (testing "POST /api/field/:id/dimension accepts human_readable_field_id from the same database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db1)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (=? {:field_id (:id field1)
+               :human_readable_field_id (:id field2)}
+              (create-dimension-via-API! (:id field1)
+                                         {:name "test dim" :type "external" :human_readable_field_id (:id field2)}))))))
+
 (deftest delete-dimension-test
   (testing "DELETE /api/field/:id/dimension"
     (testing "Ensure we can delete a dimension"
@@ -897,3 +937,22 @@
     (testing "It should return 404 for non-existent field"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "field/%d/refingerprint" Integer/MAX_VALUE)))))))
+
+(deftest field-values-requires-query-permission-test
+  (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"
+    (mt/with-temp-copy-of-db
+      (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
+      (testing "User with only view-data permission (no create-queries) cannot access field values"
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "field/%d/values" (mt/id :venues :price)))))))
+      (testing "User with both view-data and create-queries can access field values"
+        (mt/with-temp [:model/PermissionsGroup           {pg-id :id :as pg} {}
+                       :model/PermissionsGroupMembership _                  {:user_id  (mt/user->id :rasta)
+                                                                             :group_id pg-id}]
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! pg (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! pg (mt/id) :perms/create-queries :query-builder)
+            (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price))))))))))))
+

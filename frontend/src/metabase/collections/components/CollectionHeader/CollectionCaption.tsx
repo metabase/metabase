@@ -1,18 +1,17 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import { getIsTenantUser } from "metabase/selectors/user";
+import { useSelector } from "metabase/redux";
+import { getIsTenantUser, getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -32,7 +31,7 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 

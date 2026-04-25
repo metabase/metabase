@@ -1,3 +1,6 @@
+// WARNING: This file is referenced by CssVarsDeclarationPlugin.
+// If you move or rename it, update the path in css-vars-declaration-plugin.js.
+
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
@@ -9,19 +12,36 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { colorConfig } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import type { ColorSettings } from "metabase-types/api";
 
-const createColorVars = (colorScheme: "light" | "dark"): string =>
-  Object.entries(colorConfig)
-    .map(([name, value]) => `--mb-color-${name}: ${value[colorScheme]};`)
+const createColorVars = (
+  colorScheme: ResolvedColorScheme,
+  whitelabelColors?: ColorSettings | null,
+): string => {
+  const theme = deriveFullMetabaseTheme({
+    colorScheme,
+    whitelabelColors,
+  });
+
+  return Object.entries(theme.colors)
+    .map(([name, value]) => `--mb-color-${name}: ${value};`)
     .join("\n");
+};
 
 /**
  * Defines the CSS variables used across Metabase.
  */
-export function getMetabaseCssVariables(theme: MantineTheme) {
+export function getMetabaseCssVariables({
+  theme,
+  whitelabelColors,
+}: {
+  theme: MantineTheme;
+  whitelabelColors?: ColorSettings | null;
+}) {
   const colorScheme = theme.other?.colorScheme || "light";
 
   return css`
@@ -29,18 +49,26 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      ${createColorVars(colorScheme)}
+      ${createColorVars(colorScheme, whitelabelColors)}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
   `;
 }
 
-export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
+export function getMetabaseSdkCssVariables({
+  theme,
+  font,
+  whitelabelColors,
+}: {
+  theme: MantineTheme;
+  font: string;
+  whitelabelColors?: ColorSettings | null;
+}) {
   return css`
     :root {
       --mb-default-font-family: ${font};
-      ${createColorVars("light")}
+      ${createColorVars("light", whitelabelColors)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
@@ -53,7 +81,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
  * These CSS variables are part of the core design system colors.
  *
  * Only keep colors that depend on the theme and are not specified anywhere else here.
- * You don't need to add new colors from `frontend/src/metabase/lib/colors/colors.ts` here since
+ * You don't need to add new colors from `frontend/src/metabase/ui/colors/colors.ts` here since
  * they're already included in `getMetabaseSdkCssVariables`
  **/
 function getSdkDesignSystemCssVariables(theme: MantineTheme) {

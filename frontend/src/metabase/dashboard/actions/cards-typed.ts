@@ -3,15 +3,20 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Questions } from "metabase/entities/questions";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/redux";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
   getPositionForNewDashCard,
-} from "metabase/lib/dashboard_grid";
-import { createThunkAction } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { loadMetadataForCard } from "metabase/questions/actions";
-import { addUndo } from "metabase/redux/undo";
+} from "metabase/utils/dashboard_grid";
+import { checkNotNull } from "metabase/utils/types";
 import { getDefaultSize } from "metabase/visualizations";
 import {
   getCardIdsFromColumnValueMappings,
@@ -27,7 +32,6 @@ import type {
   VirtualCard,
   VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   trackCardCreated,
@@ -51,8 +55,6 @@ import {
   createVirtualCard,
   generateTemporaryDashcardId,
   hasInlineParameters,
-  isQuestionDashCard,
-  isVirtualDashCard,
 } from "../utils";
 
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
@@ -273,7 +275,9 @@ export const replaceCard =
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
-    dashboardId && trackQuestionReplaced(dashboardId);
+    if (dashboardId) {
+      trackQuestionReplaced(dashboardId);
+    }
   };
 
 export const addCardWithVisualization =
@@ -489,8 +493,8 @@ export const removeCardFromDashboard = createThunkAction(
       const dashcardCountByCardId = _.countBy(dashcards, "card_id");
       const isLastDashboardQuestionDashcard = Boolean(
         dashcard.card_id &&
-          dashcard.card.dashboard_id !== null &&
-          dashcardCountByCardId[dashcard.card_id] <= 1,
+        dashcard.card.dashboard_id !== null &&
+        dashcardCountByCardId[dashcard.card_id] <= 1,
       );
       dispatch(
         addUndo({
@@ -514,7 +518,7 @@ export const removeCardFromDashboard = createThunkAction(
     },
 );
 
-const undoRemoveCardFromDashboard = createThunkAction(
+export const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
   ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {

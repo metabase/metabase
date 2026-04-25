@@ -20,9 +20,12 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
-    cy.icon("pinmap").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("pinmap").click();
+    });
     cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
     });
@@ -76,9 +79,8 @@ describe("scenarios > visualizations > maps", () => {
     );
 
     cy.button("Visualization").click();
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByText("Map").should("be.visible");
     });
   });
@@ -216,21 +218,21 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").trigger("mousemove");
 
     // check tooltip content
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State:"); // column name key
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Texas"); // feature name as value
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is TX");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
@@ -316,11 +318,11 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-interactive").trigger("mousemove");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Latitude: 10°:");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Longitude: 10°:");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1");
   });
 
@@ -349,13 +351,10 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
-    // Ensure the Map visualization is sensible
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
-
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByTestId("Map-button").should("be.visible");
     });
   });

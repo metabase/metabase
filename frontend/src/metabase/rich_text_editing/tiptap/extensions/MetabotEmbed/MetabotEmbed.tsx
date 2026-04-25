@@ -11,6 +11,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { trackDocumentAskMetabot } from "metabase/documents/analytics";
 import {
@@ -19,8 +20,13 @@ import {
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
+import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
+import {
+  useMetabotName,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -151,8 +157,9 @@ export const MetabotComponent = memo(
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
-    const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
+    const [queryMetabot] = useLazyMetabotGenerateContentQuery();
+    const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+    const metabotName = useMetabotName();
 
     const handleRunMetabot = async () => {
       const serializePrompt =
@@ -179,7 +186,7 @@ export const MetabotComponent = memo(
 
       if (error || !data?.draft_card) {
         setErrorText(
-          data?.error || t`There was a problem connecting to Metabot`,
+          data?.error || t`There was a problem connecting to ${metabotName}`,
         );
         return;
       }
@@ -187,7 +194,7 @@ export const MetabotComponent = memo(
       const nodePosition = getPos();
 
       if (nodePosition == null) {
-        setErrorText(t`Could not find Metabot block`);
+        setErrorText(t`Could not find ${metabotName} block`);
         return;
       }
 
@@ -246,7 +253,7 @@ export const MetabotComponent = memo(
         {
           type: "paragraph",
           content: padWithUnstyledText(
-            createTextNode(t`Created with Metabot`, [
+            createTextNode(t`Created with ${metabotName}`, [
               { type: "bold" },
               { type: "italic" },
             ]),
@@ -280,10 +287,10 @@ export const MetabotComponent = memo(
 
     const tooltip = useMemo(() => {
       if (!isMetabotEnabled) {
-        return t`Metabot is disabled`;
+        return t`${metabotName} is disabled`;
       }
       return isLoading ? t`Stop generating` : null;
-    }, [isMetabotEnabled, isLoading]);
+    }, [isMetabotEnabled, isLoading, metabotName]);
 
     return (
       <NodeViewWrapper>
@@ -311,11 +318,11 @@ export const MetabotComponent = memo(
                 onClick={() => deleteNode()}
               >
                 <Icon name="close" data-hide-on-print />
-                <Icon name="metabot" data-show-on-print />
+                <MetabotIcon data-show-on-print />
               </Button>
             ) : (
               <Box p="md">
-                <Icon name="metabot" />
+                <MetabotIcon />
               </Box>
             )}
           </Box>
@@ -325,7 +332,7 @@ export const MetabotComponent = memo(
               hidden={!!node.content.content.length}
               contentEditable={false}
             >
-              {t`Ask Metabot to generate a chart for you, and use @ to select a specific Database to use`}
+              {t`Ask ${metabotName} to generate a chart for you, and use @ to select a specific Database to use`}
             </Box>
             <NodeViewContent
               contentEditable={isLoading ? false : undefined}
@@ -337,9 +344,7 @@ export const MetabotComponent = memo(
               {isLoading ? (
                 <Text
                   flex={1}
-                  className={
-                    PLUGIN_METABOT.MetabotThinkingStyles.toolCallStarted
-                  }
+                  className={MetabotThinkingStyles.toolCallStarted}
                 >
                   {t`Working on it...`}
                 </Text>

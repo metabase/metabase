@@ -10,15 +10,15 @@ import {
 } from "metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.styled";
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import {
   canArchive,
   formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
-} from "metabase/lib/notifications";
-import * as Urls from "metabase/lib/urls";
+} from "metabase/notifications/utils";
 import { Group, Icon } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { User } from "metabase-types/api";
 
 type NotificationCardProps = {

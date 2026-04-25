@@ -10,7 +10,7 @@ on:
 
 jobs:
   whitespace-linter:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
     - uses: actions/checkout@v4

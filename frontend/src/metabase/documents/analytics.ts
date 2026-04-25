@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 import type { Document } from "metabase-types/api";
 
 export const trackDocumentCreated = (document: Document) => {
@@ -32,6 +32,13 @@ export const trackDocumentAddSmartLink = (document?: Document | null) => {
 export const trackDocumentReplaceCard = (document?: Document | null) => {
   trackSimpleEvent({
     event: "document_replace_card",
+    target_id: document?.id || null,
+  });
+};
+
+export const trackDocumentDuplicated = (document?: Document | null) => {
+  trackSimpleEvent({
+    event: "document_duplicated",
     target_id: document?.id || null,
   });
 };

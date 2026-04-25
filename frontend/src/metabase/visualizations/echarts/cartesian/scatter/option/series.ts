@@ -2,10 +2,10 @@ import * as d3 from "d3";
 import type { ScatterSeriesOption } from "echarts/charts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type { Extent, RenderingContext } from "metabase/visualizations/types";
 
 import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
-import type { DataKey, Datum, Extent, SeriesModel } from "../../model/types";
+import type { DataKey, Datum, SeriesModel } from "../../model/types";
 
 const MIN_BUBBLE_DIAMETER = 15;
 const MAX_BUBBLE_DIAMETER = 75;
@@ -36,7 +36,7 @@ function getBubbleDiameterScale(
     .scaleLinear()
     .domain(bubbleSizeDomain)
     // D3 will take a value from the domain (bubble size column) and normalize it (`t` is between 0,1).
-    // Then we plug the normalized value `t` into the `areaScale` to get the corrseponding area for that diameter.
+    // Then we plug the normalized value `t` into the `areaScale` to get the corresponding area for that diameter.
     // We then take this area and convert it back to a diameter value
     // if area = π × (diameter ÷ 2)², then diameter = 2 × √(area ÷ π)
     .interpolate(() => (t) => 2 * Math.sqrt(areaScale(t) / Math.PI))
@@ -51,6 +51,7 @@ export function buildEChartsScatterSeries(
   bubbleSizeDomain: Extent | null,
   yAxisIndex: number,
   renderingContext: RenderingContext,
+  xAxisIndex?: number,
 ): ScatterSeriesOption {
   const bubbleSizeDataKey =
     "bubbleSizeDataKey" in seriesModel
@@ -60,6 +61,7 @@ export function buildEChartsScatterSeries(
     id: seriesModel.dataKey,
     type: "scatter",
     yAxisIndex,
+    ...(xAxisIndex != null ? { xAxisIndex } : {}),
     symbolSize: getBubbleDiameterScale(bubbleSizeDomain, bubbleSizeDataKey),
     encode: {
       y: seriesModel.dataKey,
@@ -80,5 +82,6 @@ export function buildEChartsScatterSeries(
         opacity: CHART_STYLE.opacity.blur,
       },
     },
+    progressive: 0,
   };
 }

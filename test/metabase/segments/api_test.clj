@@ -6,6 +6,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -16,11 +17,11 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :is_data_analyst :id :last_name :date_joined :common_name :locale :tenant_id]))
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id :dependency_analysis_version)
+      (dissoc :id :table_id)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)
@@ -33,7 +34,7 @@
   {:source-table table-id
    :filter [:= [:field field-id nil] value]})
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -86,7 +87,7 @@
 
 (deftest create-segment-test
   (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
-                                       "pMBQL" (partial pmbql-segment-definition (mt/id :users))}]
+                                       "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
     (testing format-name
       (is (= {:name                    "A Segment"
               :description             "I did it!"
@@ -144,7 +145,7 @@
     (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :users)
                                                 :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
       (doseq [[format-name eq-fn] [["MBQL4" (partial mbql4-segment-definition (mt/id :users))]
-                                   ["pMBQL" (partial pmbql-segment-definition (mt/id :users))]]]
+                                   ["MBQL5" (partial mbql5-segment-definition (mt/id :users))]]]
         (testing format-name
           (is (= {:name                    "Costa Rica"
                   :description             nil
@@ -275,7 +276,7 @@
 (deftest fetch-segment-test
   (testing "GET /api/segment/:id"
     (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
-                                         "pMBQL" (partial pmbql-segment-definition (mt/id :users))}]
+                                         "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
       (testing format-name
         (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :crowberto)
                                                     :table_id   (mt/id :users)
@@ -325,6 +326,33 @@
                 (filter (fn [{segment-id :id}]
                           (contains? #{id-1 id-2 id-3} segment-id))
                         (mt/user-http-request :rasta :get 200 "segment/"))))))))
+
+(deftest list-permissions-test
+  (testing "GET /api/segment/"
+    (mt/with-temp [:model/Segment {users-seg-id :id}  {:name       "Users Segment"
+                                                       :table_id   (mt/id :users)
+                                                       :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}
+                   :model/Segment {venues-seg-id :id} {:name       "Venues Segment"
+                                                       :table_id   (mt/id :venues)
+                                                       :definition (mbql4-segment-definition (mt/id :venues) (mt/id :venues :name) "bar")}]
+      (let [segment-ids #{users-seg-id venues-seg-id}
+            returned-segment-ids (fn []
+                                   (->> (mt/user-http-request :rasta :get 200 "segment/")
+                                        (filter #(segment-ids (:id %)))
+                                        (map :id)
+                                        set))]
+        (testing "user with full data perms sees all segments"
+          (mt/with-full-data-perms-for-all-users!
+            (is (= segment-ids (returned-segment-ids)))))
+        (testing "user with no data perms sees no segments"
+          (mt/with-no-data-perms-for-all-users!
+            (is (= #{} (returned-segment-ids)))))
+        (testing "user with perms to one table sees only that table's segment"
+          (mt/with-no-data-perms-for-all-users!
+            (let [all-users-group-id (:id (perms/all-users-group))]
+              (mt/with-perm-for-group-and-table! all-users-group-id (mt/id :users) :perms/view-data :unrestricted
+                (mt/with-perm-for-group-and-table! all-users-group-id (mt/id :users) :perms/create-queries :query-builder
+                  (is (= #{users-seg-id} (returned-segment-ids))))))))))))
 
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"

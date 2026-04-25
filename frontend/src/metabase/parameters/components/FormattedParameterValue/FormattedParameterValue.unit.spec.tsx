@@ -1,11 +1,11 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { setLocalization } from "metabase/lib/i18n";
-import { createMockParameter } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { setLocalization } from "metabase/utils/i18n";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import FormattedParameterValue, {
   type FormattedParameterValueProps,
@@ -60,6 +60,19 @@ describe("FormattedParameterValue", () => {
     });
 
     expect(screen.getByText("B")).toBeInTheDocument();
+  });
+
+  it("should render the placeholder with truncation when there is no value", () => {
+    setup({
+      value: null as any,
+      parameter: createMockParameter(),
+      placeholder: "Filter this long column name",
+    });
+
+    const text = screen.getByText("Filter this long column name");
+    expect(text).toBeInTheDocument();
+    // Ellipsified renders a Mantine Text with truncate, which sets data-truncate
+    expect(text).toHaveAttribute("data-truncate", "end");
   });
 
   it("should translate boolean filter value", () => {

@@ -1,7 +1,7 @@
 import type { TestContext } from "yup";
 import * as Yup from "yup";
 
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import type {
   DatabaseData,
   DatabaseFieldGroup,
@@ -29,7 +29,6 @@ export const getValidationSchema = (
   const definedFields = filterFieldsInAdvancedMode(flattenedFields, isAdvanced);
   const fields = definedFields.filter(isDetailField);
   const entries = fields.map((field) => [field.name, getFieldSchema(field)]);
-
   return Yup.object({
     id: Yup.number(),
     engine: Yup.string().default(engineKey).required(Errors.required),

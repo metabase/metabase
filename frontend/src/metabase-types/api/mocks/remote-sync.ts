@@ -9,3 +9,23 @@ export const createMockRemoteSyncEntity = (
   sync_status: "update",
   ...opts,
 });
+
+export const createMockDirtyCardEntity = (
+  opts?: Partial<RemoteSyncEntity>,
+): RemoteSyncEntity =>
+  createMockRemoteSyncEntity({
+    id: 1,
+    model: "card",
+    collection_id: 1,
+    ...opts,
+  });
+
+export const createMockDirtyTransformEntity = (
+  opts?: Partial<RemoteSyncEntity>,
+): RemoteSyncEntity =>
+  createMockRemoteSyncEntity({
+    id: 10,
+    model: "transform",
+    name: "Test Transform",
+    ...opts,
+  });

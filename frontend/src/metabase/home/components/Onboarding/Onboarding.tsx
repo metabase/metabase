@@ -9,15 +9,14 @@ import {
 } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
+import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
+import { useSelector } from "metabase/redux";
 import {
   getDocsUrl,
   getIsPaidPlan,
@@ -40,6 +39,7 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import S from "./Onboarding.module.css";
 import {
@@ -286,10 +286,10 @@ export const Onboarding = () => {
                       width="100%"
                     />
                     {!isPaidPlan ? (
-                      // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
+                      // eslint-disable-next-line metabase/no-literal-metabase-strings -- OSS doesn't have whitelabeling option
                       <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
                     ) : (
-                      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
+                      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins
                       <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
                     )}
 
@@ -473,7 +473,7 @@ export const Onboarding = () => {
                           t`dashboard with tabs`
                         )
                       } and add text, link, and iframe cards.`}</li>
-                      <li>{jt`Add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
+                      <li>{jt`Add ${<b key="filters">{t`filters`}</b>} to dashboards and connect them to fields on questions to narrow the results.`}</li>
                       <li>{t`Drill-through charts on your dashboard to see different groupings or individual records.`}</li>
                     </ul>
                   </Text>
@@ -523,7 +523,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>
@@ -543,7 +543,7 @@ export const Onboarding = () => {
                         name="subscription"
                         className={S.inlineIcon}
                       />
-                    )} ${(<b key="subscriptions">{t`Subscriptions`}</b>)}.`}
+                    )} ${<b key="subscriptions">{t`Subscriptions`}</b>}.`}
                   </Text>
                   {isAdmin && exampleDashboardId && (
                     <Box data-testid="subscription-cta">
@@ -587,7 +587,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>
@@ -605,7 +605,7 @@ export const Onboarding = () => {
                         key="alert-icon"
                         name="alert"
                       />
-                    )} ${(<b key="create-alert">{t`Create an alert`}</b>)}.`}
+                    )} ${<b key="create-alert">{t`Create an alert`}</b>}.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}

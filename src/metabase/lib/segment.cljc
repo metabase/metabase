@@ -2,6 +2,8 @@
   "A Segment is a saved MBQL query stage snippet with `:filter`. Segments are always boolean expressions."
   (:refer-clojure :exclude [mapv empty?])
   (:require
+   [clojure.string :as str]
+   [metabase.graph.core :as graph]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -92,33 +94,33 @@
                                                 filter-pos (assoc :filter-positions [filter-pos]))))
                                           segments)))))))
 
+(defn- segment-graph
+  "Create a Graph for segment dependency traversal.
+  Uses `initial-definition` for `initial-segment-id`, and looks up other segments from `metadata-provider`."
+  [metadata-provider initial-definition initial-segment-id]
+  (reify graph/Graph
+    (children-of [_this segment-ids]
+      (reduce (fn [acc segment-id]
+                (let [definition (if (= segment-id initial-segment-id)
+                                   initial-definition
+                                   (:definition (lib.metadata/segment metadata-provider segment-id)))]
+                  (if definition
+                    (assoc acc segment-id (set (lib.walk.util/all-segment-ids definition)))
+                    (throw (ex-info (i18n/tru "Segment {0} does not exist." segment-id)
+                                    {:segment-id segment-id})))))
+              {}
+              segment-ids))))
+
 (defn- check-segment-cycles
-  "DFS to detect cycles starting from `segment-id` with `definition`.
-  `metadata-provider` is used for looking up referenced segments.
-  `path-nodes` is the set of segment IDs currently in the DFS path (for cycle detection).
-  `visited` is the set of segment IDs we've fully processed (for avoiding redundant work).
-  Returns updated `visited` set. Throws if a cycle is detected or if a referenced segment doesn't exist."
-  ([metadata-provider definition segment-id]
-   (check-segment-cycles metadata-provider definition segment-id #{} #{}))
-  ([metadata-provider definition segment-id path-nodes visited]
-   (cond
-     (contains? path-nodes segment-id)
-     (throw (ex-info (i18n/tru "Segment cycle detected.")
-                     {:segment-id segment-id}))
-
-     (contains? visited segment-id)
-     visited
-
-     :else
-     (let [referenced-ids (lib.walk.util/all-segment-ids definition)
-           path-nodes'    (conj path-nodes segment-id)]
-       (reduce (fn [visited' ref-id]
-                 (if-let [segment (lib.metadata/segment metadata-provider ref-id)]
-                   (check-segment-cycles metadata-provider (:definition segment) ref-id path-nodes' visited')
-                   (throw (ex-info (i18n/tru "Segment {0} does not exist." ref-id)
-                                   {:segment-id ref-id}))))
-               (conj visited segment-id)
-               referenced-ids)))))
+  "Check for cycles in segment dependencies starting from `segment-id` with `definition`.
+  `definition` also serves as the metadata provider for looking up referenced segments.
+  Throws if a cycle is detected or if a referenced segment doesn't exist."
+  [metadata-provider definition segment-id]
+  (when-let [cycle-path (graph/find-cycle (segment-graph metadata-provider definition segment-id)
+                                          [segment-id])]
+    (throw (ex-info (i18n/tru "Segment cycle detected: {0}" (str/join " → " cycle-path))
+                    {:segment-id segment-id
+                     :cycle-path cycle-path}))))
 
 (mu/defn check-segment-overwrite
   "Check if saving a segment with `segment-id` and `definition` would create a cycle.

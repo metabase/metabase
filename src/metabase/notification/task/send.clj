@@ -10,11 +10,12 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -107,18 +108,21 @@
 
       (cond
         (:active notification)
-        (try
-          (log/info "Submitting to the notification queue")
-          (task-history/with-task-history {:task         "notification-trigger"
-                                           :task_details {:trigger_type                 :notification-subscription/cron
-                                                          :notification_subscription_id subscription-id
-                                                          :cron_schedule                (:cron_schedule subscription)
-                                                          :notification_ids             [notification-id]}}
-            (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
-          (log/info "Submitted to the notification queue")
-          (catch Exception e
-            (log/error e "Failed to submit to the notification queue")
-            (throw e)))
+        (tracing/with-span :tasks "task.notification.send" {:notification/subscription-id subscription-id
+                                                            :notification/id              notification-id}
+          (task-history/with-task-run (some-> (notification.send/notification->task-run-info notification) (assoc :auto-complete false))
+            (try
+              (log/info "Submitting to the notification queue")
+              (task-history/with-task-history {:task         "notification-trigger"
+                                               :task_details {:trigger_type                 :notification-subscription/cron
+                                                              :notification_subscription_id subscription-id
+                                                              :cron_schedule                (:cron_schedule subscription)
+                                                              :notification_ids             [notification-id]}}
+                (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
+              (log/info "Submitted to the notification queue")
+              (catch Exception e
+                (log/error e "Failed to submit to the notification queue")
+                (throw e)))))
 
         (nil? notification)
         (do
@@ -157,8 +161,25 @@
 (task/defjob ^{:doc "Triggers that send a notification for a subscription."}
   SendNotification
   [context]
-  (let [{:strs [subscription-id]} (qc/from-job-data context)]
-    (send-notification* subscription-id)))
+  (let [{:strs [subscription-id]} (qc/from-job-data context)
+        ^JobExecutionContext ctx  context
+        scheduled-fire-time       (.getScheduledFireTime ctx)
+        fire-time                 (.getFireTime ctx)
+        fire-instance-id          (.getFireInstanceId ctx)
+        recovering?               (.isRecovering ctx)
+        refire-count              (.getRefireCount ctx)
+        trigger-key               (.. ctx getTrigger getKey getName)
+        scheduler-id              (.. ctx getScheduler getSchedulerInstanceId)]
+    (log/with-context {:quartz-fire-instance-id    fire-instance-id
+                       :quartz-scheduled-fire-time (str scheduled-fire-time)
+                       :quartz-fire-time           (str fire-time)
+                       :quartz-recovering          recovering?
+                       :quartz-refire-count        refire-count
+                       :quartz-trigger-key         trigger-key
+                       :quartz-scheduler-id        scheduler-id}
+      (log/infof "SendNotification fired for subscription %d (trigger=%s, scheduled=%s, actual=%s, recovering=%s, refire=%d, scheduler=%s)"
+                 subscription-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
+      (send-notification* subscription-id))))
 
 (defn init-send-notification-triggers!
   "Initialize all notification subscription triggers.

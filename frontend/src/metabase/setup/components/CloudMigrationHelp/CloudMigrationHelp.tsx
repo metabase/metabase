@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import HelpCard from "metabase/common/components/HelpCard";
-import { useSelector } from "metabase/lib/redux";
+import { HelpCard } from "metabase/common/components/HelpCard";
+import { useSelector } from "metabase/redux";
 import { migrateToCloudGuideUrl } from "metabase/selectors/settings";
 
 import { getIsHosted } from "../../selectors";

@@ -14,6 +14,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
@@ -21,6 +22,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -63,6 +65,8 @@
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
+    ;; true if called from table-rows-sample-query
+    [:sample? {:optional true} [:maybe :boolean]]
     ;; don't autoclose the connection
     [:keep-open? {:optional true} [:maybe :boolean]]]])
 
@@ -138,7 +142,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statement]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close` (metabase#40010)
 
@@ -409,7 +413,7 @@
           ;; todo (dan 7/11/25): fixing straightforward postgres oom on downloads in #60733, but seems like write? is
           ;; not set here. Note this is explicitly silent when `write?`. Lots of tests fail with autocommit false
           ;; there.
-          (and (-> options :download?) (isa? driver/hierarchy driver :postgres))
+          (and (or (-> options :download?) (-> options :sample?)) (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
@@ -601,7 +605,8 @@
                     {:sql sql :driver driver}))))
 
 (defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
-  (let [st (doto stmt (.setMaxRows max-rows))]
+  (let [max-rows (or max-rows 0) ; 0 means no limit
+        st (doto stmt (.setMaxRows max-rows))]
     (if (use-statement? driver params)
       (execute-statement! driver st sql)
       (execute-prepared-statement! driver st))))
@@ -651,7 +656,9 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.OffsetTime))
 
-(defn- column-range [^ResultSetMetaData rsmeta]
+(defn column-range
+  "Return a sequence of all the column indexes in a JDBC result set. Column indexes in JDBC start at `1`."
+  [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
 
 (defn- log-readers [driver ^ResultSetMetaData rsmeta fns]
@@ -686,6 +693,7 @@
           (thunk))))))
 
 (defn- resolve-missing-base-types
+  "Resolve missing base types in initial column `metadatas` using [[driver/dynamic-database-types-lookup]]."
   [driver metadatas]
   (if (driver-api/initialized?)
     (let [missing (keep (fn [{:keys [database_type base_type]}]
@@ -726,10 +734,7 @@
              :database_type db-type-name}))
         (column-range rsmeta))
        (resolve-missing-base-types driver)
-       (mapv (fn [{:keys [base_type] :as metadata}]
-               (if (nil? base_type)
-                 (assoc metadata :base_type :type/*)
-                 metadata)))))
+       (mapv #(u/assoc-default % :base_type :type/*))))
 
 (defn reducible-rows
   "Returns an object that can be reduced to fetch the rows and columns in a `ResultSet` in a driver-specific way (e.g.
@@ -753,7 +758,7 @@
 
 ;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;  be overridden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -771,48 +776,51 @@
   {:added "0.35.0", :arglists '([driver query context respond])}
   [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
   {:pre [(string? sql) (seq sql)]}
-  (let [database (driver-api/database (driver-api/metadata-provider))
-        sql      (if (get-in database [:details :include-user-id-and-hash] true)
-                   (->> (driver-api/query->remark driver outer-query)
-                        (inject-remark driver sql))
-                   sql)
-        max-rows (driver-api/determine-query-max-rows outer-query)]
-    (do-with-connection-with-options
-     driver
-     (driver-api/database (driver-api/metadata-provider))
-     {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
-      :download? (download? (-> outer-query :info :context))}
-     (fn [^Connection conn]
-       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
-                   ^ResultSet rs (try
-                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
-                                   (catch Throwable e
-                                     (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                     (cond-> {:driver driver
-                                                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                              :params params
-                                                              :type   driver-api/qp.error-type.invalid-query}
-                                                       (driver/query-canceled? driver e)
-                                                       (assoc :query/query-canceled? true))
-                                                     e))))]
-         (let [rsmeta           (.getMetaData rs)
-               results-metadata {:cols (column-metadata driver rsmeta)}]
-           (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statment on the dbms side.
+  (tracing/with-span :db-user "db-user.execute-query" {:db/engine (name driver)}
+    (let [database (driver-api/database (driver-api/metadata-provider))
+          sql      (if (get-in (driver.conn/effective-details database) [:include-user-id-and-hash] true)
+                     (->> (driver-api/query->remark driver outer-query)
+                          (inject-remark driver sql))
+                     sql)
+          max-rows (driver-api/determine-query-max-rows outer-query)]
+      (do-with-connection-with-options
+       driver
+       (driver-api/database (driver-api/metadata-provider))
+       {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
+        :download? (download? (-> outer-query :info :context))
+        :sample?   (= :table-rows-sample (-> outer-query :info :context))}
+       (fn [^Connection conn]
+         (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
+                     ^ResultSet rs (try
+                                     (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                     (catch Throwable e
+                                       (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                       (cond-> {:driver driver
+                                                                :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                                :params params
+                                                                :type   driver-api/qp.error-type.invalid-query}
+                                                         (driver/query-canceled? driver e)
+                                                         (assoc :query/query-canceled? true))
+                                                       e))))]
+           (let [rsmeta           (.getMetaData rs)
+                 results-metadata {:cols (column-metadata driver rsmeta)}]
+             (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
+                ;; Following cancels the statement on the dbms side.
                 ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                 ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                 ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
-                (finally
+                  (finally
                   ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
                   ;;       It should be removed afterwards!
-                  (when-not (= :vertica driver)
-                    (try (.cancel stmt)
-                         (catch SQLFeatureNotSupportedException _
-                           (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
-                                      (name driver)))
-                         (catch Throwable _
-                           (log/warn "Statement cancelation failed."))))))))))))
+                    (when-not (= :vertica driver)
+                      (try (when-not (.isClosed stmt)
+                             (.cancel stmt))
+                           (catch SQLFeatureNotSupportedException _
+                             (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                                        (name driver)))
+                           (catch Throwable e
+                             (log/info e "Statement cancelation failed.")))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the

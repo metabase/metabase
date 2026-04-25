@@ -32,7 +32,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn assert-valid-parameters
-  "Receive a Paremeterized Object and check if its parameters is valid."
+  "Receive a Parameterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
   (let [schema [:maybe ::parameters.schema/parameters]]
     (when-let [error (mr/explain schema parameters)]
@@ -42,7 +42,7 @@
                        :errors     (:errors error)})))))
 
 (defn assert-valid-parameter-mappings
-  "Receive a Paremeterized Object and check if its parameters is valid."
+  "Receive a Parameterized Object and check if its parameters is valid."
   [{parameter-mappings :parameter_mappings}]
   (let [schema [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
     (when-not (mr/validate schema parameter-mappings)
@@ -223,7 +223,7 @@
       ctx)))
 
 (def ^:dynamic *field-id-context*
-  "Conext for effective computation of field ids for parameters. Bound in
+  "Context for effective computation of field ids for parameters. Bound in
   the [[metabase.dashboards-rest.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
   re-use values of previous `filterable-columns` computations (during the reduction itself and hydration of
   `:param_fields` and `:param_values` at the time of writing)."
@@ -274,15 +274,29 @@
            (ensure-filterable-columns-for-card card stage-number)
            (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number))))))
 
+(defn- find-card-for-mapping
+  "Find the card that a parameter mapping refers to. Looks up the card by `:card_id` from both
+  the primary card and series cards on the dashcard, falling back to the primary card."
+  [dashcard mapping]
+  (let [card (if-let [card-id (:card_id mapping)]
+               (or (m/find-first #(= (:id %) card-id)
+                                 (cons (:card dashcard) (:series dashcard)))
+                   (:card dashcard))
+               (:card dashcard))]
+    (cond-> card
+      (string? (:type card))          (update :type keyword)
+      (seq (:dataset_query card))     (update :dataset_query lib-be/normalize-query))))
+
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
   [dashcards]
   (letfn [(dashcard->param-dashcard-info [dashcard]
             (for [mapping (:parameter_mappings dashcard)]
-              {:dashcard              dashcard
-               :param-mapping         mapping
-               :param-target-field-id (when (:target mapping)
-                                        (param-target->field-id (:target mapping) (:card dashcard)))}))]
+              (let [card (find-card-for-mapping dashcard mapping)]
+                {:dashcard              dashcard
+                 :param-mapping         mapping
+                 :param-target-field-id (when (:target mapping)
+                                          (param-target->field-id (:target mapping) card))})))]
     (transduce (mapcat dashcard->param-dashcard-info)
                field-id-into-context-rf
                dashcards)))
@@ -309,17 +323,18 @@
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
   [{:keys [mappings]} :- ::parameters.schema/parameter]
   (let [param-id->field-ids (transduce (map (fn [mapping]
-                                              {:dashcard              (:dashcard mapping)
-                                               :param-mapping         mapping
-                                               :param-target-field-id (param-target->field-id
-                                                                       (:target mapping)
-                                                                       (get-in mapping [:dashcard :card]))}))
+                                              (let [card (find-card-for-mapping (:dashcard mapping) mapping)]
+                                                {:dashcard              (:dashcard mapping)
+                                                 :param-mapping         mapping
+                                                 :param-target-field-id (param-target->field-id
+                                                                         (:target mapping)
+                                                                         card)})))
                                        field-id-into-context-rf
                                        mappings)]
     (into #{} cat (vals param-id->field-ids))))
 
 (defn get-linked-field-ids
-  "Retrieve a map relating paramater ids to field ids."
+  "Retrieve a map relating parameter ids to field ids."
   [dashcards]
   (letfn [(targets [{params :parameter_mappings card :card, :as _dashcard}]
             (into {}
@@ -342,7 +357,7 @@
                                  dashcards->param-id->field-ids
                                  param-field-ids->fields)]
             (assoc dashboard k param-fields)))
-        (t2/hydrate dashboards [:dashcards :card])))
+        (t2/hydrate dashboards [:dashcards :card :series])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

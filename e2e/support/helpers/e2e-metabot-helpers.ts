@@ -73,13 +73,13 @@ export function chatMessages() {
 }
 
 export function lastChatMessage() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return chatMessages().last();
 }
 
 export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
-    .intercept("POST", "/api/ee/metabot-v3/agent-streaming", (req) => {
+    .intercept("POST", "/api/metabot/agent-streaming", (req) => {
       req.reply({
         status: 200,
         ...response,

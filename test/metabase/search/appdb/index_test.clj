@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -508,7 +507,7 @@
                                                          :state      "initial"
                                                          :creator_id (mt/user->id :rasta)}]
       (model-index/add-values! model-index)
-      (is (= "dataset" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
+      (is (= "indexed-entity" (:model (u/rlast (search.ingestion/searchable-documents))))))))
 
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
@@ -542,13 +541,12 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         (cond-> #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment"}
-                         config/ee-available? (conj "transform"))
+  {"core_user"         #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
    "model_index"       #{"model_index_value"}
    "metabase_database" #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"          #{"action" "model_index_value" "report_card"}
-   "report_card"       #{"action" "model_index_value" "report_card"}
+   "report_card"       #{"action" "model_index_value"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 
 (deftest search-model-cascade-test

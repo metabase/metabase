@@ -3,7 +3,7 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 type DispatchProps = {
@@ -18,7 +18,7 @@ const mapDispatchToProps = {
   onChangeLocation: replace,
 };
 
-const NotFoundFallbackPage = ({
+const NotFoundFallbackPageInner = ({
   refreshCurrentUser,
   onChangeLocation,
 }: Props) => {
@@ -36,5 +36,7 @@ const NotFoundFallbackPage = ({
   return <NotFound />;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(NotFoundFallbackPage);
+export const NotFoundFallbackPage = connect(
+  null,
+  mapDispatchToProps,
+)(NotFoundFallbackPageInner);

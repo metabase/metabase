@@ -5,23 +5,13 @@ import type {
   GroupTableAccessPolicy,
   UserAttributeKey,
 } from "metabase-types/api";
-import type { RequestState, RequestsState } from "metabase-types/store";
 
 export type GroupTableAccessPolicyParams = { groupId: string; tableId: string };
 
 export interface SandboxesState extends EnterpriseState {
-  requests: RequestsState & {
-    plugins: {
-      sandboxesPlugin: {
-        policies: Record<string, RequestState>;
-      };
-      shared: EnterpriseSharedState;
-    };
-  };
   plugins: {
     sandboxingPlugin: {
       groupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
-      originalGroupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
     };
     shared: EnterpriseSharedState;
   };

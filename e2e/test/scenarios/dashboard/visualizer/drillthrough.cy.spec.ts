@@ -69,16 +69,16 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
   it("should work", () => {
     createDashboardWithVisualizerDashcards();
 
-    const ORDERS_SERIES_COLOR = "#88BF4D";
-    const PRODUCTS_SERIES_COLOR = "#A989C5";
+    const ORDERS_SERIES_COLOR = "#509EE3";
+    const PRODUCTS_SERIES_COLOR = "#88BF4D";
 
     // 1. Cartesian chart, timeseries breakout
-    const SEP_2022_POINT_INDEX = 5;
+    const SEP_2025_POINT_INDEX = 5;
 
     H.getDashboardCard(0).within(() =>
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircleWithColor(PRODUCTS_SERIES_COLOR)
-        .eq(SEP_2022_POINT_INDEX)
+        .eq(SEP_2025_POINT_INDEX)
         .click(),
     );
     H.clickActionsPopover().findByText("See these Products").click();
@@ -86,7 +86,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
     H.queryBuilderFiltersPanel().findByText(
-      "Created At: Month is Sep 1–30, 2022",
+      "Created At: Month is Sep 1–30, 2025",
     );
     H.assertQueryBuilderRowCount(9);
     H.tableInteractiveHeader().findByText("Price"); // ensure we're on the Products table
@@ -94,9 +94,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircleWithColor(ORDERS_SERIES_COLOR)
-        .eq(SEP_2022_POINT_INDEX)
+        .eq(SEP_2025_POINT_INDEX)
         .click();
     });
 
@@ -107,7 +107,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
     H.queryBuilderFiltersPanel().findByText(
-      "Created At: Month is Sep 1–30, 2022",
+      "Created At: Month is Sep 1–30, 2025",
     );
     H.assertQueryBuilderRowCount(5);
     H.echartsContainer().within(() => {
@@ -217,13 +217,13 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
         "have.length",
         2,
       );
-      applyBrush(200, 300);
+      H.applyBrush(200, 300);
       cy.get("@dataset.all").should("have.length", 0);
     });
 
     H.getDashboardCard(3).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      applyBrush(200, 300);
+      H.applyBrush(200, 300);
       cy.wait("@dataset");
     });
 
@@ -234,15 +234,8 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderMain().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
       cy.findByText("Created At: Month").should("exist"); // x-axis
-      cy.findByText("May 2023").should("exist");
-      cy.findByText("December 2023").should("exist");
+      cy.findByText("May 2026").should("exist");
+      cy.findByText("December 2026").should("exist");
     });
   });
 });
-
-function applyBrush(left: number, right: number) {
-  H.echartsContainer()
-    .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
-    .trigger("mouseup", right, 100);
-}

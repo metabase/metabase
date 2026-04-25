@@ -1,8 +1,9 @@
 import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
+import { modelIconMap } from "metabase/utils/icon";
+import * as Urls from "metabase/utils/urls";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentActionSelect } from "./SegmentActionSelect";
@@ -11,10 +12,12 @@ import S from "./SegmentItem.module.css";
 interface Props {
   segment: Segment;
   onRetire?: () => void;
+  readOnly?: boolean;
 }
 
-export const SegmentItem = ({ segment, onRetire }: Props) => {
+export const SegmentItem = ({ segment, onRetire, readOnly }: Props) => {
   const canEdit = !!onRetire;
+  const segmentIcon = modelIconMap.segment;
 
   return (
     <tr>
@@ -23,19 +26,19 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
           <Link to={Urls.dataModelSegment(segment.id)}>
             <Group display="inline-flex" gap="sm" wrap="nowrap">
               <Box
-                color="text-medium"
+                color="text-secondary"
                 component={Icon}
                 flex="0 0 auto"
-                name="segment"
+                name={segmentIcon}
               />
-              <Box c="text-dark" fw="bold">
+              <Box c="text-primary" fw="bold">
                 {segment.name}
               </Box>
             </Group>
           </Link>
         ) : (
           <Group display="inline-flex" gap="sm" wrap="nowrap">
-            <Icon name="segment" c="text-secondary" flex="0 0 auto" />
+            <Icon name={segmentIcon} c="text-secondary" flex="0 0 auto" />
             <Box c="text-primary" fw="bold">
               {segment.name}
             </Box>
@@ -54,7 +57,11 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
       {onRetire && (
         <Box component="td" className={S.cell} p="sm">
           <Flex justify="center">
-            <SegmentActionSelect object={segment} onRetire={onRetire} />
+            <SegmentActionSelect
+              object={segment}
+              onRetire={onRetire}
+              readOnly={readOnly}
+            />
           </Flex>
         </Box>
       )}

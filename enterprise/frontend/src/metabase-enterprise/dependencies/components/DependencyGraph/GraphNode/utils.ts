@@ -2,7 +2,7 @@ import { c, msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
-import type { DependentGroup } from "./types";
+import type { DependentGroup } from "../../../types";
 
 export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   const {

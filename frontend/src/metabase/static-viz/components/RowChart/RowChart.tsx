@@ -2,14 +2,11 @@ import { Group } from "@visx/group";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import type {
-  FontStyle,
-  TextWidthMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
 import {
   getGroupedDataset,
   trimData,
@@ -75,7 +72,7 @@ export const StaticRowChart = ({
     columnValueFormatter,
   );
   const groupedData = getGroupedDataset(
-    data.rows,
+    data,
     chartColumns,
     settings,
     columnValueFormatter,

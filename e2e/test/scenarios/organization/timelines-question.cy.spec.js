@@ -21,49 +21,49 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create the first event and timeline", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2024");
+      cy.findByLabelText("Date").type("10/20/2027");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
     });
 
     it("should create an event within the default timeline", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC2");
-      cy.findByLabelText("Date").type("10/30/2024");
+      cy.findByLabelText("Date").type("10/30/2027");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("be.visible");
     });
 
@@ -71,60 +71,60 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
-          { name: "v2", timestamp: "2023-01-01T00:00:00Z" },
-          { name: "v3", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v1", timestamp: "2030-01-01T00:00:00Z" },
+          { name: "v2", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2029-01-01T00:00:00Z" },
         ],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.findByLabelText("calendar icon").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v1").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v2").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v3").should("be.visible");
 
       cy.findByLabelText("Switch to data").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v1").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v2").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v3").should("be.visible");
     });
 
     it("should edit an event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
       H.rightSidebar().icon("ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
 
       cy.findByLabelText("Event name").clear().type("RC2");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update").click();
       cy.wait("@updateEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("be.visible");
     });
 
@@ -132,56 +132,56 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimeline({ name: "Releases" });
       H.createTimelineWithEvents({
         timeline: { name: "Builds" },
-        events: [{ name: "RC2", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC2", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("be.visible");
       H.rightSidebar().icon("ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
       cy.button("Move").click();
       cy.wait("@updateEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
     });
 
     it("should archive and unarchive an event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
       H.rightSidebar().icon("ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -194,7 +194,7 @@ describe("scenarios > organization > timelines > question", () => {
           {
             name: "RC1",
             description: "[Release notes](https://metabase.test)",
-            timestamp: "2024-10-20T00:00:00Z",
+            timestamp: "2027-10-20T00:00:00Z",
           },
         ],
       });
@@ -202,16 +202,16 @@ describe("scenarios > organization > timelines > question", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.icon("calendar").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Release notes").should("be.visible");
     });
 
     it("should show events for ad-hoc questions", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -231,7 +231,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
       H.echartsIcon("star").should("be.visible");
     });
@@ -239,7 +239,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not show events for non-timeseries questions", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -261,7 +261,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
       H.echartsIcon("star").should("not.exist");
     });
@@ -269,7 +269,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should show events for native queries", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -287,7 +287,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
       H.echartsIcon("star").should("be.visible");
     });
@@ -300,7 +300,7 @@ describe("scenarios > organization > timelines > question", () => {
         H.createTimelineWithEvents({
           timeline: { name: "Releases" },
           events: [
-            { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "cloud" },
+            { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "cloud" },
           ],
         });
 
@@ -310,7 +310,7 @@ describe("scenarios > organization > timelines > question", () => {
             collection_id: PARENT_COLLECTION_ID,
           },
           events: [
-            { name: "TC1", timestamp: "2022-05-20T00:00:00Z", icon: "warning" },
+            { name: "TC1", timestamp: "2025-05-20T00:00:00Z", icon: "warning" },
           ],
         });
 
@@ -336,7 +336,7 @@ describe("scenarios > organization > timelines > question", () => {
         // should show a newly created event
         cy.button("Create event").click();
         cy.findByLabelText("Event name").type("RC2");
-        cy.findByLabelText("Date").clear().type("10/20/2023");
+        cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.button("Create").click();
         waitForTimelinesAfterCreatingAnEvent("RC2");
 
@@ -399,7 +399,7 @@ describe("scenarios > organization > timelines > question", () => {
          * This tests the case where group by unit with the event in the end range bucket
          * not included when it's the only event selected.
          *
-         * e.g. group by month from 2024-01-01 to 2025-01-01 with event at 2025-01-15,
+         * e.g. group by month from 2027-01-01 to 2028-01-01 with event at 2028-01-15,
          * it should be included, but was not previously
          */
         cy.log(
@@ -409,7 +409,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         H.modal().within(() => {
           cy.findByLabelText("Event name").type("Event at the end of range");
-          cy.findByLabelText("Date").clear().type("10/20/2026");
+          cy.findByLabelText("Date").clear().type("10/20/2029");
 
           cy.button("Create").click();
         });
@@ -430,7 +430,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
@@ -445,7 +445,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
@@ -472,13 +472,25 @@ describe("scenarios > organization > timelines > question", () => {
       );
     });
 
+    // TODO @nemanjaglumac 2026-04-17: Simplify or potentially remove this repro altogether!
+    // It is hacky and it is fragile because it relies on the MAX date in the ORDERS table
+    // so all timestamps need to be carefully hard coded relative to it.
+    // I've added comments that hopefully make this easier for the next person to understand.
+    // Additionally, one granularity bucket would sufficiently reproduce the issue.
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
         events: [
-          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
-          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
-          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
-          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
+          // All events are AFTER the ORDERS max (~Apr 19, 2029) but within
+          // the last bucket of their respective granularity. The bug (#23336)
+          // was that events in the last period's extended range were filtered out.
+          // Last week bucket is Apr 13-19 (Sun-Sat): Apr 20 is next week
+          { name: "Last week", timestamp: "2029-04-20T12:00:00Z" },
+          // Last month bucket is April: Apr 27 is still in April
+          { name: "Last month", timestamp: "2029-04-27T12:00:00Z" },
+          // Last quarter bucket is Q2: May 10 is still in Q2
+          { name: "Last quarter", timestamp: "2029-05-10T12:00:00Z" },
+          // Last year bucket is 2029: Sep 10 is still in 2029
+          { name: "Last year", timestamp: "2029-09-10T12:00:00Z" },
         ],
       });
 
@@ -545,13 +557,13 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not allow creating default timelines", () => {
       cy.signIn("readonly");
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Year").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Events in Metabase/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("not.exist");
     });
 
@@ -559,18 +571,18 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signInAsAdmin();
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
       cy.signOut();
       cy.signIn("readonly");
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Year").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("not.exist");
       H.rightSidebar().icon("ellipsis").should("not.exist");
     });

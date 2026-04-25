@@ -9,7 +9,8 @@ import {
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { GdrivePayload } from "metabase-types/api";
 import {
@@ -17,7 +18,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GdriveSyncStatus } from "./GdriveSyncStatus";
 
@@ -146,7 +146,7 @@ describe("GsheetsSyncStatus", () => {
       await screen.findByText("Importing Google Sheets..."),
     ).toBeInTheDocument();
 
-    userEvent.click(await screen.findByLabelText("Dismiss"));
+    await userEvent.click(await screen.findByLabelText("Dismiss"));
     await waitFor(() =>
       expect(screen.queryByText(/Google/i)).not.toBeInTheDocument(),
     );

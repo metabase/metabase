@@ -6,9 +6,12 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  ListBreakingGraphNodesRequest,
+  ListBreakingGraphNodesResponse,
   ListBrokenGraphNodesRequest,
   ListNodeDependentsRequest,
   ListUnreferencedGraphNodesRequest,
+  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -42,6 +45,18 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
+    listBreakingGraphNodes: builder.query<
+      ListBreakingGraphNodesResponse,
+      ListBreakingGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/breaking",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
+    }),
     listBrokenGraphNodes: builder.query<
       DependencyNode[],
       ListBrokenGraphNodesRequest
@@ -55,7 +70,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
     listUnreferencedGraphNodes: builder.query<
-      DependencyNode[],
+      ListUnreferencedGraphNodesResponse,
       ListUnreferencedGraphNodesRequest
     >({
       query: (params) => ({
@@ -63,8 +78,8 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/dependencies/graph/unreferenced",
         params,
       }),
-      providesTags: (nodes) =>
-        nodes ? provideDependencyNodeListTags(nodes) : [],
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
@@ -72,7 +87,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependencies/check_card",
+        url: "/api/ee/dependencies/check-card",
         body,
       }),
     }),
@@ -82,7 +97,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependencies/check_snippet",
+        url: "/api/ee/dependencies/check-snippet",
         body,
       }),
     }),
@@ -92,7 +107,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependencies/check_transform",
+        url: "/api/ee/dependencies/check-transform",
         body,
       }),
     }),
@@ -102,6 +117,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
+  useListBreakingGraphNodesQuery,
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
   useLazyCheckCardDependenciesQuery,

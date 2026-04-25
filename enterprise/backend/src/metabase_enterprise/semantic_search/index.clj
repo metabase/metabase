@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as buddy-codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.set :as set]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
@@ -11,10 +12,11 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -53,6 +55,7 @@
      [:model :text :not-null]
      [:model_id :text :not-null]
      [:collection_id :int]
+     [:personal_owner_id :int]
      [:creator_id :int]
      [:database_id :int]
      [:last_editor_id :int]
@@ -115,14 +118,43 @@
     (= 1 b) true
     :else (throw (ex-info "Unexpected boolean value" {:v b}))))
 
+(defn- batch-resolve-personal-owner-ids
+  "Given a seq of collection-ids, return a map of collection-id -> personal_owner_id.
+   Collections not in any personal tree will be absent from the map.
+   Uses at most 2 queries regardless of the number of collection-ids."
+  [collection-ids]
+  (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
+    (let [colls                (t2/select [:model/Collection :id :personal_owner_id :location]
+                                          :id [:in collection-ids])
+          {personal     true
+           non-personal false} (group-by (comp some? :personal_owner_id) colls)
+          direct               (into {} (map (juxt :id :personal_owner_id)) personal)
+          roots                (keep (fn [{:keys [id location]}]
+                                       (when-let [root-id (some-> location (str/split #"/" 3) second parse-long)]
+                                         [id root-id]))
+                                     non-personal)
+          unknown-roots        (set/difference (set (map second roots)) (set (keys direct)))
+          root-id->owner       (into direct
+                                     (map (juxt :id :personal_owner_id))
+                                     (when (seq unknown-roots)
+                                       (t2/select [:model/Collection :id :personal_owner_id]
+                                                  :id [:in unknown-roots]
+                                                  :personal_owner_id [:not= nil])))]
+      (into direct
+            (keep (fn [[coll-id root-id]]
+                    (when-let [owner (get root-id->owner root-id)]
+                      [coll-id owner])))
+            roots))))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
-  [embedding-vec {:keys [model id searchable_text embeddable_text native_query created_at creator_id updated_at
-                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
-                         pinned dashboardcard_count view_count last_viewed_at] :as doc}]
+  [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
+                     last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
+                     pinned dashboardcard_count view_count last_viewed_at] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
+   :personal_owner_id   (get owner-ids collection_id)
    :creator_id          creator_id
    :database_id         database_id
    :last_editor_id      last_editor_id
@@ -138,9 +170,10 @@
    :model_created_at    (some-> created_at to-instant)
    :model_updated_at    (some-> updated_at to-instant)
    :last_viewed_at      (some-> last_viewed_at to-instant)
-   :legacy_input        [:cast (json/encode legacy_input) :jsonb]
-   :metadata            [:cast (json/encode doc) :jsonb]
-   :embedding           [:raw (format-embedding embedding-vec)]
+   ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+   :legacy_input        [:cast (if (string? legacy_input) legacy_input (json/encode legacy_input)) :jsonb]
+   :metadata            [:cast (json/encode (dissoc doc :embedding)) :jsonb]
+   :embedding           [:raw (format-embedding embedding)]
    :text_search_vector  (if (:name doc)
                           [:||
                            (search/weighted-tsvector "A" (:name doc))
@@ -172,19 +205,19 @@
   [connectable table-name]
   (try
     (->> (index-size connectable table-name)
-         (analytics/set! :metabase-search/semantic-index-size))
+         (analytics/set-gauge! :metabase-search/semantic-index-size))
     (catch Exception e
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
 
 (defn- batch-update!
-  [connectable table-name records->sql documents embeddings]
+  [connectable table-name records->sql documents]
   (when (seq documents)
     (u/prog1 (->> documents (map :model) frequencies)
       (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
-        (doseq [batch (->> (map vector documents embeddings)
-                           (map (fn [[doc embedding]] (doc->db-record embedding doc)))
-                           (partition-all *batch-size*))]
-          (jdbc/execute! connectable (records->sql batch)))
+        (let [owner-ids (batch-resolve-personal-owner-ids (map :collection_id documents))]
+          (doseq [batch (->> (map #(doc->db-record owner-ids %) documents)
+                             (partition-all *batch-size*))]
+            (jdbc/execute! connectable (records->sql batch))))
         (analytics-set-index-size! connectable table-name)))))
 
 (defn- execute-with-counts [connectable model ids sql]
@@ -247,7 +280,7 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 1}))
+     :version 2}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -269,8 +302,7 @@
              (sql.helpers/on-conflict :model :model_id)
              (sql.helpers/do-update-set (db-records->update-set db-records))
              sql-format-quoted))
-       batch-documents
-       (map :embedding batch-documents)))))
+       batch-documents))))
 
 (defn- unwrap-pgobject
   [^PGobject obj]
@@ -359,20 +391,21 @@
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
   using a shared thread pool with a configurable thread count (default: 2)."
   ([connectable index documents-reducible & {:keys [serial?] :or {serial? false}}]
-   (not-empty
-    (let [pool @index-update-executor
-          results (transduce
-                   (comp (partition-all *batch-size*)
-                         (map (if serial?
-                                #(upsert-index-batch! connectable index % {:type :index})
-                                #(upsert-index-pooled! pool connectable index % {:type :index}))))
-                   conj
-                   documents-reducible)]
-      (reduce (fn [update-counts result]
-                (let [value (if (future? result) @result result)]
-                  (merge-with + update-counts (when value value))))
-              {}
-              results)))))
+   (tracing/with-span :search "search.semantic.index-upsert" {}
+     (not-empty
+      (let [pool @index-update-executor
+            results (transduce
+                     (comp (partition-all *batch-size*)
+                           (map (if serial?
+                                  #(upsert-index-batch! connectable index % {:type :index})
+                                  #(upsert-index-pooled! pool connectable index % {:type :index}))))
+                     conj
+                     documents-reducible)]
+        (reduce (fn [update-counts result]
+                  (let [value (if (future? result) @result result)]
+                    (merge-with + update-counts (when value value))))
+                {}
+                results))))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -469,11 +502,42 @@
   (create-index-table-if-not-exists! db index)
   (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table_%'"]))
 
+(defn- personal-collection-filter
+  "Generate a WHERE condition for personal collection filtering based on the filter type.
+
+  | Filter         | Personal | Others' Personal | Shared Coll. | No Coll. |
+  |----------------|----------|------------------|--------------|----------|
+  | all            | ✅       | ✅               | ✅           | ✅       |
+  | only-mine      | ✅       | ❌               | ❌           | ❌       |
+  | only           | ✅       | ✅               | ❌           | ❌       |
+  | exclude        | ❌       | ❌               | ✅           | ✅       |
+  | exclude-others | ✅       | ❌               | ✅           | ✅       |"
+  [{:keys [filter-items-in-personal-collection current-user-id]}]
+  (case (or filter-items-in-personal-collection "all")
+    "all"
+    nil
+
+    "only-mine"
+    [:= :personal_owner_id current-user-id]
+
+    "only"
+    [:is-not :personal_owner_id nil]
+
+    "exclude"
+    [:is :personal_owner_id nil]
+
+    "exclude-others"
+    [:or
+     [:is :personal_owner_id nil]
+     [:= :personal_owner_id current-user-id]]))
+
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by
+           table-db-id ids display-type] :as search-context}]
   (let [conditions (filter some?
-                           [(when (some? archived?)
+                           [(personal-collection-filter search-context)
+                            (when (some? archived?)
                               [:= :archived archived?])
                             (when (some? verified)
                               [:= :verified verified])
@@ -505,6 +569,7 @@
    [:model :model]
    [:model_id :model_id]
    [:collection_id :collection_id]
+   [:personal_owner_id :personal_owner_id]
    [:creator_id :creator_id]
    [:database_id :database_id]
    [:last_editor_id :last_editor_id]
@@ -520,7 +585,7 @@
    [:model_created_at :model_created_at]
    [:model_updated_at :model_updated_at]
    [:last_viewed_at :last_viewed_at]
-   [:metadata :metadata]])
+   [:legacy_input :legacy_input]])
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
@@ -544,12 +609,13 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
+(def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
+
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
   [index embedding search-context]
   (let [filters (search-filters search-context)
         embedding-literal (format-embedding embedding)
-        max-cosine-distance 0.7
         ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
         ;; TODO: only pull in necessary extra columns from configured filters
         hnsw-query {:select (into common-search-columns
@@ -626,156 +692,80 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
 (defn- legacy-input-with-score
-  "Fetches the legacy_input field from a result's metadata and attaches a score based on the
-  embedding distance."
+  "Extracts the (already-decoded) `:legacy_input` map from `row` and attaches the total score
+  plus per-scorer breakdown."
   [weights scorers row]
-  (-> (get-in row [:metadata :legacy_input])
-      (assoc
-       :score (:total_score row 1.0)
-       :all-scores (scoring/all-scores weights scorers row))))
+  (assoc (:legacy_input row)
+         :score (:total_score row 1.0)
+         :all-scores (scoring/all-scores weights scorers row)))
 
-(defn- decode-metadata
-  "Decode `row`s `:metadata`."
+(defn- decode-legacy-input
+  "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  (update row :metadata decode-pgobject))
+  (update row :legacy_input decode-pgobject))
 
-(defn- filter-can-read-indexed-entity
-  "Check permissions for indexed entities by resolving to their parent model / card"
-  [indexed-entity-docs]
-  (let [->model-index-id #(-> % :id search/indexed-entity-id->model-index-id)
-        model-index-ids (into #{} (map ->model-index-id indexed-entity-docs))
-        model-indexes (when (seq model-index-ids)
-                        (t2/select :model/ModelIndex :id [:in model-index-ids]))
-        index-id->card (when (seq model-indexes)
-                         (let [card-ids    (map :model_id model-indexes)
-                               cards       (t2/select :model/Card :id [:in card-ids])
-                               cards-by-id (u/index-by :id cards)]
-                           (into {}
-                                 (map (fn [model-index]
-                                        [(:id model-index) (get cards-by-id (:model_id model-index))])
-                                      model-indexes))))]
-    (filterv (fn [doc]
-               (when-let [model-index-id (-> doc ->model-index-id)]
-                 (when-let [parent-card (get index-id->card model-index-id)]
-                   (mi/can-read? parent-card))))
-             indexed-entity-docs)))
+;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
+;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
+;; defmethod is invoked on a stub instance carrying only `:collection_id`.
+;;
+;;  - "card" / "metric" / "dataset" → :model/Card
+;;  - "dashboard"                   → :model/Dashboard (as of 20260420 this _could_ be
+;;                                    :model/Card for additional albeit modest perf gains
+;;                                    but choosing to not silently ride Card's semantics)
+;;  - "indexed-entity"              → :model/Card by design: the index row's
+;;                                    `collection_id` is the parent Card's (denormalized
+;;                                    via the spec's Collection join), so routing through
+;;                                    Card short-circuits the original ModelIndex → Card
+;;                                    resolution in `filter-can-read-indexed-entity`.
+(def ^:private collection-id-only-search-models
+  {"card"           :model/Card
+   "metric"         :model/Card
+   "dataset"        :model/Card
+   "dashboard"      :model/Dashboard
+   "indexed-entity" :model/Card})
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {indexed-entities true regular-docs false} (group-by #(= "indexed-entity" (:model %)) docs)
-        other-docs (for [[t2-model docs] (group-by doc->t2-model regular-docs)
-                         t2-instance (t2/select t2-model :id [:in (map :id docs)])]
-                     t2-instance)
-        permitted-entities (filter-can-read-indexed-entity indexed-entities)
-        doc->t2 (comp (u/index-by (juxt :id t2/model) other-docs)
+        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
+        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
+        ;; index row. Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
+        ;; (model, collection) pair instead of once per document.
+        readable? (memoize
+                   (fn [stub-model coll-id]
+                     (mi/can-read? (t2/instance stub-model {:collection_id coll-id}))))
+        fast-filtered (filterv (fn [doc]
+                                 (readable? (get collection-id-only-search-models (:model doc))
+                                            (:collection_id doc)))
+                               fast-docs)
+        slow-t2-instances (vec
+                           (for [[t2-model docs] (group-by doc->t2-model slow-docs)
+                                 t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                             t2-instance))
+        doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
-        result (into
-                (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
-                permitted-entities)
+        slow-filtered (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) slow-docs)
+        result (into fast-filtered slow-filtered)
         time-ms (u/since-ms timer)]
 
     (log/debug "Permission filtering" {:before-count (count docs)
                                        :after-count (count result)
-                                       :indexed-entities-count (count indexed-entities)
-                                       :regular-docs-count (count regular-docs)
+                                       :fast-count (count fast-docs)
+                                       :slow-count (count slow-docs)
+                                       :slow-fetched-count (count slow-t2-instances)
                                        :time-ms time-ms})
 
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
 
     result))
-
-(defn- get-personal-collection-ids
-  "Get the set of personal collection IDs by extracting root collection IDs from locations."
-  [collections-map]
-  (let [root-collection-ids (->> collections-map
-                                 vals
-                                 (map :location)
-                                 (keep (fn [location]
-                                         (when-let [match (re-find #"^/(\d+)/" location)]
-                                           (parse-long (second match)))))
-                                 distinct)]
-    (when (seq root-collection-ids)
-      (->> (t2/select [:collection :id]
-                      :id [:in root-collection-ids]
-                      :personal_owner_id [:not= nil])
-           (map :id)
-           set))))
-
-(defn- filter-by-collection
-  "Filter documents based on personal collection preferences.
-  Equivalent to metabase.search.filter/personal-collections-where-clause but operates on docs in memory.
-
-  | Filter         | Personal | Others' Personal | Shared Coll. | No Coll. |
-  |----------------|----------|------------------|--------------|----------|
-  | all            | ✅       | ✅               | ✅           | ✅       |
-  | only-mine      | ✅       | ❌               | ❌           | ❌       |
-  | only           | ✅       | ✅               | ❌           | ❌       |
-  | exclude        | ❌       | ❌               | ✅           | ✅       |
-  | exclude-others | ✅       | ❌               | ✅           | ✅       |
-  "
-  [docs {:keys [filter-items-in-personal-collection current-user-id]}]
-  (let [filter-type (or filter-items-in-personal-collection "all")]
-    (if (= filter-type "all")
-      docs
-      (let [collection-ids (keep :collection_id docs)
-            collections-map (when (seq collection-ids)
-                              (->> (t2/select [:collection :id :location :personal_owner_id]
-                                              :id [:in collection-ids])
-                                   (into {} (map (juxt :id identity)))))
-            personal-collection-ids (when (not= filter-type "only-mine")
-                                      (get-personal-collection-ids collections-map))
-            user-personal-collection-id (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id])
-            is-personal-collection?   (fn [coll] (some? (:personal_owner_id coll)))
-            is-owned-by-user?         (fn [coll] (= (:personal_owner_id coll) current-user-id))
-            is-in-user-personal-tree? (fn [coll] (str/starts-with? (:location coll) (str "/" user-personal-collection-id "/")))
-            is-in-any-personal-tree?  (fn [coll]
-                                        (when-let [match (re-find #"^/(\d+)/" (:location coll))]
-                                          (contains? personal-collection-ids (parse-long (second match)))))]
-        (case filter-type
-          "only-mine"
-          (filterv (fn [doc]
-                     (when-let [collection (get collections-map (:collection_id doc))]
-                       (or (is-owned-by-user? collection)
-                           (is-in-user-personal-tree? collection))))
-                   docs)
-
-          "only"
-          (filterv (fn [doc]
-                     (when-let [collection (get collections-map (:collection_id doc))]
-                       (or (is-personal-collection? collection)
-                           (is-in-any-personal-tree? collection))))
-                   docs)
-
-          "exclude"
-          (filterv (fn [doc]
-                     (let [collection-id (:collection_id doc)]
-                       (or (nil? collection-id)
-                           (when-let [collection (get collections-map collection-id)]
-                             (and (not (is-personal-collection? collection))
-                                  (not (is-in-any-personal-tree? collection)))))))
-                   docs)
-
-          "exclude-others"
-          (filterv (fn [doc]
-                     (let [collection-id (:collection_id doc)]
-                       (or (nil? collection-id)
-                           (when-let [collection (get collections-map collection-id)]
-                             (or (is-owned-by-user? collection)
-                                 (is-in-user-personal-tree? collection)
-                                 (and (not (is-personal-collection? collection))
-                                      (not (is-in-any-personal-tree? collection))))))))
-                   docs)
-
-          docs)))))
 
 (defn- filter-by-collection-id
   "Filter documents by collection and all descendant collections."
@@ -792,23 +782,6 @@
                        (when-let [collection (get collections-map doc-collection-id)]
                          (str/starts-with? (:location collection) (str "/" collection-id "/")))))))
              docs)))
-
-(defn- apply-collection-filter
-  "Apply personal collection filtering with logging."
-  [search-context docs]
-  (let [filter-type (:filter-items-in-personal-collection search-context)]
-    (if (or (nil? filter-type) (= filter-type "all"))
-      docs
-      (let [timer (u/start-timer)
-            filtered-docs (filter-by-collection docs search-context)
-            time-ms (u/since-ms timer)]
-        (log/debug "Collection filter" {:filter  filter-type
-                                        :before  (count docs)
-                                        :after   (count filtered-docs)
-                                        :dropped (- (count docs) (count filtered-docs))
-                                        :time_ms time-ms})
-        (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
-        filtered-docs))))
 
 (defn- apply-collection-id-filter
   "Apply collection ID filtering with logging."
@@ -842,25 +815,31 @@
       {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
-            embedding (embedding/get-embedding embedding-model search-string {:type :query})
+            embedding (tracing/with-span :search "search.semantic.embedding"
+                        {:search.semantic/provider   (:provider embedding-model)
+                         :search.semantic/model-name (:model-name embedding-model)}
+                        (embedding/get-embedding embedding-model search-string {:type :query}))
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
             weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (scored-search-query index embedding search-context scorers)
-            xform (comp (map decode-metadata)
+            xform (comp (map decode-legacy-input)
                         (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (reducible-search-query db query)
-            raw-results (into [] xform reducible)
+            raw-results (tracing/with-span :search "search.semantic.db-query"
+                          {:search/query-length (count search-string)}
+                          (into [] xform reducible))
             db-query-time-ms (u/since-ms db-timer)
 
             filter-timer (u/start-timer)
-            filtered-results (->> raw-results
-                                  filter-read-permitted
-                                  (apply-collection-filter search-context)
-                                  (apply-collection-id-filter search-context)
-                                  (mapv search/collapse-id))
+            filtered-results (tracing/with-span :search "search.semantic.permission-filter"
+                               {:search.semantic/raw-count (count raw-results)}
+                               (->> raw-results
+                                    filter-read-permitted
+                                    (apply-collection-id-filter search-context)
+                                    (mapv search/collapse-id)))
             filter-time-ms (u/since-ms filter-timer)
 
             appdb-scorers (scoring/appdb-scorers search-context)

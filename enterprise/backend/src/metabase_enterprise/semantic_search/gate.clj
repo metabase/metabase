@@ -22,7 +22,7 @@
    [buddy.core.hash :as buddy-hash]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]

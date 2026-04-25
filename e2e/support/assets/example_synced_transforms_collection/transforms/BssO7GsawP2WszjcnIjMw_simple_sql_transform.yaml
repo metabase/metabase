@@ -1,0 +1,23 @@
+collection_id: null
+created_at: '2026-01-30T15:33:24.179945Z'
+description: null
+entity_id: BssO7GsawP2WszjcnIjMw
+name: Imported Simple SQL transform
+source:
+  query:
+    database: Writable Postgres12
+    native:
+      query: select 1;
+    type: native
+  type: query
+source_database_id: Writable Postgres12
+tags: []
+target:
+  database: Writable Postgres12
+  name: imported_transform
+  schema: public
+  type: table
+serdes/meta:
+  - id: BssO7GsawP2WszjcnIjMw
+    label: imported_transform
+    model: Transform

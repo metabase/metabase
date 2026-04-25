@@ -112,7 +112,7 @@
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
-  Restaurant -> Category instead of the usual Category -> Restuarant*)
+  Restaurant -> Category instead of the usual Category -> Restaurant*)
 
   This switch mostly exists because I'm not 100% sure what the right behavior is."
   true)

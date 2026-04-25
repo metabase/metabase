@@ -2,18 +2,20 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
-import List from "metabase/common/components/List";
+import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
+import { List } from "metabase/common/components/List";
 import S from "metabase/common/components/List/List.module.css";
-import ListItem from "metabase/common/components/ListItem";
+import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
+import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { modelIconMap } from "metabase/utils/icon";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getError, getLoading, getSegments } from "../../selectors";
+import { getError, getLoading } from "../../selectors";
 
 const emptyStateData = {
   get title() {
@@ -36,7 +38,7 @@ interface SegmentListProps {
 }
 
 export function SegmentList({ style }: SegmentListProps) {
-  const entities = useSelector(getSegments);
+  const entities = useSelector(getShallowSegments);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
   const adminLink = useSelector((state) =>
@@ -67,7 +69,7 @@ export function SegmentList({ style }: SegmentListProps) {
                         name={entity.name}
                         description={entity.description}
                         url={`/reference/segments/${entity.id}`}
-                        icon="segment"
+                        icon={modelIconMap.segment}
                       />
                     ),
                 )}

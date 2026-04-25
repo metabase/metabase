@@ -27,6 +27,7 @@
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
+   [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -80,7 +81,7 @@
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
 ;;; annoying
 (mr/def ::unique-key
-  "Unique indentifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
+  "Unique identifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
   [:tuple
    #_method ::method
    #_route  string?
@@ -583,13 +584,23 @@
           body))))
 
 (mu/defn- middleware-forms
-  "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
-  if the handler metadata contains
+  "Middleware to apply to base handler. Supports:
 
-    {:multipart true}"
+    {:multipart true}  — wraps with multipart-params middleware
+    {:scope \"agent:workspaces\"} — wraps with scope enforcement middleware
+    {:scope :unchecked} — skips both enforce-scope and ensure-scopes-checked
+
+   Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
+   tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (when (:multipart metadata)
-    '[ring.middleware.multipart-params/wrap-multipart-params]))
+  (let [scope            (:scope metadata)
+        scope-middleware (cond
+                           (= scope :unchecked) []
+                           (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
+                           :else ['metabase.api.macros.scope/ensure-scopes-checked])]
+    (cond-> (vec scope-middleware)
+      (:multipart metadata)
+      (conj 'ring.middleware.multipart-params/wrap-multipart-params))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler
@@ -636,11 +647,18 @@
 
 (mr/def ::ns-endpoints [:map-of ::unique-key ::info])
 
+(mr/def ::route-metadata
+  "Metadata declared on a route via defendpoint, e.g. `{:access :workspace}`."
+  :map)
+
 (mr/def ::handler-map
-  [:map-of ::method [:sequential [:tuple (ms/InstanceOfClass clout.core.CompiledRoute) ::handler]]])
+  [:map-of ::method [:sequential [:tuple
+                                  (ms/InstanceOfClass clout.core.CompiledRoute)
+                                  ::handler
+                                  [:maybe ::route-metadata]]]])
 
 (mu/defn- ns-handler-map :- ::handler-map
-  "Build a map of method => [[clout-route handler]+] used to power the combined ns handler built
+  "Build a map of method => [[clout-route handler metadata]+] used to power the combined ns handler built
   by [[build-ns-handler]]."
   [endpoints :- ::ns-endpoints]
   (->> endpoints
@@ -650,7 +668,8 @@
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
                                                    (get-in route [:form :route :regexes] {}))
-                              (:handler route)])
+                              (:handler route)
+                              (get-in route [:form :metadata])])
                            routes)))))
 
 (defn- decode-route-params [route-params]
@@ -661,7 +680,7 @@
 
     [request' handler]
 
-  (Request is updated to include parsed Clout parameters.)"
+  (Request is updated to include parsed Clout parameters and route metadata.)"
   [handler-map :- ::handler-map
    request      :- ::request]
   (let [request-method (:request-method request)
@@ -670,9 +689,11 @@
         request        (cond-> request
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler]]
+    (some (fn [[route handler metadata]]
             (when-let [route-params (clout/route-matches route request)]
-              [(assoc request :route-params (decode-route-params route-params))
+              [(-> request
+                   (assoc :route-params (decode-route-params route-params))
+                   (assoc :route-metadata metadata))
                handler]))
           handlers)))
 
@@ -711,7 +732,8 @@
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
          (-> metadata update-info rebuild-handler))))
     ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
-    (when config/is-dev?
+    ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
+    (when (config/config-bool :mb-enable-openapi-auto-regen)
       (try
         (events/publish-event! :event/api-handler-update
                                {:api.docs/request-rebuild
@@ -805,9 +827,11 @@
        (resolve-handler))))
 
   ([nmspace & middleware :- [:sequential {:min 1} ::middleware]]
-   (apply-middleware
-    (ns-handler nmspace)
-    middleware)))
+   (let [handler (ns-handler nmspace)]
+     (open-api/handler-with-open-api-spec
+      (apply-middleware handler middleware)
+      (fn [prefix]
+        (open-api/open-api-spec handler prefix))))))
 
 (extend-protocol open-api/OpenAPISpec
   clojure.lang.Namespace

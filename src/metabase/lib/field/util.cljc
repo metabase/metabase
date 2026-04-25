@@ -106,7 +106,7 @@
                                                      [:lib/type [:= :metadata/column]]]
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
-  `:metabase.lib.join/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
+  `:lib/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
   [col :- [:map
            [:lib/type [:= :metadata/column]]]]
@@ -115,15 +115,27 @@
                         :fk-field-name                    :lib/original-fk-field-name
                         :fk-join-alias                    :lib/original-fk-join-alias
                         :lib/expression-name              :lib/original-expression-name
-                        :metabase.lib.field/binning       :lib/original-binning
-                        :metabase.lib.field/temporal-unit :inherited-temporal-unit
-                        :metabase.lib.join/join-alias     :lib/original-join-alias})
+                        :lib/binning       :lib/original-binning
+                        :lib/temporal-unit :inherited-temporal-unit
+                        :lib/join-alias     :lib/original-join-alias})
       (assoc :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
              :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
              :lib/source :source/previous-stage)
+
+      ;; Native sandboxes need special handling for any type coercions set on the sandboxed table's fields.
+      ;; The columns first appear in the native stage, but we need to propagate the coercion metadata to the next stage
+      ;; so it gets applied in MBQL. After that first propagation, it should always be removed to prevent
+      ;; double-coercion. So sandboxing middleware sets two fields on the metadata: a flag, and the coercion strategy.
+      ;; If the input column has both set, we propagate the strategy into the next stage. The flag is never propagated,
+      ;; so the coercion strategy only reaches one stage after the native sandbox, as desired! See QUE2-376.
+      (dissoc :qp/native-sandbox-column.propagate-coercion?)
+      (cond-> #_col
+       (not (:qp/native-sandbox-column.propagate-coercion? col))
+        (dissoc :qp/native-sandbox-column.force-coercion-strategy))
+
       ;;
       ;; Remove `:lib/desired-column-alias`, which needs to be recalculated in the context
       ;; of what is returned by the current stage, to prevent any confusion; its value is likely wrong now and we

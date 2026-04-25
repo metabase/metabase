@@ -66,7 +66,7 @@ tokens.forEach((token) => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       codeBlock().last().should("have.text", IFRAME_CODE);
 
       H.modal()
@@ -84,7 +84,7 @@ tokens.forEach((token) => {
         cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // set transparent background metabase#23477
-        cy.findByText("Dashboard background").click();
+        cy.findByLabelText("Dashboard background").click();
         codeBlock()
           .first()
           .invoke("text")
@@ -100,8 +100,8 @@ tokens.forEach((token) => {
 
         if (token === "pro-self-hosted") {
           // Disable both download options
-          cy.findByText("Export to PDF").click();
-          cy.findByText("Results (csv, xlsx, json, png)").click();
+          cy.findByLabelText("Export to PDF").click();
+          cy.findByLabelText("Results (csv, xlsx, json, png)").click();
 
           codeBlock()
             .first()
@@ -161,7 +161,7 @@ tokens.forEach((token) => {
 
         // hide download button for pro/enterprise users metabase#23477
         if (token === "pro-self-hosted") {
-          cy.findByText("Download (csv, xlsx, json, png)").click();
+          cy.findByLabelText("Download (csv, xlsx, json, png)").click();
 
           codeBlock()
             .first()

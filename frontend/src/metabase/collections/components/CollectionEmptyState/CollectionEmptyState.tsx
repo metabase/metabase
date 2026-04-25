@@ -6,8 +6,8 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
+import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -35,7 +35,7 @@ const CollectionEmptyState = ({
 const TrashEmptyState = () => {
   return (
     <EmptyStateWrapper>
-      <Icon name="trash" size={80} c="brand-light" />
+      <Icon name="trash" size={80} c="background-brand" />
       <EmptyStateTitle>{t`Nothing here`}</EmptyStateTitle>
       <EmptyStateSubtitle>
         {t`Deleted items will appear here.`}
@@ -84,7 +84,7 @@ const DefaultCollectionEmptyState = ({
 };
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
-  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection?.type)) {
+  switch (getLibraryCollectionType(collection?.type)) {
     case "data":
       return {
         title: t`No published tables yet`,

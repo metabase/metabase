@@ -30,7 +30,7 @@ function App() {
   );
 
   return (
-    <div className="App" style={{ width: "500px", height: "800px" }}>
+    <div className="App" style={{ width: "800px", height: "800px" }}>
       <MetabaseProvider authConfig={config} locale={locale}>
         <Switch>
           <Route

@@ -5,7 +5,6 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Flex } from "metabase/ui";
 
 describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
@@ -19,9 +18,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.intercept("POST", "/api/card").as("createCard");
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion questionId="new" />
-        </Flex>,
+        </div>,
       );
 
       // Wait until the entity picker modal is visible
@@ -33,7 +32,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
         // Should be able to go back to the editor view
         // TODO: SDK: make this accessible
-        cy.findByRole("button", { name: "pencil_lines icon" }).click();
+        cy.findByRole("button", { name: "Edit question" }).click();
 
         // Should be able to visualize the question again
         cy.findByRole("button", { name: "Visualize" }).click();
@@ -61,9 +60,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.intercept("POST", "/api/card").as("createCard");
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion questionId="new" />
-        </Flex>,
+        </div>,
       );
 
       // Wait until the entity picker modal is visible
@@ -79,7 +78,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
         // Should be able to go back to the editor view
         // TODO: SDK: make this accessible
-        cy.findByRole("button", { name: "pencil_lines icon" }).click();
+        cy.findByRole("button", { name: "Edit question" }).click();
 
         // Should be able to visualize the question again
         cy.findByRole("button", { name: "Visualize" }).click();

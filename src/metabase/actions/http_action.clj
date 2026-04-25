@@ -102,7 +102,7 @@
 (defn apply-json-query
   "Executes a jq query on [[object]]."
   [object jq-query]
-  ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
+  ;; TODO this is pretty inefficient. We parse with `:as :json`, then re-encode within a response
   ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
   ;; Should jackson be added explicitly to deps.edn?
   (let [json-node (.readTree ^ObjectMapper @object-mapper (json/encode object))

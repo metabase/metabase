@@ -3,9 +3,10 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
+import { metabaseReduxContext } from "metabase/redux/context";
+import { createMockState } from "metabase/redux/store/mocks";
 
-import { MetabaseReduxContext } from "./lib/redux";
+import { isBackendOnlyPath } from "./route-guards";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
@@ -19,7 +20,7 @@ describe("route-guards", () => {
       let selectorState: any;
       const RouteGuard = setupRouteGuard({
         // leverage the same context used by the main application
-        context: MetabaseReduxContext,
+        context: metabaseReduxContext,
         authenticatedSelector: (state) => {
           selectorState = state;
           return !!state.auth.VAL_ONLY_IN_THIS_CTX;
@@ -61,6 +62,25 @@ describe("route-guards", () => {
 
       expect(selectorState.auth.VAL_ONLY_IN_THIS_CTX).toBe(false);
       expect(screen.queryByText(text)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("isBackendOnlyPath", () => {
+    it("should return true for /oauth/ paths", () => {
+      expect(isBackendOnlyPath("/oauth/authorize")).toBe(true);
+      expect(isBackendOnlyPath("/oauth/authorize/decision")).toBe(true);
+      expect(isBackendOnlyPath("/oauth/token")).toBe(true);
+    });
+
+    it("should return false for frontend paths", () => {
+      expect(isBackendOnlyPath("/")).toBe(false);
+      expect(isBackendOnlyPath("/auth/login")).toBe(false);
+      expect(isBackendOnlyPath("/collection/root")).toBe(false);
+      expect(isBackendOnlyPath("/question/1")).toBe(false);
+    });
+
+    it("should not match partial prefixes", () => {
+      expect(isBackendOnlyPath("/oauthx/foo")).toBe(false);
     });
   });
 });

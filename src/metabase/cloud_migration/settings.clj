@@ -77,7 +77,7 @@
         "Will take up to 1m to propagate to other Metabase instances in a cluster."
         "Audit tables are excluded from read-only-mode mode."))
   :type       :boolean
-  :visibility :admin
+  :visibility :admin-write-authed-read
   :default    false
   :doc        false
   :export?    false)

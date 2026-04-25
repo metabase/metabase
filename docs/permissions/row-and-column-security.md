@@ -91,9 +91,9 @@ Examples of user attributes in play:
 ## Adding row-level security
 
 1. Make sure to do the [prerequisites for row security](#prerequisites-for-row-security) first.
-2. Go to **Admin settings** > **Permissions**.
+2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
-4. Find the group that you want to put in the secure.
+4. Find the group that you want to secure.
 5. Click on the dropdown under **View data** for that group.
 6. Select "Row and column security".
 7. Click the dropdown under **Column** and enter the column to filter the table on, such as "Plan".
@@ -131,7 +131,7 @@ You cannot add columns.
 ## Setting up column security
 
 1. Make sure to do the [prerequisites](#prerequisites-for-column-level-security) first.
-2. Go to **Admin settings** > **Permissions**.
+2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
 4. Find the group to restrict.
 5. Click on the dropdown under **Data access** for that group.
@@ -150,7 +150,7 @@ If you set up column security, you can also restrict different rows for each per
 2. Go to the SQL question that will be displayed to the people in place of the table.
 3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}WHERE plan = {{ plan_variable }} {%endraw%}`.
 4. Save the SQL question.
-5. Go to **Admin settings** > **Permissions**.
+5. Go to **Admin** > **Permissions**.
 6. Find the group and table you want to secure.
 7. Open the dropdown under **View data**.
 8. Click **Edit row and column security**.
@@ -207,24 +207,24 @@ If you want to give someone access to multiple user IDs (e.g., the person should
 
 1. Create a SQL question that parses the comma-separated string and filters the table:
 
-```sql
-{%raw%}
-SELECT *
-FROM users_with_values
-WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
-{% endraw %}
-```
+    ```sql
+    {%raw%}
+    SELECT *
+    FROM users_with_values
+    WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
+    {% endraw %}
+    ```
+    
+    This query:
+    
+    - Trims whitespace from the user attribute value
+    - Replaces any spaces around commas with just commas
+    - Converts the comma-separated string to an array
+    - Filters rows where the user_id matches any value in the array
+    
+    The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
 
-This query:
-
-- Trims whitespace from the user attribute value
-- Replaces any spaces around commas with just commas
-- Converts the comma-separated string to an array
-- Filters rows where the user_id matches any value in the array
-
-The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
-
-3. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
+2. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
 
 ## Preventing row and column security permissions conflicts
 
@@ -254,7 +254,7 @@ If you put Vincent Accountman in both groups, he'll have conflicting permissions
 To resolve row and column security permissions conflicts:
 
 - Remove the person from all but one of the groups.
-- Set the all but one of the group's [View data](./data.md#view-data-permissions) access to the datatabase to "Blocked".
+- Set all but one of the group's [View data](./data.md#view-data-permissions) access to the database to "Blocked".
 
 ### You cannot secure the rows or columns of SQL results
 
@@ -287,7 +287,7 @@ Some things to keep in mind when using row and column security.
 ### Groups with native query permissions (access to the SQL editor) can bypass row and column security
 
 Row and column security is limited to the [query builder](../questions/query-builder/editor.md).
-You can't set up [native query persmissons](./data.md#create-queries-permissions) for groups with row and column security.
+You can't set up [native query permissions](./data.md#create-queries-permissions) for groups with row and column security.
 
 To enforce row-level permissions with the native query editor, check out [impersonation](./impersonation.md).
 
@@ -312,6 +312,14 @@ Create a SQL question that casts the advanced data type column to a basic data t
 #### Option 2: Create a database view
 
 If you can't use SQL casting in Metabase, create a view in your database that converts the advanced data type to a basic type, then set up row and column security on that view instead of the original table. You'll also need to block the original table.
+
+#### Option 3: Use transforms
+
+Use a [transform](../data-studio/transforms/transforms-overview.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead. You'll also need to block the original table.
+
+### People with row and column security can't create Slack subscriptions or alerts
+
+People in groups with row and column security can't create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). Email alerts and subscriptions are still available. See [Notification permissions](./notifications.md).
 
 ## Further reading
 

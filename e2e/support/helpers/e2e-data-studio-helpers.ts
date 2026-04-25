@@ -1,13 +1,20 @@
-import type { MeasureId, SegmentId, TableId } from "metabase-types/api";
+import type {
+  MeasureId,
+  SegmentId,
+  TableId,
+  TransformId,
+} from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
+import { MetricPage } from "./e2e-metric-page-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
+
+const { H } = cy;
 
 const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
+const archivedSnippetsPage = () => cy.findByTestId("archived-snippets-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
-const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
-const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
 
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
@@ -16,12 +23,32 @@ export const DataStudio = {
     header: () => cy.findByTestId("transforms-header"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
-    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
+    editTransform: () => cy.findByRole("button", { name: "Edit" }),
+    editDefinitionButton: () => cy.findByTestId("edit-definition-button"),
+    getEditDefinitionLink: () => DataStudio.Transforms.editDefinitionButton(),
+    clickEditDefinition: () => {
+      DataStudio.Transforms.getEditDefinitionLink().click();
+    },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
+    definitionTab: () =>
+      DataStudio.Transforms.header().findByText("Definition"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
+    inspectTab: () => DataStudio.Transforms.header().findByText("Inspect"),
+    targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
+    visit: () => {
+      cy.visit("/data-studio/transforms");
+      DataStudio.Transforms.list().should("be.visible");
+    },
+    visitInspect: (transformId: TransformId) => {
+      cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+    },
+    visitSettingsTab: (transformId: TransformId) =>
+      cy.visit(`/data-studio/transforms/${transformId}/settings`),
+    pythonResults: () => cy.findByTestId("python-results"),
+    enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
@@ -31,6 +58,7 @@ export const DataStudio = {
   Runs: {
     list: () => cy.findByTestId("transforms-run-list"),
     content: () => cy.findByTestId("transforms-run-content"),
+    sidebar: () => cy.findByTestId("run-list-sidebar"),
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
@@ -38,31 +66,19 @@ export const DataStudio = {
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
+    editor: () => cy.findByTestId("python-editor"),
   },
   Snippets: {
     newPage: newSnippetPage,
     editPage: editSnippetPage,
-    nameInput: () => newSnippetPage().findByPlaceholderText("New SQL snippet"),
+    archivedPage: archivedSnippetsPage,
+    nameInput: () => newSnippetPage().findByDisplayValue("New SQL snippet"),
     descriptionInput: () => cy.findByPlaceholderText("No description"),
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
   },
-  Metrics: {
-    overviewPage: metricOverviewPage,
-    queryEditor: metricQueryEditor,
-    nameInput: () => metricQueryEditor().findByPlaceholderText("New metric"),
-    saveButton: () =>
-      metricQueryEditor().findByRole("button", { name: "Save" }),
-    cancelButton: () =>
-      metricQueryEditor().findByRole("button", { name: "Cancel" }),
-    header: () => cy.findByTestId("metric-header"),
-    moreMenu: () => DataStudio.Metrics.header().icon("ellipsis"),
-    overviewTab: () => DataStudio.Metrics.header().findByText("Overview"),
-    definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
-    dependenciesTab: () =>
-      DataStudio.Metrics.header().findByText("Dependencies"),
-  },
+  Metrics: MetricPage,
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
     fieldsPage: () => cy.findByTestId("table-fields-page"),
@@ -101,6 +117,8 @@ export const DataStudio = {
         .click(),
 
     Overview: {
+      descriptionSidebar: () => cy.findByTestId("table-description-sidebar"),
+
       descriptionText: () =>
         cy
           .findByTestId("table-description-section")
@@ -109,6 +127,10 @@ export const DataStudio = {
         cy
           .findByTestId("table-description-section")
           .findByPlaceholderText("No description"),
+    },
+    openFilterPopover: () => {
+      cy.findByRole("button", { name: "Filter" }).click();
+      H.popover();
     },
   },
   Library: {
@@ -129,23 +151,5 @@ export const DataStudio = {
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
-  },
-  Tasks: {
-    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
-    visitUnreferencedEntities: () =>
-      cy.visit("/data-studio/tasks/unreferenced"),
-    list: () => cy.findByTestId("dependency-list"),
-    searchInput: () => cy.findByTestId("dependency-list-search-input"),
-    filterButton: () => cy.findByTestId("dependency-list-filter-button"),
-    sidebar: () => cy.findByTestId("dependency-list-sidebar"),
-
-    Sidebar: {
-      get: () => cy.findByTestId("dependency-list-sidebar"),
-      header: () => cy.findByTestId("dependency-list-sidebar-header"),
-      locationInfo: () => cy.findByRole("region", { name: "Location" }),
-      errorInfo: (label: string) => cy.findByRole("region", { name: label }),
-      creationInfo: () =>
-        cy.findByRole("region", { name: "Creator and last editor" }),
-    },
   },
 };

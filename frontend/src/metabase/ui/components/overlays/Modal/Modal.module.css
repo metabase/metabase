@@ -6,9 +6,9 @@
   font-size: var(--mantine-font-size-xl);
   font-weight: var(--mantine-heading-font-weight);
   line-height: var(--mantine-line-height-md);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .overlay {

@@ -8,7 +8,7 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 
 type ToolsAppProps = {
   location: Location;
@@ -30,7 +30,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
           />
           <ToolsNavItem
             label={t`Tasks`}
-            path={Urls.adminToolsTasks()}
+            path={Urls.adminToolsTasksBase()}
             icon="clipboard"
             location={location}
           />

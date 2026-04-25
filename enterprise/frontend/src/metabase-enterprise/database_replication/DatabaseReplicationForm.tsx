@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import {
@@ -12,7 +12,6 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Box,
   Card,
@@ -28,6 +27,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   PreviewDatabaseReplicationResponse,
   TableInfo,

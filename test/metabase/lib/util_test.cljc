@@ -51,7 +51,7 @@
                  :native   "SELECT * FROM VENUES;"}]}))
 
 (deftest ^:parallel pipeline-joins-test
-  ;; this isn't meant to be 100% correct pMBQL -- `->pipeline` is just supposed to put stuff in the generally correct
+  ;; this isn't meant to be 100% correct MBQL 5 -- `->pipeline` is just supposed to put stuff in the generally correct
   ;; shape, just to make sure we have `:stages` and stuff looking the way they should. [[metabase.lib.convert]] uses
   ;; this as part of what it does
   (is (=? {:lib/type :mbql/query
@@ -222,15 +222,6 @@
           (lib.util/ensure-mbql-final-stage {:database 1
                                              :type     :native
                                              :native   {:query "SELECT * FROM venues;"}}))))
-
-(deftest ^:parallel join-strings-with-conjunction-test
-  (are [coll expected] (= expected
-                          (lib.util/join-strings-with-conjunction "and" coll))
-    []                nil
-    ["a"]             "a"
-    ["a" "b"]         "a and b"
-    ["a" "b" "c"]     "a, b, and c"
-    ["a" "b" "c" "d"] "a, b, c, and d"))
 
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))

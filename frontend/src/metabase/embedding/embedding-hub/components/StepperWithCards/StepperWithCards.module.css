@@ -67,7 +67,7 @@
 }
 
 .stepCard:not(.lockedStepCard):hover {
-  background-color: var(--mb-color-background-hover-light);
+  background-color: var(--mb-color-background-hover);
 }
 
 .stepCard.nextStepCard {

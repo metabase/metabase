@@ -10,9 +10,10 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import type { ColorName } from "metabase/lib/colors/types";
-import { isNotNull } from "metabase/lib/types";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type DefinedClauseName,
   clausesForMode,
@@ -20,10 +21,12 @@ import {
 } from "metabase/querying/expressions";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
-import { BucketPickerPopover } from "./BucketPickerPopover";
+import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 
 const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";
@@ -69,6 +72,8 @@ export interface QueryColumnPickerProps {
   hasInitialFocus?: boolean;
   alwaysExpanded?: boolean;
   disableSearch?: boolean;
+  /** Hide section/group names (table names) in the picker */
+  hideSectionNames?: boolean;
 }
 
 const SEARCH_PROP = [
@@ -99,7 +104,10 @@ export function QueryColumnPicker({
   hasInitialFocus = true,
   alwaysExpanded,
   disableSearch,
+  hideSectionNames = false,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
   const withCustomExpressions = onSelectExpression != null;
   const [isSearching, setIsSearching] = useState(false);
 
@@ -117,12 +125,12 @@ export function QueryColumnPicker({
           type: "column" as const,
           ...columnInfo,
           column,
-          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+          combinedDisplayName: `${tc(columnInfo.table?.displayName) ?? ""} ${tc(columnInfo.displayName)}`,
         };
       });
 
       return {
-        name: groupInfo.displayName,
+        name: hideSectionNames ? undefined : tc(groupInfo.displayName),
         icon: getColumnGroupIcon(groupInfo),
         items,
       };
@@ -162,6 +170,8 @@ export function QueryColumnPicker({
     withCustomExpressions,
     expressionSectionIcon,
     isSearching,
+    tc,
+    hideSectionNames,
   ]);
 
   const handleSelectSection = useCallback(
@@ -258,7 +268,7 @@ export function QueryColumnPicker({
 
       return (
         (hasBinning || hasTemporalBucketing) && (
-          <BucketPickerPopover
+          <ColumnBucketPickerPopover
             classNames={{
               root: S.itemWrapper,
               /*
@@ -313,6 +323,18 @@ export function QueryColumnPicker({
     [checkIsColumnSelected],
   );
 
+  const renderItemName = useCallback(
+    (item: Item) =>
+      isSearching
+        ? item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
+            tc,
+            locale,
+          }),
+    [tc, locale, isSearching],
+  );
+
   return (
     <DelayGroup>
       <AccordionList<Item, QueryColumnPickerSection>
@@ -360,10 +382,6 @@ function getColumnWithoutBucketing(
     return Lib.withBinning(column, null);
   }
   return column;
-}
-
-function renderItemName(item: Item) {
-  return item.displayName;
 }
 
 function renderItemWrapper(content: ReactNode) {

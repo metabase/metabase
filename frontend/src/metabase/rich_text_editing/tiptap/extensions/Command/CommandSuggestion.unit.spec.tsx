@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -11,7 +13,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import type { SettingsState } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -20,12 +23,10 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import type { SettingsState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   CommandSuggestion,
@@ -130,6 +131,10 @@ const setup = ({
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
   setupDatabasesEndpoints([MOCK_DATABASE]);
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
+  );
 
   renderWithProviders(
     <TestWrapper
@@ -148,6 +153,13 @@ const setup = ({
 };
 
 describe("CommandSuggestion", () => {
+  beforeEach(() => {
+    fetchMock.get(
+      "path:/api/metabot/permissions/user-permissions",
+      createMockUserMetabotPermissions(),
+    );
+  });
+
   it("renders with default commands", async () => {
     setup();
 
@@ -157,7 +169,7 @@ describe("CommandSuggestion", () => {
   it("searches for possible card embeds by default", async () => {
     const { command } = setup({ query: "Ord" });
 
-    // Find cards what were searched for, with apropriate icons
+    // Find cards that were searched for, with appropriate icons
     expect(
       within(
         await screen.findByRole("option", { name: /Orders by product/ }),
@@ -439,18 +451,13 @@ describe("CommandSuggestion", () => {
     });
 
     describe("when metabot is disabled", () => {
-      beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => false);
-      });
-
       it("should show all available commands except Metabot", async () => {
-        const settings = mockSettings({
-          "token-features": createMockTokenFeatures({
-            metabot_v3: false,
+        setup({
+          settings: mockSettings({
+            "metabot-enabled?": false,
+            "llm-metabot-configured?": false,
           }),
         });
-
-        setup({ settings });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
@@ -459,19 +466,19 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+        mockSettings({});
+        setupEnterprisePlugins();
       });
 
       it("should show all available commands including Metabot", async () => {
-        const settings = mockSettings({
-          "token-features": createMockTokenFeatures({
-            metabot_v3: true,
+        setup({
+          settings: mockSettings({
+            "metabot-enabled?": true,
+            "llm-metabot-configured?": true,
           }),
         });
 
-        setup({ settings });
-
-        expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
+        expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });

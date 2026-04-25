@@ -1,5 +1,5 @@
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 export function FormAuthorityLevelField() {

@@ -1,0 +1,60 @@
+name: Native Query - Variables
+entity_id: 2u10n8GV6u0LFYrq8yV5p
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: native
+database_id: Sample Database
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - native: |-
+      SELECT *
+      FROM ORDERS
+      WHERE TOTAL > {{min_total}}
+        AND CREATED_AT > {{after_date}}
+        AND USER_ID = {{user_id}}
+        AND {{is_active}}
+    template-tags:
+      after_date:
+        default: '2024-01-01'
+        display-name: After Date
+        id: aa000002-0000-0000-0000-000000000002
+        name: after_date
+        sectionid: date
+        type: date
+      is_active:
+        default: true
+        display-name: Is Active
+        id: aa000004-0000-0000-0000-000000000004
+        name: is_active
+        sectionid: boolean
+        type: boolean
+      min_total:
+        default: 50
+        display-name: Minimum Total
+        id: aa000001-0000-0000-0000-000000000001
+        name: min_total
+        required: true
+        sectionid: number
+        type: number
+      user_id:
+        default: '1'
+        display-name: User ID
+        id: aa000003-0000-0000-0000-000000000003
+        name: user_id
+        type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: 2u10n8GV6u0LFYrq8yV5p
+  label: native_query___variables
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

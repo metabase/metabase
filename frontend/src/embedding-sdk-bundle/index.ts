@@ -19,6 +19,7 @@ import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
+import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -73,7 +74,13 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useInitData,
   useLogVersionInfo,
   validateFunctionSchema,
+  MetabotSubscriber,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
+
+// Signal that the bundle is ready. In the bootstrap flow (chunked loading),
+// rspack defers entry execution until all chunks are registered, so this event
+// fires only after everything is ready.
+document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));

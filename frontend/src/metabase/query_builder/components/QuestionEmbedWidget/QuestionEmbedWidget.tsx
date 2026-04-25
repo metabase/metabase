@@ -3,8 +3,8 @@ import {
   useUpdateCardEnableEmbeddingMutation,
 } from "metabase/api";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { useSelector } from "metabase/lib/redux";
 import { EmbedModal } from "metabase/public/components/EmbedModal";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api";

@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 

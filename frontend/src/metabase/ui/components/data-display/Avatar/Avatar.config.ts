@@ -1,6 +1,6 @@
 import { Avatar, rem } from "@mantine/core";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 const avatarColors: ColorName[] = [
   "brand",

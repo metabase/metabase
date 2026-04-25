@@ -181,13 +181,27 @@
       (is (nil? (lib/check-segment-overwrite 1 segment-1-def))))))
 
 (deftest ^:parallel check-segment-overwrite-self-reference-not-in-mp-test
-  (testing "Segment referencing itself - should throw (reported as does not exist since segment being saved isn't in mp)"
+  (testing "Segment referencing itself - should throw cycle (even if segment is not in mp)"
     (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
           segment-1-def (segment-definition-referencing mp 1)]
       (is (thrown-with-msg?
            #?(:clj Exception :cljs js/Error)
-           #"does not exist"
+           #"[Cc]ycle"
            (lib/check-segment-overwrite 1 segment-1-def))))))
+
+(deftest ^:parallel check-segment-overwrite-cycle-ex-data-test
+  (testing "Cycle exception includes segment-id and cycle-path in ex-data"
+    (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          segment-1-def (segment-definition-referencing mp 1)
+          ex            (try
+                          (lib/check-segment-overwrite 1 segment-1-def)
+                          (catch #?(:clj Exception :cljs js/Error) e e))
+          data          (ex-data ex)]
+      (is (= 1 (:segment-id data)))
+      (is (contains? data :cycle-path))
+      (is (vector? (:cycle-path data)))
+      (is (some #{1} (:cycle-path data)))
+      (is (re-find #"1" (ex-message ex))))))
 
 (deftest ^:parallel check-segment-overwrite-self-reference-in-mp-test
   (testing "Segment referencing itself (segment exists in mp) - should throw cycle"
@@ -270,3 +284,14 @@
            #?(:clj Exception :cljs js/Error)
            #"does not exist"
            (lib/check-segment-overwrite 1 segment-1-def))))))
+
+(deftest ^:parallel check-segment-overwrite-unknown-segment-ex-data-test
+  (testing "Unknown segment exception includes segment-id in ex-data and message"
+    (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          segment-1-def (segment-definition-referencing mp 999)
+          ex            (try
+                          (lib/check-segment-overwrite 1 segment-1-def)
+                          (catch #?(:clj Exception :cljs js/Error) e e))
+          data          (ex-data ex)]
+      (is (= 999 (:segment-id data)))
+      (is (re-find #"999" (ex-message ex))))))

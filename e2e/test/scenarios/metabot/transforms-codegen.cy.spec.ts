@@ -1,6 +1,7 @@
 import dedent from "ts-dedent";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import type { PythonTransformTableAliases } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -10,7 +11,7 @@ const SOURCE_TABLE = "Animals";
 const visitTransformListPage = () => cy.visit("/data-studio/transforms");
 
 const suggestions = () => cy.findAllByTestId("metabot-chat-suggestion");
-// eslint-disable-next-line no-unsafe-element-filtering
+// eslint-disable-next-line metabase/no-unsafe-element-filtering
 const lastSuggestion = () => suggestions().last();
 
 const viewLastSuggestion = () =>
@@ -60,6 +61,13 @@ const assertEditorDiffState = (opts: { exists: boolean }) => {
     .should(should);
 };
 
+const sendCodgenBotMessage = (message: string) => {
+  H.sendMetabotMessage(message);
+  cy.wait("@metabotAgent").its("request.body").should("deep.include", {
+    profile_id: "transforms_codegen",
+  });
+};
+
 const assertAcceptRejectUI = (opts: { visible: boolean }) => {
   const should = opts.visible ? "be.visible" : "not.exist";
   acceptSuggestionBtn().should(should);
@@ -75,12 +83,14 @@ describe(
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
       H.resetSnowplow();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
-      cy.intercept("POST", "/api/ee/transform").as("createTransform");
-      cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
+      cy.intercept("POST", "/api/transform").as("createTransform");
+      cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     });
 
     describe("Native SQL transform tests", () => {
@@ -96,7 +106,7 @@ describe(
               createMockNativeTransformJSON(null, WRITABLE_DB_ID, "SELECT 1"),
             ),
           });
-          H.sendMetabotMessage(
+          sendCodgenBotMessage(
             "Create a new native SQL transform that gives me the number 1",
           );
           assertSuggestionInSidebar({ newSourcePartial: "SELECT 1" });
@@ -115,7 +125,7 @@ describe(
               createMockNativeTransformJSON(null, WRITABLE_DB_ID, "SELECT 2"),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 2 instead");
+          sendCodgenBotMessage("Make this give me the number 2 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "SELECT 1",
             newSourcePartial: "SELECT 2",
@@ -137,7 +147,7 @@ describe(
               createMockNativeTransformJSON(null, WRITABLE_DB_ID, "SELECT 4"),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 4 instead");
+          sendCodgenBotMessage("Make this give me the number 4 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "SELECT 3",
             newSourcePartial: "SELECT 4",
@@ -161,12 +171,12 @@ describe(
               createMockPythonTransformJSON(
                 null,
                 WRITABLE_DB_ID,
-                { metabase_table_df: 152 },
+                pythonSourceTables("metabase_table_df", 152),
                 "import pandas as pd\\n\\ndef transform(metabase_table_df):\\n    return pd.DataFrame({'value': [1]})",
               ),
             ),
           });
-          H.sendMetabotMessage(
+          sendCodgenBotMessage(
             "Create a new native python transform that gives me the number 1",
           );
           assertSuggestionInSidebar({
@@ -187,12 +197,12 @@ describe(
               createMockPythonTransformJSON(
                 null,
                 WRITABLE_DB_ID,
-                { metabase_table_df: 152 },
+                pythonSourceTables("metabase_table_df", 152),
                 "import pandas as pd\\n\\ndef transform(metabase_table_df):\\n    return pd.DataFrame({'value': [2]})",
               ),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 2 instead");
+          sendCodgenBotMessage("Make this give me the number 2 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "pd.DataFrame({'value': [1]})",
             newSourcePartial: "pd.DataFrame({'value': [2]})",
@@ -221,12 +231,12 @@ describe(
               createMockPythonTransformJSON(
                 null,
                 WRITABLE_DB_ID,
-                { metabase_table_df: 152 },
+                pythonSourceTables("metabase_table_df", 152),
                 "import pandas as pd\\n\\ndef transform(metabase_table_df):\\n    return pd.DataFrame({'value': [4]})",
               ),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 4 instead");
+          sendCodgenBotMessage("Make this give me the number 4 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "pd.DataFrame({'value': [3]})",
             newSourcePartial: "pd.DataFrame({'value': [4]})",
@@ -274,7 +284,7 @@ describe(
                 ),
               ),
             });
-            H.sendMetabotMessage(
+            sendCodgenBotMessage(
               "Create a transform that queries the Test Model",
             );
             assertSuggestionInSidebar({ newSourcePartial: "SELECT * FROM" });
@@ -301,7 +311,8 @@ describe(
             sourceQuery: "SELECT 1",
             targetTable: "table_a",
             targetSchema: "Schema A",
-          }).as("transformId");
+            wrapId: true,
+          });
 
           visitTransformListPage();
           getMetabotButton().click();
@@ -319,7 +330,7 @@ describe(
               ),
             });
           });
-          H.sendMetabotMessage(
+          sendCodgenBotMessage(
             "Update my SQL transform to select 2 instead of 1.",
           );
           assertSuggestionInSidebar({
@@ -352,7 +363,7 @@ describe(
               ),
             });
           });
-          H.sendMetabotMessage("Make this give me the number 4 instead");
+          sendCodgenBotMessage("Make this give me the number 4 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "SELECT 3",
             newSourcePartial: "SELECT 4",
@@ -377,26 +388,24 @@ describe(
                 def transform(foo):
                   return pd.DataFrame({'value': [1]})
               `,
-                sourceTables: { foo: tableId },
-              }).then((transformId) => {
+                sourceTables: pythonSourceTables("foo", Number(tableId)),
+              }).then(({ body: transform }) => {
                 visitTransformListPage();
                 getMetabotButton().click();
 
                 // Ask metabot for a change to existing transform
-                cy.get("@transformId").then((transformId) => {
-                  H.mockMetabotResponse({
-                    body: createMockTransformSuggestionResponse(
-                      "Let me make that update for you.",
-                      createMockPythonTransformJSON(
-                        Number(transformId),
-                        WRITABLE_DB_ID,
-                        { foo: tableId },
-                        "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [2]})",
-                      ),
+                H.mockMetabotResponse({
+                  body: createMockTransformSuggestionResponse(
+                    "Let me make that update for you.",
+                    createMockPythonTransformJSON(
+                      Number(transform.id),
+                      WRITABLE_DB_ID,
+                      pythonSourceTables("foo", Number(tableId)),
+                      "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [2]})",
                     ),
-                  });
+                  ),
                 });
-                H.sendMetabotMessage(
+                sendCodgenBotMessage(
                   "Update my SQL transform to select 2 instead of 1.",
                 );
                 assertSuggestionInSidebar({
@@ -431,14 +440,14 @@ describe(
                   body: createMockTransformSuggestionResponse(
                     "Let me make that change for you.",
                     createMockPythonTransformJSON(
-                      Number(transformId),
+                      Number(transform.id),
                       WRITABLE_DB_ID,
-                      { metabase_table_df: 152 },
+                      pythonSourceTables("metabase_table_df", 152),
                       "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [4]})",
                     ),
                   ),
                 });
-                H.sendMetabotMessage("Make this give me the number 4 instead");
+                sendCodgenBotMessage("Make this give me the number 4 instead");
                 assertSuggestionInSidebar({
                   oldSourcePartial: "pd.DataFrame({'value': [3]})",
                   newSourcePartial: "pd.DataFrame({'value': [4]})",
@@ -468,10 +477,26 @@ const createMockNativeTransformJSON = (
 const createMockPythonTransformJSON = (
   id: number | null,
   databaseId: number,
-  sourceTables: { [tableName: string]: number },
+  sourceTables: PythonTransformTableAliases,
   body: string,
 ) =>
   `{"id":${id},"name":"A number","entity_id":null,"description":"","source":{"type":"python","source-database":${databaseId},"source-tables":${JSON.stringify(sourceTables)},"body":"${body}"},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
+
+function pythonSourceTables(
+  alias: string,
+  tableId: number,
+  schema = "Schema A",
+  databaseId = WRITABLE_DB_ID,
+): PythonTransformTableAliases {
+  return [
+    {
+      alias,
+      table_id: tableId,
+      database_id: databaseId,
+      schema,
+    },
+  ];
+}
 
 const createMockTransformSuggestionResponse = (
   text: string,

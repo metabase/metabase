@@ -13,15 +13,18 @@
     }
   }
 
-  /* Need the aditional specificy to override global focus outline rule */
+  /* Need the additional specificity to override global focus outline rule */
   .radio:focus {
     outline: none;
   }
 }
 
 .radio {
-  cursor: pointer;
   border-color: var(--mb-color-text-tertiary);
+
+  &:not(:disabled) {
+    cursor: pointer;
+  }
 
   &:checked {
     border-color: var(--mb-color-brand);

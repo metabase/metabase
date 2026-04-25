@@ -39,6 +39,11 @@
   [value]
   (t/offset-date-time value))
 
+(defn same-time?
+  "True if these two temporal values are equal."
+  [d1 d2]
+  (= d1 d2))
+
 (defn same-day?
   "Given two platform-specific datetimes, checks if they fall within the same day."
   [d1 d2]
@@ -520,6 +525,17 @@
                    :type/DateTimeWithTZ "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
                    :type/DateTime       "yyyy-MM-dd'T'HH:mm:ss.SSS"
                    :type/Date           "yyyy-MM-dd")]
+      (t/format format t))))
+
+(defn format-date-for-filter
+  "Format a value as a date or datetime string for filter clauses.
+   See CLJS implementation for full behavior - this JVM version just formats."
+  [t with-time?]
+  (if (string? t)
+    t
+    (let [format (if with-time?
+                   "yyyy-MM-dd'T'HH:mm:ss"
+                   "yyyy-MM-dd")]
       (t/format format t))))
 
 (defn extract

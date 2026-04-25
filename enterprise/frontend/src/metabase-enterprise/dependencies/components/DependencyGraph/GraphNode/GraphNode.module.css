@@ -1,5 +1,6 @@
 .card {
   min-width: 15rem;
+  max-width: 30rem;
 
   &:hover,
   &.selected {

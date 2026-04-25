@@ -154,14 +154,10 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
  *
  * @param {number} id
  */
-export function visitMetric(id, { hasDataAccess = true } = {}) {
+export function visitMetric(id) {
   const alias = "metricQuery" + id;
 
-  if (hasDataAccess) {
-    cy.intercept("POST", "/api/dataset").as(alias);
-  } else {
-    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
-  }
+  cy.intercept("POST", `/api/card/${id}/query`).as(alias);
 
   cy.visit(`/metric/${id}`);
 
@@ -359,7 +355,7 @@ export function checkSavedToCollectionQuestionToast(addToDashboard) {
 
 export function saveQuestionToCollection(
   name,
-  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  pickEntityOptions = { path: ["Our analytics"] },
   reqInfo,
 ) {
   saveQuestion(name, reqInfo, pickEntityOptions);
@@ -434,7 +430,7 @@ export const goToAuthOverviewPage = () => {
 
 /**
  * This function exists to work around custom dynamic anchor creation.
- * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L312
+ * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dom.js#L301-L312
  *
  * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
  */

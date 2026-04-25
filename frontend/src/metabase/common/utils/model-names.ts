@@ -26,6 +26,9 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<ModelNames, string> = {
   get "indexed-entity"() {
     return t`Indexed record`;
   },
+  get measure() {
+    return t`Measure`;
+  },
   get metric() {
     return t`Metric`;
   },

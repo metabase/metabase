@@ -5,13 +5,12 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import { Tables } from "metabase/entities/tables";
-import { useDispatch, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";
+import { useDispatch, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -37,9 +36,7 @@ export function DataStep({
   const tableInfo =
     query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =
-    query && table
-      ? getDataPickerValue(query, stageIndex, table)
-      : { model: "table", id: null };
+    query && table ? getDataPickerValue(query, stageIndex, table) : undefined;
   const store = useStore();
   const dispatch = useDispatch();
 
@@ -92,13 +89,13 @@ export function DataStep({
         <DataPickerModal
           title={t`Select a table`}
           models={["table"]}
-          value={tableValue as TablePickerValue}
+          value={tableValue}
           onChange={handleChange}
           onClose={() => setIsOpened(false)}
           options={{
-            showLibrary: false,
-            showRootCollection: false,
-            showPersonalCollections: false,
+            hasLibrary: false,
+            hasRootCollection: false,
+            hasPersonalCollections: false,
           }}
         />
       )}

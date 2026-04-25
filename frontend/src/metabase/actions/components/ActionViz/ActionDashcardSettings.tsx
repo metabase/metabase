@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
-import Button from "metabase/common/components/Button";
-import EmptyState from "metabase/common/components/EmptyState";
+import { Button } from "metabase/common/components/Button";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
-import { connect } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -32,30 +32,22 @@ import {
   isParameterRequired,
 } from "./utils";
 
-const mapDispatchToProps = {
-  setActionForDashcard,
-};
-
 interface Props {
   dashboard: Dashboard;
   dashcard: ActionDashboardCard;
   onClose: () => void;
-  setActionForDashcard: (
-    dashcard: ActionDashboardCard,
-    action: WritebackAction,
-  ) => void;
 }
 
 export function ActionDashcardSettings({
   dashboard,
   dashcard,
   onClose,
-  setActionForDashcard,
 }: Props) {
+  const dispatch = useDispatch();
   const action = dashcard.action;
 
   const setAction = (newAction: WritebackAction) => {
-    setActionForDashcard(dashcard, newAction);
+    dispatch(setActionForDashcard(dashcard, newAction));
   };
 
   const hasParameters = !!action?.parameters?.length;
@@ -127,8 +119,3 @@ export function ActionDashcardSettings({
 const EmptyActionState = () => (
   <EmptyState className={CS.p3} message={t`Select an action to get started`} />
 );
-
-export const ConnectedActionDashcardSettings = connect(
-  null,
-  mapDispatchToProps,
-)(ActionDashcardSettings);

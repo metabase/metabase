@@ -96,7 +96,7 @@
   - One or two category breakouts: no `:location` pivot. (`pivot` mode)
   - If all these conditions fail, no pivots are allowed and the pivot drill should not be returned.
 
-  This function encodes all these rules, returning a (possibly emtpy) set of permitted types."
+  This function encodes all these rules, returning a (possibly empty) set of permitted types."
   [query                                         :- ::lib.schema/query
    stage-number                                  :- :int]
   (case (->> (lib.breakout/breakouts query stage-number)

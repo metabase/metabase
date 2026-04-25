@@ -1,9 +1,10 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -18,19 +19,22 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config"
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { createSnowplowTracker } from "metabase/analytics";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
-import { createTracker } from "metabase/lib/analytics-untyped";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserId } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
+import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
+import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -44,17 +48,22 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 };
 
 const store = getSdkStore();
-createTracker(store);
+createSnowplowTracker(() => getUserId(store.getState()));
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({
     onSettingsChanged,
+    store,
   });
 
   const adjustedTheme = useMemo(
     () => applyThemePreset(embedSettings?.theme),
     [embedSettings?.theme],
   );
+
+  useEffect(() => {
+    stripInternalIframeQueryParameters();
+  }, []);
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -87,6 +96,7 @@ export const SdkIframeEmbedRoute = () => {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
+    guestEmbedProviderUri: embedSettings.guestEmbedProviderUri,
   } as MetabaseAuthConfig;
 
   return (
@@ -98,13 +108,10 @@ export const SdkIframeEmbedRoute = () => {
       isLocalHost={embedSettings._isLocalhost}
     >
       <Stack
-        mih="100vh"
-        bg={adjustedTheme?.colors?.background}
+        h="100vh"
+        className={SdkIframeEmbedRouteS.Container}
         style={{
-          display: "grid",
-          width: "100%",
-          gridTemplateColumns: "1fr",
-          gridTemplateRows: "1fr auto",
+          backgroundColor: adjustedTheme?.colors?.background,
         }}
       >
         <SdkIframeEmbedView settings={embedSettings} />
@@ -141,10 +148,12 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-browser",
         },
         (settings) => (
-          // re-mount breadcrumbs when initial collection changes
-          <SdkBreadcrumbsProvider key={settings.initialCollection}>
-            <MetabaseBrowser settings={settings} />
-          </SdkBreadcrumbsProvider>
+          <SdkInternalNavigationProvider keepChildrenMounted>
+            {/*  re-mount breadcrumbs when initial collection changes */}
+            <SdkBreadcrumbsProvider key={settings.initialCollection}>
+              <MetabaseBrowser settings={settings} />
+            </SdkBreadcrumbsProvider>
+          </SdkInternalNavigationProvider>
         ),
       )
       .with(
@@ -159,6 +168,15 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-dashboard",
           token: P.nonNullable,
         },
+        /**
+         * Need for initial token flow with JWT provider when the provider returns errors.
+         * Without this, the InteractiveDashboard component will be rendered because
+         * there is no `token`, so it won't match this pattern.
+         */
+        {
+          componentName: "metabase-dashboard",
+          guestEmbedProviderUri: P.nonNullable,
+        },
         (settings) => {
           const entityProps: SdkDashboardEntityPublicProps = settings.token
             ? {
@@ -171,7 +189,9 @@ const SdkIframeEmbedView = ({
           return (
             <StaticDashboard
               key={rerenderKey}
+              className={SdkIframeEmbedRouteS.Dashboard}
               {...entityProps}
+              autoRefreshInterval={settings.autoRefreshInterval}
               withTitle={settings.withTitle}
               withDownloads={settings.withDownloads}
               initialParameters={settings.initialParameters}
@@ -190,29 +210,53 @@ const SdkIframeEmbedView = ({
         (settings) => (
           <InteractiveDashboard
             key={rerenderKey}
+            className={SdkIframeEmbedRouteS.Dashboard}
             dashboardId={settings.dashboardId ?? null}
             token={settings.token}
+            autoRefreshInterval={settings.autoRefreshInterval}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
             withSubscriptions={settings.withSubscriptions}
             initialParameters={settings.initialParameters}
             hiddenParameters={settings.hiddenParameters}
+            enableEntityNavigation={settings.enableEntityNavigation}
             drillThroughQuestionHeight="100%"
             drillThroughQuestionProps={{ isSaveEnabled: false }}
           />
         ),
       )
+      // Exists solely to discriminate type from the pattern below when matching `guestEmbedProviderUri: P.nonNullable`
+      .with(
+        {
+          componentName: "metabase-question",
+          template: "exploration",
+        },
+        () => null,
+      )
       .with(
         // Embedding based on a questionId (Metabase Account auth type) with disabled drills
         {
           componentName: "metabase-question",
-          questionId: P.intersection(P.nonNullable, P.not("new")),
+          questionId: P.intersection(
+            P.nonNullable,
+            P.not("new"),
+            P.not("new-native"),
+          ),
           drills: false,
         },
         // Embedding based on a token (Guest Embed auth type) with default/disabled drills
         {
           componentName: "metabase-question",
           token: P.nonNullable,
+        },
+        /**
+         * Need for initial token flow with JWT provider when the provider returns errors.
+         * Without this, nothing will be rendered because
+         * there is no `token`, so it won't match this pattern.
+         */
+        {
+          componentName: "metabase-question",
+          guestEmbedProviderUri: P.nonNullable,
         },
         (settings) => {
           const entityProps: SdkQuestionEntityPublicProps = settings.token
@@ -228,6 +272,7 @@ const SdkIframeEmbedView = ({
               key={rerenderKey}
               {...entityProps}
               withDownloads={settings.withDownloads}
+              withAlerts={settings.withAlerts}
               height="100%"
               initialSqlParameters={settings.initialSqlParameters}
               hiddenParameters={settings.hiddenParameters}
@@ -249,6 +294,7 @@ const SdkIframeEmbedView = ({
             questionId={settings.questionId ?? null}
             token={settings.token}
             withDownloads={settings.withDownloads}
+            withAlerts={settings.withAlerts}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}
             hiddenParameters={settings.hiddenParameters}
@@ -267,6 +313,8 @@ const SdkIframeEmbedView = ({
           <MetabotQuestion
             key={rerenderKey}
             layout={settings.layout}
+            isSaveEnabled={settings.isSaveEnabled}
+            targetCollection={settings.targetCollection}
             height="100%"
           />
         ),
@@ -285,7 +333,9 @@ const EmbedBrandingFooter = () => {
   }
 
   return (
-    <PublicComponentStylesWrapper>
+    <PublicComponentStylesWrapper
+      className={SdkIframeEmbedRouteS.BrandingFooter}
+    >
       <EmbeddingFooter variant="default" hasEmbedBranding />
     </PublicComponentStylesWrapper>
   );

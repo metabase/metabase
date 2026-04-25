@@ -8,8 +8,9 @@ import {
   useGetPersistedInfoQuery,
   useListPersistedInfoQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 const REFRESH_CACHE = "metabase/entities/persistedModels/REFRESH_CACHE";
 
@@ -28,12 +29,12 @@ export const PersistedModels = createEntity({
   path: "/api/persist",
   schema: PersistedModelSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListPersistedInfoQuery,
-  },
+  }),
 
   api: {
     get: ({ id, type }, options, dispatch) => {

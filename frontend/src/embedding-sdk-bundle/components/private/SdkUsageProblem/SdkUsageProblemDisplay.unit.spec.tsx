@@ -5,9 +5,8 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
-import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import {
   createMockApiKeyConfig,
@@ -18,22 +17,16 @@ import {
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
-
-const mockSdkDispatchFn = jest.fn();
-jest.mock("embedding-sdk-bundle/store", () => ({
-  ...jest.requireActual("embedding-sdk-bundle/store"),
-  useSdkDispatch: () => mockSdkDispatchFn,
-}));
 
 interface Options {
   authConfig: MetabaseAuthConfig;
@@ -279,6 +272,10 @@ describe("SdkUsageProblemDisplay", () => {
 
     await userEvent.click(within(card).getByText("Hide warning"));
 
-    expect(mockSdkDispatchFn).toHaveBeenCalledWith(setUsageProblem(null));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+      ).not.toBeInTheDocument();
+    });
   });
 });

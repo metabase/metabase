@@ -2,7 +2,6 @@
   "Functions for working with native queries."
   (:refer-clojure :exclude [some select-keys mapv every? empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -19,6 +18,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -49,20 +49,23 @@
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
            [current & more] parsed]
-      (match [current]
-        [nil]              found
-        [_ :guard string?] (recur found more)
+      (let [[found more] (lib.util.match/match-lite current
+                           (_ :guard string?) [found more]
 
-        [{:type ::lib.parse/param, :name tag-name}]
-        (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
-          (recur (cond-> found
-                   (and normalized-name (not (found normalized-name)))
-                   (assoc normalized-name (fresh-tag normalized-name)))
-                 more))
+                           {:type ::lib.parse/param, :name tag-name}
+                           (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
+                             [(cond-> found
+                                (and normalized-name (not (found normalized-name)))
+                                (assoc normalized-name (fresh-tag normalized-name)))
+                              more])
 
-        [{:type     ::lib.parse/optional
-          :contents contents}]
-        (recur found (into more contents))))))
+                           {:type ::lib.parse/optional, :contents contents}
+                           [found (into more contents)]
+
+                           _ [found nil])]
+        (if more
+          (recur found more)
+          found)))))
 
 (defn- rename-template-tag
   [existing-tags old-name new-name]
@@ -190,7 +193,7 @@
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
-  Native in this sense means a pMBQL query with a first stage that is a native query."
+  Native in this sense means a MBQL 5 query with a first stage that is a native query."
   ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
     sql-or-other-native-query :- ::common/non-blank-string]
    (native-query metadata-providerable sql-or-other-native-query nil nil))
@@ -314,7 +317,7 @@
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
-  [_query {tag-type :type tag-name :name, :keys [display-name dimension]}]
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension table-id]}]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
@@ -322,6 +325,10 @@
 
     (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
+           :tag-name tag-name})
+
+    (and (#{:table} tag-type) (nil? table-id))
+    (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a table." tag-name)
            :tag-name tag-name})))
 
 (mu/defn validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
@@ -451,3 +458,13 @@
     (if (and template-tags-map raw-native-query-string)
       (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
       true)))
+
+(mu/defn native-query-table-references :- [:set [:map [:table ::lib.schema.id/table]]]
+  "Given a native query, find any table tags and convert them to {:table id} objects"
+  [query]
+  (let [tags (->> (lib.walk.util/all-template-tags query)
+                  (filter #(= (:type %) :table)))]
+    (into #{}
+          (map (fn [{:keys [table-id]}]
+                 {:table table-id}))
+          tags)))

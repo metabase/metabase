@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Flex } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { ComparisonResult } from "../compute";
 
@@ -26,7 +26,7 @@ export const VariationPercent = ({
   const { changeArrowIconName, changeColor } = comparison;
 
   return (
-    <Flex align="center" maw="100%" c={changeColor ?? color}>
+    <Flex align="center" maw="100%" style={{ color: changeColor ?? color }}>
       {changeArrowIconName && (
         <VariationIcon name={changeArrowIconName} size={iconSize} />
       )}

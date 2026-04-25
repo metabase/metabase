@@ -36,10 +36,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      H.echartsContainer().findByText("January 2023").should("exist");
+      H.echartsContainer()
+        .should("contain.text", "July 2025")
+        .and("contain.text", "January 2026");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+    cy.log("Zoom-in on the left side, which corresponds to July 2025");
     cy.findByTestId("query-visualization-root") // drag across to filter
       .trigger("mousedown", 120, 200)
       .trigger("mousemove", 230, 200)
@@ -53,7 +56,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().findByText("June 2022"); // more granular axis labels
+      H.echartsContainer().contains(/June \d{1,2}, 2025/); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -102,7 +105,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       if (granularity === "month") {
         cy.findByTestId("qb-filters-panel")
           .findByText(
-            "Created At: Month is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
+            "Created At: Month is Sep 1, 2025, 12:00 AM – Feb 1, 2026, 12:00 AM",
           )
           .should("exist");
       }
@@ -252,26 +255,26 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.addSummaryField({ metric: "Count of rows" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     H.popover().within(() => {
       cy.findByText("City").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualize").click();
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by City");
 
     H.chartPathWithFillColor("#509EE3").first().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("See this CA Person").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("City is Beaver Dams");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Dominique Leffler");
   });
 
@@ -291,7 +294,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .contains("Orders by Created At: Week")
       .click();
 
-    H.echartsContainer().contains("January 2025");
+    H.echartsContainer().contains("January 2028");
     // drill into a recent week
     H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
 
@@ -333,7 +336,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     H.visualize();
     cy.button("Visualization").click();
-    cy.icon("line").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("line").click();
+    });
     cy.button("Done").click();
     cy.log("Mid-point assertion");
     // at this point, filter is displaying correctly with the name
@@ -438,7 +444,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       );
 
       cy.button("Visualization").click();
-      cy.findByTestId("Line-button").click();
+      H.leftSidebar().within(() => {
+        cy.findByTestId("more-charts-toggle").click();
+        cy.icon("line").click();
+      });
       cy.findByText(
         "Cannot read properties of undefined (reading 'name')",
       ).should("not.exist");
@@ -571,15 +580,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "table",
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^10 –/).parent().parent().next().contains("85").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/^10 –/)
+      .parent()
+      .parent()
+      .next()
+      .contains("85")
+      .click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is greater than or equal to 10");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is less than 20");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 85 rows");
   });
 
@@ -601,14 +615,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     // click on the Count column cell showing the count of null rows
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("16,845").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
     H.tableHeaderClick("Discount ($)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
@@ -706,7 +720,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       H.visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.chartPathWithFillColor("#509EE3").last().click();
       H.popover().findByTextEnsureVisible("See these Products").click();
     });

@@ -173,21 +173,23 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.getDashboardCard(1).within(() => {
-      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findAllByText("Created At: Month").should("exist");
-    });
-
-    H.saveDashboard();
-
-    H.getDashboardCard(1).within(() => {
-      cy.findByTestId("chart-container").within(() => {
+    H.getDashboardCard(1)
+      .findByTestId("chart-container")
+      .within(() => {
         cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
         cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
         cy.findAllByText("Created At: Month").should("exist");
       });
-    });
+
+    H.saveDashboard();
+
+    H.getDashboardCard(1)
+      .findByTestId("chart-container")
+      .within(() => {
+        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findAllByText("Created At: Month").should("exist");
+      });
   });
 
   it("should allow to visualize an existing dashcard another way if its viz type isn't supported by visualizer", () => {
@@ -991,6 +993,19 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).should(
         "be.disabled",
       );
+    });
+  });
+
+  it("should allow viewing the table preview (metabase#69038)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+
+    cy.findByTestId("visualizer-view-as-table-button").click();
+
+    cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
+      cy.findByText("Count").should("exist");
     });
   });
 });

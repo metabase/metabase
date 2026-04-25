@@ -18,7 +18,7 @@ describe("scenarios > collections > collection picker with tenants", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("use-tenants", true);
   });
 
@@ -70,7 +70,6 @@ describe("scenarios > collections > collection picker with tenants", () => {
 
       H.entityPickerModal().within(() => {
         cy.log("Select 'Our analytics' (a normal collection)");
-        H.entityPickerModalTab("Collections").click();
         cy.findByText("Our analytics").click();
         cy.button("Select").click();
       });
@@ -154,7 +153,6 @@ describe("scenarios > collections > collection picker with tenants", () => {
     });
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.log("Navigate to Shared collections");
       cy.findByText("Shared collections").click();
       cy.findByText("Target Shared Collection").click();
@@ -191,7 +189,6 @@ describe("scenarios > collections > collection picker with tenants", () => {
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.log("Select 'Our analytics' (normal collection)");
           cy.findByText("Our analytics").click();
           cy.button("Select").click();

@@ -3,7 +3,7 @@ import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embeddi
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import { isQuestionCard } from "metabase/dashboard/utils";
+import { isQuestionCard } from "metabase/utils/dashboard";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -24,6 +24,7 @@ export type StaticDashboardProps = Omit<
   | "drillThroughQuestionProps"
   | "drillThroughQuestionHeight"
   | "renderDrillThroughQuestion"
+  | "enableEntityNavigation"
 > &
   SdkDashboardEntityPublicProps;
 
@@ -47,6 +48,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
       dashboardActions={[
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
+        DASHBOARD_ACTION.REFRESH_INDICATOR,
       ]}
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>

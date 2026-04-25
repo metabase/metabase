@@ -3,11 +3,11 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { Api, skipToken } from "metabase/api";
 import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
@@ -28,7 +28,7 @@ export const GdriveSyncStatus = () => {
   const res = useGetGsheetsFolderQuery(!showGdrive ? skipToken : undefined);
   const { data: gdriveFolder, error: apiError } = res;
 
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
   const status = getStatus({ status: gdriveFolder?.status, error: apiError });
@@ -70,7 +70,7 @@ export const GdriveSyncStatus = () => {
       console.error(
         getErrorMessage(
           apiError,
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only ui
           t`Please check that the folder is shared with the Metabase Service Account.`,
         ),
       );
@@ -113,7 +113,7 @@ function GsheetsSyncStatusView({
     .with(
       "error",
       () =>
-        // eslint-disable-next-line no-literal-metabase-strings -- admin UI
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin UI
         t`Please check that the folder is shared with the Metabase Service Account.`,
     )
     .otherwise(() => undefined);

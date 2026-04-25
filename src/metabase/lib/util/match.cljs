@@ -1,5 +1,4 @@
 (ns metabase.lib.util.match
-  (:refer-clojure :exclude [replace])
   (:require
    [clojure.core.match]
    [metabase.lib.util.match.impl])

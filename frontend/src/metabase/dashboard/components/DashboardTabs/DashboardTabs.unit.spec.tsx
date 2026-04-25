@@ -8,18 +8,18 @@ import {
   withRouter,
 } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/lib/redux";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
+import { useSelector } from "metabase/redux";
+import type { DashboardState, State } from "metabase/redux/store";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
-import type { DashboardState, State } from "metabase-types/store";
 
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
@@ -202,6 +202,26 @@ describe("DashboardTabs", () => {
 
       expect(queryTab(1)).toBeVisible();
       expect(queryTab(2)).toBeVisible();
+    });
+
+    it("should use role=tab on tab items and role=tablist on the container (#70546)", () => {
+      setup({
+        isEditing: false,
+        tabs: [
+          getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
+          getDefaultTab({ tabId: 2, dashId: 1, name: "Tab 2" }),
+        ],
+      });
+
+      const tablist = screen.getByRole("tablist");
+      expect(tablist).toBeInTheDocument();
+
+      expect(
+        within(tablist).getByRole("tab", { name: "Tab 1" }),
+      ).toBeInTheDocument();
+      expect(
+        within(tablist).getByRole("tab", { name: "Tab 2" }),
+      ).toBeInTheDocument();
     });
 
     it("should not display tabs when there is one", () => {

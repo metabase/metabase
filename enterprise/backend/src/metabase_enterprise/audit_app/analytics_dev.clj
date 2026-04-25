@@ -31,9 +31,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private canonical-db-id
-  "The serdes ID used in YAMLs for the audit database."
+(def ^:private canonical-db-name
   audit-ee/default-db-name)
+
+(def ^:private canonical-db-filename
+  (serialization/slugify-name canonical-db-name))
+
+(def ^:private legacy-canonical-db-filename
+  canonical-db-name)
 
 (def ^:private canonical-creator-id
   "The creator email used in YAMLs for all analytics content."
@@ -46,7 +51,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name canonical-db-id :is_audit false))
+  (t2/select-one :model/Database :name canonical-db-name :is_audit false))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -64,7 +69,7 @@
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
       (let [db (t2/insert-returning-instance! :model/Database
-                                              {:name canonical-db-id
+                                              {:name canonical-db-name
                                                :description "Development database for analytics views and content"
                                                :engine (name db-type)
                                                :details {:is-audit-dev true}
@@ -104,7 +109,7 @@
   "Transform YAML from dev format to canonical format.
 
   Replaces user email with canonical creator_id.
-  For the Database entitiy, strips down to minimal required fields and sets is_audit to true."
+  For the Database entity, strips down to minimal required fields and sets is_audit to true."
   [file-name yaml-data user-email]
   (let [transformed (walk/postwalk
                      (fn [node]
@@ -114,7 +119,8 @@
                            canonical-creator-id
                            node)))
                      yaml-data)
-        is-database? (= file-name (str canonical-db-id ".yaml"))]
+        is-database? (or (= file-name (str canonical-db-filename ".yaml"))
+                         (= file-name (str legacy-canonical-db-filename ".yaml")))]
     (if is-database?
       (-> (select-keys transformed [:name :creator_id :is_sample :is_on_demand :serdes/meta
                                     :initial_sync_status :entity_id])
@@ -138,7 +144,8 @@
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml")
-                       (not (= (.getName file) (str canonical-db-id ".yaml"))))]
+                       (not (or (= (.getName file) (str canonical-db-filename ".yaml"))
+                                (= (.getName file) (str legacy-canonical-db-filename ".yaml")))))]
       (let [relative-path (.relativize (.toPath (io/file source-dir)) (.toPath file))
             target-file (io/file temp-path (.toFile relative-path))]
         (.mkdirs (.getParentFile target-file))
@@ -191,7 +198,8 @@
     (try
       (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
                   :no-settings true :no-transforms true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts) (.getPath temp-path)))]
+            report (serdes/with-cache (serialization/store! (serialization/extract opts)
+                                                            (serialization/file-writer (.getPath temp-path))))]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))
@@ -211,9 +219,11 @@
   (doseq [^File file (file-seq (io/file export-dir))
           :when (and (.isFile file)
                      (.endsWith (.getName file) ".yaml")
+                     (not (.endsWith (.getName file) "___fieldusersettings.yaml"))
+                     (not (.contains (.getPath file) "/channels/"))
                      (or (not (.contains (.getPath file) "/databases/"))
-                         (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
-                              (or (= (.getName file) (str canonical-db-id ".yaml"))
+                         (and (.contains (.getPath file) (str "/databases/" canonical-db-filename "/"))
+                              (or (= (.getName file) (str canonical-db-filename ".yaml"))
                                   (some #(.contains (.getPath file) (str "/tables/" %))
                                         audit-ee.permissions/audit-db-view-names)))))]
     (let [relative-path (str/replace (.getPath file)

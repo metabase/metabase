@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
+import type { State } from "metabase/redux/store";
 import type { TokenStatus, Version } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export const getSettings: <S extends State>(state: S) => GetSettings<S> =
   createSelector(
@@ -45,7 +45,9 @@ export type StorePaths =
   /** redirects to the specific instance storage management page */
   | "account/storage"
   /** EE, self-hosted upsell that communicates back with the instance */
-  | "checkout/upgrade/self-hosted";
+  | "checkout/upgrade/self-hosted"
+  /** transforms add-ons management page */
+  | "account/transforms";
 
 const DEFAULT_STORE_URL = "https://store.metabase.com/";
 
@@ -63,7 +65,7 @@ export const migrateToCloudGuideUrl = () =>
   "https://www.metabase.com/cloud/docs/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
 };
 
@@ -159,7 +161,7 @@ export const getDocsUrlForVersion = (
     anchor = `#${anchor}`;
   }
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/utils/settings"
   return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 

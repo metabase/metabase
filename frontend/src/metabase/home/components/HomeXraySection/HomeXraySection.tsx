@@ -9,12 +9,12 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Select from "metabase/common/components/Select";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { Select } from "metabase/common/components/Select";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { isSyncCompleted } from "metabase/utils/syncing";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";

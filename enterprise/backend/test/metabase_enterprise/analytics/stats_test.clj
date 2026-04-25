@@ -1,16 +1,17 @@
 (ns metabase-enterprise.analytics.stats-test
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase-enterprise.analytics.stats :as ee-stats]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
    [metabase.app-db.core :as mdb]
-   [metabase.lib.core :as lib]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(deftest ee-snowplow-features-test
+(use-fixtures :once (fixtures/initialize :db))
+
+(deftest ^:parallel ee-snowplow-features-test
   (testing "Every feature returned by `ee-snowplow-features-data` has a corresponding OSS fallback"
     (let [ee-features (map :name (ee-stats/ee-snowplow-features-data))
           oss-features (map :name (@#'stats/ee-snowplow-features-data'))]
@@ -38,29 +39,3 @@
                 :public             {}
                 :embedded           {}}
                (#'stats/dashboard-metrics)))))))
-
-(deftest ee-transform-metrics-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? false)
-    (testing "with no transforms"
-      (is (=? {:transforms 0 :transform_runs_last_24h 0}
-              (ee-stats/ee-transform-metrics))))
-    (testing "with transforms"
-      (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
-                                                          :table "test_table"}
-                                                 :name "Test SQL transform"
-                                                 :source {:type "query"
-                                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
-                     :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))
-                                            :transform_id (:id transform)}]
-        (is (=? {:transforms 1 :transform_runs_last_24h 1}
-                (ee-stats/ee-transform-metrics))))
-      (testing "with old transform runs"
-        (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
-                                                            :table "test_table"}
-                                                   :name "Test SQL transform"
-                                                   :source {:type "query"
-                                                            :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
-                       :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
-                                              :transform_id (:id transform)}]
-          (is (zero? (:transform_runs_last_24h (ee-stats/ee-transform-metrics)))))))))

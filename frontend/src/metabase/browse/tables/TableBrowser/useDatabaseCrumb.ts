@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { Databases } from "metabase/entities/databases";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
+import * as Urls from "metabase/utils/urls";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId } from "metabase-types/api";
 

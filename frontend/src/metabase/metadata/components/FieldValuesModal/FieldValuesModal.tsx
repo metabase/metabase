@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";

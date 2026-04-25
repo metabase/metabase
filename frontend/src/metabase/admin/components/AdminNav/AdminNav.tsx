@@ -1,7 +1,7 @@
 import type React from "react";
 
-import Link from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
+import { Link } from "metabase/common/components/Link";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Icon,

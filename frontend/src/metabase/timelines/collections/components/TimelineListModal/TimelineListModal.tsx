@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import {
   getDefaultTimelineName,
   getSortedTimelines,
-} from "metabase/lib/timelines";
-import * as Urls from "metabase/lib/urls";
+} from "metabase/common/utils/timelines";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import * as Urls from "metabase/utils/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
 import SearchEmptyState from "../SearchEmptyState";

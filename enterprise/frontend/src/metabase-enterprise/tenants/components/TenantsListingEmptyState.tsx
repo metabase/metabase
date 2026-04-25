@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Box, Button, Flex, Text } from "metabase/ui";
 
 export const TenantsListingEmptyState = ({
@@ -19,7 +19,7 @@ export const TenantsListingEmptyState = ({
             to="/admin/people/tenants/people"
             key="external-users-link"
           >{t`external users`}</Anchor>
-        )} to it, and organize these users into ${(<Anchor component={Link} to="/admin/people/tenants/groups" key="tenant-groups-link">{t`groups`}</Anchor>)} to assign ${(
+        )} to it, and organize these users into ${<Anchor component={Link} to="/admin/people/tenants/groups" key="tenant-groups-link">{t`groups`}</Anchor>} to assign ${(
           <Anchor
             component={Link}
             to="/admin/permissions"

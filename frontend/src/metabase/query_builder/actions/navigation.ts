@@ -1,9 +1,10 @@
 import type { Location } from "history";
+import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
+import { createThunkAction } from "metabase/redux";
+import { resetUIControls } from "metabase/redux/query-builder";
+import type { Dispatch } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
-import type { Dispatch } from "metabase-types/store";
 
 import {
   getCard,
@@ -18,7 +19,7 @@ import { type QueryParams, initializeQB } from "./core/initializeQB";
 import { resetRowZoom } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { setCurrentState } from "./state";
-import { resetUIControls, setQueryBuilderMode } from "./ui";
+import { setQueryBuilderMode } from "./ui";
 import { zoomInRow } from "./zoom";
 
 export const POP_STATE = "metabase/qb/POP_STATE";
@@ -45,7 +46,7 @@ export const popState = createThunkAction(
 
     const card = getCard(getState());
     if (location.state && location.state.card) {
-      if (!equals(card, location.state.card)) {
+      if (!_.isEqual(card, location.state.card)) {
         const isEmptyQuery = !location.state.card.dataset_query.database;
 
         if (isEmptyQuery) {

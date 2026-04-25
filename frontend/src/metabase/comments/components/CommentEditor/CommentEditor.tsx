@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-import Link from "@tiptap/extension-link";
+import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
@@ -7,8 +7,7 @@ import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { METAKEY } from "metabase/lib/browser";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import type { FormattingOptions } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/types";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -21,6 +20,7 @@ import { LINK_SEARCH_MODELS } from "metabase/rich_text_editing/tiptap/extensions
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
@@ -43,7 +43,7 @@ interface Props {
   readonly?: boolean;
   onBlur?: (content: DocumentContent, editor: Editor) => void;
   onChange?: (content: DocumentContent) => void;
-  onSubmit?: (content: DocumentContent, html: string) => void;
+  onSubmit?: (content: DocumentContent) => void;
   onEscape?: () => void;
 }
 
@@ -147,10 +147,8 @@ export const CommentEditor = ({
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
 
-    const html = stripInternalIds(editor.getHTML());
-
     if (!isEmpty && onSubmit) {
-      onSubmit(content, html);
+      onSubmit(content);
       editor.commands.clearContent(true);
       editor.commands.blur();
     }
@@ -227,11 +225,3 @@ export const CommentEditor = ({
     </Flex>
   );
 };
-
-function stripInternalIds(html: string): string {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-  const elements = doc.body.querySelectorAll("[_id]");
-  elements.forEach((el) => el.removeAttribute("_id"));
-  return doc.body.innerHTML;
-}

@@ -23,15 +23,21 @@
   assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
+  canonically-has-feature?
   ee-feature-error
+  is-trial?
   has-any-features?
   has-feature?
   log-enabled?
   max-users-allowed
+  meters
   plan-alias
   quotas
   TokenStatus
-  clear-cache!]
+  clear-cache!
+  token-check-url
+  transform-metered-as
+  transform-stats]
 
  (metabase.premium-features.settings
   active-users-count
@@ -40,10 +46,8 @@
   define-premium-feature
   development-mode?
   enable-tenants?
+  enable-ai-controls?
   enable-advanced-permissions?
-  enable-ai-entity-analysis?
-  enable-ai-sql-fixer?
-  enable-ai-sql-generation?
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?
@@ -54,13 +58,14 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-library?
+  enable-metabase-ai-managed?
+  enable-metabot-v3?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
-  enable-llm-autodescription?
-  enable-metabot-v3?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
@@ -74,18 +79,19 @@
   enable-sso-google?
   enable-sso-jwt?
   enable-sso-ldap?
+  enable-sso-oidc?
   enable-sso-saml?
   enable-support-users?
-  enable-transforms?
+  enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
+  enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
-  offer-metabase-ai-trial?
-  offer-metabase-ai-paid?
   premium-embedding-token
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features

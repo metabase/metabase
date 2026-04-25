@@ -11,14 +11,6 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      release-channel:
-        description: 'The release channel to publish to (optional)'
-        type: choice
-        options:
-          - none
-          - latest
-        required: true
-        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -33,22 +25,21 @@ on:
         description: 'A full-length commit SHA-1 hash'
         type: string
         required: true
-      release-channel:
-        description: 'The release channel to publish to (optional)'
-        type: string
-        # options:
-        #   - none
-        #   - latest
-        required: true
-        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
         default: false
 
+permissions:
+  id-token: write
+  contents: write
+  checks: write
+  issues: write
+  actions: read
+
 jobs:
   check-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -63,9 +54,11 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
       id: canonical_version
@@ -102,15 +95,17 @@ jobs:
           return versions
 
   publish-start-message:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [check-version]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Send publish start message
         uses: actions/github-script@v7
         env:
@@ -131,7 +126,7 @@ jobs:
 
   download-uberjar:
     needs: check-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
       matrix:
@@ -140,10 +135,12 @@ jobs:
     - uses: actions/checkout@v4
       with:
         sparse-checkout: .github
-    - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
+    - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
       uses: ./.github/actions/fetch-artifact
       with:
-        name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+        commit: ${{ inputs.commit }}
+        edition: ${{ matrix.edition }}
+        release: "true"
     - name: Check JAR version properties
       run: |
         # ensure actual jar checksum matches checksum file
@@ -172,7 +169,7 @@ jobs:
           ./version.properties
 
   upload-to-s3:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: download-uberjar
     timeout-minutes: 15
     strategy:
@@ -180,16 +177,17 @@ jobs:
         edition: [oss, ee]
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: prepare release scripts
-      run: cd release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
@@ -222,7 +220,7 @@ jobs:
         --paths "/${{ steps.version_path.outputs.result }}/*"
 
   verify-s3-download:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: upload-to-s3
     timeout-minutes: 15
     strategy:
@@ -259,32 +257,35 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-oss-${{ inputs.commit }}-uberjar
+      edition: oss
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
+      release: "true"
 
   containerize-ee:
     needs: check-version
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-ee-${{ inputs.commit }}-uberjar
+      edition: ee
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
+      release: "true"
 
   push-tags:
-    permissions: write-all
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: prepare release scripts
-      run: cd release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Tag Release
       uses: actions/github-script@v7
       with:
@@ -308,15 +309,17 @@ jobs:
 
   get-extra-tags:
     needs: [ check-version ]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       extra_tags: ${{ steps.taglist.outputs.extra_tags }}
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: prepare release scripts
-        run: cd release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Get extra tags
         id: taglist
         uses: actions/github-script@v7
@@ -326,10 +329,11 @@ jobs:
             const { getExtraTagsForVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
+            const latestMajorVersion = '${{ vars.LATEST_MAJOR_VERSION }}';
 
-            const extra_tags = getExtraTagsForVersion({ version });
+            const extra_tags = getExtraTagsForVersion({ version, latestMajorVersion });
 
-            console.log({ extra_tags });
+            console.log({ extra_tags, latestMajorVersion });
             core.setOutput('extra_tags', JSON.stringify(extra_tags));
 
   add-extra-tags:
@@ -347,21 +351,25 @@ jobs:
     with:
       version: ${{ inputs.version }}
       tag_name: ${{ matrix.tag }}
-      tag_ee: ${{ contains(matrix.tag, 'v1') }}
-      tag_oss: ${{ contains(matrix.tag, 'v0') }}
-      dot-x-tag: true
+      # For version tags (v0.x, v1.x), apply to matching edition only
+      # For non-version tags like "latest", apply to both editions
+      tag_ee: ${{ contains(matrix.tag, 'v1') || !startsWith(matrix.tag, 'v') }}
+      tag_oss: ${{ contains(matrix.tag, 'v0') || !startsWith(matrix.tag, 'v') }}
+      dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
     if: ${{ !inputs.auto }}
     needs: push-tags
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Find milestone
         id: find-milestone
         uses: actions/github-script@v7
@@ -404,7 +412,7 @@ jobs:
     needs:
       - containerize-ee
       - verify-s3-download
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/github-script@v7
@@ -424,25 +432,11 @@ jobs:
               }
             });
 
-  # updates the llms.txt asynchronously.
-  # release does not need to wait for this PR to be merged,
-  # because the llms.txt is in the main git repo.
-  trigger-update-llms-txt:
-    # do not trigger llms.txt update on automatic patch releases
-    if: ${{ !inputs.auto }}
-    needs: add-extra-tags
-    uses: ./.github/workflows/llms-txt-generate.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      branch: ${{ github.ref_name }}
-
   draft-release-notes:
     if: ${{ !inputs.auto }}
     needs: add-extra-tags
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
-    permissions: write-all
     env:
       AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
@@ -450,9 +444,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: prepare release scripts
-        run: cd release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
         uses: actions/github-script@v7
         with:
@@ -506,7 +502,7 @@ jobs:
             }).catch(console.warn);
 
   publish-version-info:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [push-tags, check-version]
     timeout-minutes: 15
     strategy:
@@ -522,16 +518,17 @@ jobs:
         echo "skipping version info update for nightly patch"
         exit 0
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Publish version info
       uses: actions/github-script@v7
       id: new_version_info
@@ -568,27 +565,18 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
-  set-release-channel:
-    needs: publish-version-info
-    uses: ./.github/workflows/release-tag.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      tag_name: ${{ inputs.release-channel }}
-      tag_rollout: 100
-      tag_ee: true
-      tag_oss: true
-
   publish-complete-message:
-    runs-on: ubuntu-22.04
-    needs: [set-release-channel, add-extra-tags]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    needs: [add-extra-tags]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Send publish complete message
         uses: actions/github-script@v7
         env:
@@ -610,16 +598,17 @@ jobs:
 
   manage-milestones:
     if: ${{ !inputs.auto }}
-    permissions: write-all
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Update milestones
       uses: actions/github-script@v7
       with:

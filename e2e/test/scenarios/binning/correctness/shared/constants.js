@@ -1,34 +1,34 @@
 export const TIME_OPTIONS = {
   Minute: {
     selected: "by minute",
-    representativeValues: ["April 30, 2022, 6:56 PM", "May 10, 2022, 9:38 AM"],
+    representativeValues: ["April 30, 2025, 6:56 PM", "May 10, 2025, 9:38 AM"],
   },
   Hour: {
     selected: "by hour",
-    representativeValues: ["April 30, 2022, 6:00 PM", "May 10, 2022, 9:00 AM"],
+    representativeValues: ["April 30, 2025, 6:00 PM", "May 10, 2025, 9:00 AM"],
   },
   Day: {
     selected: "by day",
-    representativeValues: ["April 30, 2022", "May 10, 2022"],
+    representativeValues: ["April 30, 2025", "May 10, 2025"],
   },
   Week: {
     selected: "by week",
     representativeValues: [
-      "April 24, 2022 – April 30, 2022",
-      "May 8, 2022 – May 14, 2022",
+      "April 27, 2025 – May 3, 2025",
+      "May 11, 2025 – May 17, 2025",
     ],
   },
   Month: {
     selected: "by month",
-    representativeValues: ["April 2022", "May 2022"],
+    representativeValues: ["April 2025", "May 2025"],
   },
   Quarter: {
     selected: "by quarter",
-    representativeValues: ["Q2 2022", "Q1 2023", "Q1 2024", "Q1 2025"],
+    representativeValues: ["Q2 2025", "Q1 2026", "Q1 2027", "Q1 2028"],
   },
   Year: {
     selected: "by year",
-    representativeValues: ["2022", "2023", "2024", "2025", "2026"],
+    representativeValues: ["2025", "2026", "2027", "2028", "2029"],
   },
   "Minute of hour": {
     selected: "by minute of hour",
@@ -38,7 +38,7 @@ export const TIME_OPTIONS = {
   },
   "Hour of day": {
     selected: "by hour of day",
-    representativeValues: ["12:00 AM", "2:00 AM", "12:00 PM", "8:00 PM"],
+    representativeValues: ["12:00 AM", "3:00 AM", "12:00 PM", "8:00 PM"],
     isHiddenByDefault: true,
   },
   "Day of week": {

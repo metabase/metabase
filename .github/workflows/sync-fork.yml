@@ -1,0 +1,196 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: "0 2 * * 1" # Every Monday at 2 AM UTC
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "⚠️ DESTRUCTIVE: Force-push from upstream, overwriting any fork-only commits"
+        required: false
+        default: false
+        type: boolean
+      release_branch_count:
+        description: "Number of most recent release branches to sync (0 to skip)"
+        required: false
+        default: "5"
+        type: number
+
+jobs:
+  workflow-summary:
+    # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
+    if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `release_branch_count`: ${{ inputs.release_branch_count || 5 }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `force`: ${{ inputs.force || false }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `trigger`: ${{ github.event_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          else
+            echo 'triggered by: schedule' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  sync-master:
+    # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
+    if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Add upstream remote
+        run: git remote add metabase https://github.com/metabase/metabase.git
+
+      - name: Fetch upstream master
+        run: git fetch metabase master
+
+      - name: Sync master from upstream
+        id: sync
+        env:
+          FORCE: ${{ inputs.force || 'false' }}
+        run: |
+          if git diff --quiet master metabase/master; then
+            echo "master is already up to date — skipping push"
+            echo "detail=up to date" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git checkout master
+
+          if [ "$FORCE" = "true" ]; then
+            echo "⚠️  Force-syncing master (overwriting fork-only commits)"
+            git reset --hard metabase/master
+            git push origin master --force
+            echo "detail=force-synced" >> "$GITHUB_OUTPUT"
+          else
+            if git pull metabase master; then
+              git push origin master
+              echo "detail=synced" >> "$GITHUB_OUTPUT"
+            else
+              echo "::warning::master has diverged from upstream — skipping (use force to override)"
+              echo "detail=diverged (skipped)" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Summary
+        if: always()
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "${{ steps.sync.outcome }}" = "success" ]; then
+            echo "| [\`master\`](https://github.com/${REPO}/tree/master) | ✅ ${{ steps.sync.outputs.detail }} |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| [\`master\`](https://github.com/${REPO}/tree/master) | ❌ failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  list-release-branches:
+    # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
+    if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    outputs:
+      branches: ${{ steps.discover.outputs.branches }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Add upstream remote
+        run: git remote add metabase https://github.com/metabase/metabase.git
+
+      - name: Fetch upstream release branches
+        run: git fetch metabase 'refs/heads/release-*:refs/remotes/metabase/release-*'
+
+      - name: Discover release branches to sync
+        id: discover
+        env:
+          BRANCH_COUNT: ${{ inputs.release_branch_count || '5' }}
+        run: |
+          # Get only canonical release branches (release-x.NN.x), skip ad-hoc branches like backports
+          branches=$(git branch -r --list 'metabase/release-*' | sed 's|^ *||' | grep -E '^metabase/release-x\.[0-9]+\.x$' | sort -t. -k2,2rn | head -n "$BRANCH_COUNT")
+
+          json="[]"
+          for branch in $branches; do
+            branch_name="${branch#metabase/}"
+            json=$(echo "$json" | jq -c --arg b "$branch_name" '. + [$b]')
+          done
+
+          echo "branches=$json" >> "$GITHUB_OUTPUT"
+          echo "Release branches to sync: $json"
+
+  sync-release-branch:
+    needs: list-release-branches
+    if: needs.list-release-branches.outputs.branches != '[]'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.list-release-branches.outputs.branches) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Add upstream remote
+        run: git remote add metabase https://github.com/metabase/metabase.git
+
+      - name: Fetch upstream branch
+        run: git fetch metabase "${{ matrix.branch }}"
+
+      - name: Sync ${{ matrix.branch }} from upstream
+        id: sync
+        env:
+          FORCE: ${{ inputs.force || 'false' }}
+        run: |
+          branch_name="${{ matrix.branch }}"
+
+          # Check if branch exists on origin
+          if git rev-parse --verify "origin/$branch_name" &>/dev/null; then
+            if git diff --quiet "origin/$branch_name" "metabase/$branch_name"; then
+              echo "$branch_name is already up to date — skipping push"
+              echo "detail=up to date" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          if [ "$FORCE" = "true" ]; then
+            echo "⚠️  Force-syncing $branch_name (overwriting fork-only commits)"
+            git checkout -B "$branch_name" "metabase/$branch_name"
+            git push origin "$branch_name" --force
+            echo "detail=force-synced" >> "$GITHUB_OUTPUT"
+          else
+            git checkout -B "$branch_name" "origin/$branch_name" 2>/dev/null || git checkout -B "$branch_name" "metabase/$branch_name"
+            if git pull metabase "$branch_name"; then
+              git push origin "$branch_name"
+              echo "detail=synced" >> "$GITHUB_OUTPUT"
+            else
+              echo "::warning::$branch_name has diverged from upstream — skipping (use force to override)"
+              echo "detail=diverged (skipped)" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Summary
+        if: always()
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          branch="${{ matrix.branch }}"
+          if [ "${{ steps.sync.outcome }}" = "success" ]; then
+            echo "| [\`${branch}\`](https://github.com/${REPO}/tree/${branch}) | ✅ ${{ steps.sync.outputs.detail }} |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| [\`${branch}\`](https://github.com/${REPO}/tree/${branch}) | ❌ failed |" >> $GITHUB_STEP_SUMMARY
+          fi

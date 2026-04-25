@@ -35,7 +35,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         dateFilterSelector({
@@ -58,15 +58,15 @@ describe("scenarios > dashboard > filters > date", () => {
   // make sure the default filter works for just one of the available options
   it("should work when set as the default filter", () => {
     H.setFilter("Date picker", "Month and Year");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     DateFilter.setMonthAndYear({
       month: "Nov",
-      year: "2022",
+      year: "2025",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("Created At").first().click();
 
@@ -78,10 +78,10 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     // Make sure we can override the default value
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 2022").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("November 2025").click();
     H.popover().contains("Jun").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
   });
 
@@ -108,21 +108,21 @@ describe("scenarios > dashboard > filters > date", () => {
     H.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Nov",
-      year: "2023",
+      year: "2026",
     });
 
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
     H.saveDashboard();
 
     // Updates the filter value
-    H.filterWidget().should("contain.text", "November 2023").click();
+    H.filterWidget().should("contain.text", "November 2026").click();
     H.popover().findByText("Dec").click();
-    H.filterWidget().findByText("December 2023");
+    H.filterWidget().findByText("December 2026");
     H.ensureDashboardCardHasText("76.83");
 
     // Resets the value back by clicking widget icon
     H.resetFilterWidgetToDefault();
-    H.filterWidget().findByText("November 2023");
+    H.filterWidget().findByText("November 2026");
     H.ensureDashboardCardHasText("27.74");
   });
 
@@ -132,31 +132,31 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.setFilter("Date picker", "All Options");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
     // click on Relative date range…, to open the relative date filter type tabs
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Relative date range…").click();
     // choose Next, under which the new options should be available
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
     // click on Days (the default value), which should open the resolution dropdown
     cy.findByDisplayValue("days").click();
     // Hours should appear in the selection box (don't click it)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("hours");
     // Minutes should appear in the selection box; click it
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("minutes").click();
     // also check the "Include this minute" checkbox
     // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Include this minute").click();
   });
 
   it("correctly serializes exclude filter on non-English locales (metabase#29122)", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en_ZZ" });
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -168,28 +168,19 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sélectionner...").click(); // "Select…"
-    H.popover().contains("Created At").first().click();
+    H.getDashboardCard().findByText("[zz] Select…").click();
+    H.popover().contains("Created At").first().click(); // 'Created At' is a column name, so it's not translated
+    H.saveDashboard();
 
-    H.saveDashboard({
-      buttonLabel: "Sauvegarder",
-      editBarText: "Vous êtes en train d'éditer ce tableau de bord.",
-    });
+    cy.findByTestId("dashboard-parameters-and-cards")
+      .findByText("[zz] Date")
+      .click();
+    H.popover().findByText("[zz] Exclude…").click();
+    H.popover().findByText("[zz] Months of the year…").click();
+    H.popover().findByText("January").click(); // Dayjs doesn't have en-ZZ locale, falls back to en
+    H.popover().findByText("[zz] Add filter").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclure...").click(); // "Exclude…"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mois de l'année...").click(); // "Months of the year…"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("janvier").click(); // "January"
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ajouter un filtre").click(); // "Add filter"
-
-    cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
+    cy.url().should("match", /\/dashboard\/\d+\?.*date=exclude-months-Jan/);
   });
 });
 

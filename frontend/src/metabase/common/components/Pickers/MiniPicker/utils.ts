@@ -3,12 +3,11 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
-import type { DispatchFn } from "metabase/lib/redux";
-import { useDispatch } from "metabase/lib/redux";
+import type { DispatchFn } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
-import type { TablePickerValue } from "../TablePicker";
 
 import {
   type MiniPickerCollectionItem,
@@ -16,14 +15,25 @@ import {
   MiniPickerFolderModel,
   type MiniPickerItem,
   type MiniPickerPickableItem,
+  type MiniPickerTableItem,
 } from "./types";
 
 export const getOurAnalytics = (): MiniPickerFolderItem => ({
   model: "collection",
   id: "root" as any, // cmon typescript
   name: t`Our analytics`,
-  here: ["card"],
-  below: ["card"],
+  here: ["collection"],
+  below: [
+    "collection",
+    "dashboard",
+    "document",
+    "card",
+    "dataset",
+    "metric",
+    "table",
+    "snippet",
+    "transform",
+  ],
 });
 
 export function useGetPathFromValue({
@@ -66,13 +76,21 @@ async function getPathFromValue(
   const table = await dispatch(
     tableApi.endpoints.getTable.initiate({ id: value.id }),
   ).unwrap();
+
   return table.collection == null
-    ? getTablePathFromValue(value, dispatch)
+    ? getTablePathFromValue(
+        {
+          ...table,
+          model: "table",
+          table_schema: table.schema,
+        },
+        dispatch,
+      )
     : getCollectionPathFromValue(value, dispatch, libraryCollection);
 }
 
 async function getTablePathFromValue(
-  value: TablePickerValue,
+  value: MiniPickerTableItem,
   dispatch: DispatchFn,
 ): Promise<MiniPickerFolderItem[]> {
   // get the list endpoints instead of the single table endpoint
@@ -89,7 +107,7 @@ async function getTablePathFromValue(
   const db = dbs.data.find((db) => db.id === value.db_id);
   const schema: SchemaName | undefined =
     schemas?.length > 1
-      ? schemas.find((sch) => sch === value.schema)
+      ? schemas.find((sch) => sch === value.table_schema)
       : undefined;
   return [
     ...(db ? [{ id: db.id, name: db.name, model: "database" as const }] : []),
@@ -113,7 +131,7 @@ async function getCollectionPathFromValue(
   const card =
     value.model !== "table"
       ? await dispatch(
-          cardApi.endpoints.getCard.initiate({ id: value.id }),
+          cardApi.endpoints.getCard.initiate({ id: Number(value.id) }),
         ).unwrap()
       : null;
 

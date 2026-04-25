@@ -80,7 +80,7 @@
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (mu/defn load-driver-namespace-if-needed!
-  "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
+  "Load the expected namespace for a `driver` if it has not already been registered. This only works for core Metabase
   drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
   themselves in their plugin initialization code.
 
@@ -109,7 +109,7 @@
   "Check to make sure we're not trying to change the abstractness of an already registered driver"
   [driver new-abstract?]
   (when (registered? driver)
-    (let [old-abstract? (boolean (abstract? driver))
+    (let [old-abstract? (abstract? driver)
           new-abstract? (boolean new-abstract?)]
       (when (not= old-abstract? new-abstract?)
         (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."

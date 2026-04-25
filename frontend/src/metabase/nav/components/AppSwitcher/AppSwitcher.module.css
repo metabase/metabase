@@ -1,0 +1,6 @@
+.Avatar {
+  --avatar-bg: var(--mb-color-background-secondary) !important;
+  --avatar-color: var(--mb-color-text-primary) !important;
+
+  cursor: pointer;
+}

@@ -20,6 +20,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]])
   (:import
@@ -375,3 +376,46 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+
+(defmethod driver/check-isolation-permissions :sql-jdbc
+  [driver database test-table]
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     {:write? true}
+     (fn [^Connection conn]
+       (.setAutoCommit conn false)
+       (try
+         (let [init-result (try
+                             (driver/init-workspace-isolation! driver database test-workspace)
+                             (catch Exception e
+                               (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
+                                                    (ex-message e))
+                                               {:step :init} e))))
+               workspace-with-details (merge test-workspace init-result)]
+           (when test-table
+             (try
+               (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+               (catch Exception e
+                 (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
+                                      (:schema test-table) (:name test-table) (ex-message e))
+                                 {:step :grant :table test-table} e)))))
+           (try
+             (driver/destroy-workspace-isolation! driver database workspace-with-details)
+             (catch Exception e
+               (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
+                                    (ex-message e))
+                               {:step :destroy} e)))))
+         nil
+         (catch Exception e
+           (ex-message e))
+         (finally
+           (.rollback conn)))))))

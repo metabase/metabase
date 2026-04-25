@@ -65,15 +65,15 @@ export const UserProvisioning = () => {
   const isScimEnabled = !!settingValues?.["scim-enabled"];
   const isScimInitialized = !!maskedTokenRequest.data;
 
-  // since the request to enable scim and create the first token are seperate requests, it's possible
-  // that the token request failed or wasn't issued due to some interuption (network issue, instance down, etc.)
-  // we can detect this case by seing the scim is enabled without any token after all requests for token have settled
+  // since the request to enable scim and create the first token are separate requests, it's possible
+  // that the token request failed or wasn't issued due to some interruption (network issue, instance down, etc.)
+  // we can detect this case by seeing the scim is enabled without any token after all requests for token have settled
   // this is later used to show an error message based on this token not being found + encourage the user to go through
   // the regenerate flow to get a new unmasked token
   const isScimIncorrectlyIniailized = Boolean(
     !isScimInitialized &&
-      isScimEnabled &&
-      !(isLoadingToken || maskedTokenRequest.isFetching),
+    isScimEnabled &&
+    !(isLoadingToken || maskedTokenRequest.isFetching),
   );
 
   const samlUserProvisioningEnabled = useSetting(

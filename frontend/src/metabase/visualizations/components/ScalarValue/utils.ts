@@ -1,11 +1,11 @@
-import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import { measureText } from "metabase/lib/measure-text";
+import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/utils/dashboard_grid";
+import { measureText } from "metabase/utils/measure-text";
 
 interface FindSizeInput {
   text: string;
   targetHeight: number;
   targetWidth: number;
-  unit: string;
+  unit: "rem";
   fontFamily: string;
   fontWeight: string | number;
   step: number;

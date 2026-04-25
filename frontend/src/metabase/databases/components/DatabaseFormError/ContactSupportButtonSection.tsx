@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Button, Flex } from "metabase/ui";
 
@@ -20,7 +20,7 @@ export const ContactSupportButtonSection = () => {
     <TroubleshootingTip
       body={
         <Flex direction="column" gap="md" align="flex-start">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins */}
           {t`Reach out to Metabase engineers who can help with technical troubleshooting. Not your typical support agents.`}
           <Button
             component={Link}

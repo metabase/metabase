@@ -2,17 +2,16 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
-import Link from "metabase/common/components/Link";
-import { MoveModal } from "metabase/common/components/MoveModal";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import { Link } from "metabase/common/components/Link";
+import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import * as Urls from "metabase/utils/urls";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import S from "./DashboardMoveModal.module.css";
 
@@ -33,16 +32,20 @@ function DashboardMoveModal({
     options: any,
   ) => void;
 }) {
-  const recentsAndSearchFilter = (item: CollectionPickerItem) =>
-    item.model === "collection" && item.id === dashboard.collection_id;
-
   return (
     <MoveModal
       title={t`Move dashboard to…`}
       onClose={onClose}
-      initialCollectionId={dashboard.collection_id ?? "root"}
       canMoveToDashboard={false}
-      entityType="dashboard"
+      movingItem={{
+        ...dashboard,
+        collection: {
+          id: dashboard.collection?.id || "root",
+          name: dashboard.collection?.name || "",
+          namespace: dashboard.collection?.namespace,
+        }, // parent collection info
+        model: "dashboard",
+      }}
       onMove={async (destination) => {
         await setDashboardCollection({ id: dashboard.id }, destination, {
           notify: {
@@ -55,7 +58,6 @@ function DashboardMoveModal({
         });
         onClose();
       }}
-      recentAndSearchFilter={recentsAndSearchFilter}
     />
   );
 }

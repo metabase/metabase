@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 import type { SearchModel } from "metabase-types/api";
 

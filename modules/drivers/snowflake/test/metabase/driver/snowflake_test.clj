@@ -23,11 +23,11 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -36,6 +36,7 @@
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.impl.get-or-create :as test.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.snowflake :as test.data.snowflake]
    [metabase.test.data.sql :as sql.tx]
@@ -88,7 +89,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment true
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 0
               :pk? true}
@@ -103,7 +104,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 2}
              {:name "latitude"
@@ -124,7 +125,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
@@ -294,29 +295,29 @@
                         :additional-options "foo=bar"))))))))
 
 (deftest describe-database-test
+  ;; This test calls driver/describe-database which queries Snowflake directly.
+  ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (mt/test-driver :snowflake
-    (testing "describe-database"
-      (let [expected {:tables
-                      #{{:name "users",      :schema "PUBLIC", :description nil}
-                        {:name "venues",     :schema "PUBLIC", :description nil}
-                        {:name "checkins",   :schema "PUBLIC", :description nil}
-                        {:name "categories", :schema "PUBLIC", :description nil}
-                        {:name "orders",     :schema "PUBLIC", :description nil}
-                        {:name "people",     :schema "PUBLIC", :description nil}
-                        {:name "products",   :schema "PUBLIC", :description nil}
-                        {:name "reviews",    :schema "PUBLIC", :description nil}}}]
-        (testing "should work with normal details"
-          (is (= expected
-                 (driver/describe-database :snowflake (mt/db)))))
-        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
-          (is (= expected
-                 (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
-        (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
-          (is (thrown? Exception
-                       (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
-        (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
-          (is (= expected
-                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+    (mt/dataset airports
+      (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
+        (testing "describe-database"
+          (let [expected-tables #{{:name "continent", :schema "PUBLIC", :description nil}
+                                  {:name "municipality", :schema "PUBLIC", :description nil}
+                                  {:name "region", :schema "PUBLIC", :description nil}
+                                  {:name "country", :schema "PUBLIC", :description nil}
+                                  {:name "airport", :schema "PUBLIC", :description nil}}]
+            (testing "should work with normal details"
+              (is (= expected-tables
+                     (:tables (driver/describe-database :snowflake (mt/db))))))
+            (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
+              (is (= expected-tables
+                     (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname}))))))
+            (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
+              (is (thrown? Exception
+                           (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+            (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
+              (is (= expected-tables
+                     (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
@@ -374,7 +375,7 @@
                    (map (partial into {})
                         (t2/select [:model/Table :name] :db_id (u/the-id database)))))))))))
 
-(defn- do-with-dynamic-table
+(defn- do-with-dynamic-table!
   [thunk]
   (mt/dataset (mt/dataset-definition
                "dynamic-db"
@@ -388,29 +389,29 @@
                               (:db details) (:db details) (:db details))])
       (thunk))))
 
-(defmacro with-dynamic-table
+(defmacro with-dynamic-table!
   "Create a db with 2 tables: metabase_users and metabase_fan, in which metabase_fan is a dynamic table."
   [& body]
-  `(do-with-dynamic-table (fn [] ~@body)))
+  `(do-with-dynamic-table! (fn [] ~@body)))
 
 (deftest sync-dynamic-tables-test
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
-      (with-dynamic-table
+      (with-dynamic-table!
         (sync/sync-database! (t2/select-one :model/Database (mt/id)))
         (testing "both base tables and dynamic tables should be synced"
           (is (= #{"metabase_fan" "metabase_users"}
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
-                     {:name "id" :base_type :type/Number}}
-                   (set (t2/select [:model/Field :name :base_type]
-                                   :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
+                     {:name "id" :base_type :type/BigInteger}}
+                   (set (t2/select-fn-set identity [:model/Field :name :base_type]
+                                          :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
 
 (deftest dynamic-table-helpers-test
   (testing "test to make sure various methods called on dynamic tables work"
     (mt/test-driver :snowflake
-      (with-dynamic-table
+      (with-dynamic-table!
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
          (mt/db)
@@ -440,14 +441,47 @@
                #_{:clj-kondo/ignore [:deprecated-var]}
                (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
 
+(deftest ^:sequential describe-table-fields-uuid-column-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
+      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+            table-name (str "uuid_test_" (u.random/random-name))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake
+         (mt/db)
+         nil
+         (fn [^java.sql.Connection conn]
+           (try
+             (doseq [stmt [(format "CREATE OR REPLACE TABLE \"%s\".\"PUBLIC\".\"%s\" (\"uuid_col\" UUID, \"name\" VARCHAR, \"description\" VARCHAR);"
+                                   db-name table-name)
+                           (format "INSERT INTO \"%s\".\"PUBLIC\".\"%s\" VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'test', 'a row');"
+                                   db-name table-name)]]
+               (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))
+             (let [table  {:name table-name :schema "PUBLIC"}
+                   fields (sql-jdbc.sync/describe-table-fields :snowflake conn table db-name)]
+               (testing "All columns including UUID should be synced"
+                 (is (= #{"uuid_col" "name" "description"}
+                        (into #{} (map :name) fields))))
+               (testing "UUID column should have a usable base type"
+                 (let [uuid-field (first (filter #(= "uuid_col" (:name %)) fields))]
+                   (is (some? uuid-field)
+                       "UUID column should exist as a synced field")
+                   (when uuid-field
+                     (is (isa? (:base-type uuid-field) :type/*)
+                         "UUID column should have a valid base type")))))
+             (finally
+               (jdbc/execute! {:connection conn}
+                              [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
+                              {:transaction? false})))))))))
+
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
-      (is (= {:name   "categories"
-              :schema "PUBLIC"
-              :fields #{{:name                       "id"
+      (is (=? {:name   "categories"
+               :schema "PUBLIC"
+               :fields [{:name                       "id"
                          :database-type              "NUMBER"
-                         :base-type                  :type/Number
+                         :base-type                  :type/BigInteger
                          :pk?                        true
                          :database-position          0
                          :database-is-auto-increment true
@@ -461,8 +495,9 @@
                          :database-is-auto-increment false
                          :database-is-nullable       false
                          :database-required          true
-                         :json-unfolding             false}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
+                         :json-unfolding             false}]}
+              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
+                  (update :fields (partial sort-by :name))))))))
 
 (deftest ^:sequential describe-table-fks-test
   (mt/test-driver :snowflake
@@ -517,7 +552,7 @@
                                                              (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
-             net.snowflake.client.jdbc.SnowflakeSQLException
+             net.snowflake.client.api.exception.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
         (is (can-connect? (-> (:details (mt/db))
@@ -929,6 +964,25 @@
         (is (=? {:password "abc" :private-key-id int? :use-password complement} (:details db2)))
         (is (= {:password "abc" :use-password false} (:details db3)))))))
 
+(deftest ^:parallel normalize-write-data-details-test
+  (mt/test-driver :snowflake
+    (testing "write-data-details should be normalized the same way as details"
+      (testing "regionid normalization"
+        (mt/with-temp [:model/Database db {:name "Snowflake DB with write details"
+                                           :engine :snowflake
+                                           :details {:account "my-instance"}
+                                           :write_data_details {:account "write-instance"
+                                                                :regionid "eu-west-2"}}]
+          (is (= {:account "write-instance.eu-west-2"}
+                 (:write_data_details db)))))
+      (testing "use-password inference"
+        (mt/with-temp [:model/Database db {:name "Snowflake DB with write pw"
+                                           :engine :snowflake
+                                           :details {:account "my-instance"}
+                                           :write_data_details {:password "secret"}}]
+          (is (= {:password "secret" :use-password true}
+                 (:write_data_details db))))))))
+
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
@@ -1002,25 +1056,24 @@
       nil "" "asdf" "snowflake:jdbc://x")))
 
 (deftest ^:parallel connection-str->parameters-test-2
-  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
-    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
-      "jdbc:snowflake://x.snowflakecomputing.com"
-      "jdbc:snowflake://x.snowflakecomputing.com/"
-      "jdbc:snowflake://x.snowflakecomputing.com/?")))
+  (testing "Returns nil for valid strings of no parameters"
+    (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?x" nil)))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role}
+      (is (= {"ROLE" role}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role))))))))
 
 (deftest ^:parallel connection-str->parameters-test-4
   (testing "Returns multiple url parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role
+      (is (= {"ROLE" role
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
@@ -1107,7 +1160,7 @@
     :snowflake
     (mt/dataset
       good-datetimes-in-belize
-      (is (= [["id" "NUMBER" :type/Number 0]
+      (is (= [["id" "NUMBER" :type/BigInteger 0]
               ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
               ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
               ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]
@@ -1208,28 +1261,28 @@
         (testing "password takes precedence if use-password is true"
           (when (and password use-password)
             (is (= :password (first result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "password comes last if use-password is false or nil"
           (when (and password (not use-password))
             (is (= :password (last result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "path is preferred if options is local"
           (when (and (= "local" options) private-key-value private-key-path)
             (is (= :private-key-path (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "value is preferred if options is nil or uploaded"
           (when (and (not= "local" options) private-key-value private-key-path)
             (is (= :private-key-value (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "ID is checked last if path or value exists"
           (when (or (and private-key-value private-key-id)
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
-                [idxs result])))))))
+                (str [idxs result]))))))))
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake
@@ -1334,67 +1387,61 @@
                              (lib/with-fields [products-id products-name products-category])))]
       (doseq [[msg filter exp-filter exp-rows] [["case insensitive contains has rows"
                                                  (-> (lib/contains products-category "GET")
-                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                     lib/ignore-case)
                                                  "CONTAINS(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
 
                                                 ["case sensitive contains has rows"
-                                                 (-> (lib/contains products-category "Gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/contains products-category "Gad")
                                                  "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'Gad')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
 
                                                 ["case sensitive contains with no rows"
-                                                 (-> (lib/contains products-category "gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/contains products-category "gad")
                                                  "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'gad')"
                                                  []]
 
                                                 ["case insensitive starts with has rows"
                                                  (-> (lib/starts-with products-category "GAD")
-                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                     lib/ignore-case)
                                                  "STARTSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'gad')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
 
                                                 ["case sensitive starts with has rows"
-                                                 (-> (lib/starts-with products-category "Gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/starts-with products-category "Gad")
                                                  "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'Gad')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
 
                                                 ["case sensitive starts with has no rows"
-                                                 (-> (lib/starts-with products-category "gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/starts-with products-category "gad")
                                                  "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'gad')"
                                                  []]
 
                                                 ["case insensitive ends with has rows"
                                                  (-> (lib/ends-with products-category "GET")
-                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                     lib/ignore-case)
                                                  "ENDSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
 
                                                 ["case sensitive ends with has rows"
-                                                 (-> (lib/ends-with products-category "get")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/ends-with products-category "get")
                                                  "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'get')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
 
                                                 ["case sensitive ends with has no rows"
-                                                 (-> (lib/ends-with products-category "GET")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/ends-with products-category "GET")
                                                  "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'GET')"
                                                  []]]]
         (testing msg
@@ -1423,23 +1470,63 @@
           (is (= exp-rows (mt/rows result))))))))
 
 (deftest snowflake-with-dbname-in-details-gets-synced-test
+  ;; This test calls driver/describe-database which queries Snowflake directly.
+  ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
     (mt/test-driver :snowflake
-      (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
-        (mt/with-temp [:model/Database db {:engine :snowflake
-                                           :details (-> (:details (mt/db))
-                                                        (dissoc :private-key-id)
-                                                        (assoc :private-key-options "uploaded")
-                                                        (assoc :private-key-value priv-key-val)
-                                                        (assoc :use-password false)
-                                                        (assoc :dbname nil))}]
-          (is (= {:tables
-                  #{{:name "users",      :schema "PUBLIC", :description nil}
-                    {:name "venues",     :schema "PUBLIC", :description nil}
-                    {:name "checkins",   :schema "PUBLIC", :description nil}
-                    {:name "categories", :schema "PUBLIC", :description nil}
-                    {:name "orders",     :schema "PUBLIC", :description nil}
-                    {:name "people",     :schema "PUBLIC", :description nil}
-                    {:name "products",   :schema "PUBLIC", :description nil}
-                    {:name "reviews",    :schema "PUBLIC", :description nil}}}
-                 (driver/describe-database :snowflake db))))))))
+      (mt/dataset airports
+        (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
+          (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
+            (mt/with-temp [:model/Database db {:engine :snowflake
+                                               :details (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)
+                                                            (assoc :private-key-options "uploaded")
+                                                            (assoc :private-key-value priv-key-val)
+                                                            (assoc :use-password false)
+                                                            (assoc :dbname nil))}]
+              (is (= #{{:name "continent",    :schema "PUBLIC", :description nil}
+                       {:name "municipality", :schema "PUBLIC", :description nil}
+                       {:name "region",       :schema "PUBLIC", :description nil}
+                       {:name "country",      :schema "PUBLIC", :description nil}
+                       {:name "airport",      :schema "PUBLIC", :description nil}}
+                     (:tables (driver/describe-database :snowflake db)))))))))))
+
+;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
+;; Tests to validate that fake sync produces correct metadata for Snowflake.
+;; The key difference from Redshift: Snowflake uses plain table names ("venues") because each
+;; dataset has its own database, while Redshift uses qualified names ("test_data_venues").
+
+(deftest ^:parallel fake-sync-transformation-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake fake-sync uses plain table names (not qualified)"
+      ;; Snowflake has separate databases per dataset, so tables are just "users"
+      ;; not "transform_test_users" like Redshift which shares a single database.
+      (let [dbdef {:database-name "transform-test"
+                   :table-definitions [{:table-name        "users"
+                                        :field-definitions [{:field-name "name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :snowflake 123 dbdef)
+            table (:table-row (first rows))]
+        (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
+        (is (= "PUBLIC" (:schema table)))))))
+
+(deftest hour-bucketing-time-field-in-source-query-test
+  (testing "Hour group-by on time fields from a source query should work (#68065)"
+    (mt/test-driver :snowflake
+      (mt/dataset time-test-data
+        (let [mp         (mt/metadata-provider)
+              users      (lib.metadata/table mp (mt/id :users))
+              time-field (lib.metadata/field mp (mt/id :users :last_login_time))
+              ;; Build a two-stage query: the first stage selects the time field,
+              ;; the second stage groups it by :hour. In the second stage the field is
+              ;; referenced by name (string), not by integer ID — this is where the bug
+              ;; manifests: field-metadata is nil and database-type info is lost, causing
+              ;; Snowflake to incorrectly cast to TIMESTAMPNTZ.
+              query      (-> (lib/query mp users)
+                             (lib/with-fields [time-field])
+                             lib/append-stage
+                             (notebook-helpers/add-breakout
+                              "Summaries" "Last Login Time"
+                              {:col-fn #(lib/with-temporal-bucket % :hour)}))]
+          (mt/with-native-query-testing-context query
+            (is (some? (mt/rows (qp/process-query query)))
+                "Hour bucketing on a time field from a source query should not error")))))))

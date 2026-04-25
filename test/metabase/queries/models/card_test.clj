@@ -1,5 +1,6 @@
 (ns metabase.queries.models.card-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -8,6 +9,8 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
@@ -372,6 +375,71 @@
                :required true}]
              (card/template-tag-parameters card))))))
 
+(defn- native-query-card
+  "Build a card map with a native query containing the given template tags.
+  Uses lib to construct a properly normalized MBQL 5 query."
+  [sql template-tags]
+  {:dataset_query (lib/with-template-tags
+                    (lib/native-query meta/metadata-provider sql)
+                    template-tags)})
+
+(deftest ^:parallel template-tag-parameters-text-tag-test
+  (testing ":text template tag without widget-type produces :string/= parameter type (QUE2-326)"
+    (let [card (native-query-card
+                "SELECT * FROM PEOPLE WHERE NAME = {{name}}"
+                {"name" {:id           "_NAME_"
+                         :name         "name"
+                         :display-name "Name"
+                         :type         :text
+                         :required     false
+                         :default      "Alice"}})]
+      (is (= [{:id       "_NAME_"
+               :type     :string/=
+               :target   [:variable [:template-tag "name"]]
+               :name     "Name"
+               :slug     "name"
+               :default  "Alice"
+               :required false}]
+             (card/template-tag-parameters card))))))
+
+(deftest ^:parallel template-tag-parameters-boolean-tag-test
+  (testing ":boolean template tag without widget-type produces :boolean/= parameter type (QUE2-326)"
+    (let [card (native-query-card
+                "SELECT 1 WHERE 1 = {{active}}"
+                {"active" {:id           "_ACTIVE_"
+                           :name         "active"
+                           :display-name "Is Active"
+                           :type         :boolean
+                           :required     false}})]
+      (is (= [{:id       "_ACTIVE_"
+               :type     :boolean/=
+               :target   [:variable [:template-tag "active"]]
+               :name     "Is Active"
+               :slug     "active"
+               :default  nil
+               :required false}]
+             (card/template-tag-parameters card))))))
+
+(deftest ^:parallel template-tag-parameters-dimension-category-widget-test
+  (testing ":dimension template tag with :category widget-type passes through widget-type (QUE2-326)"
+    (let [card (native-query-card
+                "SELECT * FROM PRODUCTS WHERE {{cat}}"
+                {"cat" {:id           "_CAT_"
+                        :name         "cat"
+                        :display-name "Category"
+                        :type         :dimension
+                        :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                       (meta/id :products :category)]
+                        :widget-type  :category}})]
+      (is (= [{:id       "_CAT_"
+               :type     :category
+               :target   [:dimension [:template-tag "cat"]]
+               :name     "Category"
+               :slug     "cat"
+               :default  nil
+               :required false}]
+             (card/template-tag-parameters card))))))
+
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
     (let [test-data-db-id   (mt/id)
@@ -663,24 +731,70 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
-(deftest ^:parallel extract-test
-  (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
-        query    (mt/mbql-query venues)]
-    (testing "every card retains result_metadata"
-      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query   query
-                                                 :result_metadata metadata}
-                     :model/Card {card2-id :id} {:type            :model
-                                                 :dataset_query   query
-                                                 :result_metadata metadata}]
-        (doseq [card-id [card1-id card2-id]]
-          (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-            ;; card2 is model, but card1 is not
-            (is (= (= card-id card2-id)
-                   (= :model (:type extracted))))
-            (is (string? (:display_name (first (:result_metadata extracted)))))
-            ;; this is a quick comparison, since the actual stored metadata is quite complex
-            (is (= (map :display_name metadata)
-                   (map :display_name (:result_metadata extracted))))))))))
+(deftest ^:parallel extract-result-metadata-non-model-test
+  (testing "non-model Card extraction drops :result_metadata entirely"
+    (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
+          query    (mt/mbql-query venues)]
+      (doseq [card-type [:question :metric]]
+        (testing (str "Card with :type " card-type)
+          (mt/with-temp [:model/Card {card-id :id} {:type            card-type
+                                                    :dataset_query   query
+                                                    :result_metadata metadata}]
+            (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
+              (is (not (contains? extracted :result_metadata))))))))))
+
+(deftest ^:parallel extract-result-metadata-model-test
+  (testing "model Card extraction keeps :name + snake-cased model-preserved-keys only"
+    (let [base     (qp.preprocess/query->expected-cols (mt/mbql-query venues))
+          metadata (mapv #(assoc %
+                                 :display_name             "Custom!"
+                                 :semantic_type            :type/Category
+                                 :visibility_type          :normal
+                                 :description              "desc"
+                                 :fingerprint              {:global {:distinct-count 100}}
+                                 :lib/desired-column-alias "bloat"
+                                 :qp/internal-flag         true)
+                         base)
+          query    (mt/mbql-query venues)]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                :dataset_query   query
+                                                :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              cols      (:result_metadata extracted)
+              ;; mirror the export's transformation exactly so this test stays in sync with
+              ;; production if (lib/model-preserved-keys false) ever changes
+              allowed   (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false))
+              leaked    (into #{} (mapcat #(remove allowed (keys %))) cols)]
+          (is (seq cols))
+          (is (= #{} leaked)
+              "no key outside the allowed set leaks through (including bloat keys deliberately seeded)")
+          (is (every? #(= "Custom!" (:display_name %)) cols)
+              "user-set :display_name survives"))))))
+
+(deftest ^:parallel extract-result-metadata-native-model-test
+  (testing "native model Card extraction also preserves :id (as a field FK)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:type            :model
+                    :dataset_query   (mt/native-query {:query "SELECT ID FROM VENUES"})
+                    :result_metadata [{:name          "ID"
+                                       :id            (mt/id :venues :id)
+                                       :display_name  "Venue ID"
+                                       :semantic_type :type/PK
+                                       :base_type     :type/BigInteger}]}]
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+            col      (first (:result_metadata extracted))]
+        (is (= #{:name :id :display_name :semantic_type}
+               (set (keys col)))
+            "exact set of keys preserved for this fixture (one col with these inputs)")
+        (is (= "Venue ID" (:display_name col)))
+        ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
+        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))
+        ;; cross-reference: nothing outside the snake-cased model-preserved-keys for native models.
+        ;; If `model-preserved-keys` ever changes, the exact-set assertion above stops matching;
+        ;; this guard catches unexpected drift (a new key sneaking in) on the way.
+        (let [allowed (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys true))
+              leaked  (set/difference (set (keys col)) allowed)]
+          (is (= #{} leaked) "no key outside the native-model preserved set"))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -791,8 +905,8 @@
                  t/offset-date-time
                  (.withNano 0)))))))
 
-(deftest save-mlv2-card-test
-  (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
+(deftest save-mbql5-card-test
+  (testing "App DB CRUD should work for a Card with an MBQL 5 query (#39024)"
     (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
@@ -805,7 +919,7 @@
                    :table_id      (mt/id :venues)
                    :database_id   (mt/id)}
                   card)))
-        (testing "Save to app DB: Check MLv2 query was serialized to app DB in a sane way. Metadata provider should be removed"
+        (testing "Save to app DB: Check MBQL 5 query was serialized to app DB in a sane way. Metadata provider should be removed"
           (is (= {"lib/type" "mbql/query"
                   "database" (mt/id)
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -846,7 +960,7 @@
         (is (=? {:can_run_adhoc_query false}
                 (t2/hydrate no-query :can_run_adhoc_query)))))))
 
-(deftest audit-card-permisisons-test
+(deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
     ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
     ;; collections and cards installed. Since we can't load audit content on OSS, let's just redef the audit collection
@@ -1056,6 +1170,49 @@
           (is (= (mt/id) (:database_id updated-card)))
           (is (= (mt/id :venues) (:table_id updated-card)))
           (is (= :query (:query_type updated-card))))))))
+
+(deftest source-card-id-cleared-on-conversion-to-native-test
+  (testing "source_card_id should be set to nil when a model-based question is converted to native SQL (#68080)"
+    (mt/with-temp [:model/Card {model-id :id} {:name          "Test Model"
+                                               :type          :model
+                                               :dataset_query (mt/mbql-query venues)}
+                   :model/Card {question-id :id} {:name          "Test Question"
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (str "card__" model-id)}}}]
+      (testing "source_card_id is cleared when converting to native SQL"
+        (t2/update! :model/Card question-id
+                    {:dataset_query {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query "SELECT * FROM venues"}}})
+        (is (nil? (:source_card_id (t2/select-one :model/Card question-id)))))))
+  (testing "deleting a model should not cascade delete questions that were converted to native SQL"
+    (mt/with-temp [:model/Card {model-id :id} {:name          "Test Model"
+                                               :type          :model
+                                               :dataset_query (mt/mbql-query venues)}
+                   :model/Card {question-id :id} {:name          "Test Question"
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (str "card__" model-id)}}}]
+      (t2/update! :model/Card question-id
+                  {:dataset_query {:database (mt/id)
+                                   :type     :native
+                                   :native   {:query "SELECT * FROM venues"}}})
+      (t2/delete! :model/Card model-id)
+      (testing "model should be deleted"
+        (is (not (t2/exists? :model/Card model-id))))
+      (testing "converted question should survive"
+        (is (t2/exists? :model/Card question-id))))))
+
+(deftest assert-no-source-card-id-for-native-query-test
+  (testing "assertion fires if native query has source_card_id set"
+    (with-redefs [card/populate-query-fields identity]
+      (is (thrown-with-msg? Exception #"Assert failed"
+                            (t2/insert! :model/Card
+                                        {:name "Bad Card"
+                                         :dataset_query (mt/native-query {:query "SELECT 1"})
+                                         :source_card_id 999
+                                         :database_id (mt/id)}))))))
 
 (deftest before-update-embedding-timestamp-test
   (testing "maybe-populate-initially-published-at is called"
@@ -1320,3 +1477,76 @@
                  (count (:result_metadata card))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
+
+(deftest create-native-model-external-remap-query-test
+  (testing "External remapping (FK) should work when querying through a native SQL model (#35842)"
+    (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
+                                       :name                    "User ID"
+                                       :human_readable_field_id (mt/id :people :name)
+                                       :type                    :external}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-model-cleanup [:model/Card]
+          (let [metadata    (qp.preprocess/query->expected-cols (mt/mbql-query orders))
+                card        (card/create-card! {:database_id            (mt/id)
+                                                :display                :table
+                                                :visualization_settings {}
+                                                :type                   :model
+                                                :name                   "Native Orders Model for external remap test"
+                                                :dataset_query          (mt/native-query {:query "SELECT * FROM ORDERS"})
+                                                :result_metadata        metadata}
+                                               @api/*current-user*)
+                mp          (mt/metadata-provider)
+                model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                (lib/aggregate (lib/count))
+                                (notebook-helpers/add-breakout "User ID")
+                                (lib/limit 5))
+                result      (mt/user-http-request :crowberto :post 202 "dataset" model-query)
+                cols        (get-in result [:data :cols])
+                remap-col   (first (filter :remapped_from cols))
+                user-col    (first (filter #(= (:name %) (:remapped_from remap-col)) cols))]
+            (testing "remap column exists with :remapped_from pointing to original column"
+              (is (some? remap-col))
+              (is (= (:name user-col) (:remapped_from remap-col))))
+            (testing "original column has :remapped_to pointing to remap column"
+              (is (= (:name remap-col) (:remapped_to user-col))))
+            (testing "result rows contain remapped user names"
+              (let [col-names (mapv :name cols)
+                    remap-idx (.indexOf ^java.util.List col-names (:name remap-col))]
+                (is (every? string? (map #(nth % remap-idx) (get-in result [:data :rows]))))))))))))
+
+(deftest create-model-internal-remap-query-test
+  (testing "Internal remapping (custom values) should work when querying through a model (#57978)"
+    (mt/with-column-remappings [orders.quantity {0 "Zero" 1 "A" 2 "B" 3 "C" 4 "D"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-model-cleanup [:model/Card]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                card  (card/create-card! {:database_id            (mt/id)
+                                          :display                :table
+                                          :visualization_settings {}
+                                          :type                   :model
+                                          :name                   "Orders Model for remap test"
+                                          :dataset_query          query}
+                                         @api/*current-user*)]
+            (testing "model result_metadata should not include remap columns"
+              (is (not-any? #(re-find #"(?i)remap" (:name %))
+                            (:result_metadata card))))
+            (let [mp          (mt/metadata-provider)
+                  model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                  (lib/aggregate (lib/count))
+                                  (notebook-helpers/add-breakout "Quantity")
+                                  (lib/limit 5))
+                  result      (mt/user-http-request :crowberto :post 202 "dataset" model-query)
+                  cols        (get-in result [:data :cols])
+                  rows        (get-in result [:data :rows])
+                  qty-col     (first (filter #(= (:display_name %) "Quantity") cols))
+                  remap-col   (first (filter :remapped_from cols))]
+              (testing "original column has :remapped_to pointing to remap column"
+                (is (some? (:remapped_to qty-col)))
+                (is (= (:name remap-col) (:remapped_to qty-col))))
+              (testing "remap column has :remapped_from pointing to original column"
+                (is (some? (:remapped_from remap-col)))
+                (is (= (:name qty-col) (:remapped_from remap-col))))
+              (testing "remapped values appear correctly"
+                (is (= ["Zero" "A" "B" "C" "D"]
+                       (map last rows)))))))))))

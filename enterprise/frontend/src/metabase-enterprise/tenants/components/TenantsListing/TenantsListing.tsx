@@ -9,10 +9,9 @@ import {
 } from "metabase/admin/people/constants";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import { regexpEscape } from "metabase/lib/string";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
@@ -57,8 +56,11 @@ export const TenantsListing = ({
   };
 
   const filteredTenants = useMemo(() => {
-    const filter = new RegExp(`\\b${regexpEscape(searchInputValue)}`, "i");
-    return tenants.filter((g) => filter.test(g.name));
+    if (!searchInputValue) {
+      return tenants;
+    }
+    const lowerSearch = searchInputValue.toLowerCase();
+    return tenants.filter((g) => g.name.toLowerCase().includes(lowerSearch));
   }, [searchInputValue, tenants]);
 
   if (hasNoTenants) {

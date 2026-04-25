@@ -1,5 +1,8 @@
 const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TENANT_ROOT_NAME = "Shared collections";
 const TENANT_NAMESPACE = "shared-tenant-collection";
@@ -39,7 +42,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("use-tenants", true);
   });
 
@@ -51,7 +54,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Move").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).should("be.visible");
         });
       });
@@ -65,7 +67,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         cy.findByText(TENANT_ROOT_NAME).should("not.exist");
       });
     });
@@ -77,7 +78,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Move").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.findByText("Test Tenant Collection").should("be.visible");
@@ -101,7 +101,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select").should("not.be.disabled");
@@ -124,7 +123,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
             H.popover().findByText("Move").click();
 
             H.entityPickerModal().within(() => {
-              H.entityPickerModalTab("Collections").click();
               cy.findByText(TENANT_ROOT_NAME).should("not.exist");
 
               // Close the modal
@@ -156,7 +154,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select").should("be.disabled");
@@ -175,7 +172,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.findByText("Test Tenant Collection").click();
 
@@ -204,7 +200,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Collections").click();
             cy.findByText(TENANT_ROOT_NAME).click();
 
             cy.button("Move").should("be.disabled");
@@ -224,6 +219,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalItem(0, "Databases").click();
+          H.entityPickerModalItem(1, "Sample Database").click();
           cy.findByText("Orders").click();
         });
 
@@ -235,7 +231,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select this collection").should("be.disabled");
@@ -249,6 +244,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalItem(0, "Databases").click();
+          H.entityPickerModalItem(1, "Sample Database").click();
           cy.findByText("Orders").click();
         });
 
@@ -260,7 +256,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.findByText("Test Tenant Collection").click();
 
@@ -289,7 +284,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Move").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Move").should("be.disabled");
@@ -352,9 +346,122 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Add to dashboard").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Dashboards").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.button(/New dashboard/).should("be.disabled");
+        });
+      });
+    });
+  });
+
+  describe("dashboard edit question picker sidebar", () => {
+    it("should not show shared collections when tenants are disabled", () => {
+      setupTenantCollections().then(() => {
+        H.updateSetting("use-tenants", false);
+
+        H.createDashboard({
+          name: "Test Dashboard",
+        }).then(({ body: dashboard }) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+          H.openQuestionsSidebar();
+
+          H.sidebar().findByText(TENANT_ROOT_NAME).should("not.exist");
+
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Our analytics");
+
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("not.contain", "Collections");
+        });
+      });
+    });
+
+    it("should allow admins to browse shared collections via breadcrumbs and add questions", () => {
+      setupTenantCollections().then(({ tenantCollectionId }) => {
+        H.createQuestion({
+          name: "Tenant Orders Question",
+          collection_id: tenantCollectionId,
+          query: { "source-table": ORDERS_ID },
+        });
+
+        H.createDashboard({
+          name: "Test Dashboard",
+        }).then(({ body: dashboard }) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+          H.openQuestionsSidebar();
+
+          cy.log(
+            "breadcrumb should show 'Collections' as the top level as shared collections exist",
+          );
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Collections")
+            .and("contain", "Our analytics");
+
+          cy.log("navigate to the top level to see both namespaces");
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .findByText("Collections")
+            .click();
+
+          H.sidebar().findByText("Our analytics").should("be.visible");
+          H.sidebar().findByText(TENANT_ROOT_NAME).should("be.visible");
+
+          H.sidebar().findByText(TENANT_ROOT_NAME).click();
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Collections")
+            .and("contain", TENANT_ROOT_NAME);
+
+          H.sidebar().findByText("Test Tenant Collection").click();
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Collections")
+            .and("contain", TENANT_ROOT_NAME)
+            .and("contain", "Test Tenant Collection");
+
+          H.sidebar().findByText("Tenant Orders Question").click();
+          H.getDashboardCards().should("have.length", 1);
+        });
+      });
+    });
+
+    it("should show 'Collections' in breadcrumb when navigating into Our Analytics sub-collections", () => {
+      setupTenantCollections().then(() => {
+        H.createCollection({ name: "Our Analytics Sub" }).then(() => {
+          H.createDashboard({ name: "Test Dashboard" }).then(
+            ({ body: dashboard }) => {
+              H.visitDashboard(dashboard.id);
+              H.editDashboard();
+              H.openQuestionsSidebar();
+
+              cy.log("navigate to top level");
+              H.sidebar()
+                .findByTestId("breadcrumbs")
+                .findByText("Collections")
+                .click();
+
+              cy.log("navigate into Our Analytics");
+              H.sidebar().findByText("Our analytics").click();
+
+              H.sidebar()
+                .findByTestId("breadcrumbs")
+                .should("contain", "Collections")
+                .and("contain", "Our analytics");
+
+              cy.log("navigate into a sub-collection under our analytics");
+              H.sidebar().findByText("Our Analytics Sub").click();
+
+              H.sidebar()
+                .findByTestId("breadcrumbs")
+                .should("contain", "Collections")
+                .and("contain", "Our analytics")
+                .and("contain", "Our Analytics Sub");
+            },
+          );
         });
       });
     });

@@ -42,7 +42,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
+   [metabase.util.performance :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
    [metabase.util.time :as u.time]))
 
 (defn infer-mbql-clause-schema
@@ -214,7 +214,7 @@
                "datetime" ::lib.schema.literal/datetime
                "unit"     ::DateTimeUnit)]])
 
-;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
+;; almost exactly the same as `absolute-datetime`, but generated in some situations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
 (defclause time
@@ -298,7 +298,7 @@
    (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
    [:fn
     {:error/message    "MBQL 4 :expression options should not be empty, use a nil map instead"
-     :decode/normalize perf/not-empty}
+     :decode/normalize not-empty}
     seq]])
 
 (mr/def ::ExpressionName
@@ -341,7 +341,7 @@
     (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
     [:fn
      {:error/message    "MBQL 4 :field ref options should not be empty, use nil instead"
-      :decode/normalize perf/not-empty}
+      :decode/normalize not-empty}
      seq]]])
 
 (mr/def ::require-base-type-for-field-name
@@ -391,8 +391,11 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
+                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
                         ;; if someone accidentally nests `:field` clauses fix it for them
-                        (if (sequential? id-or-name)
+                        (if (and (sequential? id-or-name)
+                                 ((some-fn keyword? string?) (first id-or-name))
+                                 (= (keyword (first id-or-name)) :field))
                           (let [[_tag id-or-name recursive-opts] (normalize-field id-or-name)]
                             [:field id-or-name (not-empty (merge recursive-opts opts))])
                           [:field id-or-name (not-empty opts)]))
@@ -645,7 +648,7 @@
   x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
-;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
+;; aligns with the corresponding MBQL 5 schema and with the reference docs we publish.
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]
@@ -944,19 +947,18 @@
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
-  (lib.util.match/replace filter-clause
+  (lib.util.match/replace-lite filter-clause
     [:!=
-     [:field id-or-name (opts :guard #(= (:temporal-unit %) :hour-of-day))]
-     & (args :guard #(every? number? %))]
+     [:field id-or-name (opts :guard (= (:temporal-unit opts) :hour-of-day))]
+     & (args :guard (every? number? args))]
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard #(#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit %)))]
-     & (args :guard #(every? u.time/timestamp-coercible? %))]
+     [:field id-or-name (:and opts {:temporal-unit (unit :guard #{:day-of-week :month-of-year :quarter-of-year})})]
+     & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
-        (let [unit         (:temporal-unit opts)
-              field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
+        (let [field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
               extract-expr (case unit
                              :day-of-week     [:get-day-of-week field :iso]
                              :month-of-year   [:get-month field]
@@ -1009,7 +1011,7 @@
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
   [clause]
-  (lib.util.match/replace clause
+  (lib.util.match/replace-lite clause
     [:between
      [:+
       field
@@ -1489,7 +1491,7 @@
 
 (mr/def ::TemplateTagType
   "Schema for valid values of template tag `:type`."
-  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date])
+  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date :table])
 
 (mr/def ::TemplateTag.Common
   "Things required by all template tag types."
@@ -1535,6 +1537,31 @@
    [:map
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
+
+(mr/def ::TemplateTag.SourceFilter
+  "Schema for a single source-filter applied to a table template tag."
+  [:map
+   [:field-id ::lib.schema.id/field]
+   [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
+   [:value    :any]])
+
+;; Example:
+;;
+;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
+;;     :name         "#1635"
+;;     :display-name "#1635"
+;;     :type         :table
+;;     :table-id     2
+;;     :source-filters [{:op :> :field-id 3 :value 500}]}
+(mr/def ::TemplateTag.SourceTable
+  "Schema for a source query template tag."
+  [:merge
+   ::TemplateTag.Common
+   [:map
+    [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+    [:table-id              ::lib.schema.id/table]
+    [:emit-alias            {:optional true} :boolean]
+    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1656,6 +1683,7 @@
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
+   [:table         [:ref ::TemplateTag.SourceTable]]
    [:temporal-unit [:ref ::TemplateTag.TemporalUnit]]
    [::mc/default   [:ref ::TemplateTag.RawValue]]])
 
@@ -1962,7 +1990,7 @@
     {:type         "A join should not include :type"
      :filter       "A join should not have top-level 'inner' query keys like :filter"
      :breakout     "A join should not have top-level 'inner' query keys like :breakout"
-     :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
+     :aggregation "A join should not have top-level 'inner' query keys like :aggregation"
      :expressions  "A join should not have top-level 'inner' query keys like :expressions"
      :joins        "A join should not have top-level 'inner' query keys like :joins"
      :ident        ":ident is deprecated and should not be included in joins"})])
@@ -2043,7 +2071,7 @@
     [:expressions  {:optional true} [:ref ::Expressions]]
     [:fields       {:optional true} [:ref ::Fields]]
     [:filter       {:optional true} [:ref ::Filter]]
-    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:limit        {:optional true} nat-int?]
     [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]
@@ -2092,7 +2120,7 @@
 
 (defclause* dimension
   [:and
-   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:fn {:error/message "must be a `:dimension` clause"} (partial is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
     [:target [:schema [:or [:ref ::FieldOrExpressionRef] [:ref ::template-tag]]]]

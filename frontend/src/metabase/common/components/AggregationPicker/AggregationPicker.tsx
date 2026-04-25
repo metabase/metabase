@@ -5,7 +5,7 @@ import {
   AccordionList,
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   HoverParent,
   PopoverDefaultIcon,
@@ -13,17 +13,18 @@ import {
 } from "metabase/common/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { useSelector } from "metabase/lib/redux";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions";
+} from "metabase/querying/components/expressions";
 import {
   type DefinedClauseName,
   type MBQLClauseFunctionConfig,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -97,6 +98,7 @@ export function AggregationPicker({
   onBack,
   readOnly,
 }: AggregationPickerProps) {
+  const tc = useTranslateContent();
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
@@ -120,7 +122,7 @@ export function AggregationPicker({
     useState<DefinedClauseName | null>(null);
 
   // For really simple inline expressions like Average([Price]),
-  // MLv2 can figure out that "Average" operator is used.
+  // Lib can figure out that "Average" operator is used.
   // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
     isEditingExpression ? null : initialOperator,
@@ -351,6 +353,44 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const renderItemName = useCallback(
+    (item: Item) => tc(item.displayName),
+    [tc],
+  );
+
+  const renderItemIcon = useCallback(
+    (item: Item) => {
+      if (item.type !== "metric" && item.type !== "measure") {
+        return null;
+      }
+
+      if (!item.description) {
+        return null;
+      }
+
+      return (
+        <Flex pr="sm" align="center">
+          <Popover
+            position="right"
+            content={
+              <Box p="md">
+                <Markdown disallowHeading unstyleLinks>
+                  {tc(item.description)}
+                </Markdown>
+              </Box>
+            }
+          >
+            <span aria-label={t`More info`}>
+              <PopoverDefaultIcon name="empty" size={18} />
+              <PopoverHoverTarget name="info" size={18} />
+            </span>
+          </Popover>
+        </Flex>
+      );
+    },
+    [tc],
+  );
+
   if (isEditingExpression) {
     return (
       <ExpressionWidget
@@ -442,42 +482,8 @@ function ColumnPickerHeader({
   );
 }
 
-function renderItemName(item: Item) {
-  return item.displayName;
-}
-
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function renderItemIcon(item: Item) {
-  if (item.type !== "metric" && item.type !== "measure") {
-    return null;
-  }
-
-  if (!item.description) {
-    return null;
-  }
-
-  return (
-    <Flex pr="sm" align="center">
-      <Popover
-        position="right"
-        content={
-          <Box p="md">
-            <Markdown disallowHeading unstyleLinks>
-              {item.description}
-            </Markdown>
-          </Box>
-        }
-      >
-        <span aria-label={t`More info`}>
-          <PopoverDefaultIcon name="empty" size={18} />
-          <PopoverHoverTarget name="info" size={18} />
-        </span>
-      </Popover>
-    </Flex>
-  );
 }
 
 function omitItemDescription() {

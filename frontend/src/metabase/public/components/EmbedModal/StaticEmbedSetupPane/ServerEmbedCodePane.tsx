@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbedResource,
@@ -10,6 +9,7 @@ import type {
   EmbeddingParametersValues,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
+import { useSelector } from "metabase/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 
 import { CodeSample } from "./CodeSample";

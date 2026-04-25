@@ -1,7 +1,8 @@
 (ns metabase.lib.metadata.cached-provider
   (:refer-clojure :exclude [update-keys get-in #?(:clj doseq)])
   (:require
-   #?@(:clj ([metabase.util.json :as json]
+   #?@(:clj (^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+             [metabase.util.json :as json]
              [pretty.core :as pretty]))
    [clojure.set :as set]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -172,3 +173,9 @@
     CachedProxyMetadataProvider
     (fn [_mp json-generator]
       (json/generate-nil nil json-generator))))
+
+#?(:clj
+   (extend-protocol clj-yaml.core/YAMLCodec
+     CachedProxyMetadataProvider
+     (encode [_this]
+       nil)))

@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { adjustBrightness, alpha, color } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
+import { adjustBrightness, alpha, color } from "metabase/ui/colors";
 
 import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
@@ -136,9 +136,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   }
 `;
 
-interface PivotTableTopLeftCellsContainerProps {}
-
-export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
+export const PivotTableTopLeftCellsContainer = styled.div`
   display: flex;
   align-items: flex-end;
   position: relative;

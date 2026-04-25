@@ -65,6 +65,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
             "No",
             "No",
             "No",
+            "No",
           ],
         ]);
       });

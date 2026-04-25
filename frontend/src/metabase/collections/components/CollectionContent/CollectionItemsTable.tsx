@@ -26,6 +26,7 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Search } from "metabase/entities/search";
+import type { State } from "metabase/redux/store";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -35,9 +36,8 @@ import type {
   CollectionItemModel,
   ListCollectionItemsRequest,
   ListCollectionItemsSortColumn,
+  SortingOptions,
 } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
-import type { State } from "metabase-types/store";
 
 import {
   CollectionEmptyContent,
@@ -50,11 +50,11 @@ const getDefaultSortingOptions = (
   return isRootTrashCollection(collection)
     ? {
         sort_column: "last_edited_at",
-        sort_direction: SortDirection.Desc,
+        sort_direction: "desc",
       }
     : {
         sort_column: "name",
-        sort_direction: SortDirection.Asc,
+        sort_direction: "asc",
       };
 };
 

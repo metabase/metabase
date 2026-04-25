@@ -61,6 +61,7 @@
    #'qp.perms/remove-permissions-key
    #'qp.perms/remove-source-card-keys
    #'qp.perms/remove-sandboxed-table-keys
+   #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
@@ -90,6 +91,8 @@
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins
    #'resolve-joins/resolve-joins
+   ;; rerun add-implicit-clauseds to add implicit fields clauses to implicit joins #67002
+   #'qp.add-implicit-clauses/add-implicit-clauses
    #'fix-bad-field-id-refs/fix-bad-field-id-refs
    #'qp.remove-inactive-field-refs/remove-inactive-field-refs
    ;; yes, this is called a second time, because we need to handle any joins that got added
@@ -101,6 +104,7 @@
    #'optimize-temporal-filters/optimize-temporal-filters
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
+   #'qp.middleware.enterprise/apply-workspace-remapping
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms
@@ -138,7 +142,7 @@
                         [query <>])))
               ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
               (when-not (map? <>)
-                (throw (ex-info (format "Middleware did not return a valid query.")
+                (throw (ex-info "Middleware did not return a valid query."
                                 {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn middleware-fn]

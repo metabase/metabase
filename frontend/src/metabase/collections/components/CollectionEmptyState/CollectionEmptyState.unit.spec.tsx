@@ -1,6 +1,7 @@
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
@@ -27,6 +28,7 @@ async function setup({
 }: { collection?: Partial<Collection> } = {}) {
   const mockCollection = createMockCollection(collection);
 
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints([TEST_COLLECTION_ITEM]);
 

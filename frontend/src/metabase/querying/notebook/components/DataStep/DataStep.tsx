@@ -1,15 +1,15 @@
 import { type CSSProperties, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { METAKEY } from "metabase/lib/browser";
-import { useSelector } from "metabase/lib/redux";
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { isEmbedding } from "metabase/embedding/config";
 import { Icon, Popover, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
+import { useNotebookContext } from "../Notebook/context";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
@@ -23,8 +23,8 @@ export const DataStep = ({
   readOnly = false,
   color,
   updateQuery,
-  dataPickerOptions,
 }: NotebookStepProps) => {
+  const { dataPickerOptions } = useNotebookContext();
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId
@@ -41,7 +41,7 @@ export const DataStep = ({
   }, [query, stageIndex]);
 
   const canSelectTableColumns = table && isRaw && !readOnly;
-  const isEmbedding = useSelector(getIsEmbedding);
+  const isEmbed = isEmbedding();
 
   const handleTableChange = async (
     table: Lib.TableMetadata | Lib.CardMetadata,
@@ -58,7 +58,7 @@ export const DataStep = ({
 
   return (
     <NotebookCell color={color}>
-      {isOpened || !table || isEmbedding ? (
+      {isOpened || !table || isEmbed ? (
         <NotebookDataPicker
           query={query}
           stageIndex={stageIndex}

@@ -243,7 +243,7 @@ describe("Add data modal", () => {
       cy.button("Enable uploads").click();
       cy.wait("@enableUploads");
 
-      cy.findByLabelText("Navigation bar").contains("Exit admin").click();
+      H.goToMainApp();
       H.navigationSidebar()
         .findByRole("section", { name: "Data" })
         .findByLabelText("Add data")

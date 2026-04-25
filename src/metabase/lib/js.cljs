@@ -14,7 +14,7 @@
   A reference of what is meant in these docs by \"column\", \"query\", etc. Most of the CLJS maps have a `:lib/type`
   key, the values are indicated here. TS types are also indicated as eg. `Lib.ColumnMetadata`.
 
-  - **query** means a modern pMBQL query, represented as a CLJS map (`:mbql/query`, `Lib.Query`)
+  - **query** means a modern MBQL 5 query, represented as a CLJS map (`:mbql/query`, `Lib.Query`)
   - **legacy query** and **MLv1 query** mean the previous form of MBQL, represented as a JSON object
   - **column** means the full details of a column - its name, types, etc. (`:metadata/column`, `Lib.ColumnMetadata`)
       - Columns can come from several sources: source tables, cards/models, previous stages of this query, aggregations,
@@ -23,13 +23,13 @@
   - **clause** means a fragment of MBQL describing part of a query, such as an aggregation, breakout, join, etc.
   - **ref** means a reference to a column.
       - Often these are misleading called a \"field ref\", since they are represented as a `[:field ...]` clause in both
-        legacy MBQL and pMBQL.
+        legacy MBQL and MBQL 5.
       - Refs are a code smell - they are an internal detail of MBQL structures that has leaked into many places in
         legacy. All mention of refs should be eliminated from this interface eventually.
 
   ## Code health
 
-  This API surface grew mostly organically during the development of MLv2 and porting the query builder to use it.
+  This API surface grew mostly organically during the development of Lib and porting the query builder to use it.
   The result is that the API is not as systematic or clean as it could be. There are functions which are very specific
   to a particular use case in one part of the FE, and functions which support legacy compatibility but should be removed
   as those features are ported.
@@ -45,7 +45,7 @@
     Docs will give an alternative to calling these functions that should cover all cases.
 
   Over time, the *Deprecated* functions will be removed, and the *Legacy* ones will become obsolete and get removed as
-  legacy uses are ported to MLv2.
+  legacy uses are ported to Lib.
 
   ## Display Info
   The library functions typically return opaque CLJS data. We want to hide the library's internals, but we want it to be
@@ -56,18 +56,25 @@
    :exclude
    [filter])
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.analytics.impl]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
@@ -78,6 +85,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -89,7 +97,18 @@
    [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
-(comment lib.core/keep-me)
+;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics-interface.core]].
+
+(comment lib.core/keep-me
+         metabase.analytics.impl/keep-me)
+
+;; Expose for E2E testing
+(when (exists? js/window)
+  (set! (.-__internalAnalytics js/window)
+        #js {:inc (fn [metric labels amount]
+                    (analytics.interface/inc! (keyword metric)
+                                              (js->clj labels :keywordize-keys true)
+                                              (or amount 1)))}))
 
 (defn ^:export suggestedName
   "Return a nice description of a query.
@@ -99,28 +118,28 @@
   (lib.core/suggested-name query))
 
 (defn ^:export metadataProvider
-  "Convert the provided metadata container to an MLv2 metadata provider.
+  "Convert the provided metadata container to an Lib metadata provider.
 
   > **Code health:** Smelly. Name is not idiomatic Clojure.
 
-  If the `metadata` is already an MLv2 metadata provider, it is simply returned. If it is a JavaScript `Metadata`
-  instance, it is wrapped with an MLv2 adapter."
+  If the `metadata` is already an Lib metadata provider, it is simply returned. If it is a JavaScript `Metadata`
+  instance, it is wrapped with an Lib adapter."
   [database-id metadata]
   (if (lib.metadata.protocols/metadata-provider? metadata)
     metadata
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Creates an MLv2 query from the provided input: either a table or card metadata, or a legacy MLv1 query in JSON form.
+  "Creates an MBQL 5 query from the provided input: either a table or card metadata, or a legacy MLv1 query in JSON form.
 
   > **Code health:** Healthy.
 
   There are two *arities* for this function:
 
-  With two arguments `metadata-provider` and `table-or-card-metadata`, creates an MLv2 query for that table or card.
+  With two arguments `metadata-provider` and `table-or-card-metadata`, creates an MBQL 5 query for that table or card.
 
   With three arguments `database-id`, `metadata-provider`, and `query-map`, expects the `query-map` to be an MLv1 legacy
-  query in JSON form. The query is converted to MLv2 form based on the metadata and the provided `database-id` (which is
+  query in JSON form. The query is converted to MBQL 5 form based on the metadata and the provided `database-id` (which is
   not always included on the `query-map`).
 
   <details>
@@ -128,7 +147,7 @@
   Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
   the same query object.
 
-  It would be simpler to attach the MLv2 query to a (non-enumerable) property on the `query-map`, but the `query-map`
+  It would be simpler to attach the MBQL 5 query to a (non-enumerable) property on the `query-map`, but the `query-map`
   might have been `Object.freeze`'d by Immer. So instead we attach a two-level cache to the `metadata-provider`. The
   outer key is `database-id`, and the inner cache is a JS `WeakMap`, using the `query-map` itself as the key.
   This cache is efficient to check, and because it uses a `WeakMap` it does not retain legacy queries if they would
@@ -149,7 +168,7 @@
    (lib.cache/side-channel-cache-weak-refs
     (str database-id) metadata-provider query-map
     #(->> %
-          lib.convert/js-legacy-query->pMBQL
+          lib.convert/js-legacy-query->mbql5
           (lib.core/query metadata-provider))
     {:force? true})))
 
@@ -171,10 +190,10 @@
     :else                  x))
 
 (defn ^:export legacy-query
-  "Coerce an MLv2 query (pMBQL in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
+  "Coerce an Lib query (MBQL 5 in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
 
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
-  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2."
+  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MBQL 5."
   [query-map]
   (-> (lib.query/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
@@ -205,7 +224,7 @@
 
 (defn ^:export as-returned
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
-  (with access to the colums before aggregation) or adding it to stage `N+1` (with access to the aggregations and
+  (with access to the columns before aggregation) or adding it to stage `N+1` (with access to the aggregations and
   breakouts).
 
   Given `a-query` and `stage-number`, this returns a **JS object** with `query` and `stageIndex` keys, for working with
@@ -258,7 +277,7 @@
 ;; - FE calls [[display-info]] in this namespace
 ;; - Which calls [[lib.core/display-info]], defined in `metabase.lib.metadata.calculation`.
 ;; - Which delegates to a *multimethod* `display-info-method`
-;; - This has implementations for many different MLv2 values - queries, stages, aggregations, expressions, columns, etc.
+;; - This has implementations for many different MBQL 5 values - queries, stages, aggregations, expressions, columns, etc.
 ;;
 ;; These implementations return their info *in CLJS form*, as a map! That's because `display-info` calls are sometimes
 ;; nested, eg. a *column group*'s `display-info` includes the `display-info` for each column in the group.
@@ -537,6 +556,51 @@
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
+(def ^:private aggregation-display-name-patterns-for-locale
+  "Cached aggregation patterns, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.aggregation/aggregation-display-name-patterns)) :lru/threshold 2))
+
+(def ^:private filter-display-name-patterns-for-locale
+  "Cached filter patterns, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.filter/filter-display-name-patterns)) :lru/threshold 2))
+
+(def ^:private compound-filter-conjunctions-for-locale
+  "Cached compound filter conjunctions, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.filter/compound-filter-conjunctions)) :lru/threshold 2))
+
+(defn ^:export parse-column-display-name-parts
+  "Parse a column display name into a flat list of parts for translation.
+
+  Returns an array of objects, each with:
+  - type: 'static' (don't translate) or 'translatable' (should be translated)
+  - value: the string value
+
+  The FE simply needs to:
+  1. Translate all parts where type is 'translatable'
+  2. Concatenate all value strings together
+
+  Patterns are cached per locale."
+  [display-name locale]
+  (let [parts (lib.display-name/parse-column-display-name-parts
+               display-name
+               (aggregation-display-name-patterns-for-locale locale)
+               (filter-display-name-patterns-for-locale locale)
+               (compound-filter-conjunctions-for-locale locale))]
+    (clj->js parts)))
+
+(defn ^:export numeric-binning-strategies
+  "Returns the list of binning options for numeric fields. These split the data evenly into a fixed number of bins.
+  Returns opaque values that can be passed to [[display-info]] for rendering."
+  []
+  (clj->js (lib.binning/numeric-binning-strategies)))
+
+(defn ^:export coordinate-binning-strategies
+  "Returns the list of binning options for coordinate fields (latitude/longitude).
+  These split the data into ranges of a certain number of degrees.
+  Returns opaque values that can be passed to [[display-info]] for rendering."
+  []
+  (clj->js (lib.binning/coordinate-binning-strategies)))
+
 ;; ## Temporal Bucketing
 
 ;; The other way to "round" a column's value is by units of time. This is a very common use case: looking at monthly
@@ -585,7 +649,7 @@
 (defn ^:export available-temporal-units
   "The temporal bucketing units for date type expressions."
   []
-  (to-array (map clj->js (lib.core/available-temporal-units))))
+  (clj->js (lib.core/available-temporal-units)))
 
 ;; # Manipulating Clauses
 ;;
@@ -594,13 +658,6 @@
 ;; They are also intended to be smart, and leave the query in a good state. For example, removing a custom expression
 ;; will also remove anything that depended on it, recursively. Moving or replacing a clause will update any references
 ;; to it in other places (eg. an aggregation based on a custom expression that was just renamed).
-
-(defn- ->clj
-  "Convert JS objects to CLJS, but pass through CLJS data structures unchanged."
-  [x]
-  (if (or (map? x) (vector? x))
-    x
-    (js->clj x :keywordize-keys true)))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` from the given stage of `a-query`.
@@ -616,7 +673,7 @@
   [a-query stage-number clause]
   (lib.core/remove-clause
    a-query stage-number
-   (lib.core/normalize (->clj clause))))
+   (lib.core/normalize (js->clj clause :keywordize-keys true))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage.
@@ -627,8 +684,8 @@
   [a-query stage-number target-clause new-clause]
   (lib.core/replace-clause
    a-query stage-number
-   (lib.core/normalize (->clj target-clause))
-   (lib.core/normalize (->clj new-clause))))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
 
 (defn ^:export swap-clauses
   "Exchanges the positions of two clauses of the same kind. Can be used for filters, aggregations, breakouts, and
@@ -641,8 +698,8 @@
   [a-query stage-number source-clause target-clause]
   (lib.core/swap-clauses
    a-query stage-number
-   (lib.core/normalize (->clj source-clause))
-   (lib.core/normalize (->clj target-clause))))
+   (lib.core/normalize (js->clj source-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
 (defn- -unwrap
   "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.
@@ -672,7 +729,7 @@
     (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
 (defn ^:export normalize
-  "Normalize the MBQL or pMBQL query `a-query`.
+  "Normalize the MBQL or MBQL 5 query `a-query`.
   Returns the JS form of the normalized query."
   [a-query]
   (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
@@ -681,8 +738,8 @@
 ;; There are a few places in the FE where we need to compare two queries, typically to check whether the current
 ;; question has been changed and needs to be saved.
 
-;; **This currently only works for legacy queries in JSON form.** At some point MLv2 queries will become the source of
-;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MLv2 queries.
+;; **This currently only works for legacy queries in JSON form.** At some point MBQL 5 queries will become the source of
+;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MBQL 5 queries.
 
 ;; TODO: These equality checks only seem to clean and check the last stages - does that really suffice?
 
@@ -768,7 +825,7 @@
   It duplicates the logic formerly found in `query_builder/selectors.js`.
 
   > **Code health:** Legacy. New calls are acceptable if necessary. Eventually this will be replaced with an equivalent
-  function that compares two pMBQL queries in CLJS form, but that needs pMBQL queries to be the source of truth on the
+  function that compares two MBQL 5 queries in CLJS form, but that needs MBQL 5 queries to be the source of truth on the
   wire, rather than legacy."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
@@ -867,7 +924,7 @@
 
   > **Code health:** Healthy"
   [a-query stage-number an-aggregate-clause]
-  (lib.core/aggregate a-query stage-number (->clj an-aggregate-clause)))
+  (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
 
 (defn ^:export aggregations
   "Return a JS array of aggregations on a given stage of `a-query`.
@@ -936,46 +993,28 @@
 
   The columns have extra information attached, giving the filter operators that can be used with that column.
 
+  `options` is an optional JS object that can include:
+    - `includeSensitiveFields`: if true, includes fields with visibility_type :sensitive (default false)
+
   Cached on the query.
 
   > **Code health:** Healthy"
-  [a-query stage-number]
-  ;; Attaches the cached columns directly to this query, in case it gets called again.
-  (lib.cache/side-channel-cache
-   (keyword "filterable-columns" (str "stage-" stage-number)) a-query
-   (fn [_]
-     (to-array (lib.core/filterable-columns a-query stage-number)))))
-
-(defn ^:export filterable-column-operators
-  "Returns the filter operators which can be used in a filter for `filterable-column`.
-
-  `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
-  like [[visible-columns]].
-
-  > **Code health:** Healthy"
-  [filterable-column]
-  (to-array (lib.core/filterable-column-operators filterable-column)))
-
-(defn ^:export filter-clause
-  "Given a `filter-operator`, `column`, and 0 or more extra arguments, returns a standalone filter clause.
-
-  `filter-operator` comes from [[filterable-column-operators]], and `column` from [[filterable-columns]].
-
-  > **Code health:** Healthy"
-  [filter-operator column & args]
-  (apply lib.core/filter-clause filter-operator column args))
-
-(defn ^:export filter-operator
-  "Returns the filter operator used in `a-filter-clause`.
-
-  > **Code health:** Healthy"
-  [a-query stage-number a-filter-clause]
-  (lib.core/filter-operator a-query stage-number a-filter-clause))
+  ([a-query stage-number]
+   (filterable-columns a-query stage-number nil))
+  ([a-query stage-number options]
+   ;; Attaches the cached columns directly to this query, in case it gets called again.
+   (let [opts (-> (js-obj->cljs-map options)
+                  (set/rename-keys {:include-sensitive-fields :include-sensitive-fields?}))
+         include-sensitive? (:include-sensitive-fields? opts)]
+     (lib.cache/side-channel-cache
+      (keyword "filterable-columns" (str "stage-" stage-number (when include-sensitive? "-include-sensitive"))) a-query
+      (fn [_]
+        (to-array (lib.core/filterable-columns a-query stage-number opts)))))))
 
 (defn ^:export filter
   "Adds `a-filter-clause` as a filter on `a-query`."
   [a-query stage-number a-filter-clause]
-  (lib.core/filter a-query stage-number (->clj a-filter-clause)))
+  (lib.core/filter a-query stage-number (js->clj a-filter-clause :keywordize-keys true)))
 
 (defn ^:export filters
   "Returns a JS array of all the filters on stage `stage-number` of `a-query`.
@@ -988,11 +1027,23 @@
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
 
+(defn ^:export describe-filter-operator
+  "Returns a human-readable display name for a filter operator.
+
+  `operator` is a string like \"=\", \"!=\", \"contains\", etc.
+  `variant` is an optional string: \"default\" or \"equal-to\". Defaults to \"default\".
+
+  > **Code health:** Healthy"
+  ([operator]
+   (lib.core/describe-filter-operator (keyword operator)))
+  ([operator variant]
+   (lib.core/describe-filter-operator (keyword operator) (keyword variant))))
+
 ;; # Expressions
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported
 ;; to Clojure someday, but perhaps not - it's quite standalone and there's no use case for that logic in the BE.
 
-;; MLv2 expression clauses are constructed with [[expression-clause]] from an operator and list of args, typically
+;; MBQL 5 expression clauses are constructed with [[expression-clause]] from an operator and list of args, typically
 ;; coming from that parser. An expression clause can be attached to a query with `expression`.
 
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
@@ -1084,7 +1135,7 @@
     (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))
+           :values   (clj->js values)
            :options  (cljs-map->js-obj options)})))
 
 (defn ^:export number-filter-clause
@@ -1103,7 +1154,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export coordinate-filter-clause
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -1124,7 +1175,7 @@
       #js {:operator        (name operator)
            :column          column
            :longitudeColumn longitude-column
-           :values          (to-array (map clj->js values))})))
+           :values          (clj->js values)})))
 
 (defn ^:export boolean-filter-clause
   "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1142,7 +1193,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export specific-date-filter-clause
   "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -1161,7 +1212,7 @@
     (let [{:keys [operator column values with-time?]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))
+           :values   (to-array (map u.time/dayjs-utc->local-date values))
            :hasTime  with-time?})))
 
 (defn ^:export relative-date-filter-clause
@@ -1206,7 +1257,7 @@
       #js {:operator    (name operator)
            :column      column
            :unit        (some-> unit name)
-           :values      (to-array (map clj->js values))})))
+           :values      (clj->js values)})))
 
 (defn ^:export time-filter-clause
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1224,7 +1275,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export default-filter-clause
   "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1275,7 +1326,7 @@
   (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
 
 (defn ^:export column-metadata?
-  "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
+  "Returns true if arg is an Lib column, ie. has `:lib/type :metadata/column`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
@@ -1285,7 +1336,7 @@
 (defn ^:export metric-metadata?
   "Returns true if arg is named entity that can be used as an aggregation expression on its own, i.e., without
   wrapping it into an aggregating function.
-  Currently, this can be an MLv2 metric (`:lib/type :metadata/metric`) or an aggregation column
+  Currently, this can be an Lib metric (`:lib/type :metadata/metric`) or an aggregation column
   (`:lib/type :metadata/column` and `:lib/source :source/aggregations`).
 
   > **Code health:** Single use. This is used in the expression editor to parse and
@@ -1297,7 +1348,7 @@
                 (= (:lib/source arg) :source/aggregations)))))
 
 (defn ^:export segment-metadata?
-  "Returns true if arg is an MLv2 segment, ie. has `:lib/type :metadata/segment`.
+  "Returns true if arg is an Lib segment, ie. has `:lib/type :metadata/segment`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
@@ -1305,7 +1356,7 @@
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 (defn ^:export measure-metadata?
-  "Returns true if arg is an MLv2 measure, ie. has `:lib/type :metadata/measure`.
+  "Returns true if arg is an Lib measure, ie. has `:lib/type :metadata/measure`.
 
   > **Code health:** Healthy. This is used in the expression editor to parse and
   format expression clauses."
@@ -1496,13 +1547,13 @@
                                    (u/qualified-name %)
                                    %))))
 
-(defn- legacy-ref->pMBQL [a-legacy-ref]
+(defn- legacy-ref->mbql5 [a-legacy-ref]
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
       #_{:clj-kondo/ignore [:deprecated-var]}
       mbql.normalize/normalize-field-ref
-      lib.convert/->pMBQL
+      lib.convert/->mbql5
       (->> (lib.normalize/normalize ::lib.schema.ref/ref))))
 
 (defn- ref->legacy-ref
@@ -1539,15 +1590,15 @@
     ;; Convert legacy columns like we do for metadata.
     (let [parsed (js.metadata/parse-column legacy-column)]
       (if (= (:lib/source parsed) :source/aggregations)
-        ;; Special case: Aggregations need to be converted to a pMBQL :aggregation ref and :lib/source-uuid set.
-        (let [agg-ref (legacy-ref->pMBQL (.-field_ref legacy-column))]
+        ;; Special case: Aggregations need to be converted to a MBQL 5 :aggregation ref and :lib/source-uuid set.
+        (let [agg-ref (legacy-ref->mbql5 (.-field_ref legacy-column))]
           (assoc parsed :lib/source-uuid (last agg-ref)))
         parsed))
     ;; It's already a :metadata/column map
     column))
 
 (defn ^:export find-column-indexes-from-legacy-refs
-  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
+  "Given a list of columns (either JS `data.cols` or Lib `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
 
   Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found.
@@ -1556,11 +1607,11 @@
   identify a column in viz settings. Avoid new calls if you have an alternative way to find the column you need. But if
   you need it, no worries about a new call."
   [a-query stage-number legacy-columns legacy-refs]
-  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
-  ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->mbql5]] to convert legacy
+  ;; `[:aggregation 0]` refs into MBQL 5 `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (let [haystack      (mapv ->column-or-ref legacy-columns)
-          needles       (map legacy-ref->pMBQL legacy-refs)
+          needles       (map legacy-ref->mbql5 legacy-refs)
           column-refs   (into {} (keep-indexed (fn [i col]
                                                  [(-> col
                                                       lib.core/ref
@@ -1946,7 +1997,7 @@
 (defn ^:export native-query
   "Create a new native query.
 
-  *Native* in this sense means a pMBQL query where the first stage is `:mbql.stage/native`.
+  *Native* in this sense means a MBQL 5 query where the first stage is `:mbql.stage/native`.
 
   > **Code health:** Healthy"
   [database-id metadata inner-query]
@@ -1977,7 +2028,7 @@
                          (perf/update-keys keyword)
                          (update :type keyword)
                          (m/update-existing :widget-type #(some-> % keyword))
-                         (m/update-existing :dimension #(some-> % legacy-ref->pMBQL)))))))
+                         (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))))
 
 (defn- template-tags-cljs->js
   [tags]
@@ -2117,6 +2168,8 @@
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
+;; TODO: (bshepherdson, 2026-03-25) The name of this function was changed in lib.core and this should probably change
+;; to match it.
 (defn ^:export joinable-columns
   "Returns a JS array of columns that are available when joining `join-or-joinable` into `a-query`.
 
@@ -2134,7 +2187,7 @@
   [a-query stage-number join-or-joinable]
   ;; TODO: It's not practical to cache this currently. We need to be able to key off the query and the joinable, which
   ;; is not supported by the lib.cache system.
-  (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
+  (to-array (lib.core/join-fieldable-columns a-query stage-number join-or-joinable)))
 
 ;; TODO: table-or-card-metadata is too specific and leaks details of how sources are stored. We need a higher-level API
 ;; for the sources of queries, especially with Metrics v2.
@@ -2196,7 +2249,7 @@
   (lib.core/database-id a-query))
 
 (defn ^:export join-condition-update-temporal-bucketing
-  "Updates the provided `join-condition` so both the LHS and RHS columns have the provied temporal bucketing option.
+  "Updates the provided `join-condition` so both the LHS and RHS columns have the provided temporal bucketing option.
 
   `join-condition` must be a *standard join condition*, meaning it's in the form constructed by the query builder UI,
   where the LHS is a column in the outer query and RHS is a column from the joinable.
@@ -2219,17 +2272,17 @@
 
   This properly handles fields, expressions and aggregations.
 
-  > **Code health:** Legacy. Avoid new calls. We should refactor the existing callers so they receive MLv2 columns in
-  the first place, and don't need to convert via to MLv2 via this function."
+  > **Code health:** Legacy. Avoid new calls. We should refactor the existing callers so they receive Lib columns in
+  the first place, and don't need to convert via to Lib via this function."
   [a-query stage-number ^js js-column]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (.-field_ref js-column)]
-                       (legacy-ref->pMBQL a-ref))]
+                       (legacy-ref->mbql5 a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
 (defn ^:export legacy-column->type-info
   "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
-  does not require a `query`. MLv2 columns remain unchanged.
+  does not require a `query`. Lib columns remain unchanged.
 
   > **Code health:** Legacy."
   [column]
@@ -2251,7 +2304,7 @@
   (fn [^js cell]
     (let [column     (js.metadata/parse-column (col-fn cell))
           column-ref (when-let [a-ref (:field-ref column)]
-                       (legacy-ref->pMBQL a-ref))]
+                       (legacy-ref->mbql5 a-ref))]
       {:column     (fix-column-with-ref column-ref column)
        :column-ref column-ref
        :value      (.-value cell)})))
@@ -2313,7 +2366,7 @@
   [a-query stage-number card-id column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
-                       (legacy-ref->pMBQL a-ref))]
+                       (legacy-ref->mbql5 a-ref))]
       (->> (merge {:column     (when column
                                  (fix-column-with-ref column-ref (js.metadata/parse-column column)))
                    :column-ref column-ref
@@ -2571,12 +2624,12 @@
   (lib.core/with-wrapped-native-query a-query stage-number card-id
     lib.core/update-temporal-filter temporal-column start end))
 
-(defn ^:export valid-filter-for?
-  "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
+(defn ^:export compatible-type?
+  "Given two columns, returns true if they have compatible types.
 
   > **Code health:** Healthy."
   [src-column dst-column]
-  (lib.types.isa/valid-filter-for? src-column dst-column))
+  (lib.types.isa/compatible-type? src-column dst-column))
 
 (defn ^:export dependent-metadata
   "Return a JS array of entities which `a-query` requires to be loaded. `card-id` is provided
@@ -2589,7 +2642,7 @@
 
   > **Code health:** Healthy"
   [a-query card-id card-type]
-  (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
+  (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
 
 (defn ^:export table-or-card-dependent-metadata
   "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
@@ -2598,7 +2651,7 @@
 
   > **Code health:** Healthy"
   [metadata-providerable table-id]
-  (to-array (map clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id))))
+  (clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id)))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.
@@ -2747,3 +2800,17 @@
       js->clj
       lib.native/validate-template-tags
       clj->js))
+
+(defn ^:export test-query
+  "Creates a query from a test query spec."
+  [metadata-providerable js-query-spec]
+  (-> js-query-spec
+      (js->clj :keywordize-keys true)
+      (->> (lib.query.test-spec/test-query metadata-providerable))))
+
+(defn ^:export test-native-query
+  "Creates a native query from a test native query spec."
+  [metadata-providerable js-native-query-spec]
+  (-> js-native-query-spec
+      (js->clj :keywordize-keys true)
+      (->> (lib.query.test-spec/test-native-query metadata-providerable))))

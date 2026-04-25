@@ -2,16 +2,18 @@
  ["src" "resources"]
 
  :deps
- {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.28.0"
-                                     :exclusions  [com.nimbusds/nimbus-jose-jwt
-                                                   org.apache.commons/commons-lang3
-                                                   org.bouncycastle/bcpkix-jdk18on
-                                                   org.bouncycastle/bcprov-jdk18on
-                                                   org.bouncycastle/bcutil-jdk18on]}
+ {net.snowflake/snowflake-jdbc-thin {:mvn/version "4.0.1"
+                                     :exclusions  [io.grpc/grpc-netty-shaded
+                                                   ;; This will already get excluded automatically by the build tools
+                                                   ;; since it's a top-level dep in `/deps.edn` but adding the
+                                                   ;; exclusion here will (hopefully?) prevent code scanning alerts
+                                                   ;; from complaining about it as well.
+                                                   io.netty/netty-codec-http
+                                                   io.netty/netty-codec-http2]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
-  com.nimbusds/nimbus-jose-jwt      {:mvn/version "10.5"}
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
-  org.apache.commons/commons-lang3  {:mvn/version "3.19.0"}
-  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.81"}
-  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.81"}
-  org.bouncycastle/bcutil-jdk18on   {:mvn/version "1.82"}}}
+  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
+  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.84"}
+  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.84"}
+  ;; pinned: snowflake-jdbc-thin 4.1.0 pulls jackson-core 2.18.4.1 which has resource exhaustion vulns
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}}}

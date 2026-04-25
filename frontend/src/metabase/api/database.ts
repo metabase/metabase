@@ -1,4 +1,4 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import type {
   AutocompleteRequest,
@@ -9,6 +9,7 @@ import type {
   Database,
   DatabaseId,
   Field,
+  GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
@@ -67,13 +68,17 @@ export const databaseApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, DatabaseSchema)),
         ),
     }),
-    getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
-      query: (id) => ({
+    getDatabaseHealth: builder.query<
+      GetDatabaseHealthResponse,
+      GetDatabaseHealthRequest
+    >({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/healthcheck`,
+        params,
       }),
       // invalidate health check in the case db connection info changes
-      providesTags: (_, __, id) => [idTag("database", id)],
+      providesTags: (_, __, { id }) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -96,6 +101,7 @@ export const databaseApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/database/${id}/settings-available`,
       }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -127,7 +133,7 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: ({ id, schema, ...params }) => ({
         method: "GET",
-        url: `/api/database/${id}/schema/${schema}`,
+        url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
         params,
       }),
       providesTags: (tables = []) => [
@@ -145,7 +151,7 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: ({ id, schema, ...params }) => ({
         method: "GET",
-        url: `/api/database/${id}/datasets/${schema}`,
+        url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,
         params,
       }),
       providesTags: (tables = []) => [
@@ -176,7 +182,10 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("database")]),
+        invalidateTags(error, [
+          listTag("database"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({

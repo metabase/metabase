@@ -26,7 +26,7 @@ export function GraphSelectInput({ nodes }: GraphSelectInputProps) {
   };
 
   return (
-    <Card p={0} bdrs={0}>
+    <Card p={0} flex="0 0 auto" bdrs={0} bg="transparent">
       {isOpened ? (
         <Select
           value={null}

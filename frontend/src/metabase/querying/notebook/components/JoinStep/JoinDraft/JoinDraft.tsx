@@ -2,8 +2,9 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, Text, rem } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -34,6 +35,7 @@ export function JoinDraft({
   isReadOnly,
   onJoinChange,
 }: JoinDraftProps) {
+  const tc = useTranslateContent();
   const sourceTableId = Lib.sourceTableOrCardId(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
@@ -110,7 +112,7 @@ export function JoinDraft({
       <NotebookCell className={S.JoinCell} color={color}>
         <Flex gap={6} align="center">
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
-            {lhsTableName}
+            {tc(lhsTableName)}
           </NotebookCellItem>
           <JoinStrategyPicker
             query={query}

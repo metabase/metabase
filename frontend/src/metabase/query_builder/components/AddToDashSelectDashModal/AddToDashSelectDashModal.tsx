@@ -1,21 +1,21 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  type OmniPickerItem,
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
+import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
+import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Card, Dashboard, RecentItem } from "metabase-types/api";
+import * as Urls from "metabase/utils/urls";
+import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
-import {
-  filterPersonalRecents,
-  filterWritableDashboards,
-  filterWritableRecents,
-  shouldDisableItem,
-} from "./utils";
+import { isInPersonalCollection } from "./utils";
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
@@ -45,12 +45,8 @@ export const AddToDashSelectDashModal = ({
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
-
-  const {
-    data: mostRecentlyViewedDashboard,
-    isLoading,
-    error,
-  } = useMostRecentlyViewedDashboard();
+  const { data: mostRecentlyViewedDashboard } =
+    useMostRecentlyViewedDashboard();
 
   const onDashboardSelected = (
     selectedDashboard?: Pick<Dashboard, "id" | "name">,
@@ -70,53 +66,81 @@ export const AddToDashSelectDashModal = ({
   const isRecentDashboardInPersonalCollection =
     mostRecentlyViewedDashboard?.collection?.is_personal;
 
-  // we can only show the most recently viewed dashboard if it's not in a personal collection
-  // OR the question and dashboard are both in personal collections
   const showRecentDashboard =
     mostRecentlyViewedDashboard?.id &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
 
-  const recentsFilter = useCallback(
-    (items: RecentItem[]) => {
-      const writableRecents = filterWritableRecents(items);
+  const value = useMemo(() => {
+    if (showRecentDashboard) {
+      return {
+        id: mostRecentlyViewedDashboard.id,
+        model: "dashboard" as const,
+      };
+    }
+    return {
+      id: card.collection_id ?? "root",
+      model: "collection" as const,
+    };
+  }, [
+    showRecentDashboard,
+    mostRecentlyViewedDashboard?.id,
+    card.collection_id,
+  ]);
 
-      if (isQuestionInPersonalCollection && personalCollectionId) {
-        return filterPersonalRecents(writableRecents, personalCollectionId);
-      } else {
-        return writableRecents;
+  const shouldDisable = useCallback(
+    (item: OmniPickerItem) => {
+      if (isInDbTree(item)) {
+        return true;
       }
+
+      if (item.model === "dashboard" && !item.can_write) {
+        return true;
+      }
+
+      if (
+        isQuestionInPersonalCollection &&
+        personalCollectionId &&
+        item.model === "dashboard"
+      ) {
+        const isPersonalDash = isInPersonalCollection(
+          item,
+          personalCollectionId,
+        );
+
+        return !isPersonalDash;
+      }
+
+      if (
+        !canPlaceEntityInCollectionOrDescendants(
+          "dashboard",
+          getCollectionType(item),
+        )
+      ) {
+        return true;
+      }
+
+      return false;
     },
     [isQuestionInPersonalCollection, personalCollectionId],
   );
-
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
 
   return (
     <DashboardPickerModal
       title={getTitle(card)}
       onChange={onDashboardSelected}
       onClose={onClose}
-      value={
-        showRecentDashboard
-          ? {
-              id: mostRecentlyViewedDashboard.id,
-              model: "dashboard",
-            }
-          : {
-              id: card.collection_id ?? "root",
-              model: "collection",
-            }
-      }
+      value={value}
       options={{
-        allowCreateNew: true,
-        showPersonalCollections: true,
-        showRootCollection: !isQuestionInPersonalCollection,
+        hasPersonalCollections: true,
+        hasRootCollection: !isQuestionInPersonalCollection,
       }}
-      shouldDisableItem={shouldDisableItem}
-      searchFilter={filterWritableDashboards}
-      recentFilter={recentsFilter}
+      searchParams={{
+        filter_items_in_personal_collection: isQuestionInPersonalCollection
+          ? "only"
+          : undefined,
+      }}
+      namespaces={isQuestionInPersonalCollection ? [null] : undefined}
+      isDisabledItem={shouldDisable}
     />
   );
 };

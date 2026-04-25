@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.optimize-temporal-filters
-  "Middlware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
+  "Middleware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
   `optimize-temporal-filters` for more details."
   (:refer-clojure :exclude [get-in])
   (:require
@@ -9,7 +9,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -23,15 +22,15 @@
   #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- temporal-ref? [x]
-  (and (lib.util/clause-of-type? x #{:field :expression})
+  (and (lib/clause-of-type? x #{:field :expression})
        (or (lib/raw-temporal-bucket x)
            (let [[_field opts _id-or-name] x]
              (when-let [expr-type ((some-fn :effective-type :base-type) opts)]
                (isa? expr-type :type/Temporal))))))
 
 (defn- optimizable-expr? [expr]
-  (lib.util.match/match-one expr
-    #{:field :expression}
+  (lib.util.match/match-lite expr
+    [#{:field :expression} & _]
     (and (temporal-ref? &match)
          (let [unit (or (lib/raw-temporal-bucket &match) :default)]
            (or (= unit :default)
@@ -44,8 +43,8 @@
 (defn- optimizable-temporal-value?
   "Can `temporal-value` clause can be optimized?"
   [temporal-value]
-  (lib.util.match/match-one temporal-value
-    [:relative-datetime _opts (_n :guard #{0 :current})]
+  (lib.util.match/match-lite temporal-value
+    [:relative-datetime _opts #{0 :current}]
     true
 
     [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
@@ -57,11 +56,11 @@
   "Do datetime `field` clause and `temporal-value` clause have 'compatible' units that mean we'll be able to optimize
   the filter clause they're in?"
   [field temporal-value]
-  (lib.util.match/match-one temporal-value
-    [:relative-datetime _opts (_n :guard #{0 :current})]
+  (lib.util.match/match-lite temporal-value
+    [:relative-datetime _opts #{0 :current}]
     true
 
-    [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
+    [#{:absolute-datetime :relative-datetime} _opts _n _unit]
     (let [field-unit (or (lib/raw-temporal-bucket field) :default)
           value-unit (or (lib/raw-temporal-bucket &match) :default)]
       (cond
@@ -71,7 +70,7 @@
 
 (defmethod can-optimize-filter? :default
   [filter-clause]
-  (lib.util.match/match-one filter-clause
+  (lib.util.match/match-lite filter-clause
     [_tag
      _opts
      (field :guard optimizable-expr?)
@@ -90,34 +89,34 @@
 
 (defmethod can-optimize-filter? :>=
   [filter-clause]
-  (lib.util.match/match-one
+  (lib.util.match/match-lite
     filter-clause
     [_tag
      _opts
-    ;; Don't optimize >= with column that has default temporal bucket
-     (field :guard (every-pred not-default-bucket-clause? optimizable-expr?))
+     ;; Don't optimize >= with column that has default temporal bucket
+     (field :guard (and (not-default-bucket-clause? field) (optimizable-expr? field)))
      (temporal-value :guard optimizable-temporal-value?)]
     (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
 (defmethod can-optimize-filter? :<
   [filter-clause]
-  (lib.util.match/match-one
-    filter-clause
+  (lib.util.match/match-lite filter-clause
     [_tag
      _opts
      ;; Don't optimize < with column that has default temporal bucket
-     (field :guard (every-pred not-default-bucket-clause? optimizable-expr?))
+     (field :guard (and (not-default-bucket-clause? field) (optimizable-expr? field)))
      (temporal-value :guard optimizable-temporal-value?)]
     (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
-  (lib.util.match/match-one filter-clause
+  (lib.util.match/match-lite filter-clause
     [:between
      _opts
      [(_offset :guard #{:+ :-})
       _plus_minus_opts
-      (field :guard (every-pred (comp #{:field :expression} first) optimizable-expr?))
+      (:and [#{:field :expression} & _]
+            (field :guard optimizable-expr?))
       [:interval _interval_opts _n _unit]]
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
@@ -126,7 +125,8 @@
 
     [:between
      _opts
-     (field :guard (every-pred (comp #{:field :expression} first) optimizable-expr?))
+     (:and [#{:field :expression} & _]
+           (field :guard optimizable-expr?))
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
@@ -146,8 +146,8 @@
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (lib.util.match/replace field
-    [(_tag :guard #{:field :expression}) (_opts :guard (comp optimizable-units :temporal-unit)) _id-or-name]
+  (lib.util.match/replace-lite field
+    [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime _opts t _unit]
@@ -293,7 +293,7 @@
   (set (keys (methods optimize-filter))))
 
 (defn- optimize-temporal-filters* [query path clause]
-  (when (lib.util/clause-of-type? clause optimizable-filter-types)
+  (when (lib/clause-of-type? clause optimizable-filter-types)
     (or (when (can-optimize-filter? clause)
           (u/prog1 (optimize-filter query path clause)
             (if <>
@@ -306,7 +306,7 @@
         clause)))
 
 (mu/defn optimize-temporal-filters :- ::lib.schema/query
-  "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
+  "Middleware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 

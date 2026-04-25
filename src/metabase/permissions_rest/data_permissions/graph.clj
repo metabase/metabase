@@ -9,7 +9,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
@@ -27,7 +26,8 @@
    :perms/create-queries        :create-queries
    :perms/download-results      :download
    :perms/manage-table-metadata :data-model
-   :perms/manage-database       :details})
+   :perms/manage-database       :details
+   :perms/transforms            :transforms})
 
 (def ^:private ->api-vals
   {:perms/view-data             {:unrestricted           :unrestricted
@@ -40,11 +40,12 @@
                                  :ten-thousand-rows :limited
                                  :no                nil}
    :perms/manage-table-metadata {:yes :all :no nil}
-   :perms/manage-database       {:yes :yes :no :no}})
+   :perms/manage-database       {:yes :yes :no :no}
+   :perms/transforms            {:yes :yes :no :no}})
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [graph & [_opts]]
   graph)
 
@@ -119,7 +120,12 @@
    :create-queries :query-builder-and-native
    :download       {:schemas :full}
    :data-model     {:schemas :all}
-   :details        :yes})
+   :details        :yes
+   :transforms     :yes})
+
+(def ^:private data-analyst-perms
+  "Data Analysts have implicit manage-table-metadata permission for all databases."
+  {:data-model {:schemas :all}})
 
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
@@ -128,7 +134,8 @@
   (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])
+                                                                     [:= :router_database_id nil]]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -137,6 +144,28 @@
                  (nil? (seq group-ids))))
       (reduce (fn [api-graph db-id]
                 (assoc-in api-graph [admin-group-id db-id] admin-perms))
+              api-graph
+              db-ids)
+      api-graph)))
+
+(defn- add-data-analyst-perms-to-permissions-graph
+  "Data Analysts have implicit manage-table-metadata permission for all databases.
+  This is not stored in the data-permissions table, so we add it to the graph for the API."
+  [api-graph {:keys [db-id group-ids group-id audit?]}]
+  (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
+        db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
+                                                                   {:where [:and
+                                                                            (when-not audit? [:not= :id audit/audit-db-id])
+                                                                            [:= :router_database_id nil]]}))]
+    ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
+    (if (or (= group-id data-analyst-group-id)
+            (contains? (set group-ids) data-analyst-group-id)
+            ;; If we're not filtering on specific group IDs, always include the data analyst group
+            (and (nil? group-id)
+                 (nil? (seq group-ids))))
+      (reduce (fn [api-graph db-id]
+                (update-in api-graph [data-analyst-group-id db-id]
+                           #(merge % data-analyst-perms)))
               api-graph
               db-ids)
       api-graph)))
@@ -179,7 +208,10 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])
+                                       [:not-in :db_id {:select [:id]
+                                                        :from   [:metabase_database]
+                                                        :where  [:not= :router_database_id nil]}]]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -219,7 +251,8 @@
                   remove-empty-vals
                   (add-sandboxes-to-permissions-graph opts)
                   (add-impersonations-to-permissions-graph opts)
-                  (add-admin-perms-to-permissions-graph opts))})))
+                  (add-admin-perms-to-permissions-graph opts)
+                  (add-data-analyst-perms-to-permissions-graph opts))})))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
@@ -232,7 +265,7 @@
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
   "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
   EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [_])
 
 (defn ee-permissions-exception
@@ -329,6 +362,10 @@
   [group-id db-id value]
   (perms/set-database-permission! group-id db-id :perms/manage-database value))
 
+(defn- update-transforms-perms!
+  [group-id db-id value]
+  (perms/set-database-permission! group-id db-id :perms/transforms value))
+
 (defn- update-table-level-create-queries-permissions!
   [group-id db-id schema new-table-perms]
   (let [new-table-perms (update-keys
@@ -395,6 +432,19 @@
           (throw (ee-permissions-exception :blocked)))
         (perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
 
+(defn- check-data-analyst-locked-permissions
+  "Check that we're not modifying data-model permission for the Data Analysts group.
+   Data Analysts always have full data-model (manage-table-metadata) permissions."
+  [group-updates]
+  (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))]
+    (when-let [da-updates (get group-updates data-analyst-group-id)]
+      (doseq [[_db-id db-changes] da-updates]
+        (when (and (contains? db-changes :data-model)
+                   (not= (:data-model db-changes) (:data-model data-analyst-perms)))
+          (throw (ex-info (tru "You cannot modify the data model permission for the ''{0}'' group."
+                               (:name (perms/data-analyst-group)))
+                          {:status-code 400})))))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
@@ -415,16 +465,17 @@
              ;; instead of iterating the provided cb-changes object we need to go in a specific order
              ;; so backend consistency rules like setting create-queries and download to no when view-data
              ;; is blocked can happen in the correct order despite what may come in the API request
-             perm-type [:details :data-model :download :create-queries :view-data]]
+             perm-type [:details :data-model :download :transforms :create-queries :view-data]]
        (when-let [new-perms (perm-type db-changes)]
          (case perm-type
            :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
            :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
            :download       (update-db-level-download-permissions! group-id db-id new-perms)
            :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
-           :details        (update-details-perms! group-id db-id new-perms))))))
+           :details        (update-details-perms! group-id db-id new-perms)
+           :transforms     (update-transforms-perms! group-id db-id new-perms))))))
 
-  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
@@ -433,14 +484,14 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
-     (cluster-lock/with-cluster-lock ::update-data-perms-graph
+     (perms/with-global-permissions-lock
        (let [group-updates (:groups graph-updates)]
+         (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
-         (t2/with-transaction [_conn]
-           (update-data-perms-graph!* group-updates)
-           (delete-impersonations-if-needed-after-permissions-change! group-updates)
-           (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
-  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph! (assoc-in (api-graph) (cons :groups ks) new-value))))

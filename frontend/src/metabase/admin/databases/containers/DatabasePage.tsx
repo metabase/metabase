@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { getEngines } from "metabase/databases/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   Box,
   Button,
@@ -62,21 +62,9 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   };
 
   return (
-    <Flex
-      direction="row"
-      h="100%"
-      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
-    >
+    <Flex direction="row" h="100%" bg="background-secondary">
       <Box h="100%" w="100%" component={ScrollArea}>
-        <Box
-          w="100%"
-          maw="54rem"
-          mx="auto"
-          p={{
-            base: `md`,
-            sm: `xl`,
-          }}
-        >
+        <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
           <Flex
             mb="lg"
             align="center"

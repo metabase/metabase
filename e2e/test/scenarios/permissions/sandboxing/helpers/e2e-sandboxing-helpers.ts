@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   CollectionItem,
   Dashboard,
@@ -338,8 +338,7 @@ export const configureSandboxPolicy = (
   policy: SandboxPolicy,
   { databaseId = 1, tableName = "Products" } = {},
 ) => {
-  const { filterTableBy, customViewName, customViewType, filterColumn } =
-    policy;
+  const { filterTableBy, customViewName, filterColumn } = policy;
 
   cy.log(`Configure sandboxing policy: ${JSON.stringify(policy)}`);
   cy.log(
@@ -368,14 +367,25 @@ export const configureSandboxPolicy = (
       name: /Filter by a column in the table/,
     }).should("be.checked");
   } else if (customViewName) {
+    // activity/recents invalidates the card cache, causing the component to refetch and show the loading spinner
+    // which makes this test flaky. so we'll return an error to prevent the invalidation
+    cy.intercept("POST", "/api/activity/recents", {
+      statusCode: 500,
+      body: { message: "Stubbed to prevent flaky test" },
+    }).as("activityRecents");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
+
     cy.findByText(
       /Use a saved question to create a custom view for this table/,
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
+
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(customViewType).click();
-      cy.findByText(/Sandboxing/).click(); // collection name
-      cy.findByText(customViewName).click();
+      cy.findByText(/Our analytics/).click();
+      cy.findByText(/Sandboxing/).click();
+      cy.contains(customViewName).click();
+      cy.findByText("Select").click();
     });
   }
 
@@ -541,7 +551,11 @@ export const getCardResponses = (questions: SimpleCollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
   return H.cypressWaitAll(
     questions.map((question) =>
-      cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
+      cy.request<DatasetResponse>({
+        method: "POST",
+        url: `/api/card/${question.id}/query`,
+        failOnStatusCode: false,
+      }),
     ),
   ).then((responses) => {
     return { responses, questions };

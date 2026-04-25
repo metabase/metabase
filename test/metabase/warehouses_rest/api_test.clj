@@ -3,10 +3,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -40,10 +43,13 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
+   (java.util.concurrent CountDownLatch)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -118,7 +124,7 @@
     :database_id   (mt/id)
     :dataset_query {:database (mt/id)
                     :type     :native
-                    :native   {:query (format "SELECT * FROM VENUES")}}}
+                    :native   {:query "SELECT * FROM VENUES"}}}
    kvs))
 
 (defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
@@ -153,7 +159,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules))
+                   (dissoc :details :write_data_details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -273,6 +279,39 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
+
+(defn- find-in-clauses
+  "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
+  [hsql]
+  (let [results (volatile! [])]
+    (walk/postwalk
+     (fn [form]
+       (when (and (vector? form)
+                  (let [[op _ coll] form]
+                    (and
+                     (= :in op)
+                     (= 3 (count form))
+                     (coll? coll)
+                     (not (map? coll)))))
+         (vswap! results conj form))
+       form)
+     hsql)
+    @results))
+
+(deftest get-database-usage-info-no-large-in-test
+  (testing "usage_info query should not use IN clauses with more than 100 items (GHY-2413)"
+    (mt/with-temp
+      [:model/Database {db-id :id} {}
+       :model/Table    _           {:db_id db-id}]
+      (let [queries    (volatile! [])
+            orig-query mdb/query]
+        (with-redefs [mdb/query (fn [hsql]
+                                  (vswap! queries conj hsql)
+                                  (orig-query hsql))]
+          (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
+        (doseq [q @queries]
+          (is (empty? (find-in-clauses q))
+              "usage_info should not generate IN clauses with inline collections"))))))
 
 (deftest ^:parallel get-database-usage-info-test-2
   (mt/with-temp
@@ -623,6 +662,57 @@
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
 
+(deftest update-database-settings-only-validates-changed-settings-test
+  (testing "PUT /api/database/:id only validates settings that are being changed"
+    (testing "should not validate existing settings that aren't being changed"
+      ;; api-test-disabled-for-database is always disabled, so it would fail validation if we tried to validate it
+      ;; Here we create a database with that setting already set, then update a different setting.
+      ;; If validation happens on all settings, it would fail. If it only validates changed settings, it should succeed.
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true
+                                                             :database-enable-actions        false}}]
+        (is (= {:api-test-disabled-for-database true
+                :database-enable-actions        true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:database-enable-actions true}}))))))
+
+    (testing "should not validate settings where the value hasn't changed"
+      ;; Same setup, but we set the same value as before - should skip validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should still validate settings that are actually being changed to a new value"
+      ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database false}}]
+        (is (= "Setting api-test-disabled-for-database is not enabled for this database"
+               (:message (mt/user-http-request :crowberto :put 400
+                                               (format "database/%s" db-id)
+                                               {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should not validate settings being reset to nil (default)"
+      ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database nil}}))))))
+
+    (testing "should not validate settings being reset to default value (literally)"
+      ;; Resetting a setting to default should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database false}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database false}}))))))))
+
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
@@ -659,9 +749,488 @@
         (is (true? @connections-stay-open?))
         (tx/destroy-db! driver/*driver* empty-dbdef)))))
 
+(deftest databases-metadata-test
+  (testing "GET /api/database/metadata"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}     {:db_id db-id :name "my_table" :schema "PUBLIC"
+                                                   :description "A test table"}
+                   :model/Field    {f1-id :id}    {:table_id t-id :name "id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/PK}
+                   :model/Field    {f2-id :id}    {:table_id t-id :name "created_at" :base_type :type/Text
+                                                   :database_type "TIMESTAMP"
+                                                   :effective_type :type/DateTime
+                                                   :semantic_type :type/Name
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime
+                                                   :description "The creation time"}
+                   :model/Field    {f3-id :id}    {:table_id t-id :name "parent_id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/FK
+                                                   :fk_target_field_id f1-id}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (=? {:id db-id :name "test-db" :engine "h2"}
+                (m/find-first (comp #{db-id} :id) databases)))
+        (is (=? {:id t-id :db_id db-id :name "my_table" :schema "PUBLIC" :description "A test table"}
+                (m/find-first (comp #{t-id} :id) tables)))
+        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer" :database_type "BIGINT"
+                 :semantic_type "type/PK"}
+                (m/find-first (comp #{f1-id} :id) fields)))
+        (is (=? {:id                f2-id
+                 :table_id          t-id
+                 :name              "created_at"
+                 :base_type         "type/Text"
+                 :database_type     "TIMESTAMP"
+                 :effective_type    "type/DateTime"
+                 :semantic_type     "type/Name"
+                 :coercion_strategy "Coercion/ISO8601->DateTime"
+                 :description       "The creation time"}
+                (m/find-first (comp #{f2-id} :id) fields)))
+        (is (=? {:id                 f3-id
+                 :table_id           t-id
+                 :name               "parent_id"
+                 :base_type          "type/Integer"
+                 :database_type      "BIGINT"
+                 :semantic_type      "type/FK"
+                 :fk_target_field_id f1-id}
+                (m/find-first (comp #{f3-id} :id) fields)))))))
+
+(deftest databases-metadata-no-perms-test
+  (testing "GET /api/database/metadata — user without data perms sees nothing"
+    (mt/with-temp [:model/Database {db-id :id} {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "my_table" :schema "PUBLIC"}
+                   :model/Field    _           {:table_id t-id :name "id" :base_type :type/Integer
+                                                :database_type "BIGINT"}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= {:databases [] :tables [] :fields []}
+               (mt/user-http-request :rasta :get 202 "database/metadata")))))))
+
+(deftest databases-field-values-test
+  (testing "GET /api/database/field-values"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f1-id :id} {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/Field       {f2-id :id} {:table_id t-id :name "rating" :base_type :type/Integer
+                                                   :database_type "INTEGER"}
+                   :model/FieldValues _           {:field_id f1-id :type :full
+                                                   :values [["CA"] ["NY"] ["TX"]]
+                                                   :has_more_values false}
+                   :model/FieldValues _           {:field_id f2-id :type :full
+                                                   :values [[1] [2] [3]]
+                                                   :human_readable_values ["Low" "Mid" "High"]
+                                                   :has_more_values true}]
+      (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
+            by-field                (into {} (map (juxt :field_id identity)) field_values)]
+        (is (=? {:field_id        f1-id
+                 :values          [["CA"] ["NY"] ["TX"]]
+                 :has_more_values false}
+                (by-field f1-id)))
+        (is (nil? (:human_readable_values (by-field f1-id)))
+            "human_readable_values is omitted when empty")
+        (is (=? {:field_id              f2-id
+                 :values                [[1] [2] [3]]
+                 :human_readable_values ["Low" "Mid" "High"]
+                 :has_more_values       true}
+                (by-field f2-id)))))))
+
+(deftest databases-field-values-non-admin-test
+  (testing "GET /api/database/field-values — non-admin requests are rejected"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values [["CA"] ["NY"]]
+                                                   :has_more_values false}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "database/field-values"))))))
+
+(deftest databases-field-values-excludes-non-full-test
+  (testing "GET /api/database/field-values — only :full FieldValues are included"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values [["CA"]]
+                                                   :has_more_values false}
+                   :model/FieldValues _           {:field_id f-id :type :sandbox
+                                                   :hash_key "sandbox-hash"
+                                                   :values [["NY"]]
+                                                   :has_more_values false}]
+      (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
+            for-field               (filter #(= f-id (:field_id %)) field_values)]
+        (is (= 1 (count for-field))
+            "only the :full entry streams; :sandbox / other variants are excluded")
+        (is (= [["CA"]] (-> for-field first :values)))))))
+
+(deftest databases-metadata-excludes-audit-db-test
+  (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
+    (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "audit_table" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "audit_col" :base_type :type/Integer}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (nil? (m/find-first (comp #{db-id} :id) databases)))
+        (is (nil? (m/find-first (comp #{t-id}  :id) tables)))
+        (is (nil? (m/find-first (comp #{f-id}  :id) fields)))))))
+
+(deftest databases-metadata-import-test
+  (testing "POST /api/database/metadata"
+    (mt/with-temp [:model/Database {db-id :id} {:name "import-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "orders" :schema "PUBLIC"
+                                                :description "original"}
+                   :model/Field    {pk-id :id} {:table_id t-id :name "id" :base_type :type/Integer
+                                                :database_type "BIGINT"}
+                   :model/Field    {fk-id :id} {:table_id t-id :name "order_id" :base_type :type/Integer
+                                                :database_type "BIGINT"}]
+      (testing "matched entities are updated; missing tables/fields are created when parent exists"
+        ;; Payload carries ids from "another" instance — here we reuse our own ids, but the
+        ;; endpoint matches by natural key regardless of what the numeric ids are.
+        (let [payload   {:databases [{:id db-id :name "import-db" :engine "h2"}
+                                     {:id 9999 :name "does-not-exist" :engine "h2"}]
+                         :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"
+                                      :description "updated via import"}
+                                     {:id 9998 :db_id db-id :name "new_table" :schema "PUBLIC"
+                                      :description "created via import"}]
+                         :fields    [{:id pk-id :table_id t-id :name "id"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :semantic_type "type/PK"
+                                      :description "primary key"}
+                                     {:id fk-id :table_id t-id :name "order_id"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :semantic_type "type/FK"
+                                      :fk_target_field_id pk-id}
+                                     {:id 9997 :table_id t-id :name "new_field"
+                                      :base_type "type/Integer" :database_type "INT"
+                                      :description "created via import"
+                                      :semantic_type "type/Quantity"}
+                                     {:id 9996 :table_id 9998 :name "new_table_field"
+                                      :base_type "type/Text" :database_type "VARCHAR"}]}
+              report    (mt/user-http-request :crowberto :post 200
+                                              "database/metadata" payload)]
+          (is (=? {:databases {:matched 1 :missing [{:name "does-not-exist"}]}
+                   :tables    {:matched 1 :created 1 :missing []}
+                   :fields    {:matched 2 :created 2 :missing []}}
+                  report))
+          (is (= "updated via import" (t2/select-one-fn :description :model/Table :id t-id)))
+          (is (= :type/PK (t2/select-one-fn :semantic_type :model/Field :id pk-id)))
+          (is (= "primary key" (t2/select-one-fn :description :model/Field :id pk-id)))
+          (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))
+          (testing "new table was created under the matched database"
+            (let [new-tbl (t2/select-one :model/Table :db_id db-id :name "new_table")]
+              (is (some? new-tbl))
+              (is (= "created via import" (:description new-tbl)))
+              (is (true? (:active new-tbl)))))
+          (testing "new field was created under the existing table"
+            (let [new-fld (t2/select-one :model/Field :table_id t-id :name "new_field")]
+              (is (some? new-fld))
+              (is (= :type/Integer (:base_type new-fld)))
+              (is (= "INT" (:database_type new-fld)))
+              (is (= "created via import" (:description new-fld)))
+              (is (= :type/Quantity (:semantic_type new-fld)))))
+          (testing "new field was created under a newly-created table"
+            (let [new-tbl-id (t2/select-one-pk :model/Table :db_id db-id :name "new_table")]
+              (is (some? (t2/select-one :model/Field :table_id new-tbl-id :name "new_table_field")))))))
+
+      (testing "fields whose database is missing on the target are reported as missing"
+        (let [payload {:databases [{:id 9999 :name "does-not-exist" :engine "h2"}]
+                       :tables    [{:id 9998 :db_id 9999 :name "x" :schema "PUBLIC"}]
+                       :fields    [{:id 9997 :table_id 9998 :name "y"
+                                    :base_type "type/Integer" :database_type "INTEGER"}]}
+              report  (mt/user-http-request :crowberto :post 200
+                                            "database/metadata" payload)]
+          (is (=? {:tables {:matched 0 :created 0 :missing [{:name "x"}]}
+                   :fields {:matched 0 :created 0 :missing [{:path ["y"]}]}}
+                  report))))
+
+      (testing "base_type and database_type are never overwritten"
+        (let [payload {:databases [{:id db-id :name "import-db" :engine "h2"}]
+                       :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"}]
+                       :fields    [{:id pk-id :table_id t-id :name "id"
+                                    :base_type "type/Text" :database_type "TEXT"
+                                    :description "still a pk"}]}]
+          (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+          (is (= :type/Integer (t2/select-one-fn :base_type :model/Field :id pk-id)))
+          (is (= "BIGINT" (t2/select-one-fn :database_type :model/Field :id pk-id)))))
+
+      (testing "nested fields are matched by parent path"
+        (mt/with-temp [:model/Field {parent-id :id} {:table_id t-id :name "payload"
+                                                     :base_type :type/JSON :database_type "JSON"}
+                       :model/Field {child-id :id}  {:table_id t-id :parent_id parent-id :name "amount"
+                                                     :base_type :type/Integer :database_type "BIGINT"}]
+          (let [payload {:databases [{:id db-id :name "import-db" :engine "h2"}]
+                         :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"}]
+                         :fields    [{:id 1 :table_id t-id :name "payload"
+                                      :base_type "type/JSON" :database_type "JSON"}
+                                     {:id 2 :table_id t-id :parent_id 1 :name "amount"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :description "nested description"
+                                      :semantic_type "type/Quantity"}]}]
+            (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+            (is (= "nested description" (t2/select-one-fn :description :model/Field :id child-id)))
+            (is (= :type/Quantity (t2/select-one-fn :semantic_type :model/Field :id child-id))))))
+
+      (testing "fields with the same leaf name at different parent paths are matched independently"
+        ;; A root-level `amount` and a nested `payload.amount` coexist on the same table.
+        ;; Matching by full parent path must update each without clobbering the other.
+        (mt/with-temp [:model/Field {root-amount-id :id}   {:table_id t-id :name "amount"
+                                                            :base_type :type/Integer :database_type "BIGINT"}
+                       :model/Field {parent-id :id}        {:table_id t-id :name "payload"
+                                                            :base_type :type/JSON :database_type "JSON"}
+                       :model/Field {nested-amount-id :id} {:table_id t-id :parent_id parent-id :name "amount"
+                                                            :base_type :type/Integer :database_type "BIGINT"}]
+          (let [payload {:databases [{:id db-id :name "import-db" :engine "h2"}]
+                         :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"}]
+                         :fields    [{:id 10 :table_id t-id :name "amount"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :description "root amount"
+                                      :semantic_type "type/Quantity"}
+                                     {:id 11 :table_id t-id :name "payload"
+                                      :base_type "type/JSON" :database_type "JSON"}
+                                     {:id 12 :table_id t-id :parent_id 11 :name "amount"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :description "nested amount"
+                                      :semantic_type "type/Currency"}]}]
+            (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+            (is (= "root amount"   (t2/select-one-fn :description   :model/Field :id root-amount-id)))
+            (is (= :type/Quantity  (t2/select-one-fn :semantic_type :model/Field :id root-amount-id)))
+            (is (= "nested amount" (t2/select-one-fn :description   :model/Field :id nested-amount-id)))
+            (is (= :type/Currency  (t2/select-one-fn :semantic_type :model/Field :id nested-amount-id))))))
+
+      (testing "non-superusers are rejected"
+        (mt/user-http-request :rasta :post 403 "database/metadata"
+                              {:databases [] :tables [] :fields []})))))
+
+(deftest databases-metadata-import-nested-fields-test
+  (testing "POST /api/database/metadata — nested fields with shared leaf names under siblings"
+    (mt/with-temp [:model/Database {db-id :id} {:name "nested-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "obs" :schema "PUBLIC"}]
+      (let [payload  {:databases [{:id db-id :name "nested-db" :engine "h2"}]
+                      :tables    [{:id t-id :db_id db-id :name "obs" :schema "PUBLIC"}]
+                      :fields    [{:id 100 :table_id t-id :name "wind"
+                                   :base_type "type/Dictionary" :database_type "NULL"}
+                                  {:id 101 :table_id t-id :parent_id 100 :name "value"
+                                   :base_type "type/Float" :database_type "NULL"}
+                                  {:id 102 :table_id t-id :name "temp"
+                                   :base_type "type/Dictionary" :database_type "NULL"}
+                                  {:id 103 :table_id t-id :parent_id 102 :name "value"
+                                   :base_type "type/Float" :database_type "NULL"}]}
+            report   (mt/user-http-request :crowberto :post 200
+                                           "database/metadata" payload)
+            by-name  (->> (t2/select [:model/Field :id :name :parent_id] :table_id t-id)
+                          (group-by :name))
+            wind-id  (:id (first (get by-name "wind")))
+            temp-id  (:id (first (get by-name "temp")))
+            values   (sort-by :parent_id (get by-name "value"))]
+        (is (=? {:databases {:matched 1 :missing []}
+                 :tables    {:matched 1 :created 0 :missing []}
+                 :fields    {:matched 0 :created 4 :missing []}}
+                report))
+        (is (= 4 (t2/count :model/Field :table_id t-id)))
+        (is (= 2 (count values)))
+        (testing "each value row points at its own parent, not NULL"
+          (is (= #{wind-id temp-id}
+                 (set (map :parent_id values))))))))
+
+  (testing "POST /api/database/metadata — 3-level deep nesting with correct parent chain"
+    (mt/with-temp [:model/Database {db-id :id} {:name "nested-3-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "tree" :schema "PUBLIC"}]
+      (let [payload {:databases [{:id db-id :name "nested-3-db" :engine "h2"}]
+                     :tables    [{:id t-id :db_id db-id :name "tree" :schema "PUBLIC"}]
+                     :fields    [{:id 1 :table_id t-id :name "a"
+                                  :base_type "type/Dictionary" :database_type "NULL"}
+                                 {:id 2 :table_id t-id :parent_id 1 :name "b"
+                                  :base_type "type/Dictionary" :database_type "NULL"}
+                                 {:id 3 :table_id t-id :parent_id 2 :name "c"
+                                  :base_type "type/Integer" :database_type "NULL"}]}]
+        (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+        (let [a (t2/select-one :model/Field :table_id t-id :name "a")
+              b (t2/select-one :model/Field :table_id t-id :name "b")
+              c (t2/select-one :model/Field :table_id t-id :name "c")]
+          (is (nil? (:parent_id a)))
+          (is (= (:id a) (:parent_id b)))
+          (is (= (:id b) (:parent_id c)))))))
+
+  (testing "POST /api/database/metadata — new child attaches to a pre-existing matched parent"
+    (mt/with-temp [:model/Database {db-id :id} {:name "matched-parent-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {p-id :id}  {:table_id t-id :name "payload"
+                                                :base_type :type/Dictionary}]
+      (let [payload {:databases [{:id db-id :name "matched-parent-db" :engine "h2"}]
+                     :tables    [{:id t-id :db_id db-id :name "t" :schema "PUBLIC"}]
+                     :fields    [{:id 10 :table_id t-id :name "payload"
+                                  :base_type "type/Dictionary" :database_type "NULL"}
+                                 {:id 11 :table_id t-id :parent_id 10 :name "new_leaf"
+                                  :base_type "type/Integer" :database_type "NULL"}]}]
+        (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+        (let [child (t2/select-one :model/Field :table_id t-id :name "new_leaf")]
+          (is (some? child))
+          (is (= p-id (:parent_id child)))))))
+
+  (testing "POST /api/database/metadata — nested-field import is idempotent on repeat"
+    (mt/with-temp [:model/Database {db-id :id} {:name "idempotency-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "obs" :schema "PUBLIC"}]
+      (let [payload {:databases [{:id db-id :name "idempotency-db" :engine "h2"}]
+                     :tables    [{:id t-id :db_id db-id :name "obs" :schema "PUBLIC"}]
+                     :fields    [{:id 100 :table_id t-id :name "wind"
+                                  :base_type "type/Dictionary" :database_type "NULL"}
+                                 {:id 101 :table_id t-id :parent_id 100 :name "value"
+                                  :base_type "type/Float" :database_type "NULL"}
+                                 {:id 102 :table_id t-id :name "temp"
+                                  :base_type "type/Dictionary" :database_type "NULL"}
+                                 {:id 103 :table_id t-id :parent_id 102 :name "value"
+                                  :base_type "type/Float" :database_type "NULL"}]}
+            first-report  (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+            second-report (mt/user-http-request :crowberto :post 200 "database/metadata" payload)]
+        (is (=? {:fields {:matched 0 :created 4}} first-report))
+        (is (=? {:fields {:matched 4 :created 0}} second-report))
+        (is (= 4 (t2/count :model/Field :table_id t-id)))))))
+
+(deftest databases-metadata-import-edge-cases-test
+  (testing "POST /api/database/metadata — orphan parent_id (references a field not in payload) lands as root"
+    (mt/with-temp [:model/Database {db-id :id} {:name "orphan-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [payload {:databases [{:id db-id :name "orphan-db" :engine "h2"}]
+                     :tables    [{:id t-id :db_id db-id :name "t" :schema "PUBLIC"}]
+                     :fields    [{:id 99 :table_id t-id :parent_id 9999 :name "orphan"
+                                  :base_type "type/Text" :database_type "TEXT"}]}
+            report  (mt/user-http-request :crowberto :post 200 "database/metadata" payload)]
+        (is (=? {:fields {:created 1}} report))
+        (let [orphan (t2/select-one :model/Field :table_id t-id :name "orphan")]
+          (is (some? orphan))
+          (is (nil? (:parent_id orphan)))))))
+
+  (testing "POST /api/database/metadata — omitted database_type falls back to the \"NULL\" sentinel"
+    ;; GET's `format-field-metadata` drops nil `database_type` via `m/assoc-some`,
+    ;; so a round-tripped payload from a MySQL app DB (nullable column) can omit
+    ;; the key. The sentinel keeps the INSERT valid under Postgres' NOT NULL.
+    (mt/with-temp [:model/Database {db-id :id} {:name "no-db-type-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [payload {:databases [{:id db-id :name "no-db-type-db" :engine "h2"}]
+                     :tables    [{:id t-id :db_id db-id :name "t" :schema "PUBLIC"}]
+                     :fields    [{:id 1 :table_id t-id :name "mongo_field"
+                                  :base_type "type/Text"}]}]
+        (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+        (is (= "NULL"
+               (t2/select-one-fn :database_type :model/Field :table_id t-id :name "mongo_field"))))))
+
+  (testing "POST /api/database/metadata — cycle in incoming parent_id does not stack-overflow"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cycle-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [payload {:databases [{:id db-id :name "cycle-db" :engine "h2"}]
+                     :tables    [{:id t-id :db_id db-id :name "t" :schema "PUBLIC"}]
+                     :fields    [{:id 1 :table_id t-id :parent_id 2 :name "a"
+                                  :base_type "type/Text" :database_type "TEXT"}
+                                 {:id 2 :table_id t-id :parent_id 1 :name "b"
+                                  :base_type "type/Text" :database_type "TEXT"}]}]
+        ;; Degenerate payload — only the status code is asserted; the rows' shape
+        ;; after a cycle-broken insert is intentionally unspecified.
+        (is (=? {:databases {:matched 1}}
+                (mt/user-http-request :crowberto :post 200 "database/metadata" payload)))))))
+
+(deftest databases-metadata-import-batching-test
+  (testing "POST /api/database/metadata — new-field INSERTs are chunked by import-batch-size"
+    (mt/with-temp [:model/Database {db-id :id} {:name "batch-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [insert-calls (atom [])
+            orig-insert  t2/insert-returning-pks!
+            payload      {:databases [{:id db-id :name "batch-db" :engine "h2"}]
+                          :tables    [{:id t-id :db_id db-id :name "t" :schema "PUBLIC"}]
+                          :fields    (mapv (fn [idx]
+                                             {:id            (+ 1000 idx)
+                                              :table_id      t-id
+                                              :name          (str "col_" idx)
+                                              :base_type     "type/Integer"
+                                              :database_type "INTEGER"})
+                                           (range 7))}]
+        (with-redefs [api.database/import-batch-size 3
+                      t2/insert-returning-pks!       (fn [model rows]
+                                                       (when (= model :model/Field)
+                                                         (swap! insert-calls conj (count rows)))
+                                                       (orig-insert model rows))]
+          (mt/user-http-request :crowberto :post 200 "database/metadata" payload))
+        (is (= [3 3 1] @insert-calls))))))
+
+(deftest databases-metadata-import-partial-failure-test
+  (testing "POST /api/database/metadata — one DB's failure does not roll back others"
+    (mt/with-temp [:model/Database {db-a-id :id} {:name "pf-db-a" :engine :h2}
+                   :model/Database {db-b-id :id} {:name "pf-db-b" :engine :h2}
+                   :model/Table    {t-a-id :id}  {:db_id db-a-id :name "ta" :schema "PUBLIC"}
+                   :model/Table    {t-b-id :id}  {:db_id db-b-id :name "tb" :schema "PUBLIC"}]
+      (let [orig-import-fields (deref #'api.database/import-fields!)]
+        (with-redefs [api.database/import-fields! (fn [state fields incoming-by-id in-tbl->target path-lookup]
+                                                    (if (some #(= t-b-id (:table_id %)) fields)
+                                                      (throw (ex-info "injected failure for DB-B" {}))
+                                                      (orig-import-fields state fields incoming-by-id
+                                                                          in-tbl->target path-lookup)))]
+          (let [payload {:databases [{:id db-a-id :name "pf-db-a" :engine "h2"}
+                                     {:id db-b-id :name "pf-db-b" :engine "h2"}]
+                         :tables    [{:id t-a-id :db_id db-a-id :name "ta" :schema "PUBLIC"}
+                                     {:id t-b-id :db_id db-b-id :name "tb" :schema "PUBLIC"}]
+                         :fields    [{:id 1 :table_id t-a-id :name "a_col"
+                                      :base_type "type/Integer" :database_type "INTEGER"}
+                                     {:id 2 :table_id t-b-id :name "b_col"
+                                      :base_type "type/Integer" :database_type "INTEGER"}]}
+                report  (mt/user-http-request :crowberto :post 200 "database/metadata" payload)]
+            (is (=? {:databases {:matched 2
+                                 :missing []
+                                 :failed  [{:id db-b-id :target db-b-id}]}}
+                    report))
+            (testing "DB-A's field committed despite DB-B's failure"
+              (is (some? (t2/select-one :model/Field :table_id t-a-id :name "a_col"))))
+            (testing "DB-B's field did not commit (transaction rolled back)"
+              (is (nil? (t2/select-one :model/Field :table_id t-b-id :name "b_col")))))))))
+
+  (testing "POST /api/database/metadata — pathmap is scoped to the current DB only"
+    (mt/with-temp [:model/Database {db-a-id :id} {:name "scope-db-a" :engine :h2}
+                   :model/Database {db-b-id :id} {:name "scope-db-b" :engine :h2}
+                   :model/Table    {t-a-id :id}  {:db_id db-a-id :name "t" :schema "PUBLIC"}
+                   :model/Table    {t-b-id :id}  {:db_id db-b-id :name "t" :schema "PUBLIC"}]
+      (let [calls          (atom [])
+            orig-build-pm  (deref #'api.database/build-target-field-pathmap)]
+        (with-redefs [api.database/build-target-field-pathmap (fn [ids]
+                                                                (swap! calls conj (set ids))
+                                                                (orig-build-pm ids))]
+          (let [payload {:databases [{:id db-a-id :name "scope-db-a" :engine "h2"}]
+                         :tables    [{:id t-a-id :db_id db-a-id :name "t" :schema "PUBLIC"}]
+                         :fields    [{:id 1 :table_id t-a-id :name "c"
+                                      :base_type "type/Integer" :database_type "INTEGER"}]}]
+            (mt/user-http-request :crowberto :post 200 "database/metadata" payload))
+          (testing "build-target-field-pathmap never saw db-b's table"
+            (is (every? #(not (contains? % t-b-id)) @calls)))
+          (testing "and was called with db-a's table"
+            (is (some #(contains? % t-a-id) @calls))))))))
+
+(deftest databases-metadata-import-cross-db-fk-test
+  (testing "POST /api/database/metadata — cross-DB fk_target_field_id resolves after all DBs commit"
+    (mt/with-temp [:model/Database {db-a-id :id} {:name "xfk-db-a" :engine :h2}
+                   :model/Database {db-b-id :id} {:name "xfk-db-b" :engine :h2}
+                   :model/Table    {t-a-id :id}  {:db_id db-a-id :name "ta" :schema "PUBLIC"}
+                   :model/Table    {t-b-id :id}  {:db_id db-b-id :name "tb" :schema "PUBLIC"}
+                   :model/Field    {pk-id :id}   {:table_id t-a-id :name "id"
+                                                  :base_type :type/Integer
+                                                  :database_type "BIGINT"
+                                                  :semantic_type :type/PK}
+                   :model/Field    {fk-id :id}   {:table_id t-b-id :name "a_id"
+                                                  :base_type :type/Integer
+                                                  :database_type "BIGINT"
+                                                  :semantic_type :type/FK}]
+      (let [payload {:databases [{:id db-b-id :name "xfk-db-b" :engine "h2"}
+                                 {:id db-a-id :name "xfk-db-a" :engine "h2"}]
+                     :tables    [{:id t-b-id :db_id db-b-id :name "tb" :schema "PUBLIC"}
+                                 {:id t-a-id :db_id db-a-id :name "ta" :schema "PUBLIC"}]
+                     :fields    [{:id fk-id :table_id t-b-id :name "a_id"
+                                  :base_type "type/Integer" :database_type "BIGINT"
+                                  :fk_target_field_id pk-id}
+                                 {:id pk-id :table_id t-a-id :name "id"
+                                  :base_type "type/Integer" :database_type "BIGINT"
+                                  :semantic_type "type/PK"}]}]
+        (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
+        (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))))))
+
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -673,7 +1242,7 @@
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
-                                     :data_layer          "copper"
+                                     :data_layer          "hidden"
                                      :fields              [(merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
@@ -769,16 +1338,17 @@
                         :tables)]
         (is (= () tables))))))
 
-(deftest ^:parallel fetch-database-metadata-skip-fields-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    table       {:db_id db-id}
-                 :model/Field    _           {:table_id (u/the-id table)}]
-    (testing "GET /api/database/:id/metadata?skip_fields=true"
-      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                        :tables
-                        first
-                        :fields)]
-        (is (= () fields))))))
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/Field _ {:table_id (u/the-id table)}]
+      (testing "GET /api/database/:id/metadata?skip_fields=true"
+        (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                          :tables
+                          first
+                          :fields)]
+          (is (= () fields)))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -908,9 +1478,9 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details))]
+                                (disj :details :write_data_details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -981,20 +1551,21 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
-(deftest ^:parallel databases-list-can-upload-test
-  (testing "GET /api/database"
-    (let [old-ids (t2/select-pks-set :model/Database)]
-      (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temp [:model/Database _ {:engine          :postgres
-                                            :name            "The Chosen One"
-                                            :uploads_enabled uploads-enabled?
-                                            :uploads_schema_name "public"}]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= 1
-                     (:total result)))
-              (is (= uploads-enabled?
-                     (-> result :data first :can_upload))))))))))
+(deftest databases-list-can-upload-test
+  (mt/with-empty-h2-app-db!
+    (testing "GET /api/database"
+      (let [old-ids (t2/select-pks-set :model/Database)]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temp [:model/Database _ {:engine              :postgres
+                                              :name                "The Chosen One"
+                                              :uploads_enabled     uploads-enabled?
+                                              :uploads_schema_name "public"}]
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= 1
+                       (:total result)))
+                (is (= uploads-enabled?
+                       (-> result :data first :can_upload)))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -1133,22 +1704,22 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-5
+(deftest databases-list-include-saved-questions-tables-test-5
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp [:model/Database bad-db   {:engine ::no-nested-query-support, :details {}}
-                     :model/Card     bad-card {:name            "Bad Card"
-                                               :dataset_query   {:database (u/the-id bad-db)
-                                                                 :type     :native
-                                                                 :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name         "sparrows"
-                                                                  :display_name "Sparrows"
-                                                                  :base_type    :type/Integer}]
-                                               :database_id     (u/the-id bad-db)}
-                     :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name         "finches"
-                                                                        :display_name "Finches"
-                                                                        :base_type    :type/Integer}])]
+      (mt/with-temp [:model/Database bad-db {:engine ::no-nested-query-support, :details {}}
+                     :model/Card bad-card {:name            "Bad Card"
+                                           :dataset_query   {:database (u/the-id bad-db)
+                                                             :type     :native
+                                                             :native   {:query "[QUERY GOES HERE]"}}
+                                           :result_metadata [{:name         "sparrows"
+                                                              :display_name "Sparrows"
+                                                              :base_type    :type/Integer}]
+                                           :database_id     (u/the-id bad-db)}
+                     :model/Card ok-card (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name         "finches"
+                                                                   :display_name "Finches"
+                                                                   :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1458,6 +2029,27 @@
                      {"event" "database_manual_sync", "target_id" db-id}
                      (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
+(deftest sync-schema-executes-when-executor-busy-test
+  (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
+    (let [sync-called?  (promise)
+          blocker-latch (CountDownLatch. 1)]
+      (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
+        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+                      analyze/analyze-db!             (constantly nil)]
+          ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
+          ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
+          ;; the quick-task timeout and gets evicted.
+          (with-redefs [quick-task/task-timeout-ms (constantly 1000)]
+            (quick-task/submit-task! (fn [] (.await blocker-latch))))
+          (try
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
+            ;; The sync task is queued behind the blocker. After the blocker times out
+            ;; and is cancelled, the sync task should execute.
+            (testing "sync executes after stuck task is evicted"
+              (is (true? (deref sync-called? 10000 :sync-never-called))))
+            (finally
+              (.countDown blocker-latch))))))))
+
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
     (mt/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}
@@ -1556,7 +2148,7 @@
 
 (defn- test-connection-details! [engine details]
   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
-    (#'api.database/test-connection-details engine details)))
+    (warehouses/test-connection-details engine details)))
 
 (deftest validate-database-test
   (testing "POST /api/database/validate"
@@ -1600,12 +2192,12 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (with-redefs [api.database/test-database-connection (fn [_ details & _]
-                                                            (swap! call-count inc)
-                                                            (swap! ssl-values conj (:ssl details))
-                                                            (if @valid? nil {:valid false}))]
+      (with-redefs [warehouses.util/test-database-connection (fn [_ details & _]
+                                                               (swap! call-count inc)
+                                                               (swap! ssl-values conj (:ssl details))
+                                                               (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
-          (#'api.database/test-connection-details "postgres" {:ssl true})
+          (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))
 
@@ -1613,7 +2205,7 @@
         (reset! ssl-values [])
 
         (testing "with SSL disabled, try twice (once with, once without SSL)"
-          (#'api.database/test-connection-details "postgres" {:ssl false})
+          (#'warehouses.util/test-connection-details "postgres" {:ssl false})
           (is (= 2 @call-count))
           (is (= [true false] @ssl-values)))
 
@@ -1621,7 +2213,7 @@
         (reset! ssl-values [])
 
         (testing "with SSL unspecified, try twice (once with, once without SSL)"
-          (#'api.database/test-connection-details "postgres" {})
+          (#'warehouses.util/test-connection-details "postgres" {})
           (is (= 2 @call-count))
           (is (= [true nil] @ssl-values)))
 
@@ -1631,7 +2223,7 @@
 
         (testing "with SSL disabled, but working try once (since SSL work we don't try without SSL)"
           (is (= {:ssl true}
-                 (#'api.database/test-connection-details "postgres" {:ssl false})))
+                 (#'warehouses.util/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
 
@@ -1742,13 +2334,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
-      (testing "should return a 403 if there are no perms for any schema"
+      (testing "returns empty list when user has no create-queries perms for any schema"
         (mt/with-full-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
+          ;; User can access the endpoint but sees no schemas since they have no query perms
+          (is (= []
+                 (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2371,28 +2964,45 @@
                       driver/can-connect? (constantly false)]
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
-                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
+    (when config/ee-available?
+      (testing "connection-type passed and configured"
+        (mt/with-premium-features #{:writable-connection}
+          (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                                   :write_data_details {:host "write"}}]
+            (with-redefs [driver/available? (constantly true)
+                          driver/can-connect? (constantly true)]
+              (is (= {:status "ok"}
+                     (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
+    (testing "connection-type passed but not configured returns 400"
+      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
+        (with-redefs [driver/available? (constantly true)]
+          (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=write-data"))))))
+    (testing "invalid connection-type value returns 400"
+      (mt/with-temp [:model/Database {id :id} {}]
+        (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
 
-(setting/defsetting api-test-missing-premium-feature
+(defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
   :type :boolean
   :database-local :only
   :feature :forever-withheld-feature)
 
-(setting/defsetting api-test-missing-driver-feature
+(defsetting api-test-missing-driver-feature
   "A feature used for testing /settings-available (2)"
   :type :boolean
   :database-local :only
   ;; Something h2 will never support
   :driver-feature :test/jvm-timezone-setting)
 
-(setting/defsetting api-test-disabled-for-database
+(defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
+  :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
-(setting/defsetting api-test-disabled-for-custom-reasons
+(defsetting api-test-disabled-for-custom-reasons
   "A feature used for testing /settings-available (4)"
   :type :boolean
   :database-local :only
@@ -2400,7 +3010,7 @@
                      (setting/custom-disabled-reasons! [{:key :custom/one, :type :warning, :message "Because..."}
                                                         {:key :custom/two, :type :warning, :message "Also..."}])))
 
-(setting/defsetting api-test-disabled-for-multiple-reasons
+(defsetting api-test-disabled-for-multiple-reasons
   "A feature used for testing /settings-available (5)"
   :type :boolean
   :database-local :only
@@ -2450,3 +3060,261 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         can-query filter tests                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;; Note: can-write-metadata tests are in metabase-enterprise.advanced-permissions.common-test since they require
+;; enterprise features (:perms/manage-table-metadata permission)
+
+(deftest list-databases-can-query-filter-test
+  (testing "GET /api/database with can-query=true filters to only queryable databases"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Queryable DB"}
+                   :model/Database {db-2-id :id} {:name "Not Queryable DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      ;; Grant full permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only view-data to db-2 (not queryable)
+      (data-perms/set-database-permission! pg db-2-id :perms/view-data :unrestricted)
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-query true)
+                          :data
+                          (filter #(#{db-1-id db-2-id} (:id %))))]
+        (is (= 1 (count response)))
+        (is (= "Queryable DB" (-> response first :name)))))))
+
+(deftest list-schemas-can-query-filter-test
+  (testing "GET /api/database/:id/schemas with can-query=true filters to only schemas with queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "queryable_schema" :name "t1" :active true}
+                   :model/Table    _ {:db_id db-id :schema "not_queryable_schema" :name "t2" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
+
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-query true)]
+          (is (= ["queryable_schema"] response)))))))
+
+(deftest list-schema-tables-can-query-filter-test
+  (testing "GET /api/database/:id/schema/:schema with can-query=true filters to only queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "queryable_table" :active true}
+                   :model/Table    _ {:db_id db-id :schema "test_schema" :name "not_queryable_table" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
+
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
+          (is (= 1 (count response)))
+          (is (= "queryable_table" (-> response first :name))))))))
+
+(deftest list-databases-includes-manage-permissions-test
+  (testing "GET /api/database includes databases where user has manage-database permission (details :yes)"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Query DB"}
+                   :model/Database {db-2-id :id} {:name "Manage DB"}
+                   :model/Database {db-3-id :id} {:name "No Access DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/Table    _             {:db_id db-3-id :name "table3" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      (t2/delete! :model/DataPermissions :db_id db-3-id)
+      ;; Grant query permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only manage-database (details) permission to db-2 (no query access)
+      (data-perms/set-database-permission! pg db-2-id :perms/manage-database :yes)
+      ;; No permissions for db-3
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database")
+                          :data
+                          (filter #(#{db-1-id db-2-id db-3-id} (:id %)))
+                          (map :name)
+                          set)]
+        (testing "Both query-accessible and manage-accessible databases should be included"
+          (is (contains? response "Query DB"))
+          (is (contains? response "Manage DB")))
+        (testing "Database with no permissions should not be included"
+          (is (not (contains? response "No Access DB"))))))))
+
+;;; ----------------------------------------- write_data_details tests -----------------------------------------
+
+(deftest ^:parallel upsert-sensitive-fields-write-data-details-test
+  (testing "upsert-sensitive-fields works with :write_data_details key"
+    (is (= {:host "localhost"
+            :port 5432
+            :password "new-password"}
+           (#'api.database/upsert-sensitive-fields
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
+            {:host "localhost"
+             :port 5432
+             :password "new-password"}
+            :write_data_details)))
+    (testing "protected passwords are replaced from original"
+      (is (= {:host "localhost"
+              :port 5432
+              :password "write-pass"}
+             (#'api.database/upsert-sensitive-fields
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
+              {:host "localhost"
+               :port 5432
+               :password secret/protected-password}
+              :write_data_details))))))
+
+(deftest get-database-write-data-details-test
+  (testing "GET /api/database/:id"
+    (testing "Superusers see write_data_details with sensitive fields redacted"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"
+                                                                       :password "secret-write-pass"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (some? (:write_data_details response)))
+          (is (= "write-host" (get-in response [:write_data_details :host])))
+          (is (= secret/protected-password (get-in response [:write_data_details :password]))))))
+    (testing "Regular users do not see write_data_details"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"}}]
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+          (is (not (contains? response :write_data_details)))
+          (is (not (contains? response :details))))))))
+
+(deftest update-database-write-data-details-test
+  (testing "PUT /api/database/:id with write_data_details"
+    (testing "Superusers can set write_data_details"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                                 {:write_data_details {:host "write-host"
+                                                                       :password "write-pass"
+                                                                       :write-data-connection true}})]
+              (is (= "write-host" (get-in response [:write_data_details :host])))
+              (is (= secret/protected-password (get-in response [:write_data_details :password])))
+              (let [db (t2/select-one :model/Database :id db-id)]
+                (is (= {:host "write-host" :password "write-pass" :write-data-connection true}
+                       (:write_data_details db)))))))))
+    (testing "Superusers can clear write_data_details by setting it to nil"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :write_data_details {:host "write-host"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:write_data_details nil})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (nil? (:write_data_details db))))))))
+    (testing "Sensitive fields are preserved when protected-password is sent"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :write_data_details {:host "write-host"
+                                                                         :password "original-pass"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:write_data_details {:host "new-write-host"
+                                                        :password secret/protected-password
+                                                        :write-data-connection true}})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (= "new-write-host" (get-in db [:write_data_details :host])))
+              (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
+    (testing "Returns 402 without :writable-connection feature"
+      (with-redefs [premium-features/has-feature? (constantly false)]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
+                                {:write_data_details {:host "write-host"}}))))))
+
+(deftest put-validates-write-data-details-connection-test
+  (when config/ee-available?
+    (testing "PUT /api/database/:id returns 400 when write connection test fails"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:write-data-connection details)
+                                                (throw (Exception. "Write connection failed"))
+                                                true))]
+            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                                 {:write_data_details {:host "totally-bogus-host"
+                                                                       :write-data-connection true}})]
+              (is (= "Write connection failed" (:message response))))))))))
+
+(deftest write-data-details-guardrails-test
+  (testing "PUT /api/database/:id write_data_details guardrails"
+    (testing "write-data-connection must not be truthy in details"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "write-data-connection must not be set in details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:details {:host                  "localhost"
+                                                  :write-data-connection true}}))))))
+    (testing "write-data-connection must be truthy in write_data_details"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "write-data-connection must be set in write_data_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:write_data_details {:host "write-host"}}))))))
+    (testing "Destination-database must be false in write_data_details"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "destination-database must be false in write_data_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:write_data_details {:host                  "write-host"
+                                                             :write-data-connection true
+                                                             :destination-database  true}}))))))
+    (testing "Fields hidden for write connections must not be in write_data_details"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (str/includes?
+               (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                     {:write_data_details {:host                  "write-host"
+                                                           :write-data-connection true
+                                                           :auto_run_queries      true}})
+               "write_data_details must not contain fields hidden for write connections")))))
+    (testing "Cannot set write_data_details on a destination database"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {dest-id :id} {:engine             :h2
+                                                      :details            {:host "localhost"}
+                                                      :router_database_id router-id}]
+          (is (= "Cannot configure a write connection on a destination database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                       {:write_data_details {:host                  "write-host"
+                                                             :write-data-connection true}}))))))
+    (testing "Cannot set write_data_details on a router database"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {_dest-id :id} {:engine :h2
+                                                       :details {:host "localhost"}
+                                                       :router_database_id router-id}]
+          (is (= "Cannot configure a write connection on a router database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
+                                       {:write_data_details {:host "write-host"
+                                                             :write-data-connection true}}))))))))

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -110,15 +109,9 @@ describe("CreateDashboardModal", () => {
   it("displays empty form fields", () => {
     setup();
 
-    expect(screen.getByLabelText("Name")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("");
-
-    expect(screen.getByLabelText("Description")).toBeInTheDocument();
     expect(screen.getByLabelText("Description")).toHaveValue("");
-
     expect(screen.getByText("Our analytics")).toBeInTheDocument();
-
-    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
@@ -131,47 +124,24 @@ describe("CreateDashboardModal", () => {
 
   it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Cancel" }) as Element,
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe("Cache TTL field", () => {
-    describe("OSS", () => {
-      it("is not shown", () => {
-        expect(screen.queryByText("More options")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText("Cache all question results for"),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("EE", () => {
-      beforeEach(() => {
-        setupEnterpriseTest();
-      });
-
-      it("is not shown", () => {
-        expect(screen.queryByText("More options")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText("Cache all question results for"),
-        ).not.toBeInTheDocument();
-      });
     });
   });
 
   describe("new collection modal", () => {
     const nameField = () => screen.getByRole("textbox", { name: /name/i });
     const collDropdown = () => screen.getByLabelText(/Which collection/);
-    const newCollBtn = () =>
-      screen.getByRole("button", {
+    const findNewCollBtn = async () => {
+      const btn = await screen.findByRole("button", {
         name: /new collection/i,
       });
-    const dashModalTitle = () =>
-      screen.getByRole("heading", { name: /new dashboard/i });
+      await waitFor(() => expect(btn).toBeEnabled());
+      return btn;
+    };
+    const findDashModalTitle = () =>
+      screen.findByRole("heading", { name: /new dashboard/i });
 
     const newCollCancelButton = () =>
       within(screen.getByRole("dialog", { name: /new collection/ })).getByRole(
@@ -186,27 +156,24 @@ describe("CreateDashboardModal", () => {
     it("should have a new collection button in the collection picker", async () => {
       setup();
       await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      expect(await findNewCollBtn()).toBeInTheDocument();
     });
 
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       setup();
       const name = "my dashboard";
-      await waitFor(async () =>
-        expect(await dashModalTitle()).toBeInTheDocument(),
-      );
+      await findDashModalTitle();
       await userEvent.type(nameField(), name);
       await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       // Open New Collection Dialog
-      await userEvent.click(newCollBtn());
+      await userEvent.click(await findNewCollBtn());
       await screen.findByText("Give it a name");
       // Close New Collection Dialog
       await userEvent.click(newCollCancelButton());
       // Close Collection Picker
       await userEvent.click(selectCollCancelButton());
 
-      await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
+      await findDashModalTitle();
       expect(nameField()).toHaveValue(name);
     });
 
@@ -216,7 +183,6 @@ describe("CreateDashboardModal", () => {
       await userEvent.type(nameField(), name);
       //Open Collection Picker
       await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       //Select Parent Collection
       await userEvent.click(
         await screen.findByRole("link", {
@@ -224,8 +190,8 @@ describe("CreateDashboardModal", () => {
         }),
       );
       //Open Create Collection Dialog
-      await userEvent.click(newCollBtn());
-      await screen.findByText("Give it a name");
+      await userEvent.click(await findNewCollBtn());
+      expect(await screen.findByText("Give it a name")).toBeInTheDocument();
     });
 
     it("should create collection inside root folder", async () => {
@@ -233,10 +199,8 @@ describe("CreateDashboardModal", () => {
       const name = "my dashboard";
       await userEvent.type(nameField(), name);
       await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-      await userEvent.click(newCollBtn());
-      await screen.findByTestId("create-collection-on-the-go"),
-        await screen.findByText("Give it a name");
+      await userEvent.click(await findNewCollBtn());
+      expect(await screen.findByText("Give it a name")).toBeInTheDocument();
     });
   });
 });

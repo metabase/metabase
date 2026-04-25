@@ -5,7 +5,7 @@ import {
   pluralize,
   singularize,
   stripId,
-} from "metabase/lib/formatting/strings";
+} from "metabase/utils/formatting/strings";
 import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 

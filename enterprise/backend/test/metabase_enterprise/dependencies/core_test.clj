@@ -8,7 +8,29 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli :as mu]))
+
+(defn- only-missing-column-errors
+  "Filters an error map to only include :missing-column type errors.
+  SQLGlot and Macaw produce different :missing-table-alias errors,
+  but only :missing-column errors are used in production."
+  [errors]
+  (-> errors
+      (update :card (fn [m]
+                      (into {}
+                            (keep (fn [[k v]]
+                                    (let [filtered (into #{} (filter #(= (:type %) :missing-column) v))]
+                                      (when (seq filtered)
+                                        [k filtered]))))
+                            m)))
+      (update :transform (fn [m]
+                           (into {}
+                                 (keep (fn [[k v]]
+                                         (let [filtered (into #{} (filter #(= (:type %) :missing-column) v))]
+                                           (when (seq filtered)
+                                             [k filtered]))))
+                                 m)))))
 
 (defn- testbed
   "A `MetadataProvider` with a chain of MBQL cards and transforms for testing."
@@ -136,45 +158,111 @@
            {transformed-card-id :id} :mbql-transform-consumer} (testbed)]
       (testing "a column that no longer exists will cause errors when referenced"
         (let [card'  (-> mbql-base
-                         ;; ridiculous
-                         (update :dataset-query lib/update-query-stage -1
-                                 update-in [:expressions 0]
-                                 lib/update-options assoc :lib/expression-name "Sales Taxes")
+                         (assoc :dataset-query
+                                (-> (lib/query provider (meta/table-metadata :orders))
+                                    ;; ridiculous
+                                    (lib/expression "Sales Taxes" (lib// (meta/field-metadata :orders :tax)
+                                                                         (meta/field-metadata :orders :subtotal)))))
                          (dissoc :result-metadata))
-              errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
-          (is (=? {:card {downstream-card-id  #{(lib/missing-column-error "Tax Rate")}
-                          transformed-card-id #{(lib/missing-column-error "Tax Rate")}}}
+              errors (dependencies/errors-from-proposed-edits {:card [card']}
+                                                              :base-provider provider
+                                                              :graph graph)]
+          (is (=? {:card {downstream-card-id  #{{:type              :missing-column
+                                                 :name              "Tax Rate"
+                                                 :source-entity-type :card
+                                                 :source-entity-id  101}}
+                          transformed-card-id #{{:type              :missing-column
+                                                 :name              "Tax Rate"
+                                                 :source-entity-type :table
+                                                 :source-entity-id  1234567}}}}
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
       (testing "changing something unrelated will cause no errors"
         (let [card' (-> mbql-base
-                        (assoc-in [:dataset-query :query :filter]
-                                  [:> [:field (meta/id :orders :quantity) nil] 100])
+                        (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity)
+                                                                 100))
                         (dissoc :result-metadata))]
-          (is (= {} (dependencies/errors-from-proposed-edits provider graph {:card [card']}))))))))
-
+          (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
+                                                             :base-provider provider
+                                                             :graph graph))))))))
 (deftest ^:parallel sql-snippet->card->transform->cards-test
-  (testing "changing a snippet correctly finds downstream errors"
-    (let [{:keys [provider graph sql-transform snippet-inner]
-           {direct-sql-card-id       :id} :sql-base
-           {transformed-sql-card-id  :id} :sql-transform-sql-consumer
+  (testing "changing a snippet correctly finds downstream errors when asked"
+    (let [{:keys [provider graph snippet-inner]
            {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
       (testing "when breaking the inner snippet with a nonexistent table"
         (let [snippet' (assoc snippet-inner
                               :content       "nonexistent_table"
                               :template-tags {})
-              errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
+              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
+                                                                :base-provider provider
+                                                                :graph graph
+                                                                :include-native? true)]
+          (is (= #{:card} (set (keys errors))))
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
-                               transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
-                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
-                   :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
-                  errors))
-          (is (= #{:card :transform}
-                 (set (keys errors))))
-          (is (= #{direct-sql-card-id transformed-sql-card-id transformed-mbql-card-id}
-                 (set (keys (:card errors)))))
-          (is (= #{(:id sql-transform)}
-                 (set (keys (:transform errors))))))))))
+          ;; We only check :missing-column errors since SQLGlot and Macaw produce different
+          ;; :missing-table-alias errors, and only :missing-column errors are used in production.
+          (is (= {:card      {transformed-mbql-card-id #{{:type              :missing-column
+                                                          :name              "RATING"
+                                                          :source-entity-type :table
+                                                          :source-entity-id  1234568}}}
+                  :transform {}}
+                 (only-missing-column-errors errors))))))))
+
+(deftest ^:parallel sql-snippet-without-including-native-test
+  (testing "changing a snippet correctly ignores downstream errors"
+    (let [{:keys [provider graph snippet-inner]} (testbed)]
+      (testing "when breaking the inner snippet with a nonexistent table"
+        (let [snippet' (assoc snippet-inner
+                              :content       "nonexistent_table"
+                              :template-tags {})
+              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
+                                                                :base-provider provider
+                                                                :graph graph)]
+          ;; Because we are changing a snippet, don't check anything downstream
+          (is (= {} errors)))))))
+
+(deftest ^:parallel check-entity-exception-test
+  (testing "when a dependent card throws during compilation, errors-from-proposed-edits catches it
+            and returns a validation-exception-error instead of crashing (#GHY-3151)"
+    (mu/disable-enforcement
+      (let [{:keys [provider mbql-base]} (testbed)
+            ;; Add a card with a broken dataset-query that will throw during check-entity
+            broken-card {:lib/type      :metadata/card
+                         :id            999
+                         :database-id   (:id (lib.metadata/database provider))
+                         :name          "broken-card"
+                         :dataset-query nil}
+            provider    (lib.tu/mock-metadata-provider provider {:cards [broken-card]})
+            ;; Graph where card 101 -> card 999 (broken card depends on the base card)
+            graph       (graph/in-memory {[:card 101] #{[:card 999]}})
+            card'       (-> mbql-base
+                            (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                            (dissoc :result-metadata))
+            errors      (dependencies/errors-from-proposed-edits {:card [card']}
+                                                                 :base-provider provider
+                                                                 :graph graph)]
+        (is (contains? errors :card))
+        (is (contains? (:card errors) 999))
+        (is (= #{:validation-exception-error}
+               (into #{} (map :type) (get-in errors [:card 999]))))))))
+
+(deftest ^:parallel self-referential-dependency-test
+  (testing "errors-from-proposed-edits terminates when the dependency graph has a self-loop (#70452)"
+    (let [{:keys [provider mbql-base]} (testbed)
+          ;; Graph where dashboard 999 depends on card 101, and dashboard 999 depends on itself
+          ;; (as happens with click behavior linking to another tab on the same dashboard)
+          graph (graph/in-memory {[:card 101]       #{[:dashboard 999]}
+                                  [:dashboard 999]  #{[:dashboard 999]}})
+          card' (-> mbql-base
+                    (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                    (dissoc :result-metadata))
+          fut   (future (dependencies/errors-from-proposed-edits {:card [card']}
+                                                                 :base-provider provider
+                                                                 :graph graph))
+          result (deref fut 1000 ::timeout)]
+      (when (= result ::timeout)
+        (future-cancel fut))
+      (is (not= ::timeout result) "errors-from-proposed-edits hung (possible infinite loop)")
+      (is (= {} result)))))

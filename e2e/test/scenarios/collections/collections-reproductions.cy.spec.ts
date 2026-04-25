@@ -104,6 +104,7 @@ describe("issue 24660", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findAllByText(collectionName).first().click();
 
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
@@ -153,7 +154,7 @@ describe("issue 58231", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow to edit permissions for Usage Analytics collection (metabase#58231)", () => {
@@ -174,7 +175,7 @@ describe("issue 56567", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   const withTestCollections = (
@@ -203,6 +204,7 @@ describe("issue 56567", () => {
     ["All Users", allUsersPermission],
     ["collection", "Curate"],
     ["data", "No access"],
+    ["Data Analysts", "No access"],
     ["nosql", "No access"],
     ["readonly", "View"],
   ];

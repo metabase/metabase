@@ -2,7 +2,7 @@
   color: var(--mb-color-error);
 }
 
-/* double classname for specifity */
+/* double classname for specificity */
 .dangerItem.dangerItem:hover {
   background-color: var(--mb-color-error);
   color: var(--mb-color-text-primary-inverse);

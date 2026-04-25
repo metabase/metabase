@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useHasEmailSetup, useHasSlackSetup } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,

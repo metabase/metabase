@@ -19,6 +19,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
@@ -93,14 +94,6 @@
                     [:= :search_index.model [:inline "table"]]
                     clause]]))))
 
-(def null-collection-id-should-be-ignored-for-unpublished-tables-clause
-  "For every model except tables, a null collection ID means the thing is in Our Analytics.
-
-  For tables, this means there is no associated collection and the collection_id should be completely ignored."
-  [:and
-   [:= :model [:inline "table"]]
-   [:= :is_published false]])
-
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -108,10 +101,11 @@
   (let [collection-id-col :search_index.collection_id
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
-        excluded-models   (search.filter/models-without-collection)
+        ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
+        ;; permissions and published-via-collection access, so we exclude them from collection filtering here.
+        excluded-models   (conj (vec (search.filter/models-without-collection)) "table")
         or-null           #(vector :or
                                    [:in :search_index.model excluded-models]
-                                   null-collection-id-should-be-ignored-for-unpublished-tables-clause
                                    %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
@@ -145,29 +139,34 @@
                        :index-state-after  @@#'search.index/*indexes*
                        :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
-  (try
-    (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-      ;; wait for a bit for the queue to be drained
-      (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-        (when-not (u/poll {:thunk       pending-updates
-                           :done?       zero?
-                           :timeout-ms  2000
-                           :interval-ms 100})
-          (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+  (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
+    (try
+      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
+        ;; wait for a bit for the queue to be drained
+        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
+          (when-not (u/poll {:thunk       pending-updates
+                             :done?       zero?
+                             :timeout-ms  2000
+                             :interval-ms 100})
+            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
 
-    (let [weights (search.config/weights search-ctx)
-          scorers (search.scoring/scorers search-ctx)
-          query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
-                       (add-collection-join-and-where-clauses search-ctx)
-                       (add-table-where-clauses search-ctx)
-                       (search.scoring/with-scores search-ctx scorers)
-                       (search.filter/with-filters search-ctx))]
-      (->> (t2/query query)
-           (map (partial rehydrate weights (keys scorers)))))
-    (catch Exception e
-      ;; Rule out the error coming from stale index metadata.
-      (#'search.index/sync-tracking-atoms!)
-      (throw e))))
+      (let [weights (search.config/weights search-ctx)
+            scorers (search.scoring/scorers search-ctx)
+            query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+                         (add-collection-join-and-where-clauses search-ctx)
+                         (add-table-where-clauses search-ctx)
+                         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                                 search-ctx
+                                                 :search_index.model
+                                                 :search_index.source_type)))
+                         (search.scoring/with-scores search-ctx scorers)
+                         (search.filter/with-filters search-ctx))]
+        (->> (t2/query query)
+             (map (partial rehydrate weights (keys scorers)))))
+      (catch Exception e
+        ;; Rule out the error coming from stale index metadata.
+        (#'search.index/sync-tracking-atoms!)
+        (throw e)))))
 
 (defmethod search.engine/results :search.engine/appdb
   [search-ctx]
@@ -181,6 +180,10 @@
         search-ctx         (assoc search-ctx :models applicable-models)]
     (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
          (add-collection-join-and-where-clauses search-ctx)
+         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                 search-ctx
+                                 :search_index.model
+                                 :search_index.source_type)))
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))
@@ -200,6 +203,9 @@
         (when (or created? re-populate?)
           (log/info "Populating index")
           (populate-index! (if created? :search/reindexing :search/updating)))))))
+
+(defmethod search.engine/sync-from-restored-db! :search.engine/appdb [_]
+  (search.index/sync-from-restored-db!))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]

@@ -44,11 +44,13 @@ With SSO, Metabase can know who's viewing what, which unlocks a lot of power. Yo
 
 **When to use SSO**: You want to offer multi-tenant, self-service analytics, or you want to include the query builder, AI chat, drill-through, or a collection browser.
 
+If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
+
 ### Guest embedding
 
-[Guest embeds](./guest-embedding.md) are a secure way to embed charts and dashboards.
+[Guest embeds](./guest-embedding.md) are a secure way to embed charts and dashboards. Guest embedding works on all Metabase plans, including OSS and Starter.
 
-**When to use guest embeds**: simple embedding use cases where you don't want to offer ad-hoc querying or chart drill-through. To filter data relevant to the viewer, you can use guest embeds with [locked parameters](./static-embedding-parameters.md#locked-parameters-limit-the-values-available-to-other-editable-parameters).
+**When to use guest embeds**: simple embedding use cases where you don't want to offer ad-hoc querying or chart drill-through. To filter data relevant to the viewer, you can use guest embeds with [locked parameters](./guest-embedding.md#locked-parameters).
 
 ## Public links and embeds
 
@@ -67,7 +69,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Charts and dashboards                                                                                                | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Filter widgets](https://www.metabase.com/glossary/filter-widget)                                                    | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | Export results\*                                                                                                     | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
-| [Locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters)          | ❌                                   | ❌                                    | ✅                                    | ❌                                  | ❌                                     |
+| [Locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters)         | ❌                                   | ❌                                    | ✅                                    | ❌                                  | ❌                                     |
 | [Data segregation](../permissions/embedding.md)                                                                      | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Query builder](../questions/query-builder/editor.md)                                                                | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
@@ -83,6 +85,16 @@ If you'd like to share your data with the good people of the internet, admins ca
 \* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
 \*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan for any embedding type.
+
+### Should you use the Modular embedding SDK?
+
+If your app uses React, you can go with the modular embedding SDK, but you don't need to.
+
+The modular embeds that you can set up in the [in-app wizard](./modular-embedding.md) are built on top of the Modular embedding SDK. Using the SDK just gives you slightly more customization (see the table above), but your app has to use React. You can always start with modular embedding, then move to the SDK if you really need that extra customization. Both support SSO and Guest embeds.
+
+## Resources for AI agents
+
+If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).
 
 ## Further reading
 

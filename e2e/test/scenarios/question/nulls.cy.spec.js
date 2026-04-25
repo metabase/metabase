@@ -24,7 +24,7 @@ describe("scenarios > question > null", () => {
 
     // find and open previously created question
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
@@ -132,12 +132,11 @@ describe("scenarios > question > null", () => {
 
   it("should filter by clicking on the row with `null` value (metabase#18386)", () => {
     H.openOrdersTable();
+    const findGridcell = (text) =>
+      cy.findByRole("grid").findByRole("gridcell", { name: text });
 
     // Total of "39.72", and the next cell is the `discount` (which is empty)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("39.72")
-      .closest("[role=gridcell]")
-      .parent()
+    findGridcell("39.72")
       .next()
       .find("div")
       .should("be.empty")
@@ -146,11 +145,9 @@ describe("scenarios > question > null", () => {
 
     H.popover().contains("=").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("39.72");
+    findGridcell("39.72").should("be.visible");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("49.21").should("not.exist");
+    findGridcell("49.21").should("not.exist");
   });
 
   describe("aggregations with null values", () => {
@@ -162,7 +159,7 @@ describe("scenarios > question > null", () => {
         // remove pre-selected "Count"
         cy.icon("close").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add a function or metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       H.popover().within(() => {
@@ -170,12 +167,12 @@ describe("scenarios > question > null", () => {
         cy.findByText("Discount").click();
       });
       // Group by
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Created At").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Cumulative sum of Discount by Created At: Month");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );

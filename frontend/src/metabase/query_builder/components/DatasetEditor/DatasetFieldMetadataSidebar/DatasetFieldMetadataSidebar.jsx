@@ -3,6 +3,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
   canIndexField,
   fieldHasIndex,
@@ -15,11 +17,10 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { color } from "metabase/lib/colors";
-import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
-import ColumnSettings, {
+import { color } from "metabase/ui/colors";
+import {
+  ColumnSettings,
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -32,7 +33,7 @@ import { DatasetFieldMetadataCurrencyPicker } from "./DatasetFieldMetadataCurren
 import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTargetPicker";
 import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
-import MappedFieldPicker from "./MappedFieldPicker";
+import { MappedFieldPicker } from "./MappedFieldPicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -90,7 +91,7 @@ const TAB_OPTIONS = [
   },
 ];
 
-function DatasetFieldMetadataSidebar({
+function DatasetFieldMetadataSidebarInner({
   dataset,
   field,
   isLastField,
@@ -371,6 +372,8 @@ function DatasetFieldMetadataSidebar({
   );
 }
 
-DatasetFieldMetadataSidebar.propTypes = propTypes;
+DatasetFieldMetadataSidebarInner.propTypes = propTypes;
 
-export default memo(DatasetFieldMetadataSidebar);
+export const DatasetFieldMetadataSidebar = memo(
+  DatasetFieldMetadataSidebarInner,
+);

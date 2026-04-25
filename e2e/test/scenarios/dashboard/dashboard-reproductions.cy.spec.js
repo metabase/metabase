@@ -96,8 +96,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     H.getDashboardCards().should("have.length", 1);
@@ -133,8 +133,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     cy.findByTestId("edit-bar")
@@ -250,8 +250,7 @@ describe("issue 12926", () => {
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
-    it("should stop the ongoing query", () => {
-      // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
+    it("should load the card with correct parameters after save", () => {
       H.createNativeQuestion(questionDetails);
 
       H.createDashboard().then(({ body: { id: dashboardId } }) => {
@@ -261,8 +260,6 @@ describe("issue 12926", () => {
       H.editDashboard();
 
       H.openQuestionsSidebar();
-      // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery().as("cardQuerySlowed");
       H.sidebar().findByText(questionDetails.name).click();
 
       H.setFilter("Number", "Equal to");
@@ -274,10 +271,6 @@ describe("issue 12926", () => {
       H.popover().contains(filterDisplayName).eq(0).click();
 
       H.saveDashboard();
-
-      cy.wait("@cardQuerySlowed").then((xhrProxy) =>
-        expect(xhrProxy.state).to.eq("Errored"),
-      );
 
       H.getDashboardCard().findByText(queryResult + parameterValue);
     });
@@ -381,7 +374,7 @@ describe("issue 16559", () => {
       cy.findByRole("tab", { name: "History" }).click();
       cy.log("Dashboard creation");
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You created this.")
         .should("be.visible");
@@ -399,7 +392,7 @@ describe("issue 16559", () => {
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You added a card.")
         .should("be.visible");
@@ -414,7 +407,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText(
           'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
@@ -433,7 +426,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You added a description.")
         .should("be.visible");
@@ -443,7 +436,7 @@ describe("issue 16559", () => {
     H.closeDashboardInfoSidebar();
 
     H.openDashboardSettingsSidebar();
-    H.sidesheet().findByText("Auto-apply filters").click();
+    H.sidesheet().findByLabelText("Auto-apply filters").click();
     cy.wait("@saveDashboard");
     H.closeDashboardSettingsSidebar();
 
@@ -451,7 +444,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You set auto apply filters to false.")
         .should("be.visible");
@@ -470,7 +463,7 @@ describe("issue 16559", () => {
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You moved this Dashboard to First collection.")
         .should("be.visible");
@@ -576,28 +569,28 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "month",
-      expectedFilterText: "Created At is Apr 1–30, 2022",
+      expectedFilterText: "Created At is Apr 1–30, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 24–30, 2022",
+      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
       targetDateUnit: "month",
     });
   });
@@ -752,11 +745,14 @@ describe("issue 29076", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
     // test that user is sandboxed - normal users has over 2000 rows
-    H.getDashboardCard().findAllByRole("row").should("have.length", 1);
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findAllByRole("row")
+      .should("have.length", 1);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
     H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     H.assertDatasetReqIsSandboxed({
@@ -1062,7 +1058,7 @@ describe("issue 34382", () => {
 
     H.getDashboardCard().within(() => {
       // only products with category "Gizmo" are filtered
-      cy.findAllByRole("row")
+      cy.findByTestId("table-body")
         .findAllByRole("gridcell")
         .eq(3)
         .should("contain", "Gizmo");

@@ -1,14 +1,19 @@
-import type { ComponentType, Dispatch, SetStateAction } from "react";
+import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
 
 import {
   getPerformanceTabMetadata,
   strategies,
 } from "metabase/admin/performance/constants/complex";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
+import type { MetricPageParams, MetricUrls } from "metabase/metrics/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { ModalOverlayProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
+import type {
+  CacheableDashboard,
+  CacheableModel,
+  Card,
+} from "metabase-types/api";
 
 // Types
 export type InvalidateNowButtonProps = {
@@ -37,6 +42,14 @@ export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
 };
 
+export interface MetricSettingsPageProps {
+  params: MetricPageParams;
+  urls?: MetricUrls;
+  renderBreadcrumbs?: (card: Card) => ReactNode;
+  showAppSwitcher?: boolean;
+  showDataStudioLink?: boolean;
+}
+
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
@@ -54,6 +67,8 @@ const getDefaultPluginCaching = () => ({
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
+  MetricCachingPage:
+    PluginPlaceholder as ComponentType<MetricSettingsPageProps>,
 });
 
 export const PLUGIN_CACHING = getDefaultPluginCaching();

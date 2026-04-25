@@ -1,19 +1,21 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import ColorInput from "metabase/common/components/ColorInput";
+import { ColorInput } from "metabase/common/components/ColorInput";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Group } from "metabase/ui";
 
-export interface ColorPickerTriggerProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface ColorPickerTriggerProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   value: string;
   placeholder?: string;
   isAuto?: boolean;
   onChange?: (value?: string) => void;
 }
 
-const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
+export const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   {
     value,
     placeholder,
@@ -36,6 +38,3 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
     </Group>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorPickerTrigger;

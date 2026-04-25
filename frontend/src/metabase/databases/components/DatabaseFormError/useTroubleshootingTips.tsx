@@ -3,12 +3,12 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 import { identity } from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getIsHosted } from "metabase/setup";
 import { Code } from "metabase/ui";
-import type { State } from "metabase-types/store";
 
 import type { TipProps as _TipProps } from "./TroubleshootingTip";
 import { getDocsLinkConditionally, useCloudGatewayIPs } from "./utils";
@@ -36,7 +36,7 @@ export const useTroubleshootingTips = (
     }
 
     const cloudIPLinkContent = getDocsLinkConditionally(
-      // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
       t`Metabase Cloud IP addresses`,
       getDocPageUrl("cloud/ip-addresses-to-whitelist"),
       showMetabaseLinks,
@@ -55,12 +55,12 @@ export const useTroubleshootingTips = (
     return [
       {
         key: "ip-addresses" as const,
-        // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
         title: t`Try allowing Metabase IP addresses`,
         body: (
           <>
             {
-              // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
               c("{0} refers to 'Metabase Cloud IP addresses'")
                 .jt`If the database is behind a firewall or VPN, you may need to allow connections from the ${cloudIPLinkContent}.`
             }
@@ -80,12 +80,12 @@ export const useTroubleshootingTips = (
       },
       {
         key: "permissions" as const,
-        // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
         title: t`Check Metabase user permissions`,
         body: (() => {
           // unchained `c` -> `jt` call to avoid prettier moving no-literal-metabase-strings comment up
           const ctx = c("{0} refers to 'correct permissions'");
-          // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
           return ctx.jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`;
         })(),
       },

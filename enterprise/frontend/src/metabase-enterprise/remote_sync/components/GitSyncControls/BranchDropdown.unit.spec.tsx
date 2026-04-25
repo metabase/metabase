@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupRemoteSyncBranchesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Combobox, useCombobox } from "metabase/ui";
 
@@ -33,9 +34,7 @@ function WrapperComponent({
 }
 
 const setupEndpoints = () => {
-  fetchMock.get("path:/api/ee/remote-sync/branches", {
-    items: ["main", "develop", "feature-1"],
-  });
+  setupRemoteSyncBranchesEndpoint(["main", "develop", "feature-1"]);
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
 };
 
@@ -66,6 +65,26 @@ const setup = (
 describe("BranchDropdown", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("error handling", () => {
+    it("should show error message when branches fail to load", async () => {
+      const onChange = jest.fn();
+      fetchMock.get("path:/api/ee/remote-sync/branches", {
+        status: 401,
+        body: { message: "Unauthorized" },
+      });
+
+      renderWithProviders(
+        <WrapperComponent value="main" onChange={onChange} />,
+      );
+
+      expect(
+        await screen.findByText(
+          "Failed to load branches — check your authentication token",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("rendering", () => {

@@ -1,5 +1,5 @@
 (ns metabase.lib.query
-  (:refer-clojure :exclude [remove some select-keys mapv empty? #?(:clj for)])
+  (:refer-clojure :exclude [some select-keys mapv empty? #?(:clj for)])
   (:require
    [medley.core :as m]
    ;; allowed since this is needed to convert legacy queries to MBQL 5
@@ -16,7 +16,6 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -57,7 +56,7 @@
   {:is-native   (native? query)
    :is-editable (lib.metadata/editable? query)})
 
-(mu/defn stage-count :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+(mu/defn stage-count :- nat-int?
   "Returns the count of stages in query"
   [query :- ::lib.schema/query]
   (count (:stages query)))
@@ -124,21 +123,21 @@
   (can-run query "question"))
 
 (mu/defn add-types-to-fields
-  "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
+  "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on MBQL 5 fields.
   `:effective-type` is required for coerced fields to pass schema checks."
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
-  (if-let [field-ids (lib.util.match/match x
+  (if-let [field-ids (lib.util.match/match-many x
                        [:field
-                        (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                        (id :guard integer? pos?)]
+                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
-        (lib.util.match/replace
-          x
+        (lib.util.match/replace-lite x
           [:field
-           (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+           (options :guard (and (map? options) (not (and (:base-type options)
+                                                         (:effective-type options)))))
            (id :guard pos-int?)]
           (if (some #{:mbql/stage-metadata} &parents)
             &match
@@ -150,9 +149,9 @@
                                          (:base-type (lib.metadata/field metadata-provider id))))
                      ;; Following key is used to track which base-types we added during `query` call. It is used in
                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
-                     ;; as legacy -> pmbql -> legacy looks closer to the original.
+                     ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
                       (merge (when-not (contains? options :base-type)
-                               {::transformation-added-base-type true})
+                               {:lib/transformation-added-base-type true})
                              (-> (lib.metadata/field metadata-provider id)
                                  (select-keys [:base-type :effective-type]))))))))
     x))
@@ -179,7 +178,7 @@
   [metadata-providerable legacy-query]
   (try
     (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                        (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
+                        (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
           mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
           mbql5-query (add-types-to-fields mbql5-query mp)]
       (merge
@@ -207,7 +206,7 @@
 
 (defmethod query-method :dispatch-type/map
   [metadata-providerable query]
-  (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
+  (query-method metadata-providerable (assoc (lib.convert/->mbql5 query) :lib/type :mbql/query)))
 
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
@@ -229,9 +228,10 @@
            (mapv (fn [[stage-number stage]]
                    (-> stage
                        (add-types-to-fields metadata-provider)
-                       (lib.util.match/replace
+                       (lib.util.match/replace-lite
                          [:expression
-                          (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                          (opts :guard (and (map? opts) (not (and (:base-type opts)
+                                                                  (:effective-type opts)))))
                           expression-name]
                          (let [found-ref (try
                                            (m/remove-vals
@@ -320,16 +320,16 @@
   (query metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
-  "Create a pMBQL query from a legacy inner query."
+  "Create a MBQL 5 query from a legacy inner query."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    inner-query           :- :map]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
-       lib.convert/->pMBQL
+       lib.convert/->mbql5
        (query metadata-providerable)))
 
 (defn ->legacy-MBQL
-  "Convert the pMBQL `a-query` into a legacy MBQL query."
+  "Convert the MBQL 5 `a-query` into a legacy MBQL query."
   [a-query]
   (-> a-query lib.convert/->legacy-MBQL))
 

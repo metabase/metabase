@@ -77,6 +77,7 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
         mountSdkContent(
           <StaticDashboard dashboardId={dashboardId} withSubscriptions />,
+          { strictMode: true },
         );
       });
 
@@ -84,6 +85,9 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
         cy.icon("subscription").click();
         cy.findByText("Email this dashboard").should("be.visible");
+
+        // EMB-1413
+        cy.findByDisplayValue("Hourly").click();
 
         cy.log("can customize filter values");
         cy.findByRole("heading", {
@@ -107,6 +111,7 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
         mountSdkContent(
           <InteractiveDashboard dashboardId={dashboardId} withSubscriptions />,
+          { strictMode: true },
         );
       });
 
@@ -114,6 +119,9 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
         cy.icon("subscription").click();
         cy.findByText("Email this dashboard").should("be.visible");
+
+        // EMB-1413
+        cy.findByDisplayValue("Hourly").click();
 
         cy.log("can customize filter values");
         cy.findByRole("heading", {
@@ -137,6 +145,7 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
         mountSdkContent(
           <EditableDashboard dashboardId={dashboardId} withSubscriptions />,
+          { strictMode: true },
         );
       });
 
@@ -144,6 +153,9 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
         cy.icon("subscription").click();
         cy.findByText("Email this dashboard").should("be.visible");
+
+        // EMB-1413
+        cy.findByDisplayValue("Hourly").click();
 
         cy.log("can customize filter values");
         cy.findByRole("heading", {

@@ -35,8 +35,8 @@ check_required_tools() {
         missing+=("node")
     fi
 
-    if ! has_tool yarn; then
-        missing+=("yarn")
+    if ! has_tool bun; then
+        missing+=("bun")
     fi
 
     if ! has_tool java; then
@@ -60,7 +60,7 @@ check_required_tools() {
 install_frontend_deps() {
     print_step "Installing frontend dependencies"
 
-    if yarn install --frozen-lockfile --prefer-offline; then
+    if bun install --frozen-lockfile; then
         print_success "Frontend dependencies installed"
     else
         print_error "Failed to install frontend dependencies"

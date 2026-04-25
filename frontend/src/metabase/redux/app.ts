@@ -5,19 +5,19 @@ import {
 } from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
-import {
-  isSmallScreen,
-  openInBlankWindow,
-  shouldOpenInBlankWindow,
-} from "metabase/lib/dom";
-import { combineReducers, handleActions } from "metabase/lib/redux";
+import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
   Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import {
+  isSmallScreen,
+  openInBlankWindow,
+  shouldOpenInBlankWindow,
+} from "metabase/utils/dom";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
@@ -48,22 +48,13 @@ export function resetErrorPage() {
   };
 }
 
-interface IOpenUrlOptions {
-  blank?: boolean;
-  event?: Event;
-  blankOnMetaOrCtrlKey?: boolean;
-  blankOnDifferentOrigin?: boolean;
-}
-
-export const openUrl =
-  (url: string, options: IOpenUrlOptions = {}) =>
-  (dispatch: Dispatch) => {
-    if (shouldOpenInBlankWindow(url, options)) {
-      openInBlankWindow(url);
-    } else {
-      dispatch(push(url));
-    }
-  };
+export const openUrl = (url: string) => (dispatch: Dispatch) => {
+  if (shouldOpenInBlankWindow(url)) {
+    openInBlankWindow(url);
+  } else {
+    dispatch(push(url));
+  }
+};
 
 const errorPage = handleActions(
   {
@@ -75,9 +66,10 @@ const errorPage = handleActions(
 );
 
 // regexr.com/7r89i
-// A word boundary is added to /model so it doesn't match /browse/models
+// Word boundaries are added so partial matches don't collapse the navbar
+// e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
 const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question|dashboard|metabot|document).*/;
+  /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (

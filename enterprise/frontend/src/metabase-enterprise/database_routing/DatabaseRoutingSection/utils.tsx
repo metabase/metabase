@@ -2,16 +2,27 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { hasActionsEnabled, hasFeature } from "metabase/admin/databases/utils";
+import {
+  hasActionsEnabled,
+  hasFeature,
+  hasTableEditingEnabled,
+  hasWritableConnectionDetails,
+} from "metabase/admin/databases/utils";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-export const getDisabledFeatureMessage = (database: Database) => {
+export const getDisabledFeatureMessage = (
+  database: Database,
+  { hasTransforms = false }: { hasTransforms?: boolean } = {},
+) => {
   return match({
     hasActionsEnabled: hasActionsEnabled(database),
+    hasTableEditingEnabled: hasTableEditingEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
+    hasWritableConnection: hasWritableConnectionDetails(database),
+    hasTransforms,
   })
     .with(
       { supportsRouting: false },
@@ -35,6 +46,19 @@ export const getDisabledFeatureMessage = (database: Database) => {
       { isUploadDb: true },
       () =>
         t`Database routing can't be enabled if uploads are enabled for this database.`,
+    )
+    .with(
+      { hasWritableConnection: true },
+      () =>
+        t`Database routing can't be enabled when a Writable Connection is enabled.`,
+    )
+    .with(
+      { hasTableEditingEnabled: true },
+      () => t`Database routing can't be enabled when table editing is enabled.`,
+    )
+    .with(
+      { hasTransforms: true },
+      () => t`Database routing can't be enabled when transforms exist.`,
     )
     .otherwise(() => undefined);
 };

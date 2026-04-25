@@ -6,8 +6,11 @@
   z-index: 1;
   flex-shrink: 0;
   font-size: 12.5px;
-  background-color: var(--mb-color-background-primary);
+}
+
+.headerRow {
   border-bottom: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
 }
 
 .cell {

@@ -4,13 +4,13 @@ import { useMemo } from "react";
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { skipToken, useListNotificationsQuery } from "metabase/api";
 import { Pulses } from "metabase/entities/pulses";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
 } from "metabase/selectors/user";
-import type { Alert } from "metabase-types/api";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import type { DashboardSubscription } from "metabase-types/api";
 
 import {
   navigateToArchive,
@@ -20,7 +20,7 @@ import {
 import { NotificationList } from "../../components/NotificationList";
 
 interface NotificationsAppProps {
-  pulses: Alert[];
+  pulses: DashboardSubscription[];
   children?: ReactNode;
 }
 

@@ -28,7 +28,7 @@
   [:ref ::ExpandedSchedulesMap])
 
 (mu/defn schedule-map->cron-strings :- CronSchedulesMap
-  "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
+  "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the appropriate keys for
    Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
    insert/update."
   [{:keys [metadata_sync cache_field_values]} :- ExpandedSchedulesMap]

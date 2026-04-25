@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import { lighten } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
+import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
@@ -56,16 +56,18 @@ export const ToggleLabel = styled.label`
 `;
 
 export const WarningIcon = styled(
-  forwardRef<SVGSVGElement, IconProps>(function WarningIcon(props, ref) {
-    return (
-      <Icon
-        {...props}
-        size={props.size ?? 18}
-        name={props.name ?? "warning"}
-        ref={ref}
-      />
-    );
-  }),
+  forwardRef<SVGSVGElement, Partial<IconProps>>(
+    function WarningIcon(props, ref) {
+      return (
+        <Icon
+          {...props}
+          size={props.size ?? 18}
+          name={props.name ?? "warning"}
+          ref={ref}
+        />
+      );
+    },
+  ),
 )`
   margin-right: 0.25rem;
   color: var(--mb-color-text-tertiary);

@@ -8,6 +8,7 @@
    [metabase.actions.settings :as actions.settings]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -17,7 +18,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -77,14 +78,14 @@
         known-actions (known-implicit-actions)]
     ;; return 404 if the action doesn't exist.
     (when-not (contains? known-actions action)
-      (throw (ex-info (i18n/tru "Unknown Action {0}. Valid Actions are: {1}"
-                                action
-                                (pr-str known-actions))
+      (throw (ex-info (tru "Unknown Action {0}. Valid Actions are: {1}"
+                           action
+                           (pr-str known-actions))
                       {:status-code 404})))
     ;; return 400 if the action does exist but is not supported by this DB
-    (throw (ex-info (i18n/tru "Action {0} is not supported for {1} Databases."
-                              action
-                              (pr-str driver))
+    (throw (ex-info (tru "Action {0} is not supported for {1} Databases."
+                         action
+                         (pr-str driver))
                     {:status-code 400}))))
 
 (def ^:dynamic *misc-value-cache*
@@ -115,14 +116,14 @@
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions db)
-    (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
-                              (u/qualified-name driver)
-                              (format "%d %s" db-id (pr-str db-name)))
+    (throw (ex-info (tru "{0} Database {1} does not support actions."
+                         (u/qualified-name driver)
+                         (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
   (setting/with-database db
     (when-not (actions.settings/database-enable-actions)
-      (throw (ex-info (i18n/tru "Actions are not enabled.")
+      (throw (ex-info (tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
 
   nil)
@@ -131,14 +132,14 @@
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions/data-editing db)
-    (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
-                              (u/qualified-name driver)
-                              (format "%d %s" db-id (pr-str db-name)))
+    (throw (ex-info (tru "{0} Database {1} does not support data editing."
+                         (u/qualified-name driver)
+                         (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
   (setting/with-database db
     (when-not (actions.settings/database-enable-table-editing)
-      (throw (ex-info (i18n/tru "Data editing is not enabled.")
+      (throw (ex-info (tru "Data editing is not enabled.")
                       {:status-code 400, :database-id db-id}))))
 
   nil)
@@ -178,33 +179,34 @@
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential :map]
    & {:as _opts}]
-  (lib-be/with-metadata-provider-cache
-    (let [invocation-id  (u/generate-nano-id)
-          context-before (-> (assoc ctx :invocation-id invocation-id)
-                             (update :invocation-stack u/conjv [action-kw invocation-id]))]
-      (log/debug "Started perform action")
-      (actions.events/publish-action-invocation! action-kw context-before inputs)
-      (try
-        (log/tracef "perform action inputs: %s" (pr-str inputs))
-        (u/prog1 (perform-action!* action-kw context-before inputs)
-          (let [{context-after :context, :keys [outputs]} <>]
-            (doseq [k [:invocation-id :invocation-stack :user-id]]
-              (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
-            ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
-            (handle-effects! context-after)
-            (log/debug "Action performed successfully")
-            (actions.events/publish-action-success! action-kw context-after outputs)))
-        ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
-        (catch Throwable e
-          (let [msg  (ex-message e)
-                ;; Can't be nil or adding metadata will NPE
-                info (or (ex-data e) {})
-                ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
-                info (with-meta info (merge (meta info) {:exception e}))]
-            ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
-            (actions.events/publish-action-failure! action-kw context-before msg info)
-            (log/error e "Failed to perform action")
-            (throw e)))))))
+  (driver.conn/with-write-connection
+    (lib-be/with-metadata-provider-cache
+      (let [invocation-id  (u/generate-nano-id)
+            context-before (-> (assoc ctx :invocation-id invocation-id)
+                               (update :invocation-stack u/conjv [action-kw invocation-id]))]
+        (log/debug "Started perform action")
+        (actions.events/publish-action-invocation! action-kw context-before inputs)
+        (try
+          (log/tracef "perform action inputs: %s" (pr-str inputs))
+          (u/prog1 (perform-action!* action-kw context-before inputs)
+            (let [{context-after :context, :keys [outputs]} <>]
+              (doseq [k [:invocation-id :invocation-stack :user-id]]
+                (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+              ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
+              (handle-effects! context-after)
+              (log/debug "Action performed successfully")
+              (actions.events/publish-action-success! action-kw context-after outputs)))
+          ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
+          (catch Throwable e
+            (let [msg  (ex-message e)
+                  ;; Can't be nil or adding metadata will NPE
+                  info (or (ex-data e) {})
+                  ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
+                  info (with-meta info (merge (meta info) {:exception e}))]
+              ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
+              (actions.events/publish-action-failure! action-kw context-before msg info)
+              (log/error e "Failed to perform action")
+              (throw e))))))))
 
 (defn perform-nested-action!
   "Similar to [[perform-action!]] but taking an existing context.
@@ -311,7 +313,7 @@
           (do
             ;; TODO more granular controls
             (when-not (api/check-superuser)
-              (throw (ex-info (i18n/tru "You don''t have permissions to do that.") {:status-code 403})))
+              (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
             (check-data-editing-enabled-for-database! db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]

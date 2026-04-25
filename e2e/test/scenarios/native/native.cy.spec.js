@@ -34,7 +34,7 @@ describe("scenarios > question > native", () => {
     H.NativeEditor.type("select count(*) from orders");
 
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
   });
 
@@ -88,7 +88,7 @@ describe("scenarios > question > native", () => {
     H.NativeEditor.type("select * from not_a_table");
 
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
@@ -101,7 +101,7 @@ describe("scenarios > question > native", () => {
     // highlight back to the front
     Cypress._.range(19).forEach(() => cy.realPress(["Shift", "ArrowLeft"]));
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "ORD" not found');
   });
 
@@ -112,7 +112,7 @@ describe("scenarios > question > native", () => {
 
       cy.get("input[placeholder*='Stars']").type("3");
       runQuery();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Showing 168 rows");
     });
 
@@ -126,7 +126,7 @@ describe("scenarios > question > native", () => {
       cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
       runQuery();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -152,7 +152,7 @@ describe("scenarios > question > native", () => {
 
       runQuery();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -228,7 +228,7 @@ describe("scenarios > question > native", () => {
         H.runNativeQuery();
         cy.findByTestId("query-visualization-root").should(
           "contain",
-          "January 1, 2022",
+          "January 1, 2025",
         );
       });
 
@@ -288,7 +288,7 @@ describe("scenarios > question > native", () => {
         );
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2022",
+          "January 1, 2025",
         );
 
         cy.get("@q2").then((questionId) => {
@@ -310,7 +310,7 @@ describe("scenarios > question > native", () => {
 
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2022",
+          "January 1, 2025",
         );
       });
 
@@ -391,8 +391,8 @@ describe("scenarios > question > native", () => {
         });
 
         cy.findByTestId("visualization-root")
-          .should("contain", "January 1, 2022")
-          .should("contain", "January 1, 2023");
+          .should("contain", "January 1, 2025")
+          .should("contain", "January 1, 2026");
       });
 
       it("should handle time grouping in optional clause without default value", () => {
@@ -428,7 +428,7 @@ describe("scenarios > question > native", () => {
         });
 
         cy.findByTestId("query-visualization-root")
-          .should("not.contain", "October 7, 2023, 1:34 AM")
+          .should("not.contain", "October 7, 2026, 1:34 AM")
           .should("not.contain", "UNIT");
       });
 
@@ -449,10 +449,10 @@ describe("scenarios > question > native", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from people where false");
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
     cy.icon("contract").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     cy.findByTestId("save-question-modal").within(() => {
@@ -488,7 +488,7 @@ describe("scenarios > question > native", () => {
       });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This has a value");
 
     FILTERS.forEach((operator) => {
@@ -562,7 +562,7 @@ describe("scenarios > question > native", () => {
       { autorun: false },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
 
@@ -595,9 +595,7 @@ describe("scenarios > question > native", () => {
     });
     H.NativeEditor.focus();
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
 
     cy.wait("@dataset");
 
@@ -615,9 +613,7 @@ describe("scenarios > question > native", () => {
     });
     H.NativeEditor.focus();
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress(["Shift", metaKey, "f"]);
+    cy.realPress(["Shift", H.metaKey, "f"]);
 
     H.NativeEditor.value().should(
       "contain",
@@ -900,10 +896,9 @@ describe("scenarios > native question > data reference sidebar", () => {
     H.openQuestionActions();
     H.popover().findByTestId("move-button").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
-      cy.findByText("Bobby Tables's Personal Collection").click();
-      cy.button("Move").click();
+    H.pickEntity({
+      path: ["Bobby Tables's Personal Collection"],
+      select: true,
     });
 
     H.startNewNativeQuestion();

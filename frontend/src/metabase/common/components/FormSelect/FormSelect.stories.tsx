@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
-import FormSelect from "./FormSelect";
+import { FormSelect } from "./FormSelect";
 
 const TEST_OPTIONS = [
   { name: "Line", value: "line" },

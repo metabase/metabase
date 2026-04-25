@@ -151,7 +151,7 @@
                                                   {:lib/uuid                (str (random-uuid))
                                                    :source-field            id
                                                    ::new-field-dimension-id (u/the-id dimension)}
-                                                  (when-let [join-alias (:metabase.lib.join/join-alias col)]
+                                                  (when-let [join-alias (:lib/join-alias col)]
                                                     {:join-alias join-alias}))
                                                  (u/the-id (:human-readable-field-id dimension))]
                          :dimension             (assoc dimension
@@ -554,7 +554,7 @@
 (mu/defn- col->dim-map :- [:maybe ::internal-remapping-info]
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+  [idx :- nat-int?
    {{:keys [values human-readable-values], remap-to :name} :lib/internal-remap
     :as                                                    col} :- ::column-with-optional-base-type]
   (when (seq values)
@@ -622,9 +622,14 @@
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
-      (let [mlv2-cols          (map
+      (let [lib-cols           (map
                                 #(lib-be/instance->metadata % :metadata/column)
                                 (:cols metadata))
-            internal-cols-info (internal-columns-info mlv2-cols)
+            internal-cols-info (internal-columns-info lib-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
+
+(defn disable-remaps
+  "Sets the value of the disable-remaps? option in this query."
+  [query]
+  (assoc-in query [:middleware :disable-remaps?] true))

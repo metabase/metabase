@@ -15,12 +15,25 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
-  (cond->  ["collection" "dashboard" "segment" "measure" "database" "action" "document"]
-    config/ee-available? (conj "transform")
-    ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
-    ;; table and indexed-entity moved to the end because there can be a large number of them
-    true (conj "table" "indexed-entity" "metric" "card" "dataset")))
+  "Search model string names, ordered by indexing priority.
+   Important / cheaper models come first so partial index is usable as soon as possible during a full index."
+  ["collection"
+   "dashboard"
+   "segment"
+   "measure"
+   "database"
+   "action"
+   "document"
+   "transform"
+   ;; The following come last as they can be slow to index due to:
+   ;; - cardinality (table, indexed-entity),
+   ;; - cost (e.g. computing has_temporal_dim for cards)
+   "table"
+   "metric"
+   "card"
+   "dataset"
+   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
+   "indexed-entity"])
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
@@ -47,12 +60,19 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]
+    [:provides {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
+
+(defn function-attr-provides
+  "Returns the attr keys that a function attr provides when it returns a map.
+  Used to determine which filters a function attr satisfies."
+  [attr-def]
+  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -85,8 +105,10 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
+   :temporal-info           nil
    :display-type            :text
-   :is-published            :boolean})
+   :is-published            :boolean
+   :source-type             :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -108,9 +130,9 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :non-temporal-dim-ids
-         :has-temporal-dim
-         :is-published])
+         :temporal-info
+         :is-published
+         :source-type])
        distinct
        vec))
 
@@ -356,7 +378,7 @@
    Attribute value formats:
    - `true` - Use column with same name (snake_case)
    - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure funtion at index time with the given fields"
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
   [search-model spec]
   `(do
      ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)

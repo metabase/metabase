@@ -36,9 +36,11 @@ driver:
       placeholder: >-
         database_1, database_2
       helper-text: Optionally filter which databases are visible.
-
-    - ssl
-    - ssh-tunnel
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssl
+        - ssh-tunnel
     - advanced-options-start
     - name: use-no-proxy
       display-name: Disable system wide proxy settings

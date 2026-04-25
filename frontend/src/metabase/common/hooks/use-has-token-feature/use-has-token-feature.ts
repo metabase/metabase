@@ -1,4 +1,4 @@
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getTokenFeature } from "metabase/setup/selectors";
 import type { TokenFeature } from "metabase-types/api";
 

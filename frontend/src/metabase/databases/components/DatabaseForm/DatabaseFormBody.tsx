@@ -22,7 +22,6 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: EngineKey | undefined;
   engines: Record<string, Engine>;
-  engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
@@ -35,7 +34,6 @@ export const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
-  engineFieldState = "default",
   autofocusFieldName,
   isAdvanced,
   onEngineChange,
@@ -45,6 +43,7 @@ export const DatabaseFormBody = ({
 }: DatabaseFormBodyProps): JSX.Element => {
   const { setValues } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
+  const { engine: engineFieldConfig, name: nameFieldConfig } = config;
 
   const px = match(location)
     .with("setup", () => "sm")
@@ -55,15 +54,15 @@ export const DatabaseFormBody = ({
   const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
 
   return (
-    <Box mah={mah} mb="md" px={px} style={{ overflowY: "auto" }}>
-      {engineFieldState !== "hidden" && (
+    <Box mah={mah} mb="md" px={px} flex={1} style={{ overflowY: "auto" }}>
+      {engineFieldConfig?.fieldState !== "hidden" && (
         <>
           <DatabaseEngineField
             engineKey={engineKey}
             engines={engines}
             isAdvanced={isAdvanced}
             onChange={onEngineChange}
-            disabled={engineFieldState === "disabled"}
+            disabled={engineFieldConfig?.fieldState === "disabled"}
             showSampleDatabase={showSampleDatabase}
           />
           <DatabaseEngineWarning
@@ -78,7 +77,7 @@ export const DatabaseFormBody = ({
         location={location}
         setValues={setValues}
       />
-      {engine && (
+      {engine && nameFieldConfig?.fieldState !== "hidden" && (
         <DatabaseNameField
           engine={engine}
           config={config}

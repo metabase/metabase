@@ -6,7 +6,7 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty mapv])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -17,9 +17,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [not-empty]])
+   [metabase.util.performance :refer [mapv not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
@@ -30,6 +31,7 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
+    ReferencedTableQuery
     ReferencedQuerySnippet
     TemporalUnit)))
 
@@ -38,7 +40,7 @@
 (defmulti ->prepared-substitution
   "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
   specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
-  inlcusion in the query, such as what's needed for SQLite and timestamps."
+  inclusion in the query, such as what's needed for SQLite and timestamps."
   {:added "0.34.0" :arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
@@ -288,7 +290,7 @@
   (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
-  "Return an approprate snippet to represent this `field` in SQL given its param type.
+  "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
@@ -408,3 +410,32 @@
                             (field->clause field (when (not= value params/no-value)
                                                    {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
+
+(defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
+  [driver {:keys [table-id source-filters alias]}]
+  (let [mp         (driver-api/metadata-provider)
+        table-hsql (sql.qp/->honeysql driver (driver-api/table mp table-id))
+        add-alias  (fn [result]
+                     (if alias
+                       (let [alias-sql (first (sql.qp/format-honeysql driver (h2x/identifier :table-alias alias)))]
+                         (update result :replacement-snippet str " AS " alias-sql))
+                       result))]
+    (if (seq source-filters)
+      (let [prepared     (mapv (fn [{:keys [field-id op value]}]
+                                 (let [field (driver-api/field mp field-id)]
+                                   {:col (h2x/identifier :field (:name field))
+                                    :op  op
+                                    :sub (->prepared-substitution driver value)}))
+                               source-filters)
+            where-clause (into [:and]
+                               (map (fn [{:keys [col op sub]}]
+                                      [op col [:raw (:sql-string sub)]]))
+                               prepared)
+            hsql         {:select [:*] :from [[table-hsql]] :where where-clause}
+            [sql]        (sql.qp/format-honeysql driver hsql)
+            args         (into [] (mapcat (comp :param-values :sub)) prepared)]
+        (add-alias {:replacement-snippet     (str "(" sql ")")
+                    :prepared-statement-args args}))
+      (let [[sql] (sql.qp/format-honeysql driver table-hsql)]
+        (add-alias {:prepared-statement-args []
+                    :replacement-snippet     sql})))))

@@ -31,8 +31,8 @@
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- ::parameters.schema/parameter]
-  (let [op      (param-type->op (:type param))
+  [param :- ::parameters.schema/parameter & {:keys [op-override]}]
+  (let [op      (or op-override (param-type->op (:type param)))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
       {:field-id field-id
@@ -162,37 +162,37 @@
   ([dashboard param-key value]
    (dashboard-param-remapped-value dashboard param-key value nil))
   ([dashboard param-key value constraint-param-key->value]
-   (when (contains? constraint-param-key->value param-key)
-     (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
-                     {:status-code 400
-                      :parameter param-key})))
-   (let [dashboard (-> dashboard
-                       (t2/hydrate :resolved-params)
-                       ;; whatever the param's type, we want an equality constraint
-                       (m/update-existing-in [:resolved-params param-key] assoc :type :id))
-         param (get-in dashboard [:resolved-params param-key])
-         field-ids (into #{} (map :field-id (param->fields param)))
-         ;; Default case when we have just a single field-id:
-         get-direct-remapping #(chain-filter/chain-filter
-                                (first field-ids)
-                                (chain-filter-constraints dashboard
-                                                          (assoc constraint-param-key->value
-                                                                 param-key
-                                                                 value))
-                                :relax-fk-requirement? true
-                                :limit 1)
-         ;; Default case when we have multiple field-ids:
-         get-common-remapping #(when-let [common-display-field (find-common-remapping-target field-ids)]
-                                 (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
-                                   (chain-filter/chain-filter pk-field-id
-                                                              [{:field-id pk-field-id, :op :=, :value value}]
-                                                              :limit 1
-                                                              :remapping-field common-display-field)))
-         default-case-fn (fn dashboard-param-remapped-default-case []
-                           (-> (if (= (count field-ids) 1)
-                                 (get-direct-remapping) ; only one field id
-                                 (get-common-remapping)) ; more than one
-                               :values
-                               first))]
-     (or (custom-values/parameter-remapped-value param value default-case-fn)
-         [value]))))
+   (let [constraint-param-key->value (or constraint-param-key->value {})]
+     (when (contains? constraint-param-key->value param-key)
+       (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
+                       {:status-code 400
+                        :parameter param-key})))
+     (let [dashboard (t2/hydrate dashboard :resolved-params)
+           param (get-in dashboard [:resolved-params param-key])
+           ;; Whatever the param's type, we want an equality constraint for the remapped value
+           ;; lookup. Use op-override := instead of mutating the param type to :id (QUE2-326).
+           field-ids (into #{} (map :field-id (param->fields param :op-override :=)))
+           ;; Default case when we have just a single field-id:
+           get-direct-remapping #(chain-filter/chain-filter
+                                  (first field-ids)
+                                  (into (chain-filter-constraints dashboard
+                                                                  constraint-param-key->value)
+                                        (for [field (param->fields param :op-override :=)]
+                                          (assoc field :value value)))
+                                  :relax-fk-requirement? true
+                                  :limit 1)
+           ;; Default case when we have multiple field-ids:
+           get-common-remapping #(when-let [common-display-field (find-common-remapping-target field-ids)]
+                                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                                     (chain-filter/chain-filter pk-field-id
+                                                                [{:field-id pk-field-id, :op :=, :value value}]
+                                                                :limit 1
+                                                                :remapping-field common-display-field)))
+           default-case-fn (fn dashboard-param-remapped-default-case []
+                             (-> (if (= (count field-ids) 1)
+                                   (get-direct-remapping) ; only one field id
+                                   (get-common-remapping)) ; more than one
+                                 :values
+                                 first))]
+       (or (custom-values/parameter-remapped-value param value default-case-fn)
+           [value])))))

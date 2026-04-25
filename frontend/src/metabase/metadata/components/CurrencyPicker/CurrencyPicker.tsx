@@ -1,7 +1,6 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import { currency } from "cljs/metabase.util.currency";
 import {
   Combobox,
   Flex,
@@ -11,6 +10,7 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
+import { currency } from "metabase/utils/formatting";
 
 import S from "./CurrencyPicker.module.css";
 
@@ -89,16 +89,8 @@ export const CurrencyPicker = ({
   );
 };
 
-type Currency = {
-  name: string;
-  code: string;
-  symbol: string;
-};
-
 function getData() {
-  const currencyData = currency as [Currency["symbol"], Currency][];
-
-  return currencyData.map(([, currency]) => ({
+  return currency.map(([, currency]) => ({
     label: currency.name,
     value: currency.code,
     symbol: currency.symbol,

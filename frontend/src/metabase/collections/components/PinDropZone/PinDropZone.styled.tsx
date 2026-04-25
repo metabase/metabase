@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import PinDropTarget from "metabase/common/components/dnd/PinDropTarget";
+import { PinDropTarget } from "metabase/common/components/dnd/PinDropTarget";
 
 type PinDropTargetProps = {
   variant: "pin" | "unpin";

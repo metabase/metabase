@@ -6,7 +6,7 @@ import {
   useGetUserKeyValueQuery,
   useUpdateKeyValueMutation,
 } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { UserKeyValue } from "metabase-types/api";
 

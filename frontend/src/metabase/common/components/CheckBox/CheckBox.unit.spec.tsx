@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import CheckBox from "./CheckBox";
+import { CheckBox } from "./CheckBox";
 
 describe("CheckBox", () => {
   it("should receive focus on tab", async () => {

@@ -5,9 +5,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections-rest.api :as api.collection]
+   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -1172,6 +1173,65 @@
                   collection-item (first (filter #(= (:id %) subcoll-id) items))]
               (is (not (contains? dashboard-item :can_run_adhoc_query)))
               (is (not (contains? collection-item :can_run_adhoc_query))))))))))
+
+(deftest can-run-adhoc-query-threshold-exceeded-test
+  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
+    (testing "When card count exceeds threshold, can_run_adhoc_query returns true (skips permission check)"
+      (let [card-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
+            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 2]
+              (let [items (:data (mt/user-http-request :rasta :get 200
+                                                       (str "collection/" collection-id "/items")
+                                                       :include_can_run_adhoc_query true))]
+                ;; With 3 cards and threshold of 2, all cards should have can_run_adhoc_query=true
+                ;; even though user doesn't have data permissions (computation was skipped)
+                (is (= 3 (count items)))
+                (is (every? #(true? (:can_run_adhoc_query %)) items))))))))))
+
+(deftest can-run-adhoc-query-threshold-not-exceeded-test
+  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
+    (testing "When card count is at or below threshold, normal hydration occurs (returns false without perms)"
+      (let [card-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
+            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 5]
+              (let [items (:data (mt/user-http-request :rasta :get 200
+                                                       (str "collection/" collection-id "/items")
+                                                       :include_can_run_adhoc_query true))]
+                ;; With 2 cards and threshold of 5, actual permission check occurs
+                ;; User doesn't have data permissions, so all should be false
+                (is (= 2 (count items)))
+                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
+
+(deftest can-run-adhoc-query-threshold-disabled-test
+  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
+    (testing "When threshold is 0, always compute permissions regardless of card count"
+      (let [card-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
+            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 0]
+              (let [items (:data (mt/user-http-request :rasta :get 200
+                                                       (str "collection/" collection-id "/items")
+                                                       :include_can_run_adhoc_query true))]
+                ;; With threshold of 0, hydration should always occur
+                ;; User doesn't have data permissions, so all should be false
+                (is (= 3 (count items)))
+                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
 
 (deftest collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -3096,6 +3156,30 @@
       (mt/user-http-request :crowberto :put 403 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
 
+(deftest trashed-items-respect-collection-permissions-test
+  (testing "GET /api/collection/<trash-id>/items does not show trashed items from collections the user can't access"
+    (doseq [[model model-name attrs] [[:model/Card      "card"      {:name "Secret Card" :dataset_query (mt/native-query {:query "select 1"})}]
+                                      [:model/Dashboard "dashboard" {:name "Secret Dashboard"}]
+                                      [:model/Document  "document"  {:name "Secret Document"}]]]
+      (testing (str model-name)
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Restricted Collection"}
+                       model {item-id :id} (merge {:collection_id     coll-id
+                                                   :archived          true
+                                                   :archived_directly true}
+                                                  attrs)]
+          (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
+          (testing "User without collection access does NOT see the trashed item"
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" (collection/trash-collection-id)))
+                  ids   (set (map :id (filter #(= model-name (:model %)) (:data items))))]
+              (is (not (contains? ids item-id)))))
+          (testing "User WITH collection access DOES see the trashed item"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" (collection/trash-collection-id)))
+                  ids   (set (map :id (filter #(= model-name (:model %)) (:data items))))]
+              (is (contains? ids item-id)))))))))
+
 (deftest skip-graph-skips-graph-on-graph-PUT
   (is (malli= [:map [:revision :int] [:groups :map]]
               (mt/user-http-request :crowberto
@@ -3325,7 +3409,7 @@
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
 
 (deftest published-tables-not-in-collection-items-oss-test
-  (testing "In OSS (without :data-studio feature), published tables should NOT appear in collection items"
+  (testing "In OSS (without :library feature), published tables should NOT appear in collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
@@ -3338,13 +3422,46 @@
             (is (some #(= card-id (:id %)) items)
                 "Card should be in collection items"))
           (testing "Published table should NOT appear"
-            (is (not (some #(= table-id (:id %)) items))
+            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
                 "Published table should NOT be in collection items in OSS"))))))
-  (testing "In OSS (without :data-studio feature), published tables should NOT appear in root collection items"
+  (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Table {table-id :id} {:collection_id nil
                                                   :is_published  true
                                                   :name          "Root Published Table"}]
         (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-          (is (not (some #(= table-id (:id %)) items))
+          (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
               "Published table should NOT be in root collection items in OSS"))))))
+
+(deftest unarchive-collection-requires-curate-perms-on-destination-test
+  (testing "PUT /api/collection/:id"
+    (testing "Unarchiving a collection to a specific destination collection requires curate permissions on the destination"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection archived-collection {:name "Archived"}
+                       :model/Collection destination {:name "Destination"}]
+          ;; Give user curate permissions on the archived collection
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection)
+          ;; Revoke all permissions on the destination
+          (perms/revoke-collection-permissions! (perms/all-users-group) destination)
+          ;; Archive the collection first (as admin)
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id archived-collection))
+                                {:archived true})
+          ;; Attempt to unarchive to destination without curate perms - should fail
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
+                                       {:archived false :parent_id (u/the-id destination)}))))))))
+
+(deftest unarchive-collection-requires-curate-permissions-on-children-test
+  (testing "PUT /api/collection/:id"
+    (testing "Unarchiving a collection requires curate permissions on its children"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection archived-collection {:name "Archived"}
+                       :model/Collection child-collection {:name "Archived Child" :location (collection/children-location archived-collection)}
+                       :model/Collection dest-collection {}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-collection)
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection)
+          (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id archived-collection)) {:archived true})
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
+                                       {:archived false :parent_id (u/the-id dest-collection)}))))))))

@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";
-import Link from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Stack, Text, Title, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
 export interface TimelineEmptyStateProps {

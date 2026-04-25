@@ -1,12 +1,16 @@
 import { fireEvent, render, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { DEFAULT_QUERY, createMockNotebookStep } from "../../test-utils";
+import { createMockNotebookStep } from "../../test-utils";
 
 import { LimitStep } from "./LimitStep";
 
 const DEFAULT_LIMIT = 10;
-const QUERY_WITH_LIMIT = Lib.limit(DEFAULT_QUERY, 0, DEFAULT_LIMIT);
+const QUERY_WITH_LIMIT = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [{ source: { type: "table", id: ORDERS_ID }, limit: DEFAULT_LIMIT }],
+});
 
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();

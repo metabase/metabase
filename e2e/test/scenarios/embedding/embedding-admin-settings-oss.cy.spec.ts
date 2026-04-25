@@ -1,6 +1,5 @@
 const { H } = cy;
 
-// These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
   { tags: "@OSS" },
@@ -8,6 +7,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+
       H.updateSetting("show-sdk-embed-terms", false);
     });
 
@@ -29,10 +29,10 @@ describe(
         .findByRole("link", { name: /Guest embeds/ })
         .should("not.exist");
 
-      cy.log("Verify sidebar does not contain security settings link");
+      cy.log("Verify sidebar contains security settings link");
       cy.findByTestId("admin-layout-sidebar")
         .findByRole("link", { name: /Security/ })
-        .should("not.exist");
+        .should("exist");
     });
 
     it("should show embedding upsell on oss", () => {
@@ -50,8 +50,16 @@ describe(
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedding-methods",
           );
+      });
+    });
+
+    it("should show CORS setting on security page", () => {
+      cy.visit("/admin/embedding/security");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
       });
     });
   },

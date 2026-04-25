@@ -76,7 +76,7 @@ describe("scenarios > admin > settings", () => {
     // rather than aliasing it with .as()
     const emailInput = () =>
       cy
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         .contains(/Email Address for Help Requests/i)
         .parent()
         .parent()
@@ -139,7 +139,7 @@ describe("scenarios > admin > settings", () => {
     H.popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("It looks like HTTPS is not properly configured");
   });
 
@@ -174,7 +174,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
-      .and("contain", "2025/2/11, 21:40");
+      .and("contain", "2028/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
@@ -189,7 +189,7 @@ describe("scenarios > admin > settings", () => {
     H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2028/2/11, 9:40 PM");
   });
 
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
@@ -259,27 +259,23 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/general");
 
     cy.wait("@appSettings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("We're a little lost...").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site name/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site URL/i);
   });
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/notifications");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Connect to Slack")
-        .click();
+      cy.visit("/admin/settings/slack");
 
-      H.modal().findByText("Metabase on Slack");
+      cy.findByRole("main").findByText("Create a Slack app and connect to it.");
 
       cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
-      cy.button("Save changes").click();
-
-      H.modal().findByText(/invalid token/i);
+      cy.button("Connect").click();
+      cy.findByRole("main").findByText(/invalid token/i);
     });
   });
 });
@@ -700,32 +696,27 @@ describe("scenarios > admin > localization", () => {
 
   it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
     // programatically create and save a question based on Orders table
-    // filter: created before June 1st, 2022
+    // filter: created before June 1st, 2025
     // summarize: Count by CreatedAt: Week
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    H.createQuestion({
-      name: "Orders created before June 1st 2022",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2025",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
+        },
+        display: "bar",
       },
-      display: "line",
-    });
-
-    // find and open that question
-    cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2022").click();
-
-    cy.wait("@cardQuery");
+      { visitQuestion: true },
+    );
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    H.echartsContainer().get("text").contains("April 25, 2022");
+    // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
+    H.echartsContainer().find("text").should("contain", "April 28, 2025");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -753,7 +744,7 @@ describe("scenarios > admin > localization", () => {
     });
 
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13604").click();
 
     cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
@@ -811,10 +802,10 @@ describe("scenarios > admin > localization", () => {
   it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Unit of currency");
     cy.findByDisplayValue("US Dollar").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
     H.undoToast().findByText("Changes saved").should("be.visible");
 
@@ -837,7 +828,7 @@ describe("scenarios > admin > localization", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€10.00");
   });
 
@@ -882,7 +873,7 @@ describe("scenarios > admin > localization", () => {
       cy.findByTextEnsureVisible("Add filter");
 
       // update the date input in the widget
-      cy.findByLabelText("Date").clear().type("2024/5/15").blur();
+      cy.findByLabelText("Date").clear().type("2027/5/15").blur();
 
       // add a time to the date
       cy.findByText("Add time").click();
@@ -898,7 +889,7 @@ describe("scenarios > admin > localization", () => {
 
     // verify that the correct row is displayed
     H.tableInteractive().within(() => {
-      cy.findByText("2024/5/15, 19:56");
+      cy.findByText("2027/5/15, 19:56");
       cy.findByText("127.52");
     });
   });
@@ -938,14 +929,14 @@ describe("scenarios > admin > settings > map settings", () => {
   it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
     cy.intercept("GET", "/api/geojson*").as("load");
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a map").click();
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     cy.wait("@load").then((interception) => {
       expect(interception.response.statusCode).to.eq(200);
@@ -954,32 +945,32 @@ describe("scenarios > admin > settings > map settings", () => {
 
   it("should show an informative error when adding an invalid URL", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a map").click();
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type("bad-url");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
-      "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. " +
+      "Invalid GeoJSON file location: must start with http:// or https://. " +
         "URLs referring to hosts that supply internal hosting metadata are prohibited.",
     );
   });
 
   it("should show an informative error when adding a valid URL that does not contain GeoJSON, or is missing required fields", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a map").click();
 
     // Not GeoJSON
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type("https://metabase.com");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("GeoJSON URL returned invalid content-type");
 
     // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
@@ -988,9 +979,9 @@ describe("scenarios > admin > settings > map settings", () => {
       .type(
         "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
       );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Invalid custom GeoJSON: does not contain features");
   });
 
@@ -1092,7 +1083,7 @@ describe("notifications", { tags: "@external" }, () => {
 
     AUTH_METHODS.forEach((auth) => {
       it(`${auth.display} Auth`, () => {
-        cy.visit("/admin/settings/notifications");
+        cy.visit("/admin/settings/webhooks");
         cy.findByRole("heading", { name: "Add a webhook" }).click();
 
         H.modal().within(() => {
@@ -1121,7 +1112,7 @@ describe("notifications", { tags: "@external" }, () => {
   });
 
   it("Should allow you to create and edit Notifications", () => {
-    cy.visit("/admin/settings/notifications");
+    cy.visit("/admin/settings/webhooks");
 
     cy.findByRole("heading", { name: "Add a webhook" }).click();
 

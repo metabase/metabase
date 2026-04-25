@@ -15,12 +15,19 @@ export const useSetupContentTranslations = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   useEffect(() => {
-    if (locale !== "en") {
-      if (isGuestEmbed && token) {
-        PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-      } else {
-        PLUGIN_CONTENT_TRANSLATION.setEndpointsForAuthEmbedding();
-      }
+    if (locale !== "en" && isGuestEmbed && token) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
     }
   }, [isGuestEmbed, locale, token]);
+};
+
+export const useSetupAuthContentTranslations = () => {
+  const { locale } = useLocale();
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+
+  useEffect(() => {
+    if (locale !== "en" && !isGuestEmbed) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForAuthEmbedding();
+    }
+  }, [locale, isGuestEmbed]);
 };

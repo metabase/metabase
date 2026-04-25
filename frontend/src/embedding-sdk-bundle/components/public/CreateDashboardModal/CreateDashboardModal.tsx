@@ -9,7 +9,7 @@ import type {
 } from "embedding-sdk-bundle/types";
 import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 
 import { createDashboardModalSchema } from "./CreateDashboardModal.schema";
 
@@ -22,6 +22,11 @@ export interface CreateDashboardModalProps {
    * Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`.
    */
   initialCollectionId?: SdkCollectionId;
+
+  /**
+   * The collection to save the dashboard to. This will hide the collection picker from the save modal.
+   */
+  targetCollection?: SdkCollectionId;
 
   /**
    * Whether the modal is open or not.
@@ -41,6 +46,7 @@ export interface CreateDashboardModalProps {
 
 const CreateDashboardModalInner = ({
   initialCollectionId = "personal",
+  targetCollection,
   isOpen = true,
   onCreate,
   onClose,
@@ -53,6 +59,12 @@ const CreateDashboardModalInner = ({
 
   const collectionIdSlug = useSelector((state) =>
     getCollectionIdSlugFromReference(state, initialCollectionId),
+  );
+
+  const resolvedTargetCollection = useSelector((state) =>
+    targetCollection
+      ? getCollectionIdValueFromReference(state, targetCollection)
+      : undefined,
   );
 
   const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
@@ -69,6 +81,7 @@ const CreateDashboardModalInner = ({
       onCreate={onCreate}
       onClose={() => onClose?.()}
       collectionId={collectionId}
+      targetCollection={resolvedTargetCollection}
     />
   );
 };

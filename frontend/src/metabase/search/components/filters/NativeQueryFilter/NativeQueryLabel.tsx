@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { canUserCreateNativeQueries } from "metabase/selectors/user";
 
 export const NativeQueryLabel = () => {

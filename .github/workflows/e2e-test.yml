@@ -21,7 +21,7 @@ on:
       runner:
         required: false
         type: string
-        default: ubuntu-22.04
+        default: ${{ vars.DEFAULT_RUNNER_KEY }}
       total_chunks: # number of chunks
         required: false
         type: number
@@ -41,12 +41,13 @@ env:
 jobs:
   e2e-tests:
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 40
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
-      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
-      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
+      # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
+      # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
@@ -79,7 +80,8 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ${{ inputs.edition }}
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
@@ -103,6 +105,9 @@ jobs:
       - name: Get failed specs
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
@@ -161,12 +166,12 @@ jobs:
           # Related to our custom upload to S3
           output-name: e2e-${{ inputs.name }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           # Related to Trunk uploader
           variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

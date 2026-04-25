@@ -1,4 +1,5 @@
 import type { Extension } from "@uiw/react-codemirror";
+import { useMemo } from "react";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 
@@ -39,17 +40,23 @@ export function CodeEditor({
     proposedValue,
   });
 
+  const basicSetup = useMemo(
+    () => ({
+      lineNumbers,
+      foldGutter: false,
+      highlightActiveLine: false,
+      highlightActiveLineGutter: false,
+    }),
+    [lineNumbers],
+  );
+
   return (
     <CodeMirror
-      basicSetup={{
-        lineNumbers,
-        foldGutter: false,
-        highlightActiveLine: false,
-        highlightActiveLineGutter: false,
-      }}
+      basicSetup={basicSetup}
       className={className}
       extensions={extensions}
       id={id}
+      editable={!readOnly}
       readOnly={readOnly}
       value={proposedValue ?? value}
       onChange={onChange}

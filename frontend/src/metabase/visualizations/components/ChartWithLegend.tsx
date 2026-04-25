@@ -10,13 +10,13 @@ import {
   useState,
 } from "react";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { HoveredObject } from "metabase/visualizations/types";
 
 import styles from "./ChartWithLegend.module.css";
-import LegendHorizontal from "./LegendHorizontal";
-import LegendVertical from "./LegendVertical";
+import { LegendHorizontal } from "./LegendHorizontal";
+import { LegendVertical } from "./LegendVertical";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
@@ -52,6 +52,7 @@ type ChartWithLegendProps = {
   showLegend?: boolean;
   isDashboard?: boolean;
   isDocument?: boolean;
+  isMetricsViewer?: boolean;
   onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
   forwardedRef?: Ref<HTMLDivElement>;
 };
@@ -73,6 +74,7 @@ const ChartWithLegendInner = ({
   showLegend = true,
   isDashboard,
   isDocument,
+  isMetricsViewer,
   onToggleSeriesVisibility = () => {},
   forwardedRef,
 }: ChartWithLegendProps) => {
@@ -167,7 +169,7 @@ const ChartWithLegendInner = ({
         titles={layout.processedLegendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
-        dotSize={isDashboard ? "8px" : "12px"}
+        dotSize={isDashboard || isMetricsViewer ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
@@ -189,6 +191,7 @@ const ChartWithLegendInner = ({
         paddingLeft: PADDING,
         paddingRight: PADDING,
       }}
+      data-testid="chart-with-legend"
       ref={forwardedRef}
     >
       {legend && (
@@ -210,7 +213,9 @@ const ChartWithLegendInner = ({
         <div
           className={cx(styles.LegendSpacer)}
           // don't center the chart on dashboards
-          style={isDashboard || isDocument ? { flexBasis: 0 } : {}}
+          style={
+            isDashboard || isDocument || isMetricsViewer ? { flexBasis: 0 } : {}
+          }
           data-testid="chart-legend-spacer"
         >
           {legend}

@@ -6,14 +6,13 @@ import _ from "underscore";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { skipToken, useListActionsQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/redux";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -74,7 +73,6 @@ export function ObjectDetailView({
   zoomedRow: passedZoomedRow,
   zoomedRowID,
   tableForeignKeys,
-  tableForeignKeyReferences,
   settings,
   canZoom,
   canZoomPreviousRow,
@@ -86,11 +84,11 @@ export function ObjectDetailView({
   visualizationIsClickable,
   fetchTableFks,
   loadObjectDetailFKReferences,
-  followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
   className,
+  isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [maybeLoading, setMaybeLoading] = useState(false);
@@ -247,20 +245,11 @@ export function ObjectDetailView({
     }
   }, [hasFks, data, prevData, prevTableForeignKeys, loadFKReferences]);
 
-  const onFollowForeignKey = useCallback(
-    (fk: ForeignKey) => {
-      zoomedRowID !== undefined
-        ? followForeignKey({ objectId: zoomedRowID, fk })
-        : _.noop();
-    },
-    [zoomedRowID, followForeignKey],
-  );
-
   const areImplicitActionsEnabled = Boolean(
     question &&
-      question.canWrite() &&
-      question.type() === "model" &&
-      question.supportsImplicitActions(),
+    question.canWrite() &&
+    question.type() === "model" &&
+    question.supportsImplicitActions(),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;
@@ -363,15 +352,11 @@ export function ObjectDetailView({
             )}
             <ObjectDetailBody
               columns={passedData.cols}
-              objectName={objectName}
               zoomedRow={zoomedRow ?? []}
               settings={settings}
-              hasRelationships={hasRelationships}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
-              tableForeignKeys={tableForeignKeys}
-              tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={onFollowForeignKey}
+              isDashboard={isDashboard}
             />
           </ObjectDetailWrapperDiv>
         )}

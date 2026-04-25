@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 import { color } from "metabase/ui/utils/colors";
 import {
   MODERATION_STATUS,

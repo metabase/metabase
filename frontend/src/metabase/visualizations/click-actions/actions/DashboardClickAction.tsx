@@ -1,8 +1,5 @@
-import {
-  setOrUnsetParameterValues,
-  setParameterValue,
-} from "metabase/dashboard/actions/parameters";
-import { selectTab } from "metabase/dashboard/actions/tabs";
+import { selectTab } from "metabase/redux/dashboard";
+import type { Dispatch } from "metabase/redux/store";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
@@ -18,6 +15,7 @@ import {
   getDashboardDrillType,
   getDashboardDrillUrl,
 } from "metabase-lib/v1/queries/drills/dashboard-click-drill";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DashboardDrillType =
   | "link-url"
@@ -26,11 +24,28 @@ type DashboardDrillType =
   | "dashboard-filter"
   | "dashboard-reset";
 
+type SetOrUnsetParameterValues = (
+  parameterIdValuePairs: [string, ParameterValueOrArray | null][],
+) => (dispatch: Dispatch) => void;
+
+type SetParameterValue = (
+  id: string,
+  value: ParameterValueOrArray | null,
+) => (dispatch: Dispatch) => void;
+
 function getAction(
   type: DashboardDrillType,
   question: Question,
   clicked: ClickObject,
 ): AlwaysDefaultClickActionSubAction {
+  // These are injected via extraData by the dashboard's useClickBehaviorData hook.
+  // They are guaranteed to be present in dashboard context where
+  // "dashboard-filter" and "dashboard-reset" drill types are produced.
+  const setOrUnsetParameterValues = clicked.extraData
+    ?.setOrUnsetParameterValues as SetOrUnsetParameterValues;
+  const setParameterValue = clicked.extraData
+    ?.setParameterValue as SetParameterValue;
+
   switch (type) {
     case "link-url":
       return {
@@ -48,20 +63,24 @@ function getAction(
     case "dashboard-filter":
       return {
         action: () => {
-          const parameterIdValuePairs = getDashboardDrillParameters(clicked);
+          const parameterIdValuePairs = getDashboardDrillParameters(
+            clicked,
+          ) as [string, ParameterValueOrArray | null][];
           return setOrUnsetParameterValues(parameterIdValuePairs);
         },
       };
     case "dashboard-reset":
       return {
-        action: () => (dispatch) => {
+        action: () => (dispatch: Dispatch) => {
           const tabId = getDashboardDrillTab(clicked);
 
           if (tabId) {
             dispatch(selectTab({ tabId }));
           }
 
-          const parameterIdValuePairs = getDashboardDrillParameters(clicked);
+          const parameterIdValuePairs = getDashboardDrillParameters(
+            clicked,
+          ) as [string, ParameterValueOrArray | null][];
           parameterIdValuePairs
             .map(([id, value]) => setParameterValue(id, value))
             .forEach((action) => dispatch(action));

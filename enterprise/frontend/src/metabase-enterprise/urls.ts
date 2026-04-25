@@ -1,6 +1,6 @@
 import type { DatabaseId, Tenant } from "metabase-types/api";
 
-export * as Urls from "metabase/lib/urls";
+export * as Urls from "metabase/utils/urls";
 
 export function viewDestinationDatabases(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/destination-databases`;
@@ -22,10 +22,6 @@ export function removeDestinationDatabase(
   destinationDatabaseId: DatabaseId,
 ) {
   return `/admin/databases/${databaseId}/destination-databases/${destinationDatabaseId}/remove`;
-}
-
-export function newMetabotConversation({ prompt }: { prompt: string }) {
-  return `/metabot/new?q=${encodeURIComponent(prompt)}`;
 }
 
 export function newTenant() {

@@ -7,7 +7,8 @@ on:
 
 jobs:
   fe-test-coverage:
-    runs-on: ubuntu-22.04
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -17,12 +18,12 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
         run: |
-          yarn run test-unit \
+          bun run test-unit \
             --silent \
             --coverage \
             --testTimeout=60000
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:
           files: ./coverage/lcov.info
           flags: front-end

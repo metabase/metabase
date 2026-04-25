@@ -28,7 +28,8 @@ export function useExistingQuestionEditorSync({
     }
 
     const isTransitionToExistingQuestion =
-      prevOriginalId === "new" && originalId !== "new";
+      (prevOriginalId === "new" && originalId !== "new") ||
+      (prevOriginalId === "new-native" && originalId !== "new-native");
     const isTransitionToSaved = !isPrevQuestionSaved && isQuestionSaved;
 
     if (isTransitionToExistingQuestion || isTransitionToSaved) {

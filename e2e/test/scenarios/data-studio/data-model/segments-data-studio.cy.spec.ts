@@ -1,15 +1,11 @@
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  USER_GROUPS,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { SegmentList, SegmentEditor, SegmentRevisionHistory } = H.DataModel;
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe(
   "scenarios > data studio > data model > segments",
@@ -17,8 +13,9 @@ describe(
   () => {
     beforeEach(() => {
       H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("POST", "/api/segment").as("createSegment");
       cy.intercept("PUT", "/api/segment/*").as("updateSegment");
@@ -102,6 +99,13 @@ describe(
         cy.log("navigate to new segment page");
         SegmentList.getNewSegmentLink().scrollIntoView().click();
 
+        cy.log("verify segment_create_started event was tracked");
+        H.expectUnstructuredSnowplowEvent({
+          event: "segment_create_started",
+          triggered_from: "data_studio_segments",
+          target_id: ORDERS_ID,
+        });
+
         cy.log("fill in segment name");
         SegmentEditor.getNameInput().type("Premium Orders");
 
@@ -122,6 +126,13 @@ describe(
         cy.log("save segment");
         SegmentEditor.getSaveButton().click();
         cy.wait("@createSegment");
+
+        cy.log("verify segment_created event was tracked");
+        H.expectUnstructuredSnowplowEvent({
+          event: "segment_created",
+          triggered_from: "data_studio_segments",
+          result: "success",
+        });
 
         cy.log("verify redirect to edit page and toast");
         H.undoToast().should("contain.text", "Segment created");
@@ -614,12 +625,12 @@ describe(
       });
     });
 
-    describe("Readonly access with data model permissions", () => {
+    describe("Readonly access for data analysts", () => {
       it("should show segments in list but hide New segment button for non-admin", () => {
         createTestSegment({ name: "Readonly Test Segment" });
 
-        setDataModelPermissions({ tableIds: [ORDERS_ID] });
-        cy.signIn("none");
+        H.setUserAsAnalyst(NODATA_USER_ID);
+        cy.signIn("nodata");
 
         cy.log("verify segment is visible in list");
         visitDataStudioSegments(ORDERS_ID);
@@ -636,9 +647,7 @@ describe(
         cy.visit(
           `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments/new`,
         );
-        H.main()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
+        cy.url().should("include", "/unauthorized");
       });
 
       it("should display segment detail in readonly mode for non-admin", () => {
@@ -648,8 +657,8 @@ describe(
         });
 
         cy.get<number>("@segmentId").then((segmentId) => {
-          setDataModelPermissions({ tableIds: [ORDERS_ID] });
-          cy.signIn("none");
+          H.setUserAsAnalyst(NODATA_USER_ID);
+          cy.signIn("nodata");
 
           visitDataModelSegment(ORDERS_ID, segmentId);
 
@@ -765,21 +774,4 @@ function verifySegmentNotInQueryBuilder(
 
   H.getNotebookStep("data").button("Filter").click();
   H.popover().findByText(segmentName).should("not.exist");
-}
-
-function setDataModelPermissions({ tableIds = [] }: { tableIds: number[] }) {
-  const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
-
-  // @ts-expect-error invalid cy.updatePermissionsGraph typing
-  cy.updatePermissionsGraph({
-    [ALL_USERS_GROUP]: {
-      [SAMPLE_DB_ID]: {
-        "data-model": {
-          schemas: {
-            PUBLIC: permissions,
-          },
-        },
-      },
-    },
-  });
 }

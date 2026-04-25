@@ -185,6 +185,19 @@
    [:user-id  pos-int?]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
 
+;; table write events
+
+(mr/def ::table
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Table %)]]])
+
+(mr/def :event/table-create ::table)
+(mr/def :event/table-update ::table)
+(mr/def :event/table-delete ::table)
+(mr/def :event/table-publish ::table)
+(mr/def :event/table-unpublish ::table)
+
 (mr/def ::permission-failure
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
@@ -223,3 +236,28 @@
 (mr/def :event/snippet-create ::snippet)
 (mr/def :event/snippet-update ::snippet)
 (mr/def :event/snippet-delete ::snippet)
+
+;; field events
+
+(mr/def ::field
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Field %)]]])
+
+(mr/def :event/field-create ::field)
+(mr/def :event/field-update ::field)
+(mr/def :event/field-delete ::field)
+
+;; security advisory events
+
+(mr/def :event/security-advisory-match
+  [:map {:closed true}
+   [:object [:map
+             [:advisory_id       :string]
+             [:severity          [:enum :critical :high :medium :low]]
+             [:title             :string]
+             [:description       :string]
+             [:match_status      [:enum :active :error]]
+             [:advisory_url      {:optional true} [:maybe :string]]
+             [:remediation       :string]
+             [:affected_versions [:sequential :map]]]]])

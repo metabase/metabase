@@ -291,7 +291,7 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         );
 
         H.openNotebook();
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
@@ -330,7 +330,7 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         );
 
         H.openNotebook();
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
@@ -347,7 +347,7 @@ describe("scenarios > question", { tags: "@skip" }, () => {
           cy.findByLabelText("Unit").click();
         });
 
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.popover().last().findByText("Weeks").click();
 
         H.popover().within(() => {
@@ -1084,7 +1084,7 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         );
 
         H.openNotebook();
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
@@ -1101,7 +1101,7 @@ describe("scenarios > question", { tags: "@skip" }, () => {
           cy.findByLabelText("Unit").click();
         });
 
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.popover().last().findByText("Week").click();
 
         H.popover().within(() => {
@@ -1918,7 +1918,7 @@ function verifyPlusButtonText(options: CheckTextOpts) {
 
 function verifyNotebookText(options: CheckTextOpts) {
   H.openNotebook();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.getNotebookStep("summarize")
     .findAllByTestId("aggregate-step")
     .last()

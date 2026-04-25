@@ -8,13 +8,19 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Collection } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
+import type {
+  Collection,
+  CollectionItem,
+  EnterpriseSettingKey,
+  SettingDefinition,
+} from "metabase-types/api";
 import {
   createMockCollection,
+  createMockSettingDefinition,
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   RemoteSyncSettingsForm,
@@ -38,8 +44,12 @@ const setupEndpoints = ({
   remoteSyncType = "read-only" as const,
   remoteSyncBranch = "main",
   remoteSyncAutoImport = false,
+  remoteSyncTransforms = false,
   libraryCollection = null as Collection | null,
   dirty = [] as any[],
+  rootCollectionItems = [] as CollectionItem[],
+  settingsError,
+  envSettings = [],
 }: {
   remoteSyncEnabled?: boolean;
   remoteSyncUrl?: string;
@@ -47,8 +57,12 @@ const setupEndpoints = ({
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
   remoteSyncAutoImport?: boolean;
+  remoteSyncTransforms?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
+  rootCollectionItems?: CollectionItem[];
+  settingsError?: { status: number; message: string };
+  envSettings?: EnterpriseSettingKey[];
 } = {}) => {
   const settings = createMockSettings({
     "remote-sync-enabled": remoteSyncEnabled,
@@ -57,15 +71,31 @@ const setupEndpoints = ({
     "remote-sync-type": remoteSyncType,
     "remote-sync-branch": remoteSyncBranch,
     "remote-sync-auto-import": remoteSyncAutoImport,
+    "remote-sync-transforms": remoteSyncTransforms,
   });
 
+  const settingDefinitions: SettingDefinition[] = envSettings.map((key) =>
+    createMockSettingDefinition({
+      key,
+      value: settings[key],
+      is_env_setting: true,
+      env_name: `MB_${key.toUpperCase().replace(/-/g, "_")}`,
+    } as SettingDefinition),
+  );
+
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
-  setupRemoteSyncEndpoints({ dirty, branches: [remoteSyncBranch] });
+  setupSettingsEndpoints(settingDefinitions);
+  setupRemoteSyncEndpoints({
+    dirty,
+    branches: [remoteSyncBranch],
+    ...(settingsError && {
+      settingsResponse: { error: settingsError },
+    }),
+  });
 
   fetchMock.get("express:/api/ee/library", libraryCollection ?? { data: null });
 
-  setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
+  setupRootCollectionItemsEndpoint({ rootCollectionItems });
 };
 
 const createStoreState = ({
@@ -93,9 +123,13 @@ interface SetupOpts {
   remoteSyncToken?: string;
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
+  remoteSyncTransforms?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
+  rootCollectionItems?: CollectionItem[];
   variant?: RemoteSyncSettingsFormProps["variant"];
+  settingsError?: { status: number; message: string };
+  envSettings?: EnterpriseSettingKey[];
 }
 
 export const setup = ({
@@ -105,9 +139,13 @@ export const setup = ({
   remoteSyncToken = "",
   remoteSyncType = "read-only",
   remoteSyncBranch = "main",
+  remoteSyncTransforms = false,
   libraryCollection = null,
   dirty = [],
+  rootCollectionItems = [],
   variant,
+  settingsError,
+  envSettings = [],
 }: SetupOpts = {}) => {
   setupEndpoints({
     remoteSyncEnabled,
@@ -115,8 +153,12 @@ export const setup = ({
     remoteSyncToken,
     remoteSyncType,
     remoteSyncBranch,
+    remoteSyncTransforms,
     libraryCollection,
     dirty,
+    rootCollectionItems,
+    settingsError,
+    envSettings,
   });
 
   renderWithProviders(

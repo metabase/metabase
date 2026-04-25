@@ -205,13 +205,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   cy.findByTestId("collection-picker-button").click();
                 });
 
-                if (user === "admin") {
-                  // admin has recents tab
-                  H.entityPickerModal()
-                    .findByRole("tab", { name: /Collections/ })
-                    .click();
-                }
-
                 H.entityPickerModal().findByText("New collection").click();
                 const NEW_COLLECTION = "Foo Collection";
                 H.collectionOnTheGoModal().within(() => {
@@ -248,6 +241,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.location("pathname").should("eq", `/dashboard/${id}/move`);
 
                 H.entityPickerModal().within(() => {
+                  cy.findByText("Our analytics").click();
                   cy.findByText("First collection").click();
                   cy.button("Move").click();
                 });
@@ -269,32 +263,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 
                 H.appBar().contains("Our analytics");
                 H.appBar().should("not.contain", "First collection");
-
-                // Assert that dashboard parent does not show up in recents
-                if (user === "admin") {
-                  H.openDashboardMenu();
-                  // Move the dashboard back to first collection
-                  H.popover().findByText("Move").click();
-
-                  H.entityPickerModal().within(() => {
-                    cy.findByText("First collection").click();
-                    cy.button("Move").click();
-                  });
-
-                  H.openDashboardMenu();
-                  H.popover().findByText("Move").click();
-                  H.entityPickerModal().within(() => {
-                    cy.findByRole("button", {
-                      name: /Third collection /,
-                    }).should("exist");
-                    // The space at the end of the regex is important since the "second collection"
-                    // recent item also contains the text "in First collection", but at the end of the
-                    // name
-                    cy.findByRole("button", {
-                      name: /First collection /,
-                    }).should("not.exist");
-                  });
-                }
               });
             });
 

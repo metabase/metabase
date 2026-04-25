@@ -1,7 +1,76 @@
 import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
-import { createMockCloudAddOns } from "metabase-types/api/mocks/add-ons";
+import {
+  createMockCloudAddOns,
+  mockAdvancedTransformsAddOn,
+} from "metabase-types/api/mocks/add-ons";
+import type { AddOnProductType } from "metabase-types/api/store";
+
+export function setupBillingEndpoints({
+  billingPeriodMonths = 12,
+  hasBasicTransformsAddOn = true,
+  hasAdvancedTransformsAddOn = true,
+  skipCloudAddOns = false,
+  previousAddOns = [],
+}: {
+  billingPeriodMonths?: number;
+  hasBasicTransformsAddOn?: boolean;
+  hasAdvancedTransformsAddOn?: boolean;
+  skipCloudAddOns?: boolean;
+  previousAddOns?: Array<{
+    product_type: AddOnProductType;
+    self_service: boolean;
+  }>;
+} = {}) {
+  const cloudAddOns = [
+    ...(hasBasicTransformsAddOn
+      ? [
+          {
+            id: 1,
+            name: "Basic Transforms Add-on metered",
+            short_name: "Basic Transforms - metered",
+            description: null,
+            active: true,
+            self_service: true,
+            deployment: "hosting",
+            billing_period_months: billingPeriodMonths,
+            default_base_fee: 0,
+            default_included_units: 0,
+            default_prepaid_units: 1,
+            default_price_per_unit: 0.01,
+            default_total_units: 1,
+            free_units: 1000,
+            is_metered: true,
+            product_type: "transforms-basic-metered",
+            token_features: ["transforms-basic"],
+            trial_days: 0,
+            product_tiers: [],
+          },
+        ]
+      : []),
+    ...(hasAdvancedTransformsAddOn
+      ? [
+          {
+            ...mockAdvancedTransformsAddOn,
+            billing_period_months: billingPeriodMonths,
+          },
+        ]
+      : []),
+  ];
+
+  if (!skipCloudAddOns) {
+    fetchMock.get("path:/api/ee/cloud-add-ons/addons", cloudAddOns);
+  }
+
+  fetchMock.get("path:/api/ee/billing", {
+    version: "0",
+    data: {
+      billing_period_months: billingPeriodMonths,
+      previous_add_ons: previousAddOns,
+    },
+  });
+}
 
 export function setupStoreEEBillingEndpoint(
   billing_period_months: number,
@@ -49,7 +118,7 @@ export function setupStoreEETieredMetabotAI(
         status: 403,
       }))
       .with("error-no-connection", () => ({
-        // eslint-disable-next-line no-literal-metabase-strings -- Used for fetch mock only
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only
         body: "Could not establish a connection to Metabase Cloud.",
         status: 404,
       }))

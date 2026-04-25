@@ -26,9 +26,11 @@ You can open the data reference from:
 
 You can also visit `https://[your metabase here]/reference`.
 
+Admins and [Data Analysts](../people-and-groups/managing.md#data-analysts) can get a more comfortable view of data reference in [Data Studio](../data-studio/overview.md).
+
 ## Databases
 
-The data reference is a collection of pages organized by database, then schemas in that database (if you have several schemas), and finally tables in that database - the same structure you use to [pick data](../questions/query-builder/editor.md#picking-data). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of columns in your data.
+The data reference is a collection of pages organized by database, then schemas in that database (if you have several schemas), and finally tables in that database - the same structure you use to [pick data](../questions/query-builder/editor.md#pick-data). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of columns in your data.
 
 ### Database details
 
@@ -45,7 +47,7 @@ For each table, you can view:
 - Questions about this table (if you have permission to view them)
 - Option to create an X-ray of the table
 
-Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [admin settings](../data-modeling/metadata-editing.md).
+Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [Admin](../data-modeling/metadata-editing.md).
 
 ## Glossary
 

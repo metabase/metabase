@@ -1,18 +1,11 @@
 import { useListCollectionItemsQuery } from "metabase/api";
-import { ItemList } from "metabase/common/components/EntityPicker/components/ItemList";
-import type {
-  CollectionItemListProps,
-  CollectionPickerItem,
-} from "metabase/common/components/Pickers/CollectionPicker/types";
+import { ItemList } from "metabase/common/components/Pickers/EntityPicker/components";
 
 export const TenantCollectionItemList = ({
-  onClick,
-  selectedItem,
-  isFolder,
-  isCurrentLevel,
-  shouldDisableItem,
-  shouldShowItem,
-}: CollectionItemListProps) => {
+  pathIndex,
+}: {
+  pathIndex: number;
+}) => {
   const {
     data: collectionItems,
     error,
@@ -24,15 +17,10 @@ export const TenantCollectionItemList = ({
 
   return (
     <ItemList
-      items={collectionItems?.data as CollectionPickerItem[] | undefined}
+      items={collectionItems?.data}
       isLoading={isLoading}
       error={error}
-      onClick={onClick}
-      selectedItem={selectedItem}
-      isFolder={isFolder}
-      isCurrentLevel={isCurrentLevel}
-      shouldDisableItem={shouldDisableItem}
-      shouldShowItem={shouldShowItem}
+      pathIndex={pathIndex}
     />
   );
 };

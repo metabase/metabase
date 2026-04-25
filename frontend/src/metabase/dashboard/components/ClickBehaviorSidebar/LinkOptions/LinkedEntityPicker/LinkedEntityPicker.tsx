@@ -4,22 +4,24 @@ import { t } from "ttag";
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
+import {
+  DashboardPickerModal,
+  QuestionPickerModal,
+} from "metabase/common/components/Pickers";
 import { useDashboardQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
-  ClickMappingsConnected,
+  ClickMappings,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
-import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -36,6 +38,7 @@ import { SidebarItem } from "../../SidebarItem";
 import S from "../LinkOptions.module.css";
 
 const LINK_TARGETS = {
+  // TODO: we can probably just have one picker to pick either a question or a dashboard
   question: {
     Entity: Questions,
     PickerComponent: QuestionPickerModal,
@@ -154,7 +157,7 @@ function TargetClickMappings({
   return (
     <div className={CS.pt1}>
       <Heading>{getTargetClickMappingsHeading(checkNotNull(object))}</Heading>
-      <ClickMappingsConnected
+      <ClickMappings
         object={object}
         dashcard={dashcard}
         isDashboard={isDashboard}
@@ -309,8 +312,8 @@ export function LinkedEntityPicker({
           }}
           onClose={() => setIsPickerOpen(false)}
           options={{
-            showPersonalCollections: filterPersonalCollections !== "exclude",
-            showRootCollection: true,
+            hasPersonalCollections: filterPersonalCollections !== "exclude",
+            hasRootCollection: true,
             hasConfirmButtons: false,
           }}
         />

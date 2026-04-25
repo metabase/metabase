@@ -5,7 +5,7 @@ import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { Tooltip } from "../../overlays/Tooltip";
 
@@ -22,7 +22,7 @@ export type IconProps = Omit<SVGAttributes<SVGSVGElement>, "color"> &
     tooltipPosition?: FloatingPosition;
     onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
     className?: string;
-    color?: ColorName | string;
+    color?: ColorName;
   };
 
 export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(

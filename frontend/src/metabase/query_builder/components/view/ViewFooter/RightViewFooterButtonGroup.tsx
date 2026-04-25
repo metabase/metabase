@@ -1,19 +1,19 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
   getIsTimeseries,
 } from "metabase/query_builder/selectors";
 import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
+import { useSelector } from "metabase/redux";
 import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";
 import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated";
-import QuestionRowCount from "../QuestionRowCount";
-import QuestionTimelineWidget from "../QuestionTimelineWidget";
+import { QuestionRowCount } from "../QuestionRowCount";
+import { QuestionTimelineWidget } from "../QuestionTimelineWidget";
 
 import S from "./RightViewFooterButtonGroup.module.css";
 
@@ -28,11 +28,11 @@ export const RightViewFooterButtonGroup = () => {
         result,
         isObjectDetail,
       }) && <QuestionRowCount />}
-      {ExecutionTime.shouldRender({ result }) && (
+      {result && ExecutionTime.shouldRender({ result }) && (
         <ExecutionTime time={result.running_time} />
       )}
       <Group gap="sm" wrap="nowrap">
-        {QuestionLastUpdated.shouldRender({ result }) && (
+        {result && QuestionLastUpdated.shouldRender({ result }) && (
           <QuestionLastUpdated
             className={cx(CS.hide, CS.smShow)}
             result={result}

@@ -1,12 +1,20 @@
 import { useMemo } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import {
+  Badge,
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Image,
+  Stack,
+  Text,
+} from "metabase/ui";
 import {
   formatNumber,
   formatValue,
   getCurrencySymbol,
-} from "metabase/lib/formatting";
-import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
+} from "metabase/utils/formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -34,6 +42,7 @@ import {
 import type {
   ColumnSettings,
   DatasetColumn,
+  RowValue,
   RowValues,
 } from "metabase-types/api";
 
@@ -43,9 +52,9 @@ import { getCategoryColor } from "./styling";
 interface ColumnValueProps {
   column: DatasetColumn;
   settings: ComputedVisualizationSettings;
-  rawValue: any;
+  rawValue: RowValue;
   style?: React.CSSProperties;
-  rows: RowValues;
+  rows: RowValues[];
   cols: DatasetColumn[];
 }
 
@@ -126,7 +135,7 @@ export function ColumnValue({
       }
       break;
     // Not using `isCategory` because it incorrectly gives false positive
-    // for many other category subtypes, like Name / Title / City (which we dont' want here).
+    // for many other category subtypes, like Name / Title / City (which we don't want here).
     case column.semantic_type === TYPE.Category:
       return (
         <Badge
@@ -176,7 +185,7 @@ export function ColumnValue({
           truncate
           fw="bold"
           style={style}
-          c={style?.color || "text-primary"}
+          c={style?.color ? undefined : "text-primary"}
         >
           {value}
         </Ellipsified>
@@ -184,7 +193,12 @@ export function ColumnValue({
     case isEmail(column):
     case isURL(column) && !isImageURL(column) && !isAvatarURL(column):
       return (
-        <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
+        <Ellipsified
+          size="sm"
+          fw="bold"
+          style={style}
+          tooltip={typeof rawValue === "object" ? undefined : rawValue}
+        >
           {value}
         </Ellipsified>
       );
@@ -305,7 +319,7 @@ export function ColumnValue({
       size="sm"
       truncate
       style={style}
-      c={style?.color || "text-primary"}
+      c={style?.color ? undefined : "text-primary"}
     >
       {value}
     </Ellipsified>

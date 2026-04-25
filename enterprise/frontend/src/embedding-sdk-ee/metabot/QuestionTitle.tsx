@@ -1,10 +1,12 @@
-import { getQuestionTitle } from "embedding-sdk-bundle/components/private/QuestionTitle";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { getQuestionTitle } from "embedding-sdk-bundle/lib/sdk-question/get-question-title";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Text } from "metabase/ui";
 
 export function QuestionTitle() {
   const { question } = useSdkQuestionContext();
-  const titleText = getQuestionTitle({ question });
+  const tc = useTranslateContent();
+  const titleText = getQuestionTitle(question, tc);
 
   if (titleText === null) {
     return null;

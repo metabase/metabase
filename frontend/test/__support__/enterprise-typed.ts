@@ -13,22 +13,20 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   sharing: "metabase-enterprise/sharing",
   metabot: "metabase-enterprise/metabot",
   rich_text_editing: "metabase-enterprise/rich_text_editing",
-  "ai-entity-analysis": "metabase-enterprise/ai-entity-analysis",
   license: "metabase-enterprise/license",
   user_provisioning: "metabase-enterprise/user_provisioning",
   application_permissions: "metabase-enterprise/application_permissions",
   auth: "metabase-enterprise/auth",
   "smtp-override": "metabase-enterprise/smtp-override",
-  "ai-sql-fixer": "metabase-enterprise/ai-sql-fixer",
   embedding: "metabase-enterprise/embedding",
   admin: "metabase-enterprise/admin",
   dependencies: "metabase-enterprise/dependencies",
   feature_level_permissions: "metabase-enterprise/feature_level_permissions",
   shared: "metabase-enterprise/shared",
+  transforms: "metabase-enterprise/transforms",
   "transforms-python": "metabase-enterprise/transforms-python",
   remote_sync: "metabase-enterprise/remote_sync",
   public: "metabase-enterprise/public",
-  transforms: "metabase-enterprise/transforms",
   support: "metabase-enterprise/support",
   upload_management: "metabase-enterprise/upload_management",
   "public-sharing": "metabase-enterprise/public-sharing",
@@ -40,7 +38,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   documents: "metabase-enterprise/documents",
   semantic_search: "metabase-enterprise/semantic_search",
   database_replication: "metabase-enterprise/database_replication",
-  "data-studio": "metabase-enterprise/data-studio",
+  library: "metabase-enterprise/data-studio/library",
   caching: "metabase-enterprise/caching",
   group_managers: "metabase-enterprise/group_managers",
   collections: "metabase-enterprise/collections",
@@ -54,7 +52,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   tenants: "metabase-enterprise/tenants",
 
   // Embedding SDK specific plugins
-  sdk_subscriptions: "embedding-sdk-ee/subscriptions",
+  sdk_notifications: "embedding-sdk-ee/notifications",
 };
 
 export type ENTERPRISE_PLUGIN_NAME =

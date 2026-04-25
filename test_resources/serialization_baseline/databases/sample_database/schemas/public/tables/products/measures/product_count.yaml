@@ -1,0 +1,30 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+definition:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - distinct
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - ID
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+entity_id: 8kxQ2Wr7PmN5dLf3hYz9v
+name: Product Count
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+serdes/meta:
+- id: 8kxQ2Wr7PmN5dLf3hYz9v
+  label: product_count
+  model: Measure

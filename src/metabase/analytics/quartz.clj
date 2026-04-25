@@ -2,7 +2,7 @@
   (:require
    [clojurewerkz.quartzite.matchers :as qm]
    [clojurewerkz.quartzite.scheduler :as qs]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -17,7 +17,7 @@
 ;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn create-job-execution-listener
-  "Creates an instance of an anonymous JobListener to record exeuction metrics to prometheus."
+  "Creates an instance of an anonymous JobListener to record execution metrics to prometheus."
   ^JobListener [] ; No registry argument needed
   (reify JobListener
     (getName [_]
@@ -31,7 +31,7 @@
       (try
         (let [tags {:status (if job-exception "failed" "succeeded")
                     :job-name (.. ctx getJobDetail getKey toString)}]
-          (prometheus/inc! :metabase-tasks/quartz-tasks-executed tags))
+          (analytics/inc! :metabase-tasks/quartz-tasks-executed tags))
         (catch Throwable e
           (log/error e "Failed to record Prometheus metric for Quartz job completion"))))))
 
@@ -80,9 +80,9 @@
       ;; This ensures we capture the state even if it changed outside of a direct completion event.
       (try
         (doseq [[state count] (get-quartz-task-states scheduler)]
-          (prometheus/set! :metabase-tasks/quartz-tasks-states
-                           {:state state}
-                           count))
+          (analytics/set-gauge! :metabase-tasks/quartz-tasks-states
+                                {:state state}
+                                count))
         (catch Throwable e
           (log/error e "Failed to record Prometheus metrics for Quartz trigger completion"))))))
 

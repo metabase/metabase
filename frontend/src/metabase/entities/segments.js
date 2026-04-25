@@ -3,10 +3,11 @@ import {
   useGetSegmentQuery,
   useListSegmentsQuery,
 } from "metabase/api";
-import { color } from "metabase/lib/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -17,12 +18,12 @@ export const Segments = createEntity({
   path: "/api/segment",
   schema: SegmentSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListSegmentsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

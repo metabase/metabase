@@ -118,7 +118,7 @@
                                           filter-stage-added?))
                                     lib/append-stage)
           query                   (-> query
-                                      ;; don't want default constraints overridding anything that's already there
+                                      ;; don't want default constraints overriding anything that's already there
                                       (m/dissoc-in [:middleware :add-default-userland-constraints?])
                                       (m/assoc-some :constraints (not-empty constraints)
                                                     :parameters  (not-empty (cond-> parameters
@@ -205,7 +205,7 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (lib.util.match/match-one target
+   (lib.util.match/match-lite target
      [:template-tag tag-name]
      (name tag-name))))
 
@@ -256,12 +256,18 @@
   [{:keys [parameters] :as card} :- ::queries.schema/card]
   (let [template-tag-parameters     (queries/card-template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
-        id->parameter               (m/index-by :id parameters)]
-    (vals (reduce-kv (fn [acc id parameter]
-                       ;; order importance: we want the info from `template-tag` to be merged last
-                       (update acc id #(merge % parameter)))
-                     id->parameter
-                     id->template-tags-parameter))))
+        parameter-ids               (into #{} (map :id) parameters)
+        ;; Preserve the order of card.parameters, merging in template-tag info
+        merged-parameters           (mapv (fn [param]
+                                            (if-let [tt-param (get id->template-tags-parameter (:id param))]
+                                              ;; order importance: we want the info from `template-tag` to be merged last
+                                              (merge param tt-param)
+                                              param))
+                                          parameters)]
+    ;; Append any template-tag parameters not already present in card.parameters
+    (into merged-parameters
+          (remove #(contains? parameter-ids (:id %)))
+          template-tag-parameters)))
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
@@ -351,7 +357,8 @@
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
                      (and (= (:type card) :model) (seq (:result_metadata card)))
-                     (assoc :metadata/model-metadata (:result_metadata card)))]
+                     (assoc :metadata/model-metadata (:result_metadata card)
+                            :metadata/own-model-query? true))]
     (when (seq parameters)
       (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id

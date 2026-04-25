@@ -5,24 +5,20 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
+import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
 import type {
   Collection,
-  CollectionId,
+  CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
   GetDocumentRequest,
   UpdateDocumentRequest,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -37,11 +33,11 @@ export const Documents = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`documents`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDocumentQuery,
     }),
-  },
+  }),
 
   api: {
     get: (
@@ -104,21 +100,12 @@ export const Documents = createEntity({
         },
       ),
     copy:
-      (
-        { id }: Document,
-        overrides: { name: string; collection_id: CollectionId },
-      ) =>
+      ({ id }: Document, overrides: Omit<CopyDocumentRequest, "id">) =>
       async (dispatch: Dispatch) => {
-        const data = (await dispatch(
-          documentApi.endpoints.getDocument.initiate({ id }),
-        )) as { data: Document };
-
-        await dispatch(
-          documentApi.endpoints.createDocument.initiate({
-            document: data.data.document,
-            ...overrides,
-          }),
+        const result = await dispatch(
+          documentApi.endpoints.copyDocument.initiate({ id, ...overrides }),
         );
+        return (result as { data: Document }).data;
       },
   },
 

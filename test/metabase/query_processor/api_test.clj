@@ -21,12 +21,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -115,6 +115,9 @@
                   :card_id          nil
                   :is_sandboxed     false
                   :dashboard_id     nil
+                  :transform_id     nil
+                  :lens_id          nil
+                  :lens_params      nil
                   :error            nil
                   :id               true
                   :action_id        nil
@@ -132,13 +135,13 @@
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
-    (testing "\nEven if a query fails we still expect a 202 response from the API"
+    (testing "\nA failed query should return a 400 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
       (let [query  {:database (mt/id)
                     :type     "native"
                     :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+            result (mt/user-http-request :crowberto :post 400 "dataset" query)]
         (testing "\nAPI Response"
           (is (malli= [:map
                        [:data        [:map
@@ -376,6 +379,19 @@
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
 
+(deftest blocked-database-permissions-test
+  (testing "POST /api/dataset should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (is (malli= [:map
+                       [:status [:= "failed"]]
+                       [:error  [:= "You do not have permissions to run this query."]]]
+                      (mt/user-http-request :rasta :post "dataset"
+                                            (mt/mbql-query venues {:limit 1})))))))))
+
 (deftest api-card-join-permissions-test
   (testing "POST /api/dataset should error for card join permission violations"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -555,6 +571,16 @@
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
+(deftest ^:parallel compile-disable-max-results-test
+  (testing "POST /api/dataset/native"
+    (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
+      (let [query (-> (mt/mbql-query venues {:fields [$id $name]})
+                      (assoc-in [:middleware :disable-max-results?] true)
+                      (assoc :pretty false))
+            result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
+            (str "Expected no LIMIT in SQL, got: " (:query result)))))))
+
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
@@ -664,7 +690,7 @@
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
-      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+      (let [res (mt/user-http-request :rasta :post 400 "dataset"
                                       (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
@@ -919,9 +945,9 @@
       (is (= ["A   sian" "As"]
              (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
 
-(deftest ^:parallel adhoc-mlv2-query-test
+(deftest ^:parallel adhoc-mbql5-query-test
   (testing "POST /api/dataset"
-    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+    (testing "Should be able to run an ad-hoc MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -931,9 +957,9 @@
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-test
+(deftest ^:parallel mbql5-query-convert-to-native-test
   (testing "POST /api/dataset/native"
-    (testing "Should be able to convert an MLv2 query to native (#39024)"
+    (testing "Should be able to convert an MBQL 5 query to native (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -959,6 +985,16 @@
                                      (some->> s
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
+
+(deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
+  (testing "POST /api/dataset/native"
+    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
+      (let [metadata-provider (mt/metadata-provider)
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  lib/disable-default-limit)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
+            "Expected no LIMIT in SQL for query with disable-default-limit")))))
 
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
@@ -1042,12 +1078,18 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (=?
-                   {:fields    empty?
-                    :tables    empty?
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id))))))))))
+            ;; card-id-1 is deleted, so querying it as a source returns empty tables
+            (is (=?
+                 {:fields    empty?
+                  :tables    empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            ;; card-id-2 still exists, so querying it as a source still works
+            (is (=?
+                 {:fields    empty?
+                  :tables    [{:id (str "card__" card-id-2)}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2)))))))))
 
 (deftest published-table-does-not-grant-database-access-oss-test
   (testing "POST /api/dataset in OSS: published table access does NOT grant database access"
@@ -1067,9 +1109,28 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
-              ;; In OSS: published tables don't grant database access, so user gets 403 at database check
+              ;; In OSS: published tables don't grant database access, so user gets a permission error
               (testing "Query should be blocked because OSS doesn't grant database access via published tables"
-                (is (= "You don't have permissions to do that."
-                       (mt/with-current-user user-id
-                         (mt/user-http-request user-id :post 403 "dataset"
-                                               (mt/mbql-query venues {:limit 1})))))))))))))
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/with-current-user user-id
+                              (mt/user-http-request user-id :post "dataset"
+                                                    (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest query-metadata-sensitive-fields-test
+  (testing "POST /api/dataset/query_metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (testing "sensitive fields are excluded by default"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (mt/mbql-query venues))]
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))
+              "Sensitive field should NOT be included by default")))
+      (testing "sensitive fields are included when :settings :include-sensitive-fields is true"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (some #(= (:id %) (mt/id :venues :price))
+                    (->> result :tables (mapcat :fields)))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))

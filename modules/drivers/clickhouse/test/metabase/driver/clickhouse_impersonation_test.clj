@@ -8,8 +8,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.test-util :as driver.tu]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync.core]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
@@ -47,11 +47,11 @@
            (driver/set-role! :clickhouse conn default-role)
            (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
                        rset (.executeQuery stmt)]
-             (is (.next rset) true)
-             (is (.getInt rset 1) 42)
-             (is (.next rset) true)
-             (is (.getInt rset 1) 144)
-             (is (.next rset) false)))))
+             (is (true? (.next rset)))
+             (is (= 42 (.getInt rset 1)))
+             (is (true? (.next rset)))
+             (is (= 144 (.getInt rset 1)))
+             (is (false? (.next rset)))))))
       (is true))))
 
 (defn- set-role-throws-test!

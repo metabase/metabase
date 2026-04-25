@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -57,25 +57,35 @@
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
   (fn []
-    (let [card-ids    (into #{} (map :card-id refresh-defs))
-          cards-by-id (t2/select-pk->fn identity :model/Card :id [:in card-ids])]
+    (let [card-ids      (into #{} (map :card-id refresh-defs))
+          cards-by-id   (t2/select-pk->fn identity :model/Card :id [:in card-ids])
+          all-db-ids    (into #{} (keep (comp :database_id val)) cards-by-id)
+          router-db-ids (if (seq all-db-ids)
+                          (t2/select-fn-set :database_id
+                                            :model/DatabaseRouter
+                                            :database_id [:in all-db-ids])
+                          #{})]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
-        ;; Annotate the query with its cache strategy in the format expected by the QP
-        (let [cache-strategy (strategies/cache-strategy (get cards-by-id card-id) dashboard-id)]
-          (doseq [query queries]
-            (try
-              (qp/process-query
-               (qp/userland-query
-                (-> query
-                    (assoc-in [:middleware :ignore-cached-results?] true)
-                    (assoc :cache-strategy cache-strategy))
-                {:executed-by  nil
-                 :context      :cache-refresh
-                 :card-id      card-id
-                 :dashboard-id dashboard-id})
-               discarding-rff)
-              (catch Exception e
-                (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))
+        (let [card (get cards-by-id card-id)]
+          ;; Skip cards on router databases — cache refresh runs without a user context, so database
+          ;; routing will always fail for these cards (anonymous access is not allowed).
+          (when-not (contains? router-db-ids (:database_id card))
+            ;; Annotate the query with its cache strategy in the format expected by the QP
+            (let [cache-strategy (strategies/cache-strategy card dashboard-id)]
+              (doseq [query queries]
+                (try
+                  (qp/process-query
+                   (qp/userland-query
+                    (-> query
+                        (assoc-in [:middleware :ignore-cached-results?] true)
+                        (assoc :cache-strategy cache-strategy))
+                    {:executed-by  nil
+                     :context      :cache-refresh
+                     :card-id      card-id
+                     :dashboard-id dashboard-id})
+                   discarding-rff)
+                  (catch Exception e
+                    (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))))
 
 (defn- duration-ago
   [{:keys [duration unit]}]
@@ -104,7 +114,7 @@
                            "dashboard" [:= :qe.dashboard_id model_id])
                          [:<= :qc.updated_at rerun-cutoff]
                          ;; This is a safety check so that we don't scan all of query_execution -- if a query
-                         ;; has not been excuted at all in the last month (including cache hits) we won't bother
+                         ;; has not been executed at all in the last month (including cache hits) we won't bother
                          ;; refreshing it again.
                          [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
                          [:= :qe.error nil]
@@ -146,7 +156,8 @@
   "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
   to re-run them before the cache has been refreshed. "
   [queries]
-  (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash queries)]))
+  (doseq [batch (partition 1000 1000 nil queries)]
+    (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash batch)])))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that
@@ -180,7 +191,7 @@
             [:= :qe.error nil]
             [:= :qe.is_sandboxed false]
             ;; Was the query executed at least once in the last month?
-            ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been excuted at
+            ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been executed at
             ;; all in the last month (including cache hits) we won't bother refreshing it again.
             [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]]
    :order-by [[:qe.started_at :desc]]

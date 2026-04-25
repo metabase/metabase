@@ -16,16 +16,25 @@ on:
         type: boolean
         default: false
 
+permissions:
+  id-token: write
+  contents: write
+  checks: write
+  issues: write
+  actions: read
+
 jobs:
   start-message:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Send build start message
         uses: actions/github-script@v7
         env:
@@ -47,7 +56,7 @@ jobs:
             }).catch(console.error);
 
   check-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -62,9 +71,11 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
       id: canonical_version
@@ -97,16 +108,18 @@ jobs:
           return versions;
 
   check-commit:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
       uses: actions/checkout@v4
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Branch
       uses: actions/github-script@v7
       id: release_branch
@@ -124,10 +137,11 @@ jobs:
         git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
           && echo "Commit found in correct release branch" \
           || (echo "Commit not found in correct release branch" && exit 1)
+        git checkout -
 
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
       matrix:
@@ -156,7 +170,8 @@ jobs:
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
       uses: ./.github/actions/fetch-artifact
       with:
-        name: metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+        commit: ${{ inputs.commit }}
+        edition: ${{ matrix.edition }}
 
     - name: Update version.properties in jar
       run: | # sh
@@ -184,6 +199,43 @@ jobs:
           ./COMMIT-ID
           ./SHA256.sum
 
+  upload-to-cloud:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    needs: tag-uberjar-for-release
+    timeout-minutes: 15
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      with:
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: .github
+    - name: Retrieve release ee uberjar artifact
+      uses: ./.github/actions/fetch-artifact
+      with:
+        commit: ${{ inputs.commit }}
+        edition: ee
+        release: "true"
+    - name: Determine the upload path
+      uses: actions/github-script@v7
+      id: version_path
+      with:
+        result-encoding: string
+        script: | # js
+          const version = '${{ inputs.version }}';
+          // only EE version
+          const version_path = 'release/' + version.replace(/^v0\./, "v1.");
+
+          console.log("sending to", version_path);
+          return version_path;
+    - name: Upload to S3
+      run: |
+        aws s3 cp ./metabase.jar s3://"${AWS_S3_CLOUD_DEPLOY_BUCKET}"/${{ steps.version_path.outputs.result }}/metabase.jar
+
+      env:
+        AWS_S3_CLOUD_DEPLOY_BUCKET: ${{ secrets.AWS_S3_CLOUD_DEPLOY_BUCKET }}
   run-pre-release-tests:
     name: Run pre-release tests for ${{ inputs.version }}
     needs: tag-uberjar-for-release
@@ -203,6 +255,3 @@ jobs:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
       auto: ${{ inputs.auto }}
-      # for now don't auto-set release channel because we don't want to have
-      # multiple nightlies due to race conditions
-      release-channel: none

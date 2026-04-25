@@ -3,7 +3,8 @@ import {
   useGetSnippetQuery,
   useListSnippetsQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -17,12 +18,12 @@ export const Snippets = createEntity({
       getFetched(state, props) || getObject(state, props),
   }),
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListSnippetsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

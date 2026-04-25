@@ -6,11 +6,11 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { init } from "metabase/app";
-import api from "metabase/lib/api";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 import { getRoutes } from "metabase/routes";
+import api from "metabase/utils/api";
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
@@ -18,7 +18,6 @@ const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/collection\/\d+(?:\/items)?$/,
   /\/api\/card\/\d+$/,
   /\/api\/pulse\/\d+$/,
-  /\/api\/dataset$/,
 ];
 
 init(mainReducers, getRoutes, (store) => {

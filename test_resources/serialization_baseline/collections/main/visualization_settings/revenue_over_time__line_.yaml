@@ -1,0 +1,121 @@
+name: Revenue Over Time (Line)
+entity_id: UEWVldEEZ-3sYUjjN54qz
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: line
+collection_id: cOlViZsEtTiNgS0ExAmP1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    breakout:
+    - - field
+      - temporal-unit: month
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - temporal-unit: month
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: month
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  lib/temporal-unit: month
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+visualization_settings:
+  column_settings: null
+  graph.goal_label: Monthly Target
+  graph.goal_value: 50000
+  graph.label_values_frequency: fit
+  graph.show_goal: true
+  graph.show_trendline: true
+  graph.show_values: true
+  graph.x_axis.scale: timeseries
+  graph.x_axis.title_text: Month
+  graph.y_axis.auto_range: false
+  graph.y_axis.max: 100000
+  graph.y_axis.min: 0
+  graph.y_axis.scale: linear
+  graph.y_axis.title_text: Revenue ($)
+  series_settings:
+    sum:
+      color: '#509EE3'
+      display: line
+      line.interpolate: cardinal
+      line.marker_enabled: true
+      line.missing: interpolate
+      line.size: M
+      line.style: solid
+      show_series_values: true
+card_schema: 23
+serdes/meta:
+- id: UEWVldEEZ-3sYUjjN54qz
+  label: revenue_over_time__line_
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

@@ -10,4 +10,8 @@ interface Window {
   METABASE_PROVIDER_PROPS_STORE?: import("embedding-sdk-shared/lib/ensure-metabase-provider-props-store").MetabaseProviderPropsStore;
   METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO?: import("metabase/embedding-sdk/types/build-info").BuildInfo;
   METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO?: import("metabase/embedding-sdk/types/build-info").BuildInfo;
+  METABASE_EMBEDDING_SDK_IS_HOST_APP_IN_DEV_MODE?: boolean; // Added in v59
+  METABASE_EMBEDDING_SDK_AUTH_STATE?: import("embedding-sdk-shared/types/auth-state").SdkAuthState;
+  FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS?: boolean;
+  METABASE_EMBEDDING_SDK_METABOT_STATE?: import("embedding-sdk-shared/lib/metabot-state-channel").MetabotStateChannel;
 }

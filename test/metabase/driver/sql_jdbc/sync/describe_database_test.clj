@@ -12,8 +12,8 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -318,7 +318,7 @@
                      :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
                                          (get-method sql-jdbc.sync/have-select-privilege? %))]
                      :-features [:table-privileges]})
-    (letfn [(probe-error-fn [conn sql]
+    (letfn [(probe-error-fn [^Connection conn sql]
               (.close conn)
               (.prepareStatement conn sql))]
       (testing "we will retry syncing a table once if the connection is closed"

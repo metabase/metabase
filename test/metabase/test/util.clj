@@ -23,6 +23,7 @@
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -340,7 +341,8 @@
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
-               :name (str "test_table_" (u/generate-nano-id))}})
+               :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
+               :database (data/id)}})
 
    :model/TransformJob
    (fn [_]
@@ -373,6 +375,13 @@
             :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})})
+
+;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
+;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
+  [model explicit-attributes f]
+  (binding [pgm/*allow-direct-deletion* true]
+    (next-method model explicit-attributes f)))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -475,9 +484,12 @@
 
 (defn- upsert-raw-setting!
   [original-value setting-k value]
-  (if original-value
-    (t2/update! :model/Setting setting-k {:value value})
-    (t2/insert! :model/Setting :key setting-k :value value))
+  (if (some? value)
+    (if original-value
+      (t2/update! :model/Setting setting-k {:value value})
+      (t2/insert! :model/Setting :key setting-k :value value))
+    (when original-value
+      (t2/delete! :model/Setting :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
@@ -588,8 +600,8 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (setting/read-setting setting-k)]
-          (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
+        (let [value (setting/get setting-k)]
+          (do-with-temporary-setting-value! setting-k value thunk))))
     thunk
     settings)))
 
@@ -871,16 +883,18 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let [old-max-id (get model->old-max-id model)
                       max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)]]
+                      additional-conditions (with-model-cleanup-additional-conditions model)
+                      where-clause [:and max-id-condition additional-conditions]]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where [:and max-id-condition additional-conditions]}))
+            :where where-clause}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
-  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved.
+  "Execute `body`, then delete any *new* rows created for each model in `models`.
+
+   Uses raw SQL DELETE for performance. Does not trigger `before-delete`/`after-delete` hooks.
 
   It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
   situation (e.g. when creating objects via the API).

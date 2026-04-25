@@ -11,6 +11,8 @@ export type SdkQuestionIdProps = {
    * - The `entity_id` key of the question object. You can find a question's Entity ID in the info panel when viewing a question
    *  <br/>
    * - `new` to show the notebook editor for creating new questions. `isSaveEnabled` must be `true` to allow saving the question
+   *  <br/>
+   * - `new-native` to show the SQL editor for creating new native questions. `isSaveEnabled` must be `true` to allow saving the question
    */
   questionId: SdkQuestionId | null;
 };

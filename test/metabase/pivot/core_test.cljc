@@ -475,6 +475,45 @@
               (lists-to-vecs-recursively (:row-tree result)))
              "Row tree should not have any collapsed nodes for paths that don't exist in the data")))))
 
+#?(:cljs
+   (deftest build-pivot-trees-non-existent-parent-in-multilevel-path-test
+     (testing "build-pivot-trees does not crash when collapsed path references a non-existent parent node (#70019)"
+       ;; This tests the scenario where a dashboard filter removes rows from the data,
+       ;; but the viz settings still reference collapsed paths for those removed rows.
+       ;; E.g., rows were collapsed for categories "Doohickey" and "Gadget", then a
+       ;; dashboard filter restricts to "Widget" only. The collapsed_rows setting still
+       ;; contains paths like ["Doohickey","Facebook"] where "Doohickey" is no longer
+       ;; in the tree at all. This causes add-is-collapsed to traverse into a nil node
+       ;; and crash with "Cannot read properties of null (reading 'get')".
+       (let [rows [[1 "A" "Y" 0 10]
+                   [1 "B" "Z" 0 20]
+                   [2 "A" "Y" 0 30]
+                   [2 "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]
+             ;; Multi-level paths where the FIRST element doesn't exist in the data
+             ;; This is the case that causes the TypeError in add-is-collapsed
+             settings {:pivot_table.collapsed_rows {:value ["[3,\"A\"]" "[99,\"B\"]"]}}
+             result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+         (is (=?
+              [{:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false
+                :value 1}
+               {:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false
+                :value 2}]
+              (lists-to-vecs-recursively (:row-tree result)))
+             "Row tree should not crash and should have no collapsed nodes for non-existent parent paths")))))
+
 (deftest build-pivot-trees-sort-trees-test
   (let [rows [[1 "A" "Y" 0 10]
               [1 "B" "Z" 0 20]

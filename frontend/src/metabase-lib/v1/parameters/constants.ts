@@ -168,6 +168,28 @@ export const PARAMETER_OPERATOR_TYPES = {
       },
     },
   ],
+  id: [
+    {
+      type: "number/=",
+      operator: "=",
+      get name() {
+        return t`ID`;
+      },
+      get menuName() {
+        return t`Numeric ID`;
+      },
+    },
+    {
+      type: "string/=",
+      operator: "=",
+      get name() {
+        return t`ID`;
+      },
+      get menuName() {
+        return t`Text ID`;
+      },
+    },
+  ],
 } as const;
 
 export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
@@ -191,6 +213,10 @@ export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   },
 ] as const;
 
+// LEGACY: "id" is a widget-type misused as a parameter type (QUE2-326).
+// New ID parameters start with type "id" as a placeholder; the type should be
+// updated to a concrete type (e.g., "number/=") when the parameter is mapped
+// to a field. Frontend UI behavior uses sectionId "id" instead of the type.
 export const ID_OPTION = {
   type: "id",
   get name() {
@@ -205,6 +231,7 @@ export const BOOLEAN_OPTION = {
   },
 } as const;
 
+// LEGACY: "category" and "id" entries handle legacy stored parameters (QUE2-326).
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",
   "category",
@@ -212,6 +239,7 @@ export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "location",
 ] as const;
 
+// LEGACY: "category" and "id" entries handle legacy stored parameters (QUE2-326).
 export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   string,
   string | string[]
@@ -230,6 +258,7 @@ export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   number: ["=", "!="],
 };
 
+// LEGACY: "category" and "id" entries handle legacy stored parameters (QUE2-326).
 export const FIELD_FILTER_PARAMETER_TYPES = [
   "date",
   "string",
