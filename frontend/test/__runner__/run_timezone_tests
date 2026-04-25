@@ -24,7 +24,9 @@ passed=""
 failed=""
 
 for tz in $tzs; do
+  echo ""
   echo "Running unit tests in timezone $tz"
+  echo ""
   if TZ="$tz" METABASE_TEST_TIMEZONES="$tzs" bun run test-timezones-unit; then
     passed="$passed $tz"
     results="$results \e[32m✓\e[0m $tz\n"
