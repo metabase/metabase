@@ -43,8 +43,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Build cljs
-        run: bun run build:cljs
+      - name: Compile CLJS
+        uses: ./.github/actions/build-cljs
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           for ((i=1; i<=BURN_IN; i++)); do

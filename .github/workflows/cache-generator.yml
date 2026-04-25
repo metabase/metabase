@@ -124,7 +124,7 @@ jobs:
 
       # ESLint cache (requires both backend and frontend)
       - name: Compile CLJS
-        run: bun run build-pure:cljs
+        uses: ./.github/actions/build-cljs
 
       - name: Run ESLint to populate cache
         run: bun run lint-eslint-pure

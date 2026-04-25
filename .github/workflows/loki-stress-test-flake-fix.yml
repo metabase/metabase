@@ -143,7 +143,9 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development bun run build-pure:cljs
+        uses: ./.github/actions/build-cljs
+        with:
+          node-env: development
 
       - name: Build Storybook
         run: bun run build-storybook

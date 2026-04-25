@@ -22,7 +22,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: bun run build-pure:cljs
+        uses: ./.github/actions/build-cljs
 
       - name: Update Loki Snapshots
         run: bun run test-visual:loki:ci || bun run test-visual:loki-approve-diff && bun run test-visual:loki-prune

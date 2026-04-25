@@ -25,8 +25,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-cljs:
+    if: ${{ !inputs.skip || !inputs.skip-lint }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        uses: ./.github/actions/build-cljs
+
   fe-lint:
     if: ${{ !inputs.skip-lint }}
+    needs: build-cljs
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -45,8 +59,8 @@ jobs:
           path: ${{ github.workspace}}/.eslintcache
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
 
-      - name: Compile CLJS
-        run: bun run build-pure:cljs
+      - name: Restore CLJS build cache
+        uses: ./.github/actions/build-cljs
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
       - name: Run oxfmt formatting linter
@@ -58,6 +72,7 @@ jobs:
 
   fe-type-check:
     if: ${{ !inputs.skip }}
+    needs: build-cljs
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -66,13 +81,14 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: bun run build-pure:cljs
-        name: Compile CLJS
+      - name: Restore CLJS build cache
+        uses: ./.github/actions/build-cljs
       - run: bun run type-check-pure
         name: Check types
 
   fe-tests-unit:
     if: ${{ !inputs.skip }}
+    needs: build-cljs
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -89,9 +105,11 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Restore CLJS build cache
+        uses: ./.github/actions/build-cljs
       - name: Run frontend unit tests
         id: fe-tests
-        run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        run: bun run test-unit-pure --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
