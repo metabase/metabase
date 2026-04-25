@@ -20,7 +20,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, DashboardId } from "metabase-types/api";
+import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -141,6 +141,19 @@ export type SdkQuestionProviderProps = PropsWithChildren<
        * @internal
        */
       navigateToNewCard?: Nullable<LoadQuestionHookResult["navigateToNewCard"]>;
+
+      /**
+       * Called when a drill-through action is about to navigate to a new card.
+       * Receives the navigation params and a `defaultNavigate` callback.
+       * Call `defaultNavigate()` to allow normal navigation, or omit it to intercept.
+       */
+      onDrillThrough?: (
+        params: {
+          drillName: string | undefined;
+          nextCard: Card;
+        },
+        defaultNavigate: () => Promise<void>,
+      ) => Promise<void>;
     }
 >;
 

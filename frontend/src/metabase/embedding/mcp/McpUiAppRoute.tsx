@@ -5,14 +5,20 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion"
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
+import { McpQueryBar } from "./McpQueryBar";
+import { McpQuestionTitle } from "./McpQuestionTitle";
+import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
 const store = getSdkStore();
+
+const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
@@ -22,9 +28,11 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, hostContext } = useMcpApp();
+  const { query, hostContext, app } = useMcpApp();
 
   const [isSettingsReady, setIsSettingsReady] = useState(false);
+
+  const handleDrillThrough = useHandleMcpDrillThrough(app);
 
   const { instanceUrl } = window.metabaseConfig ?? { instanceUrl: "" };
 
@@ -36,12 +44,7 @@ export function McpUiAppRoute() {
     [hostContext?.styles?.variables],
   );
 
-  const safeAreaInsets = hostContext?.safeAreaInsets ?? {
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  };
+  const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
   const deserializedCard = useMemo(() => {
     if (!query) {
@@ -59,6 +62,13 @@ export function McpUiAppRoute() {
     }
   }, [query]);
 
+  const isReady = !!(
+    instanceUrl &&
+    hostContext &&
+    isSettingsReady &&
+    deserializedCard
+  );
+
   const theme = useMemo(
     () => buildMcpAppsTheme(hostCssVariables, scheme),
     [hostCssVariables, scheme],
@@ -74,13 +84,6 @@ export function McpUiAppRoute() {
     ]).then(() => setIsSettingsReady(true));
   }, []);
 
-  const isReady = !!(
-    instanceUrl &&
-    hostContext &&
-    isSettingsReady &&
-    deserializedCard
-  );
-
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready
     if (isReady) {
@@ -92,9 +95,13 @@ export function McpUiAppRoute() {
     boxSizing: "border-box",
     backgroundColor: theme.colors?.background,
     height: "500px",
+    display: "flex",
+    flexDirection: "column",
 
-    // Apply safe area insets from the host environment.
-    padding: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
+    padding: "12px 0px 0px 10px",
+
+    // Apply safe area insets from the host environment, with extra top padding.
+    margin: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
   };
 
   if (!isReady) {
@@ -114,8 +121,23 @@ export function McpUiAppRoute() {
           isSaveEnabled={false}
           // we should never show query builder in chat interfaces
           withEditorButton={false}
-          height="500px"
-        />
+          withChartTypeSelector={false}
+          onDrillThrough={handleDrillThrough}
+        >
+          <Box mb="xs">
+            <McpQuestionTitle />
+          </Box>
+
+          {/* Visualization fills the remaining space */}
+          <Flex flex={1} mih={0} style={{ overflow: "hidden" }}>
+            <SdkQuestion.QuestionVisualization height="calc(500px - 8rem)" />
+          </Flex>
+
+          {/* Metric-viewer-style query bar: chart type + time granularity */}
+          <Flex justify="center" py="xs" style={{ flexShrink: 0 }}>
+            <McpQueryBar />
+          </Flex>
+        </SdkQuestion>
       </div>
     </ComponentProvider>
   );

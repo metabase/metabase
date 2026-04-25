@@ -52,6 +52,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
+  onDrillThrough: Yup.mixed().optional(),
 }).noUnknown();
 
 export const interactiveQuestionSchema: FunctionSchema = {
