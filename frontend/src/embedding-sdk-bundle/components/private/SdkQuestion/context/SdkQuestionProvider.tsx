@@ -36,7 +36,6 @@ import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/c
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { getLastVisibleStageIndex } from "../utils/stages";
@@ -78,6 +77,7 @@ export const SdkQuestionProvider = ({
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
+  onDrillThrough,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
@@ -202,11 +202,29 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
+  // Wrap navigateToNewCard so that onDrillThrough (if provided) can intercept navigation.
+  const navigateToNewCardWithDrillThrough = useCallback(
+    async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
+      if (onDrillThrough) {
+        await onDrillThrough(
+          {
+            drillName: params.drillName,
+            nextCard: params.nextCard,
+          },
+          () => navigateToNewCard?.(params) ?? Promise.resolve(),
+        );
+      } else {
+        await navigateToNewCard?.(params);
+      }
+    },
+    [navigateToNewCard, onDrillThrough],
+  );
+
   // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
   const navigateToNewCardWithSdkInternalNavigation = useCallback(
     async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
-      // This actually changes what gets rendered
-      await navigateToNewCard?.(params);
+      // This actually changes what gets rendered (via onDrillThrough if provided)
+      await navigateToNewCardWithDrillThrough(params);
 
       // Push virtual entry if last entry is NOT already a question drill
       const currentEntry = navigation?.stack.at(-1);
@@ -219,7 +237,12 @@ export const SdkQuestionProvider = ({
         });
       }
     },
-    [navigateToNewCard, navigation, question, loadAndQueryQuestion],
+    [
+      navigateToNewCardWithDrillThrough,
+      navigation,
+      question,
+      loadAndQueryQuestion,
+    ],
   );
 
   const query = question?.query();
@@ -253,7 +276,7 @@ export const SdkQuestionProvider = ({
     updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
-        ? navigateToNewCard
+        ? navigateToNewCardWithDrillThrough
         : navigateToNewCardWithSdkInternalNavigation,
     plugins,
     question,

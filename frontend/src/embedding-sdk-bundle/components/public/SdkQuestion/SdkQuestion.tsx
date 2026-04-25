@@ -143,6 +143,7 @@ export const _SdkQuestion = ({
   backToDashboard,
   getClickActionMode,
   navigateToNewCard,
+  onDrillThrough,
 
   height,
   width,
@@ -201,6 +202,7 @@ export const _SdkQuestion = ({
         backToDashboard={backToDashboard}
         getClickActionMode={getClickActionMode}
         navigateToNewCard={navigateToNewCard}
+        onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (
