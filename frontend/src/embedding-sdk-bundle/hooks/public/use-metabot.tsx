@@ -1,13 +1,16 @@
 import { useCallback, useMemo, useRef } from "react";
 import { match } from "ts-pattern";
 
+import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
   MetabotMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
@@ -17,6 +20,11 @@ import type { MetabotChatMessage } from "metabase/metabot/state/types";
  *
  * Provides a stable, SDK-friendly API for sending messages, managing
  * conversation state, and reading Metabot responses.
+ *
+ * Note: all `useMetabot` instances in the same app share conversation state.
+ * Mounting the hook in two components reads the same Redux state.
+ * The backend exposes only a finite set of metabot agent types
+ * (e.g. `default`, `embedded`, `slackbot`).
  */
 export const useMetabot = (): UseMetabotResult => {
   const agent = useMetabotAgent();
@@ -25,12 +33,22 @@ export const useMetabot = (): UseMetabotResult => {
     new Map<string, ReturnType<typeof createChartComponent>>(),
   );
 
+  const {
+    state: { props: metabaseProviderProps },
+  } = useMetabaseProviderPropsStore();
+
+  const authConfig = metabaseProviderProps?.authConfig;
+
   const CurrentChart = useMemo(
     () =>
-      navigateToPath
-        ? getCachedChartComponent(navigateToPath, chartComponentsCache.current)
+      navigateToPath && authConfig
+        ? getCachedChartComponent(
+            navigateToPath,
+            chartComponentsCache.current,
+            authConfig,
+          )
         : null,
-    [navigateToPath],
+    [navigateToPath, authConfig],
   );
 
   const agentSubmitMessage = agent.submitInput;
@@ -51,19 +69,27 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
+  const agentResetConversation = agent.resetConversation;
+  const resetConversation = useCallback(() => {
+    chartComponentsCache.current.clear();
+    agentResetConversation();
+  }, [agentResetConversation]);
+
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
         .filter(isPublicMessage)
-        .map((message) => mapMessage(message, chartComponentsCache.current)),
-    [agent.messages],
+        .map((message) =>
+          mapMessage(message, chartComponentsCache.current, authConfig),
+        ),
+    [agent.messages, authConfig],
   );
 
   return {
     submitMessage,
     retryMessage,
     cancelRequest: agent.cancelRequest,
-    resetConversation: agent.resetConversation,
+    resetConversation,
 
     messages,
     errorMessages: agent.errorMessages,
@@ -77,22 +103,33 @@ export const useMetabot = (): UseMetabotResult => {
  * Creates a chart component bound to a `navigateTo` path.
  * `drills={false}` (default) renders a StaticQuestion;
  * `drills={true}` renders an InteractiveQuestion.
+ *
+ * Wrapped in `ComponentProvider` so it behaves like other public SDK components.
  */
-function createChartComponent(questionPath: string) {
+function createChartComponent(
+  questionPath: string,
+  authConfig: MetabaseAuthConfig,
+) {
   return function MetabotChart({ drills, ...rest }: MetabotChartProps) {
-    if (drills) {
-      return <InteractiveQuestionInternal query={questionPath} {...rest} />;
-    }
-    return <StaticQuestionInternal query={questionPath} {...rest} />;
+    return (
+      <ComponentProvider authConfig={authConfig}>
+        {drills ? (
+          <InteractiveQuestionInternal query={questionPath} {...rest} />
+        ) : (
+          <StaticQuestionInternal query={questionPath} {...rest} />
+        )}
+      </ComponentProvider>
+    );
   };
 }
 
 function getCachedChartComponent(
   questionPath: string,
   cache: Map<string, ReturnType<typeof createChartComponent>>,
+  authConfig: MetabaseAuthConfig,
 ) {
   if (!cache.has(questionPath)) {
-    cache.set(questionPath, createChartComponent(questionPath));
+    cache.set(questionPath, createChartComponent(questionPath, authConfig));
   }
   return cache.get(questionPath)!;
 }
@@ -116,6 +153,7 @@ const isPublicMessage = (
 const mapMessage = (
   message: PublicChatMessage,
   cache: Map<string, ReturnType<typeof createChartComponent>>,
+  authConfig: MetabaseAuthConfig | undefined,
 ): MetabotMessage =>
   match(message)
     .with(
@@ -128,15 +166,21 @@ const mapMessage = (
       ({ id, message }) =>
         ({ id, role: "agent", type: "text", message }) as const,
     )
-    .with(
-      { role: "agent", type: "chart" },
-      ({ id, navigateTo }) =>
-        ({
-          id,
-          role: "agent",
-          type: "chart",
-          questionPath: navigateTo,
-          Chart: getCachedChartComponent(navigateTo, cache),
-        }) as const,
-    )
+    .with({ role: "agent", type: "chart" }, ({ id, navigateTo }) => {
+      const Chart = authConfig
+        ? getCachedChartComponent(navigateTo, cache, authConfig)
+        : FallbackChartComponent;
+      return {
+        id,
+        role: "agent",
+        type: "chart",
+        questionPath: navigateTo,
+        Chart,
+      } as const;
+    })
     .exhaustive();
+
+// Rendered only when `useMetabot` is called outside a `MetabaseProvider`
+// with authConfig populated. In normal usage this branch is unreachable;
+// keeping a placeholder satisfy message type.
+const FallbackChartComponent = () => null;

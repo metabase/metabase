@@ -465,6 +465,15 @@ export const sendAgentRequest = createAsyncThunk<
         },
       );
 
+      // Preserve any chart the agent already committed via `navigate_to`,
+      // even if the stream errored or was cancelled before the closing text
+      // arrived.
+      if (pendingChartMessage != null) {
+        const chartMessage: Omit<MetabotAgentChartMessage, "id" | "role"> =
+          pendingChartMessage;
+        dispatch(addAgentMessage({ ...chartMessage, agentId }));
+      }
+
       if (error) {
         throw error;
       }
@@ -481,12 +490,6 @@ export const sendAgentRequest = createAsyncThunk<
           // so fallback to the state used when the request was issued
           state: Object.keys(state).length === 0 ? request.state : state,
         });
-      }
-
-      if (pendingChartMessage != null) {
-        const chartMessage: Omit<MetabotAgentChartMessage, "id" | "role"> =
-          pendingChartMessage;
-        dispatch(addAgentMessage({ ...chartMessage, agentId }));
       }
 
       return fulfillWithValue({
