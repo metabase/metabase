@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1599-extract-the-metric-explorer-bar-from-explore-page-as-a",
-    "hash": "b421f0be69bc4518d0657c8281b662b47cc6b391"
+    "hash": "a21f96179bbf44a22e3245334aead7bd3b13652b"
   },
   "upstream": {
     "branch": "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
