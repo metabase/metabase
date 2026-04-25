@@ -271,6 +271,17 @@
         (do (mcp.session/delete! session-id user-id)
             {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
+(defn- handle-pending-card-store
+  "Handle POST /api/mcp/ui/drills — store a base64-encoded query for the upcoming render_drill_through
+   tool call. The frontend calls this immediately after a drill-through action, before sending
+   app.sendMessage, so the tool can retrieve the query without the LLM carrying the payload."
+  [user-id request]
+  (let [encoded-query (get (:body request) :encodedQuery)]
+    (if (and (string? encoded-query) (not (str/blank? encoded-query)))
+      (do (mcp.session/store-pending-card! user-id encoded-query)
+          {:status 204 :headers {"Content-Type" "application/json"} :body ""})
+      (json-response 400 {:error "Missing or invalid encodedQuery"}))))
+
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
 ;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
@@ -309,7 +320,14 @@
    Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error    (validate-origin request)
+     (let [;; POST /ui/drills is our custom drill-store endpoint, not part of MCP protocol.
+           ;; The iframe's fetch sends Origin: null (sandboxed context), which would
+           ;; fail origin validation — but there's no DNS-rebinding risk here since
+           ;; the request is authenticated via session token.
+           drill-request?  (and (= :post (:request-method request))
+                                (= "/ui/drills" (:uri request)))
+           origin-error    (when-not drill-request?
+                             (validate-origin request))
            bearer-token    (oauth-server/extract-bearer-token request)
            session-auth    api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
@@ -318,10 +336,20 @@
                      (respond throttle-err)
                      (try
                        (let [request (assoc request :token-scopes token-scopes)]
-                         (case (:request-method request)
-                           :post   (respond (handle-post user-id request))
-                           :get    (handle-get user-id request respond raise)
-                           :delete (respond (handle-delete user-id request))
+                         (cond
+                           drill-request?
+                           (respond (handle-pending-card-store user-id request))
+
+                           (= :post (:request-method request))
+                           (respond (handle-post user-id request))
+
+                           (= :get (:request-method request))
+                           (handle-get user-id request respond raise)
+
+                           (= :delete (:request-method request))
+                           (respond (handle-delete user-id request))
+
+                           :else
                            (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
                        (catch Throwable e
                          (raise e))))))]

@@ -70,6 +70,7 @@ export function performAction(
           nextCard: question.card(),
           ...extra,
           objectId,
+          drillName: action.name,
         });
       } else if (questionChangeBehavior === "updateQuestion") {
         onUpdateQuestion?.(question);

@@ -54,7 +54,7 @@ export function QueryExplorerBar({
   return (
     <Flex
       maw="100%"
-      h="3rem"
+      h="3.3rem"
       display="inline-flex"
       bg="background-primary"
       bd="1px solid var(--mb-color-border)"

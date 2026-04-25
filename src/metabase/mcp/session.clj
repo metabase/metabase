@@ -135,3 +135,28 @@
                :where       [:and
                              [:= :key_hashed key-hashed]
                              [:= :user_id user-id]]})))
+
+;;; -------------------------------------------- Pending Card Store -----------------------------------------------
+;; Prototype: in-memory store for drill-through cards, keyed by user-id.
+;; The frontend stores a base64-encoded query here before calling app.sendMessage,
+;; so the render_drill_through tool can retrieve it without the LLM needing to
+;; carry the base64 payload in the conversation context.
+;; Last write wins per user — acceptable for prototype purposes.
+
+(defonce ^:private pending-card-store
+  (atom {}))
+
+(defn store-pending-card!
+  "Store a base64-encoded query as the pending drill-through card for `user-id`."
+  [user-id encoded-query]
+  (swap! pending-card-store assoc user-id encoded-query))
+
+(defn consume-pending-card!
+  "Retrieve and remove the pending drill-through card for `user-id`.
+   Returns nil if no pending card exists."
+  [user-id]
+  (let [result (volatile! nil)]
+    (swap! pending-card-store (fn [store]
+                                (vreset! result (get store user-id))
+                                (dissoc store user-id)))
+    @result))
