@@ -15,6 +15,7 @@ import { useRouter } from "metabase/router";
 import {
   Box,
   Button,
+  Group,
   Icon,
   Paper,
   Stack,
@@ -24,6 +25,7 @@ import {
 import * as Urls from "metabase/utils/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
+import { MetabotUsageIndicator } from "../MetabotUsageIndicator/MetabotUsageIndicator";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -205,16 +207,22 @@ const MetabotQueryBuilderInner = () => {
               ) : (
                 <div />
               )}
-              <Button
-                className={S.sendButton}
-                variant="filled"
-                disabled={inputDisabled}
-                loading={isDoingScience}
-                onClick={handleEditorSubmit}
-                data-testid="metabot-send-message"
-              >
-                <Icon name="arrow_up" />
-              </Button>
+              <Group gap="sm" align="center">
+                <MetabotUsageIndicator />
+                <Button
+                  variant="filled"
+                  disabled={inputDisabled}
+                  loading={isDoingScience}
+                  onClick={handleEditorSubmit}
+                  data-testid="metabot-send-message"
+                  classNames={{
+                    root: S.sendButton,
+                    label: S.buttonLabel,
+                  }}
+                >
+                  <Icon name="arrow_up" />
+                </Button>
+              </Group>
             </Box>
           </Paper>
 

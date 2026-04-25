@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -19,8 +19,7 @@ function setup({
   isMetabotEnabled?: boolean;
   permissionOverrides?: Partial<UserMetabotPermissions>;
 } = {}) {
-  fetchMock.get(
-    "path:/api/metabot/permissions/user-permissions",
+  setupUserMetabotPermissionsEndpoint(
     createMockUserMetabotPermissions(permissionOverrides),
   );
 
@@ -61,13 +60,11 @@ describe("MetabotAppBarButton", () => {
 
   it("should not render the button when user lacks metabot permission", async () => {
     setup({ permissionOverrides: { metabot: "no" } });
-    // Wait for the API response to be processed
     await waitFor(() => {
-      expect(fetchMock.callHistory.calls().length).toBeGreaterThan(0);
+      expect(
+        screen.queryByRole("button", { name: /Chat with Metabot/ }),
+      ).not.toBeInTheDocument();
     });
-    expect(
-      screen.queryByRole("button", { name: /Chat with Metabot/ }),
-    ).not.toBeInTheDocument();
   });
 
   it("should toggle metabot visibility when clicked", async () => {

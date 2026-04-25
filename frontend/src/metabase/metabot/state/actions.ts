@@ -3,11 +3,13 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { listTag } from "metabase/api/tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -286,6 +288,8 @@ export const submitInput = createAsyncThunk<
       });
 
       const result = await sendMessageRequestPromise;
+
+      dispatch(Api.util.invalidateTags([listTag("metabot-permissions")]));
 
       if (isRejected(result)) {
         if (result.payload?.type === "error") {

@@ -64,11 +64,11 @@
                      base-where)]
     (case limit-type
       :tokens
-      (quot (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
-                                     :from   [:ai_usage_log]
-                                     :where  full-where}))
-                0)
-            1000000)
+      (let [raw (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
+                                         :from   [:ai_usage_log]
+                                         :where  full-where}))
+                    0)]
+        (/ (Math/round (/ (double raw) 100000.0)) 10.0))
 
       :messages
       (:cnt (t2/query-one {:select [[[:count :*] :cnt]]
@@ -145,3 +145,22 @@
     (or (check-instance-limit* :instance)
         (check-tenant-limit* tenant-id)
         (check-user-limit* user-id))))
+
+(defenterprise usage-summary
+  "Return a usage summary map for the current user showing current usage and applicable limits."
+  :feature :ai-controls
+  []
+  (let [user-id    api/*current-user-id*
+        tenant-id  (some-> api/*current-user* deref :tenant_id)
+        limit-unit (metabot.settings/metabot-limit-unit)
+        reset-rate (metabot.settings/metabot-limit-reset-rate)
+        start      (period-start)]
+    (cond-> {:user_usage       (usage-query [[:= :user_id user-id]])
+             :user_limit       (group-limit/limit-for-user user-id)
+             :instance_usage   (usage-query [])
+             :instance_limit   (:max_usage (instance-limit/instance-limit nil))
+             :limit_unit       (name limit-unit)
+             :limit_reset_rate (name reset-rate)
+             :period_start     (str start)}
+      tenant-id (assoc :tenant_usage (usage-query [[:= :tenant_id tenant-id]])
+                       :tenant_limit (:max_usage (instance-limit/instance-limit tenant-id))))))

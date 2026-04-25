@@ -5,7 +5,11 @@
    [metabase.api.common :as api]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
+
+(set! *warn-on-reflection* true)
 
 (defn- insert-usage!
   "Insert a test ai_usage_log row for the given user with the specified total_tokens."
@@ -371,3 +375,145 @@
                 (is (= "test limit reached" (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
+
+;;; ------------------------------------------ usage-summary ------------------------------------------
+
+(defn- clean-usage-state!
+  "Remove all limits and usage logs to ensure test isolation."
+  []
+  (ee.usage/clear-limit-cache!)
+  (t2/delete! :model/MetabotGroupLimit)
+  (t2/delete! :model/MetabotInstanceLimit)
+  (t2/delete! :model/AiUsageLog))
+
+(deftest usage-summary-no-limits-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "tokens"
+                                       metabot-limit-reset-rate "monthly"]
+      (testing "usage-summary returns usage data with nil limits when no limits configured"
+        (let [user-id (mt/user->id :rasta)]
+          (insert-usage! user-id 5000000)
+          (try
+            (mt/with-test-user :rasta
+              (let [summary (usage/usage-summary)]
+                (is (= {:user_usage       5.0
+                        :user_limit       nil
+                        :instance_usage   5.0
+                        :instance_limit   nil
+                        :limit_unit       "tokens"
+                        :limit_reset_rate "monthly"}
+                       (dissoc summary :period_start)))
+                (is (string? (:period_start summary)))
+                (is (inst? (Instant/parse (:period_start summary))))))
+            (finally
+              (cleanup-test-usage! user-id))))))))
+
+(deftest usage-summary-with-instance-limit-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "tokens"
+                                       metabot-limit-reset-rate "monthly"]
+      (testing "usage-summary includes instance limit when configured"
+        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 500}]
+          (let [user-id (mt/user->id :rasta)]
+            (insert-usage! user-id 10000000)
+            (try
+              (mt/with-test-user :rasta
+                (is (= {:instance_usage 10.0
+                        :instance_limit 500}
+                       (select-keys (usage/usage-summary) [:instance_usage :instance_limit]))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
+
+(deftest usage-summary-with-group-limit-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "tokens"
+                                       metabot-limit-reset-rate "monthly"]
+      (testing "usage-summary includes user limit from group"
+        ;; Set limits on all groups the user belongs to, otherwise limit-for-user returns nil
+        ;; (any group without a limit means unlimited)
+        (let [user-id   (mt/user->id :rasta)
+              group-ids (t2/select-fn-vec :group_id :model/PermissionsGroupMembership :user_id user-id)]
+          (doseq [gid group-ids]
+            (t2/insert! :model/MetabotGroupLimit {:group_id gid :max_usage 200}))
+          (insert-usage! user-id 10000000)
+          (try
+            (mt/with-test-user :rasta
+              (is (= {:user_usage 10.0
+                      :user_limit 200}
+                     (select-keys (usage/usage-summary) [:user_usage :user_limit]))))
+            (finally
+              (cleanup-test-usage! user-id)
+              (doseq [gid group-ids]
+                (t2/delete! :model/MetabotGroupLimit :group_id gid)))))))))
+
+(deftest usage-summary-with-tenant-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "tokens"
+                                       metabot-limit-reset-rate "monthly"]
+      (testing "usage-summary includes tenant usage and limit when user has a tenant"
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 300}]
+          (let [user-id (mt/user->id :rasta)]
+            (insert-usage! user-id 20000000 tenant-id)
+            (try
+              (binding [api/*current-user-id* user-id
+                        api/*current-user*    (delay {:tenant_id tenant-id})]
+                (is (= {:tenant_usage 20.0
+                        :tenant_limit 300}
+                       (select-keys (usage/usage-summary) [:tenant_usage :tenant_limit]))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
+
+(deftest usage-summary-messages-limit-unit-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"]
+      (testing "usage-summary counts messages (rows) instead of tokens when limit unit is messages"
+        (let [user-id (mt/user->id :rasta)]
+          (dotimes [_ 3]
+            (insert-usage! user-id 5000000))
+          (try
+            (mt/with-test-user :rasta
+              (is (= {:user_usage 3
+                      :user_limit nil
+                      :limit_unit "messages"}
+                     (select-keys (usage/usage-summary) [:user_usage :user_limit :limit_unit]))))
+            (finally
+              (cleanup-test-usage! user-id))))))))
+
+(deftest usage-summary-messages-with-instance-limit-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"]
+      (testing "usage-summary with messages mode respects instance limits"
+        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 10}]
+          (let [user-id (mt/user->id :rasta)]
+            (dotimes [_ 5]
+              (insert-usage! user-id 1))
+            (try
+              (mt/with-test-user :rasta
+                (is (= {:instance_usage 5
+                        :instance_limit 10
+                        :limit_unit     "messages"}
+                       (select-keys (usage/usage-summary) [:instance_usage :instance_limit :limit_unit]))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
+
+(deftest usage-summary-no-tenant-keys-test
+  (mt/with-premium-features #{:ai-controls}
+    (clean-usage-state!)
+    (testing "usage-summary omits tenant keys when user has no tenant"
+      (let [user-id (mt/user->id :rasta)]
+        (insert-usage! user-id 1000000)
+        (try
+          (mt/with-test-user :rasta
+            (let [summary (usage/usage-summary)]
+              (is (map? summary))
+              (is (not (contains? (or summary {}) :tenant_usage)))
+              (is (not (contains? (or summary {}) :tenant_limit)))))
+          (finally
+            (cleanup-test-usage! user-id)))))))

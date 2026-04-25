@@ -13,13 +13,17 @@
   justify-content: center;
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: 0.25rem;
+}
+
 .button {
-  margin-bottom: 0.625rem;
   margin-right: -0.125rem;
   background: var(--mb-color-brand);
   border-radius: 50%;
-  align-self: flex-end;
-  margin-left: 2px;
   width: 1.25rem;
   height: 1.25rem;
   display: flex;
@@ -38,17 +42,16 @@
   &:active {
     transform: scale(0.9);
   }
-}
 
-.buttonHidden {
-  opacity: 0;
-  transition: opacity 0ms ease;
-  user-select: none;
-  cursor: default;
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
 
-  &:hover,
-  &:active {
-    opacity: 0;
+    &:hover,
+    &:active {
+      opacity: 0.35;
+      transform: none;
+    }
   }
 }
 

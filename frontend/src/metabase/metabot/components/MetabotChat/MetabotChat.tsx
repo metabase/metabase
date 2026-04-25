@@ -88,7 +88,7 @@ export const MetabotChat = ({
           </Text>
         </Flex>
 
-        <Flex gap="sm">
+        <Flex gap="sm" align="center">
           <Tooltip label={t`Clear conversation`} position="bottom">
             <ActionIcon
               onClick={handleResetChat}

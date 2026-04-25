@@ -2,6 +2,7 @@ import {
   AIToolKey,
   type MetabotGroupPermission,
   type MetabotInfo,
+  type MetabotUsage,
   type UserMetabotPermissions,
   type UserMetabotPermissionsResponse,
 } from "../metabot";
@@ -20,17 +21,34 @@ export const createMockMetabotInfo = (
   ...opts,
 });
 
-export const createMockUserMetabotPermissions = (
-  opts?: Partial<UserMetabotPermissions>,
-): UserMetabotPermissionsResponse => ({
-  permissions: {
-    metabot: "yes",
-    "metabot-sql-generation": "yes",
-    "metabot-nlq": "yes",
-    "metabot-other-tools": "yes",
-    ...opts,
-  },
+export const createMockMetabotUsage = (
+  opts?: Partial<MetabotUsage>,
+): MetabotUsage => ({
+  user_usage: 0,
+  user_limit: null,
+  instance_usage: 0,
+  instance_limit: null,
+  limit_unit: "tokens",
+  limit_reset_rate: "monthly",
+  period_start: new Date().toISOString(),
+  ...opts,
 });
+
+export const createMockUserMetabotPermissions = (
+  opts?: Partial<UserMetabotPermissions> & { usage?: MetabotUsage | null },
+): UserMetabotPermissionsResponse => {
+  const { usage = null, ...permOpts } = opts ?? {};
+  return {
+    permissions: {
+      metabot: "yes",
+      "metabot-sql-generation": "yes",
+      "metabot-nlq": "yes",
+      "metabot-other-tools": "yes",
+      ...permOpts,
+    },
+    usage,
+  };
+};
 
 export const createMockMetabotGroupPermission = (
   opts?: Partial<MetabotGroupPermission>,

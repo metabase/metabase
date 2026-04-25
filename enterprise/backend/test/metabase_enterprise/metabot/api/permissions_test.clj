@@ -85,6 +85,33 @@
           (let [perms (:permissions (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
             (is (= "yes" (:metabot-sql-generation perms)))))))))
 
+(deftest user-permissions-includes-usage-test
+  (mt/with-premium-features #{:ai-controls}
+    (t2/delete! :model/MetabotGroupLimit)
+    (t2/delete! :model/MetabotInstanceLimit)
+    (t2/delete! :model/AiUsageLog)
+    (mt/with-temporary-setting-values [metabot-limit-unit "tokens"
+                                       metabot-limit-reset-rate "monthly"]
+      (testing "GET /api/metabot/permissions/user-permissions includes usage data in EE"
+        (let [usage (:usage (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
+          (is (= {:user_usage       0.0
+                  :user_limit       nil
+                  :instance_usage   0.0
+                  :instance_limit   nil
+                  :limit_unit       "tokens"
+                  :limit_reset_rate "monthly"}
+                 (dissoc usage :period_start)))
+          (is (string? (:period_start usage)))))
+      (testing "superuser also gets usage data"
+        (let [usage (:usage (mt/user-http-request :crowberto :get 200 "metabot/permissions/user-permissions"))]
+          (is (= {:user_usage       0.0
+                  :user_limit       nil
+                  :instance_usage   0.0
+                  :instance_limit   nil
+                  :limit_unit       "tokens"
+                  :limit_reset_rate "monthly"}
+                 (dissoc usage :period_start))))))))
+
 (deftest ^:parallel admin-endpoints-require-ai-controls-feature-test
   (testing "admin endpoints return 402 without :ai-controls feature"
     (mt/with-premium-features #{}
