@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import type { MetabotMessage } from "embedding-sdk-bundle/types/metabot";
 import type { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
-
-import type { MetabotMessage } from "../../types/metabot";
 
 type ChartComponent = Extract<MetabotMessage, { type: "chart" }>["Chart"];
 
