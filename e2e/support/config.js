@@ -98,6 +98,7 @@ const defaultConfig = {
           ".svg": "text",
         },
         plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
+        tsconfig: path.join(__dirname, "../tsconfig.json"),
         sourcemap: "inline",
       }),
     );

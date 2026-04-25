@@ -448,7 +448,7 @@
     "build-hot:cljs": "bun install && shadow-cljs watch app",
     "build-hot:js": "bun install && bun run clean-dev:js && NODE_OPTIONS=--max-old-space-size=8192 WEBPACK_BUNDLE=hot rspack serve",
     "build-hot:js-wait": "bun run wait:cljs; bun run build-hot:js",
-    "build-pure:cljs": "bun run clean-dev:cljs && shadow-cljs compile app",
+    "build-pure:cljs": "bun run clean-dev:cljs && shadow-cljs compile app && ./scripts/generate-cljs-types.sh",
     "build-release": "bun run build-release:cljs && bun run build-release:js",
     "build-release:cljs": "bun run clean-release:cljs && shadow-cljs release app",
     "build-release:js": "WEBPACK_BUNDLE=production rspack build",

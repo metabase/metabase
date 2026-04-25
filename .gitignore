@@ -113,6 +113,7 @@ dev/serialization_deltas/
 /trace-output/
 /temp-types/
 /frontend/src/metabase-types/openapi
+/frontend/src/types/cljs.d.ts
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
