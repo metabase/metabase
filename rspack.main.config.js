@@ -7,6 +7,9 @@ const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 
 const {
   IS_DEV_MODE,
@@ -301,6 +304,7 @@ const config = {
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
+    ...COMPRESSION_CONFIG,
   ],
 };
 

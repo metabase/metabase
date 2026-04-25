@@ -30,6 +30,9 @@ const {
 } = require("./frontend/build/shared/rspack/get-banner-options");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+const {
   SDK_BUNDLE_PATH,
   SDK_BUNDLE_FILENAME,
   SDK_BUNDLE_BOOTSTRAP_FILENAME,
@@ -351,6 +354,7 @@ const config = {
         analyzerMode: "static",
         reportFilename: BUILD_PATH + "/dist/report.html",
       }),
+    ...COMPRESSION_CONFIG,
   ].filter(Boolean),
 };
 
