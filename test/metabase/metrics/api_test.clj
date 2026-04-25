@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -332,3 +333,74 @@
                                            {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                          :projections []}})]
         (is (= "completed" (:status response)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      QueryExecution tracking                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- rasta-metric-executions
+  "Return `QueryExecution` rows owned by the `:rasta` user, newest first.
+   Filtering by executor keeps us from picking up unrelated rows written by
+   concurrent tests."
+  []
+  (t2/select :model/QueryExecution
+             :executor_id (mt/user->id :rasta)
+             {:order-by [[:started_at :desc]]}))
+
+(deftest dataset-leaf-records-query-execution-test
+  (testing "POST /api/metric/dataset (leaf path) writes a QueryExecution row with :context :metric"
+    (mt/test-helpers-set-global-values!
+      (binding [qp.util/*execute-async?* false]
+        (mt/with-temp [:model/Card metric {:name          "QE Leaf Metric"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [before (count (rasta-metric-executions))]
+            (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                  {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})
+            (let [rows (rasta-metric-executions)]
+              (is (= (inc before) (count rows))
+                  "exactly one new QueryExecution row for rasta")
+              (is (= :metric (:context (first rows)))
+                  "the new row is tagged :context :metric"))))))))
+
+(deftest dataset-arithmetic-records-one-qe-per-leaf-test
+  (testing "POST /api/metric/dataset (arithmetic) writes one QueryExecution row per leaf"
+    (mt/test-helpers-set-global-values!
+      (binding [qp.util/*execute-async?* false]
+        (mt/with-temp [:model/Card metric-a {:name          "QE Arith A"
+                                             :type          :metric
+                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                       :model/Card metric-b {:name          "QE Arith B"
+                                             :type          :metric
+                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [before (count (rasta-metric-executions))]
+            (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                  {:definition {:expression [:+ {}
+                                                             [:metric {:lib/uuid "a"} (:id metric-a)]
+                                                             [:metric {:lib/uuid "b"} (:id metric-b)]]}})
+            (let [rows      (rasta-metric-executions)
+                  new-rows  (take (- (count rows) before) rows)]
+              (is (= 2 (count new-rows))
+                  "two new QueryExecution rows, one per arithmetic leaf")
+              (is (every? #(= :metric (:context %)) new-rows)
+                  "both rows are tagged :context :metric"))))))))
+
+(deftest breakout-values-records-query-execution-test
+  (testing "POST /api/metric/breakout-values writes a QueryExecution row with :context :metric"
+    (mt/test-helpers-set-global-values!
+      (binding [qp.util/*execute-async?* false]
+        (mt/with-temp [:model/Card metric {:name          "QE Breakout Metric"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+          (let [dim-uuid (-> (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+                             :dimensions first :id)
+                before   (count (rasta-metric-executions))]
+            (mt/user-http-request :rasta :post 200 "metric/breakout-values"
+                                  {:definition {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                                :projections [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                               :projection [[:dimension {} dim-uuid]]}]}})
+            (let [rows (rasta-metric-executions)]
+              (is (= (inc before) (count rows))
+                  "exactly one new QueryExecution row")
+              (is (= :metric (:context (first rows)))))))))))

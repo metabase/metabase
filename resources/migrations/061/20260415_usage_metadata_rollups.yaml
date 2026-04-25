@@ -1,0 +1,364 @@
+databaseChangeLog:
+  - changeSet:
+      id: v61.Oong1I
+      author: johnswanson
+      comment: Create source_segment_daily for usage metadata rollups
+      changes:
+        - createTable:
+            tableName: source_segment_daily
+            remarks: Daily source-scoped segment usage rollups
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Surrogate primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_type
+                  type: varchar(16)
+                  remarks: Owning source kind for direct or projected facts, or null for canonical mixed facts
+              - column:
+                  name: source_id
+                  type: int
+                  remarks: Owning table or card ID for direct or projected facts, or null for canonical mixed facts
+              - column:
+                  name: ownership_mode
+                  type: varchar(16)
+                  remarks: Ownership attribution mode such as direct, projected, or mixed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: Field referenced by the segment fact when applicable
+              - column:
+                  name: predicate
+                  type: ${text.type}
+                  remarks: Canonical serialized representation of the atomic segment predicate
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bucket_date
+                  type: date
+                  remarks: UTC day covered by the rollup row
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: int
+                  remarks: Number of observations for this fact on the bucket day
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.Xoo5ue
+      author: johnswanson
+      comment: Create source_metric_daily for usage metadata rollups
+      changes:
+        - createTable:
+            tableName: source_metric_daily
+            remarks: Daily source-scoped metric usage rollups
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Surrogate primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_type
+                  type: varchar(16)
+                  remarks: Owning source kind for direct or projected facts, or null for canonical mixed facts
+              - column:
+                  name: source_id
+                  type: int
+                  remarks: Owning table or card ID for direct or projected facts, or null for canonical mixed facts
+              - column:
+                  name: ownership_mode
+                  type: varchar(16)
+                  remarks: Ownership attribution mode such as direct, projected, or mixed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: agg_type
+                  type: varchar(32)
+                  remarks: Aggregation operator for the metric fact
+                  constraints:
+                    nullable: false
+              - column:
+                  name: agg_field_id
+                  type: int
+                  remarks: Aggregated field referenced by the metric fact when applicable
+              - column:
+                  name: temporal_field_id
+                  type: int
+                  remarks: Breakout field supplying temporal context for the metric fact when applicable
+              - column:
+                  name: temporal_unit
+                  type: varchar(16)
+                  remarks: Temporal bucketing unit associated with the metric fact when applicable
+              - column:
+                  name: bucket_date
+                  type: date
+                  remarks: UTC day covered by the rollup row
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: int
+                  remarks: Number of observations for this fact on the bucket day
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.Tahg3l
+      author: johnswanson
+      comment: Create source_dimension_daily for usage metadata rollups
+      changes:
+        - createTable:
+            tableName: source_dimension_daily
+            remarks: Daily source-scoped dimension usage rollups
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Surrogate primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_type
+                  type: varchar(16)
+                  remarks: Owning source kind for the dimension fact
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_id
+                  type: int
+                  remarks: Owning table or card ID for the dimension fact
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ownership_mode
+                  type: varchar(16)
+                  remarks: Ownership attribution mode for the dimension fact
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: Breakout field referenced by the dimension fact
+                  constraints:
+                    nullable: false
+              - column:
+                  name: temporal_unit
+                  type: varchar(16)
+                  remarks: Temporal bucketing unit for temporal breakouts when applicable
+              - column:
+                  name: binning
+                  type: ${text.type}
+                  remarks: Canonical serialized binning configuration when applicable
+              - column:
+                  name: bucket_date
+                  type: date
+                  remarks: UTC day covered by the rollup row
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: int
+                  remarks: Number of observations for this fact on the bucket day
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.ojei4O
+      author: johnswanson
+      comment: Create source_dimension_profile_daily for usage metadata profile observations
+      changes:
+        - createTable:
+            tableName: source_dimension_profile_daily
+            remarks: Daily source-scoped dimension profile observations
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Surrogate primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_type
+                  type: varchar(16)
+                  remarks: Owning source kind for the profiled dimension
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_id
+                  type: int
+                  remarks: Owning table or card ID for the profiled dimension
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: Field being profiled
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_basis
+                  type: varchar(32)
+                  remarks: Provenance of the profile signal such as fingerprint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: observation_type
+                  type: varchar(32)
+                  remarks: Kind of profile observation such as single-value or all-null
+                  constraints:
+                    nullable: false
+              - column:
+                  name: observation_value
+                  type: ${text.type}
+                  remarks: Optional serialized value associated with the profile observation
+              - column:
+                  name: bucket_date
+                  type: date
+                  remarks: UTC day when the profile observation was recorded
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: int
+                  remarks: Number of times the observation was recorded on the bucket day
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.Ohk8ph
+      author: johnswanson
+      comment: Add source_segment_daily bucket/source index
+      changes:
+        - createIndex:
+            indexName: idx_source_segment_daily_bucket_source
+            tableName: source_segment_daily
+            columns:
+              - column:
+                  name: bucket_date
+              - column:
+                  name: source_type
+              - column:
+                  name: source_id
+              - column:
+                  name: ownership_mode
+
+  - changeSet:
+      id: v61.Uike3b
+      author: johnswanson
+      comment: Add source_segment_daily field index
+      changes:
+        - createIndex:
+            indexName: idx_source_segment_daily_field
+            tableName: source_segment_daily
+            columns:
+              - column:
+                  name: field_id
+
+  - changeSet:
+      id: v61.Chuun4
+      author: johnswanson
+      comment: Add source_metric_daily bucket/source index
+      changes:
+        - createIndex:
+            indexName: idx_source_metric_daily_bucket_source
+            tableName: source_metric_daily
+            columns:
+              - column:
+                  name: bucket_date
+              - column:
+                  name: source_type
+              - column:
+                  name: source_id
+              - column:
+                  name: ownership_mode
+
+  - changeSet:
+      id: v61.eiQu2a
+      author: johnswanson
+      comment: Add source_metric_daily aggregation index
+      changes:
+        - createIndex:
+            indexName: idx_source_metric_daily_agg
+            tableName: source_metric_daily
+            columns:
+              - column:
+                  name: agg_type
+              - column:
+                  name: agg_field_id
+
+  - changeSet:
+      id: v61.eeQu6e
+      author: johnswanson
+      comment: Add source_dimension_daily bucket/source index
+      changes:
+        - createIndex:
+            indexName: idx_source_dimension_daily_bucket_source
+            tableName: source_dimension_daily
+            columns:
+              - column:
+                  name: bucket_date
+              - column:
+                  name: source_type
+              - column:
+                  name: source_id
+              - column:
+                  name: ownership_mode
+
+  - changeSet:
+      id: v61.mohCo0
+      author: johnswanson
+      comment: Add source_dimension_daily field index
+      changes:
+        - createIndex:
+            indexName: idx_source_dimension_daily_field
+            tableName: source_dimension_daily
+            columns:
+              - column:
+                  name: field_id
+
+  - changeSet:
+      id: v61.Ye2eib
+      author: johnswanson
+      comment: Add source_dimension_profile_daily bucket/source index
+      changes:
+        - createIndex:
+            indexName: idx_source_dimension_profile_daily_bucket_source
+            tableName: source_dimension_profile_daily
+            columns:
+              - column:
+                  name: bucket_date
+              - column:
+                  name: source_type
+              - column:
+                  name: source_id
+
+  - changeSet:
+      id: v61.ouZ0sh
+      author: johnswanson
+      comment: Add source_dimension_profile_daily field/observation index
+      changes:
+        - createIndex:
+            indexName: idx_source_dimension_profile_daily_field
+            tableName: source_dimension_profile_daily
+            columns:
+              - column:
+                  name: field_id
+              - column:
+                  name: observation_type
