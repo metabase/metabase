@@ -3,9 +3,13 @@
   (:require
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
+   [metabase-enterprise.data-complexity-score.settings :as settings]
+   [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]))
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.util :as m.util]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,11 +31,11 @@
    [:total [:maybe nat-int?]]
    [:components
     [:map
-     [:entity-count      SubScore]
-     [:name-collisions   SubScore]
-     [:synonym-pairs     SubScore]
-     [:field-count       SubScore]
-     [:repeated-measures SubScore]]]])
+     [:entity_count      SubScore]
+     [:name_collisions   SubScore]
+     [:synonym_pairs     SubScore]
+     [:field_count       SubScore]
+     [:repeated_measures SubScore]]]])
 
 (def ^:private EmbeddingModelMeta
   "Identifies the embedding model backing the synonym calculations, so benchmark consumers can pin to it.
@@ -39,7 +43,7 @@
   [:maybe
    [:map
     [:provider   string?]
-    [:model-name string?]]])
+    [:model_name string?]]])
 
 (def ^:private ComplexityScoresResponse
   "Full response body for `GET /api/ee/data-complexity-score/complexity`."
@@ -49,9 +53,9 @@
    [:metabot  Catalog]
    [:meta
     [:map
-     [:formula-version   pos-int?]
-     [:synonym-threshold number?]
-     [:embedding-model {:optional true} EmbeddingModelMeta]]]])
+     [:formula_version   pos-int?]
+     [:synonym_threshold number?]
+     [:embedding_model {:optional true} EmbeddingModelMeta]]]])
 
 ;; Per-JVM single-flight guard for the /complexity endpoint. Each scoring run walks the entire
 ;; app-db catalog and emits Snowplow events, so concurrent superuser requests on the same node
@@ -65,7 +69,15 @@
   (java.util.concurrent.atomic.AtomicBoolean. false))
 
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
-  "Return the current Data Complexity Score for this instance.
+  "Return the most recently stored Data Complexity Score for this instance.
+  Superuser-only."
+  [_route _query _body]
+  (api/check-superuser)
+  (api/check-404 (some-> (data-complexity-score/latest-score)
+                         m.util/deep-snake-keys)))
+
+(api.macros/defendpoint :post "/complexity/refresh" :- ComplexityScoresResponse
+  "Run the Data Complexity Score job now, persist the fresh snapshot, and return it.
   Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent
   requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db
   catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered
@@ -75,7 +87,16 @@
   (when-not (.compareAndSet api-scoring-running? false true)
     (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
   (try
-    (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
+    (let [fingerprint (task.complexity-score/current-fingerprint)
+          result      (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
+      (data-complexity-score/record-score! fingerprint result)
+      ;; Advance the last-published fingerprint iff Snowplow actually accepted the event — mirrors
+      ;; the scheduled path's gate in `task.complexity-score/run-scoring!`. Without this, a
+      ;; superuser-triggered refresh leaves the setting stale and the next boot would redundantly
+      ;; re-score even though a valid snapshot was just persisted.
+      (when (::complexity/snowplow-published? (meta result))
+        (settings/data-complexity-scoring-last-fingerprint! fingerprint))
+      (m.util/deep-snake-keys result))
     (finally
       (.set api-scoring-running? false))))
 

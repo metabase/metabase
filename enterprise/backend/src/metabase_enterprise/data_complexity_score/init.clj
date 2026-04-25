@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.data-complexity-score.settings]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
+   [metabase-enterprise.data-complexity-score.task.complexity-score-trimmer]
    [metabase.startup.core :as startup]
    [metabase.util.quick-task :as quick-task]))
 
