@@ -30,24 +30,25 @@ runs:
         restore-keys: |
           ${{ steps.get-cache-keys.outputs.m2-restore-key }}
 
-    - name: Get bun cache directory
-      id: bun-cache
-      run: |
-        BUN_CACHE_DIR=$(bun pm cache)
-        echo "Bun cache directory: $BUN_CACHE_DIR"
-        echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
-      shell: bash
+    # TEMPORARILY COMMENTED OUT to test bun install without cache
+    # - name: Get bun cache directory
+    #   id: bun-cache
+    #   run: |
+    #     BUN_CACHE_DIR=$(bun pm cache)
+    #     echo "Bun cache directory: $BUN_CACHE_DIR"
+    #     echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
+    #   shell: bash
 
-    - name: Restore node_modules cache
-      uses: actions/cache/restore@v4
-      id: node-modules-cache
-      with:
-        path: |
-          ${{ steps.bun-cache.outputs.dir }}
-          node_modules
-        key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
-        restore-keys: |
-          ${{ steps.get-cache-keys.outputs.node-restore-key }}
+    # - name: Restore node_modules cache
+    #   uses: actions/cache/restore@v4
+    #   id: node-modules-cache
+    #   with:
+    #     path: |
+    #       ${{ steps.bun-cache.outputs.dir }}
+    #       node_modules
+    #     key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+    #     restore-keys: |
+    #       ${{ steps.get-cache-keys.outputs.node-restore-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
