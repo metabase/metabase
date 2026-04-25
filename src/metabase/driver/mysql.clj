@@ -489,7 +489,7 @@
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
-      (keyword (driver-api/qp.add.source-alias opts))
+      (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
 
       :else
       (perf/postwalk #(if (h2x/identifier? %)

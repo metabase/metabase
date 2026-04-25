@@ -768,7 +768,7 @@
       (driver-api/json-field? stored-field)
       (if (or (::sql.qp/forced-alias opts)
               (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
-        (keyword (driver-api/qp.add.source-alias opts))
+        (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
