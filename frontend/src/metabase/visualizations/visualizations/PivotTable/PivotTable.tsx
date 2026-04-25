@@ -31,6 +31,8 @@ import {
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/visualizations/lib/data_grid";
+
+import { transposePivot } from "./transpose";
 import {
   getDefaultSize,
   getMinSize,
@@ -188,7 +190,13 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       }
 
       try {
-        return multiLevelPivot(data, settings);
+        const result = multiLevelPivot(data, settings);
+        if (!result) {
+          return null;
+        }
+        return settings["pivot.transpose"]
+          ? transposePivot(result)
+          : result;
       } catch (e) {
         console.warn(e);
       }
