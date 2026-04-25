@@ -885,11 +885,14 @@
 
 (deftest refingerprint-field-test
   (testing "POST /api/field/:id/refingerprint"
-    (testing "It should return success"
+    (testing "It should return success and actually call refingerprint-field!"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
-          (is (= {:status "success"}
-                 (mt/user-http-request :crowberto :post 200 (format "field/%d/refingerprint" field-id)))))))
+        (let [called? (atom false)]
+          (with-redefs [quick-task/submit-task! (fn [task] (task))
+                        sync/refingerprint-field! (fn [_field] (reset! called? true))]
+            (is (= {:status "success"}
+                   (mt/user-http-request :crowberto :post 200 (format "field/%d/refingerprint" field-id))))
+            (is @called? "refingerprint-field! should have been called")))))
 
     (testing "It should return 404 for non-existent field"
       (is (= "Not found."

@@ -1370,11 +1370,14 @@
 
 (deftest refingerprint-table-test
   (testing "POST /api/table/:id/refingerprint"
-    (testing "It should return success"
+    (testing "It should return success and actually call refingerprint-table!"
       (mt/with-temp [:model/Table {table-id :id} {}]
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
-          (is (= {:status "success"}
-                 (mt/user-http-request :crowberto :post 200 (format "table/%d/refingerprint" table-id)))))))
+        (let [called? (atom false)]
+          (with-redefs [quick-task/submit-task! (fn [task] (task))
+                        sync/refingerprint-table! (fn [_table] (reset! called? true))]
+            (is (= {:status "success"}
+                   (mt/user-http-request :crowberto :post 200 (format "table/%d/refingerprint" table-id))))
+            (is @called? "refingerprint-table! should have been called")))))
 
     (testing "It should return 404 for non-existent table"
       (is (= "Not found."

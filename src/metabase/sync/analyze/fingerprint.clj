@@ -261,13 +261,13 @@
                                  (fn [stats-acc]
                                    (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
 
-(mu/defn refingerprint-field
+(mu/defn refingerprint-field!
   "Refingerprint a field"
   [field :- i/FieldInstance]
   (let [table (field/table field)]
     (fingerprint-fields! table [field])))
 
-(mu/defn refingerprint-table
+(mu/defn refingerprint-table!
   "Refingerprint all fields in a table"
   [table :- i/TableInstance]
   (binding [*refingerprint?* true]
