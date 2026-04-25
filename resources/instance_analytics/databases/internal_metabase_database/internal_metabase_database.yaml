@@ -2,5 +2,5 @@ name: Internal Metabase Database
 creator_id: internal@metabase.com
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}
-initial_sync_status: complete
+initial_sync_status: incomplete
 is_audit: true
