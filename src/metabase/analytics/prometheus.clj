@@ -508,6 +508,18 @@
                           :labels [:stage-label]
                           ;; 10 -> 10M rows
                           :buckets [10 100 1000 10000 100000 1000000 10000000]})
+   ;; Transform cancelation observability
+   (prometheus/counter :metabase-transforms/cancelation-requests
+                       {:description "Number of transform run cancelation requests issued, labeled by status (ok, error)."
+                        :labels [:status]})
+   (prometheus/counter :metabase-transforms/cancelation-completed
+                       {:description "Number of transform run cancelations that completed, labeled by outcome (success, timeout, error)."
+                        :labels [:outcome]})
+   (prometheus/histogram :metabase-transforms/cancelation-latency-ms
+                         {:description "Duration in milliseconds from a cancelation request to its completion, labeled by outcome."
+                          :labels [:outcome]
+                          ;; 20s poll loop + 10min timeout sweep; buckets bracket both tails.
+                          :buckets [100 500 1000 5000 10000 20000 30000 60000 120000 300000 600000]})
    ;; Python-transform specific metrics
    (prometheus/histogram :metabase-transforms/python-api-call-duration-ms
                          {:description "Duration of Python runner API calls."
