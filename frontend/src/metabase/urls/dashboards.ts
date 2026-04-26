@@ -2,6 +2,7 @@ import slugg from "slugg";
 
 import { isTransientCardId } from "metabase/common/utils/card";
 import { stringifyHashOptions } from "metabase/utils/browser";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -10,8 +11,6 @@ import type {
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
-
-import { utf8_to_b64url } from "../encoding";
 
 import { appendSlug } from "./utils";
 
