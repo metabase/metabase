@@ -143,7 +143,7 @@ export function EditorPanel({
                 </Flex>
               </UnstyledButton>
 
-              {moreColorsOpen && editor.hasAdditionalColorChanges && (
+              {editor.hasAdditionalColorChanges && (
                 <Button
                   variant="subtle"
                   size="compact-sm"
