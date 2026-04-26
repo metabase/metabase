@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
@@ -22,7 +21,6 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)
    (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
@@ -125,12 +123,9 @@
                             [:in [:lower :table_name]
                              (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
                            [:not-in [:lower :table_name]
-                            [:raw
-                             (str "("
-                                  (first (sql/format {:select [:index_name]
-                                                      :from   [[(t2/table-name :model/SearchIndexMetadata) :metadata]]
-                                                      :where  [:= :metadata.engine [:inline "appdb"]]}))
-                                  ")")]]]})))
+                            {:select [:%lower.index_name]
+                             :from   [(t2/table-name :model/SearchIndexMetadata)]
+                             :where  [:= :engine [:inline "appdb"]]}]]})))
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
@@ -142,7 +137,8 @@
         (t2/query (sql.helpers/drop-table table))
         (vswap! dropped conj table)
         ;; Deletion could fail if it races with other instances
-        (catch ExceptionInfo _)))
+        (catch Exception e
+          (log/warnf e "Failed to drop stale index %s" table))))
     (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
 
 (defn- ->db-type [t]
