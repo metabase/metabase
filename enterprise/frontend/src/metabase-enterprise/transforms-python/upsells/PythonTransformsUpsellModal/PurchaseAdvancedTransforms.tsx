@@ -3,30 +3,31 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
-import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
+import { Button, Stack, Text } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 import * as Urls from "metabase/utils/urls";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
+import type { ICloudAddOnProduct } from "metabase-types/api/store";
 
-const CAMPAIGN = "data-studio-python-transforms";
-const LOCATION = "data-studio-transforms";
+import { CAMPAIGN, LOCATION } from "./constants";
 
-type CloudPurchaseContentProps = {
-  billingPeriod: BillingPeriod;
+type PurchaseAdvancedTransformsProps = {
   handleModalClose: VoidFunction;
-  isTrialFlow: boolean;
-  pythonPrice: number;
+  addOn: ICloudAddOnProduct;
+  freeUnitsIncluded: boolean;
 };
 
-export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
-  const { billingPeriod, handleModalClose, isTrialFlow, pythonPrice } = props;
+export const PurchaseAdvancedTransforms = ({
+  handleModalClose,
+  addOn,
+  freeUnitsIncluded,
+}: PurchaseAdvancedTransformsProps) => {
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const { sendErrorToast } = useMetadataToasts();
-  const dueToday = isTrialFlow ? 0 : pythonPrice;
 
   const handleCloudPurchase = useCallback(async () => {
     trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
@@ -34,7 +35,7 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
     settingUpModalHandlers.open();
     try {
       await purchaseCloudAddOn({
-        product_type: "transforms-advanced",
+        product_type: "transforms-advanced-metered",
       }).unwrap();
       window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
     } catch {
@@ -51,36 +52,45 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
     sendErrorToast,
     settingUpModalHandlers,
   ]);
-  const billingPeriodLabel = billingPeriod === "monthly" ? t`month` : t`year`;
+
+  const freeUnitsStr =
+    addOn.free_units != null &&
+    freeUnitsIncluded &&
+    formatNumber(addOn.free_units, {
+      compact: true,
+      maximumFractionDigits: addOn.free_units % 1000 ? undefined : 0,
+    });
+  const perRunStr =
+    addOn.default_price_per_unit != null &&
+    `${addOn.default_price_per_unit * 100}¢`;
 
   return (
     <>
       <Stack gap="lg">
-        <Card withBorder p="md" radius="md">
-          <Flex direction="column" style={{ flex: 1 }}>
-            <Group justify="space-between" align="flex-start">
-              <Text fw="bold">{t`SQL + Python`}</Text>
-              <Text fw="bold">{`$${pythonPrice} / ${billingPeriodLabel}`}</Text>
-            </Group>
-            <Text size="sm" c="text-secondary" mt="sm">
-              {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
+        {perRunStr &&
+          (freeUnitsStr ? (
+            <Text fw="bold" lh="sm">
+              {t`${freeUnitsStr} advanced transforms included, then ${perRunStr} per transform run.`}
             </Text>
-          </Flex>
-        </Card>
-        <Divider />
-        <Group justify="space-between" mb="sm">
-          <Text c="text-secondary">{t`Due today:`}</Text>
-          <Text fw="bold">{`$${dueToday}`}</Text>
-        </Group>
-        <Button
-          variant="filled"
-          size="md"
-          onClick={handleCloudPurchase}
-          loading={isPurchasing}
-          fullWidth
-        >
-          {isTrialFlow ? t`Add to trial` : t`Confirm purchase`}
-        </Button>
+          ) : (
+            <Text fw="bold" lh="sm">
+              {t`You'll be charged ${perRunStr} per transform run.`}
+            </Text>
+          ))}
+        <div>
+          <Button
+            variant="filled"
+            size="md"
+            onClick={handleCloudPurchase}
+            loading={isPurchasing}
+            px="3rem"
+          >
+            {t`Upgrade`}
+          </Button>
+        </div>
+        <Text fz="sm" c="text-secondary" lh="md">
+          {t`By clicking upgrade, you agree to be charged in accordance with our terms of service.`}
+        </Text>
       </Stack>
       <TransformsSettingUpModal
         opened={settingUpModalOpened}

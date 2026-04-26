@@ -11,16 +11,11 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { mockAdvancedTransformsAddOn } from "metabase-types/api/mocks/add-ons";
 
-import { CloudPurchaseContent } from "./CloudPurchaseContent";
+import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
 
-const setup = ({
-  isTrialFlow,
-  pythonPrice = 250,
-}: {
-  isTrialFlow: boolean;
-  pythonPrice?: number;
-}) => {
+const setup = () => {
   const handleModalClose = jest.fn();
 
   const settings = createMockSettings({
@@ -39,11 +34,10 @@ const setup = ({
   setupPropertiesEndpoints(settings);
 
   renderWithProviders(
-    <CloudPurchaseContent
-      billingPeriod="yearly"
+    <PurchaseAdvancedTransforms
       handleModalClose={handleModalClose}
-      isTrialFlow={isTrialFlow}
-      pythonPrice={pythonPrice}
+      addOn={mockAdvancedTransformsAddOn}
+      freeUnitsIncluded
     />,
     {
       storeInitialState: state,
@@ -53,22 +47,9 @@ const setup = ({
   return { handleModalClose };
 };
 
-describe("CloudPurchaseContent", () => {
+describe("PurchaseAdvancedTransforms", () => {
   afterEach(() => {
     jest.restoreAllMocks();
-  });
-
-  it("shows due today as $0 in trial flow", () => {
-    setup({
-      isTrialFlow: true,
-      pythonPrice: 250,
-    });
-
-    expect(screen.getByText("Due today:")).toBeInTheDocument();
-    expect(screen.getByText("$0")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Add to trial" }),
-    ).toBeInTheDocument();
   });
 
   it("shows setting up modal while purchase is in progress", async () => {
@@ -78,18 +59,13 @@ describe("CloudPurchaseContent", () => {
     });
 
     fetchMock.post(
-      "path:/api/ee/cloud-add-ons/transforms-advanced",
+      "path:/api/ee/cloud-add-ons/transforms-advanced-metered",
       pendingResponse,
     );
 
-    setup({
-      isTrialFlow: false,
-      pythonPrice: 250,
-    });
+    setup();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Confirm purchase" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Upgrade" }));
 
     // While the request is in-flight, the setting up modal should be visible
     expect(
@@ -103,16 +79,14 @@ describe("CloudPurchaseContent", () => {
   });
 
   it("calls the API and closes parent modal on successful purchase", async () => {
-    fetchMock.post("path:/api/ee/cloud-add-ons/transforms-advanced", 200);
-
-    const { handleModalClose } = setup({
-      isTrialFlow: false,
-      pythonPrice: 250,
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Confirm purchase" }),
+    fetchMock.post(
+      "path:/api/ee/cloud-add-ons/transforms-advanced-metered",
+      200,
     );
+
+    const { handleModalClose } = setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Upgrade" }));
 
     await waitFor(() => {
       expect(
@@ -120,8 +94,9 @@ describe("CloudPurchaseContent", () => {
           .calls()
           .some(
             (call) =>
-              call.url.endsWith("/api/ee/cloud-add-ons/transforms-advanced") &&
-              call.options.method === "POST",
+              call.url.endsWith(
+                "/api/ee/cloud-add-ons/transforms-advanced-metered",
+              ) && call.options.method === "POST",
           ),
       ).toBe(true);
     });
@@ -133,16 +108,14 @@ describe("CloudPurchaseContent", () => {
   });
 
   it("closes setting up modal and parent modal on error", async () => {
-    fetchMock.post("path:/api/ee/cloud-add-ons/transforms-advanced", 500);
-
-    const { handleModalClose } = setup({
-      isTrialFlow: false,
-      pythonPrice: 250,
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Confirm purchase" }),
+    fetchMock.post(
+      "path:/api/ee/cloud-add-ons/transforms-advanced-metered",
+      500,
     );
+
+    const { handleModalClose } = setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Upgrade" }));
 
     // After error, finally block closes the parent modal
     await waitFor(() => {

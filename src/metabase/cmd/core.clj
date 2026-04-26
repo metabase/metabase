@@ -14,7 +14,7 @@
 
   You can see what commands are available by running the command `help`. This command uses the docstrings and arglists
   associated with each command's entrypoint function to generate descriptions for each command."
-  (:refer-clojure :exclude [load import])
+  (:refer-clojure :exclude [import])
   (:require
    [clojure.string :as str]
    [clojure.tools.cli :as cli]

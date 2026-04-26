@@ -7,9 +7,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api-keys.core :as api-key]
-   [metabase.api.common
-    :as api
-    :refer [*current-user-id*]]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
@@ -173,6 +171,11 @@
   []
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
+
+(defn has-remote-synced-collection?
+  "Return true if any collections are marked remote-sync"
+  []
+  (pos-int? (t2/count :model/Collection :is_remote_synced true)))
 
 (defn library-collection
   "Get the 'library' collection, if it exists."
@@ -566,9 +569,8 @@
 (mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
   "Is `collection` a Tenant Collection, or a descendant of one?"
   [collection :- CollectionWithNamespace]
-  (boolean
-   ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
-   (= (some-> (:namespace collection) name) "tenant-specific")))
+  ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
+  (= (some-> (:namespace collection) name) "tenant-specific"))
 
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
@@ -1075,7 +1077,7 @@
                        ;; cluttered with Personal Collections belonging to other users
                        [:or
                         [:= :personal_owner_id nil]
-                        [:= :personal_owner_id *current-user-id*]]
+                        [:= :personal_owner_id api/*current-user-id*]]
                        additional-honeysql-where-clauses)})
    []))
 

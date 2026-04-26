@@ -15172,6 +15172,78 @@
         "tags" : [ "/api/analytics" ]
       }
     },
+    "/api/analytics/internal" : {
+      "post" : {
+        "operationId" : "post-api-analytics-internal",
+        "summary" : "POST /api/analytics/internal",
+        "description" : "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "events" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "amount" : {
+                          "oneOf" : [ {
+                            "type" : "number"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "labels" : {
+                          "oneOf" : [ {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "type" : "string"
+                            }
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "metric" : {
+                          "type" : "string"
+                        },
+                        "op" : {
+                          "type" : "string",
+                          "enum" : [ "inc", "dec", "set", "observe", "clear" ]
+                        }
+                      },
+                      "required" : [ "op", "metric" ]
+                    }
+                  }
+                },
+                "required" : [ "events" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/analytics" ]
+      }
+    },
     "/api/api-key" : {
       "post" : {
         "operationId" : "post-api-api-key",
