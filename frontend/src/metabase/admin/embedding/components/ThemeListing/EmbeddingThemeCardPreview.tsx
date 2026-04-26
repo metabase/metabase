@@ -89,6 +89,27 @@ export const EmbeddingThemeCardPreview = ({
           {"Abc"}
         </text>
 
+        <g>
+          <rect
+            x="85"
+            y="30"
+            width="56"
+            height="20"
+            rx="4"
+            fill={colorOf("brand")}
+          />
+          <text
+            x="113"
+            y="44"
+            fill="#FFFFFF"
+            fontSize="11"
+            fontWeight="600"
+            textAnchor="middle"
+          >
+            {"Button"}
+          </text>
+        </g>
+
         <rect
           x="28"
           y="69"
