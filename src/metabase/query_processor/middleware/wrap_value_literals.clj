@@ -227,7 +227,7 @@
 
 (defn- wrap-value-literals-in-clause
   [query path clause]
-  (lib.util.match/match-lite clause
+  (lib.util.match/match-one clause
     ;; two literals
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
     (let [x-type (lib.schema.expression/type-of-resolved x)
@@ -282,7 +282,7 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (lib.util.match/match-lite maybe-value-form
+  (lib.util.match/match-one maybe-value-form
     [:value x & _] x
     _              maybe-value-form))
 

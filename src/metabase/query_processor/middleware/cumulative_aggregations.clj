@@ -40,7 +40,7 @@
         (map not= coll-1 coll-2)))
 
 (defn- update-clause [clause]
-  (lib.util.match/match-lite clause
+  (lib.util.match/match-one clause
     ;; cumulative count doesn't necessarily have a field-id arg
     [:cum-count opts]       [:count opts]
     [:cum-count opts field] [:count opts field]

@@ -40,7 +40,7 @@
 ;;; I guess we probably want this to work on join conditions as well as normal stage filters.
 (defn- auto-parse-filter-values-in-clause
   [_query _path-type _path clause]
-  (lib.util.match/match-lite clause
+  (lib.util.match/match-one clause
     [:value
      (:and opts {:effective-type (et :guard (and et (not (isa? et :type/Text))))})
      (v :guard string?)]

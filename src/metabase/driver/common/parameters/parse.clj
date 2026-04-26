@@ -23,7 +23,7 @@
    (lib.schema.common/instance-of-class Optional)])
 
 (defn- ->param [value]
-  (lib.util.match/match-lite value
+  (lib.util.match/match-one value
     (s :guard string?)
     s
 

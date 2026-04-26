@@ -1242,7 +1242,7 @@
 
 (defn- export-mbql-ref
   [mbql]
-  (lib.util.match/replace-lite (normalize-mbql-ref mbql)
+  (lib.util.match/replace (normalize-mbql-ref mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (export-mbql-map opts) (*export-field-fk* id)]
@@ -1321,7 +1321,7 @@
 
 (defn- import-mbql-update-refs
   [entity]
-  (lib.util.match/replace-lite entity
+  (lib.util.match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
@@ -1353,7 +1353,7 @@
     [:measure (*import-fk* entity-id 'Measure)]))
 
 (defn- import-mbql-update-maps [x]
-  (lib.util.match/replace-lite x
+  (lib.util.match/replace x
     (m :guard map?)
     (import-mbql-map m)))
 
@@ -1383,7 +1383,7 @@
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
-  (lib.util.match/match-lite entity
+  (lib.util.match/match-one entity
     [#{:field "field"} (opts :guard map?) (id :guard vector?)]
     (into #{(field->path id)} (mbql-deps-map opts))
 
@@ -1698,7 +1698,7 @@
                      id))}))))
 
 (defn- import-visualizations [entity]
-  (lib.util.match/replace-lite entity
+  (lib.util.match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-visualizations opts) (*import-field-fk* fully-qualified-name)]
 

@@ -39,7 +39,7 @@
                                        :display                :line
                                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                 :graph.metrics    ["count"]}}]
-        (is (some? (lib.util.match/match-lite
+        (is (some? (lib.util.match/match-one
                      (render-pulse-card card)
                      [:img _] true)))))))
 
@@ -293,7 +293,7 @@
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))]
-          (is (lib.util.match/match-lite rendered-card-content
+          (is (lib.util.match/match-one rendered-card-content
                 [:a {:href (href :guard (= href (format "https://mb.com/question/%d" (:id card))))} "A Card"]
                 true)))))))
 

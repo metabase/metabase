@@ -46,8 +46,8 @@
     (conj clause-parents k)
     clause-parents))
 
-(defn match-lite-in-collection
-  "Internal impl for `match-lite`. If `form` is a collection, call `match-fn` to recursively look for matches in it.
+(defn match-one-in-collection
+  "Internal impl for `match-one`. If `form` is a collection, call `match-fn` to recursively look for matches in it.
   `clause-parents` is a sequence of keywords naming the parent top-level keys and clauses of the match."
   [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}
@@ -65,8 +65,8 @@
                   (reduced match))))
             nil form)))
 
-(defn replace-lite-in-collection
-  "Internal impl for `replace-lite`. Recursively replace values in a collection using a `replace-fn`."
+(defn replace-in-collection
+  "Internal impl for `replace`. Recursively replace values in a collection using a `replace-fn`."
   [replace-fn form clause-parents]
   (cond
     (map? form)

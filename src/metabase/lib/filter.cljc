@@ -130,7 +130,7 @@
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year
                 :get-year :year-of-era}]
-    (lib.util.match/match-lite expr
+    (lib.util.match/match-one expr
       [(op :guard #{:= :in :!= :not-in}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} {1} {2}" (->unbucketed-display-name a) (if (#{:= :in} op) "is at" "excludes the hour of")
                 (u.time/format-unit b :hour-of-day))
@@ -238,7 +238,7 @@
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
-    (lib.util.match/match-lite expr
+    (lib.util.match/match-one expr
       [:< _ (x :guard temporal?) (y :guard string?)]
       ((binary-filter-display-fns :is-before)                   (->display-name x) (->temporal-name y))
 
@@ -266,7 +266,7 @@
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)]
-    (lib.util.match/match-lite expr
+    (lib.util.match/match-one expr
       [:between _ x (y :guard string?) (z :guard string?)]
       ((binary-filter-display-fns :is)
        (->unbucketed-display-name x)

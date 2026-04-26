@@ -284,7 +284,7 @@
             (lib.walk/walk-clauses
              query
              (fn [query _path-type _stage-or-join-path clause]
-               (lib.util.match/match-lite clause
+               (lib.util.match/match-one clause
                  [:field opts id]
                  (let [col (lib.metadata/field query id)]
                    [:field (merge (select-keys col [:base-type]) opts) (:name col)])

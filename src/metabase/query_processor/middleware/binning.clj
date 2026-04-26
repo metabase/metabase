@@ -99,7 +99,7 @@
      query
      (fn [query path-type path clause]
        (when (= path-type :lib.walk/stage)
-         (lib.util.match/match-lite clause
+         (lib.util.match/match-one clause
            ;; first update all the `:binning` options
            [:field {:binning &truthy} _id-or-name]
            (update-binned-field query path (path->field-id-or-name->filters path) clause)

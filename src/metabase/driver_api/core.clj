@@ -102,9 +102,9 @@
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
  lib.types.isa/temporal?
- lib.util.match/match-lite
+ lib.util.match/match-one
  lib.util.match/match-many
- lib.util.match/replace-lite
+ lib.util.match/replace
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider

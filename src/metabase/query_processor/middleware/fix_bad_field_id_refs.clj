@@ -18,7 +18,7 @@
   (let [first-stage-path (conj (pop (vec path)) 0)
         source-table     (:source-table (get-in query first-stage-path))
         update-fields    (fn update-fields [form]
-                           (lib.util.match/replace-lite form
+                           (lib.util.match/replace form
                              ;; don't recurse into joins. But should we update conditions tho.
                              {:lib/type :mbql/join}
                              (update &match :conditions update-fields)

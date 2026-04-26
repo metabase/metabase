@@ -11,7 +11,7 @@
 (defn- desugar*
   [stage-or-join]
   (letfn [(desugar** [x]
-            (lib.util.match/replace-lite x
+            (lib.util.match/replace x
               (clause :guard lib/clause?)
               (lib/desugar-filter-clause clause)))]
     (merge

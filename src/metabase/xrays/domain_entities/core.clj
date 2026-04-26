@@ -61,7 +61,7 @@
   [bindings :- Bindings
    source   :- SourceName
    obj]
-  (lib.util.match/replace-lite obj
+  (lib.util.match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))

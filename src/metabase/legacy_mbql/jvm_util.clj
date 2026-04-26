@@ -10,7 +10,7 @@
   "Unwrap host and domain."
   {:deprecated "0.57.0"}
   [expression]
-  (lib.util.match/replace-lite
+  (lib.util.match/replace
     expression
     [:host column]
     (&recur [:regex-match-first column (str lib.filter.desugar.jvm/host-regex)])

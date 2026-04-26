@@ -115,7 +115,7 @@
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
     ;; *  do not autobucket clauses that are updating the time interval
-    (lib.util.match/match-lite x
+    (lib.util.match/match-one x
       [#{:+ :-}
        _
        [#{:expression :field} _ _]
@@ -164,7 +164,7 @@
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
-            (lib.util.match/replace-lite x
+            (lib.util.match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
               (x :guard (should-not-be-autobucketed? query stage-path x))
               &match

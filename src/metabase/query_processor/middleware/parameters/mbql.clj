@@ -77,7 +77,7 @@
   [query                                                             :- ::lib.schema/query
    stage-path                                                        :- ::lib.walk/path
    {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
-  (let [a-ref (lib.util.match/match-lite target
+  (let [a-ref (lib.util.match/match-one target
                 [#{:field :expression} & _]
                 (lib/->mbql5 &match))]
     (cond
@@ -116,7 +116,7 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace-lite stage
+  (lib.util.match/replace stage
     [#{:field :expression}
      (opts :guard (= (:temporal-unit opts) temporal-unit))
      (id-or-name :guard (= id-or-name target-column))]
@@ -154,7 +154,7 @@
 
         ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
         ;; then replaced it with an MBQL source card.
-        (lib.util.match/match-lite target [:template-tag & _] &match)
+        (lib.util.match/match-one target [:template-tag & _] &match)
         (do
           (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
                      (pr-str target)

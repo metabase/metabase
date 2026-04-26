@@ -119,7 +119,7 @@
   (-> join
       (assoc :alias new-alias)
       (update :conditions lib.walk/walk-clauses* (fn [clause]
-                                                   (lib.util.match/match-lite clause
+                                                   (lib.util.match/match-one clause
                                                      [:field {:join-alias (ja :guard (= ja join-alias))} _id-or-name]
                                                      (lib/update-options &match assoc :join-alias new-alias))))))
 
@@ -129,7 +129,7 @@
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite clause
+                                    (lib.util.match/match-one clause
                                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
@@ -180,7 +180,7 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
-        (let [stage' (lib.util.match/replace-lite stage
+        (let [stage' (lib.util.match/replace stage
                        [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
@@ -374,7 +374,7 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
-             (lib.util.match/match-lite stage
+             (lib.util.match/match-one stage
                [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name] true))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))

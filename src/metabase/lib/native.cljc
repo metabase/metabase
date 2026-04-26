@@ -49,7 +49,7 @@
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
            [current & more] parsed]
-      (let [[found more] (lib.util.match/match-lite current
+      (let [[found more] (lib.util.match/match-one current
                            (_ :guard string?) [found more]
 
                            {:type ::lib.parse/param, :name tag-name}

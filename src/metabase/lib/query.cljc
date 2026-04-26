@@ -134,7 +134,7 @@
                          id))]
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
-        (lib.util.match/replace-lite x
+        (lib.util.match/replace x
           [:field
            (options :guard (and (map? options) (not (and (:base-type options)
                                                          (:effective-type options)))))
@@ -228,7 +228,7 @@
            (mapv (fn [[stage-number stage]]
                    (-> stage
                        (add-types-to-fields metadata-provider)
-                       (lib.util.match/replace-lite
+                       (lib.util.match/replace
                          [:expression
                           (opts :guard (and (map? opts) (not (and (:base-type opts)
                                                                   (:effective-type opts)))))

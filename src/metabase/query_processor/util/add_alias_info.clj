@@ -217,7 +217,7 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace-lite stage
+  (lib.util.match/replace stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (some #{:lib/stage-metadata :joins} &parents))
     &match
@@ -268,7 +268,7 @@
    by-source-alias    :- [:map-of :string [:sequential ::lib.schema.metadata/column]]
    by-expression-name :- [:map-of :string ::lib.schema.metadata/column]
    stage              :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace-lite stage
+  (lib.util.match/replace stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (some #{:lib/stage-metadata :joins ::resolved} &parents))
     &match
@@ -410,7 +410,7 @@
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref
-                            (lib.util.match/replace-lite conditions
+                            (lib.util.match/replace conditions
                               [:field opts _id-or-name]
                               (if (= (:join-alias opts) (:alias join))
                                 ;; a field ref that comes from THIS join needs to get the desired alias returned

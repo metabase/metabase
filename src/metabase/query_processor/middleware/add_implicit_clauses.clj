@@ -61,7 +61,7 @@
           (lib.walk/apply-f-for-stage-at-path updated-stage (assoc-in query path stage) path))))))
 
 (defn- has-window-function-aggregations? [stage]
-  (or (lib.util.match/match-lite (mapcat stage [:aggregation :expressions])
+  (or (lib.util.match/match-one (mapcat stage [:aggregation :expressions])
         [#{:cum-sum :cum-count :offset} & _]
         true)
       ;; FIXME

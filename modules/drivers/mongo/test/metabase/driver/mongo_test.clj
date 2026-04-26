@@ -674,7 +674,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (nil?
-           (lib.util.match/match-lite
+           (lib.util.match/match-one
              (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
                   :dashcards
                   (mapcat (comp :breakout :query :dataset_query :card)))

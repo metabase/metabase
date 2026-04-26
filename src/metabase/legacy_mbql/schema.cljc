@@ -947,7 +947,7 @@
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
-  (lib.util.match/replace-lite filter-clause
+  (lib.util.match/replace filter-clause
     [:!=
      [:field id-or-name (opts :guard (= (:temporal-unit opts) :hour-of-day))]
      & (args :guard (every? number? args))]
@@ -1011,7 +1011,7 @@
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
   [clause]
-  (lib.util.match/replace-lite clause
+  (lib.util.match/replace clause
     [:between
      [:+
       field

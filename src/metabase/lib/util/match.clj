@@ -105,7 +105,7 @@
                (when predicate
                  ;; Make sure that the predicate is an invocation snippet, not a lambda as in regular `match` syntax.
                  (when (and (seq? predicate) ('#{fn fn*} (first predicate)))
-                   (throw (ex-info "match-lite :guard predicate must be an invocation form or a symbol, not a lambda" {:predicate predicate})))
+                   (throw (ex-info "match-one :guard predicate must be an invocation form or a symbol, not a lambda" {:predicate predicate})))
                  (vswap! conditions conj (with-meta (if (and (seq? predicate) (not= (first predicate) 'fn*))
                                                       predicate
                                                       (list predicate s))
@@ -222,15 +222,15 @@
        form))
    form))
 
-(defn- match-lite* [value clauses]
+(defn- match-one* [value clauses]
   (when (odd? (count clauses))
-    (throw (ex-info "match-lite requires even number of clauses" {})))
+    (throw (ex-info "match-one requires even number of clauses" {})))
   (let [pairs (partition 2 clauses)
         has-default? (= (first (last pairs)) '_)
         [pairs default] (if has-default?
                           [(butlast pairs) (second (last pairs))]
                           [pairs nil])
-        ;; match-lite is always recursive unless there is a default clause
+        ;; match-one is always recursive unless there is a default clause
         recursive? (not has-default?)
         ;; Search for &recur and &parents usage in clauses.
         contains-&recur? (contains-symbol? pairs '&recur)
@@ -243,7 +243,7 @@
                ~(expand-or-some
                  (cond-> [(process-clauses pairs '&match value-binding)]
                    (some? default) (conj default)
-                   recursive? (conj `(metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~'&match ~'&parents)))))]
+                   recursive? (conj `(metabase.lib.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))))]
     (if (or recursive? contains-&recur?)
       `((fn ~'&recur [~'&match ~'&parents]
           ~body)
@@ -252,18 +252,13 @@
         ~(when contains-&parents? []))
       body)))
 
-(defmacro match-lite
+(defmacro match-one
   "Pattern matching macro, simplified version of [[clojure.core.match]].
-
-  TODO (Sashko 2026-02-01): this macro should eventually supersede all cases of `match`.
-
-  NB: unlike previously used `lib.util.match/match`, this version doesn't support using `:tag` to match `[:tag & _]`.
-  You should write out the vector explicitly.
 
   Return a single thing that matches one of the match `clauses` inside `value`. If none of the clauses matched, return
   `nil`. Recurses through maps and sequences. A clause is a pair of a match pattern and a return expression. Usage:
 
-  (match-lite value
+  (match-one value
     pattern1 result1
     pattern2 result2
     ...)
@@ -292,23 +287,23 @@
   Examples:
 
     ;; keyword pattern
-    (match-lite {:fields [[:field 10 nil]]} :field) ; -> [:field 10 nil]
+    (match-one {:fields [[:field 10 nil]]} :field) ; -> [:field 10 nil]
 
     ;; set of keywords
-    (match-lite some-query #{:field :expression}) ; -> [:field 10 nil] or [:expression \"wow\"]
+    (match-one some-query #{:field :expression}) ; -> [:field 10 nil] or [:expression \"wow\"]
 
     ;; match any `:field` clause with two args (which should be all of them)
-    (match-lite some-query [:field _ _])
+    (match-one some-query [:field _ _])
 
-    ;; match-lite any `:field` clause with integer ID > 100
-    (match-lite some-query [:field (num :guard (and (integer? num) (> num 100)))]) ; -> [:field 200 nil]
+    ;; match-one any `:field` clause with integer ID > 100
+    (match-one some-query [:field (num :guard (and (integer? num) (> num 100)))]) ; -> [:field 200 nil]
 
     ;; symbol naming a predicate function
     ;; match anything that satisfies that predicate
-    (match-lite some-query integer?)
+    (match-one some-query integer?)
 
     ;; match anything with `_`
-    (match-lite 100 `_` :anything) ; -> :anything
+    (match-one 100 `_` :anything) ; -> :anything
 
   The return expresion can use any of the bindings established in the pattern to compute what should be returned.
   `nil` is a legal return value and prevents other clauses from being checked and matched. The following special forms
@@ -321,19 +316,19 @@
   Examples:
 
     ;; find vector with exactly 3 items and multiply them
-    (match-lite [[[[[10 20 30]]]]] [_ _ _] (reduce * &match)) ; -> 6000
+    (match-one [[[[[10 20 30]]]]] [_ _ _] (reduce * &match)) ; -> 6000
 
     ;; returns [:div :a :href]
-    (match-lite [:div [:a {:href \"hello\"}]]
+    (match-one [:div [:a {:href \"hello\"}]]
       string? &parents)
 
     ;; find innermost :div
-    (match-lite [:div [:div [:div \"hello\"]]]
+    (match-one [:div [:div [:div \"hello\"]]]
       [:div (nested :guard vector?)] (&recur nested)
       [:div & _]                     &match)
     ; -> [:div \"hello\"]"
   [value & clauses]
-  (match-lite* value clauses))
+  (match-one* value clauses))
 
 (defn- match-many* [value clauses]
   (when (odd? (count clauses))
@@ -343,7 +338,7 @@
         [pairs default] (if has-default?
                           [(butlast pairs) (second (last pairs))]
                           [pairs nil])
-        ;; match-lite is always recursive unless there is a default clause
+        ;; match-one is always recursive unless there is a default clause
         recursive? (not has-default?)
         ;; Search for &recur and &parents usage in clauses.
         contains-&recur? (contains-symbol? pairs '&recur)
@@ -362,16 +357,16 @@
             ;; wind up in results.
             (do (some->> (metabase.lib.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
                 nil)
-            (metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~'&match ~'&parents)))
+            (metabase.lib.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))
         ~value
         ~(when contains-&parents? []))
        (perf/not-empty @acc#))))
 
 (defmacro match-many
-  "Pattern matching macro, returns multiple things that match one of the `clauses` inside `value. See `match-lite` for
+  "Pattern matching macro, returns multiple things that match one of the `clauses` inside `value. See `match-one` for
   pattern and return expression syntax.
 
-  There are several important characteristics that make `match-many` behavior semantically different from `match-lite`:
+  There are several important characteristics that make `match-many` behavior semantically different from `match-one`:
 
   1. If one or more clauses matched, return a vector of the matched return values. If none of the clauses were
   matched, `nil` is returned instead of `[]`.
@@ -401,25 +396,25 @@
 ;;      (&match :guard (every-pred map? :source-table))
 ;;      (:source-table &match))
 
-(defmacro replace-lite
+(defmacro replace
   "Walk `form` recursively and replace all patterns matched with `match-lite` by the respective return expressions. The
   same pattern options are supported, and `&parents` and `&match` anaphors are available in the same way."
   [form & clauses]
   (let [replace-fn-symb (gensym "replace-")
         contains-&parents? (contains-symbol? clauses '&parents)]
     `((fn ~replace-fn-symb [~'&match ~'&parents]
-        (match-lite ~'&match
+        (match-one ~'&match
           ~@clauses
-          ~'_ (metabase.lib.util.match.impl/replace-lite-in-collection
+          ~'_ (metabase.lib.util.match.impl/replace-in-collection
                ~replace-fn-symb ~'&match ~(when contains-&parents?
                                             '&parents))))
       ~form
       ~(when contains-&parents? []))))
 
 (defmacro replace-in
-  "Like `replace-lite`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
+  "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
   {:style/indent :defn}
   [x ks & patterns-and-results]
-  `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace-lite x# ~@patterns-and-results))))
+  `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace x# ~@patterns-and-results))))
 
 ;; TODO - it would be useful to have something like a `replace-all` function as well

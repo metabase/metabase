@@ -141,7 +141,7 @@
 (mu/defn desugar-host-and-domain :- ::lib.schema.mbql-clause/clause
   "Unwrap host and domain."
   [expression :- ::lib.schema.mbql-clause/clause]
-  (lib.util.match/replace-lite expression
+  (lib.util.match/replace expression
     [:host opts expr]
     ;; TODO (Cam 8/18/25) -- seems weird that we don't support Regex literals in the regex clauses and have to call (str ...)
     (&recur [:regex-match-first opts expr (str host-regex)])

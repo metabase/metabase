@@ -231,9 +231,9 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match-lite
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match-one
                                     metabase.lib.util.match/match-many
-                                    metabase.lib.util.match/replace-lite]}                    ; TODO (cam): can we fix these?
+                                    metabase.lib.util.match/replace]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -249,17 +249,15 @@
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-    (metabase.lib.util.match/match-lite)
+    (metabase.lib.util.match/match-one)
     (metabase.lib.util.match/match-many)
     (metabase.lib.util.match/replace-in)
-    (metabase.lib.util.match/replace-lite)
+    (metabase.lib.util.match/replace)
     (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
-    (metabase.driver-api.core/match-lite)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
     (metabase.driver-api.core/replace-in)
-    (metabase.driver-api.core/replace-lite)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
     (metabase.util.regex/rx [opt])
     (metabase.util/prog1 [<>])

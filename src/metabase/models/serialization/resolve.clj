@@ -75,7 +75,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [resolver entity]
-  (lib.util.match/replace-lite entity
+  (lib.util.match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (mbql-fully-qualified-names->ids* resolver opts)
      (import-field-fk resolver fully-qualified-name)]
@@ -186,7 +186,7 @@
 
 (defn- mbql-id->fully-qualified-name
   [resolver mbql]
-  (lib.util.match/replace-lite (normalize mbql)
+  (lib.util.match/replace (normalize mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (mbql-id->fully-qualified-name resolver opts) (export-field-fk resolver id)]
@@ -224,7 +224,7 @@
   inside it into portable references."
   ([entity] (export-mbql *export-resolver* entity))
   ([resolver entity]
-   (lib.util.match/replace-lite entity
+   (lib.util.match/replace entity
      (_ :guard mbql-clause-tag)
      (mbql-id->fully-qualified-name resolver &match)
 
