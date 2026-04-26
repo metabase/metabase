@@ -47,8 +47,8 @@
                                            column-names))
        rest))
 
-(defn- ^Object ods-cell-typed-value
-  [^OdfTableCell cell]
+(defn- ods-cell-typed-value
+  ^Object [^OdfTableCell cell]
   (if (nil? cell)
     nil
     (let [s  (.getStringValue cell)
