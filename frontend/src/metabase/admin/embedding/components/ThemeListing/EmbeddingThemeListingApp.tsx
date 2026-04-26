@@ -8,8 +8,8 @@ import {
   useListEmbeddingThemesQuery,
 } from "metabase/api/embedding-theme";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 import { NewThemeCard } from "./NewThemeCard";
