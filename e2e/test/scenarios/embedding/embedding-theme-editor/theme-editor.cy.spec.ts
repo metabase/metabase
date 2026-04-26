@@ -155,6 +155,34 @@ describe(
       });
     });
 
+    it("can delete a theme that has unsaved changes without getting stuck on a 404", () => {
+      // Repro of a bug where deleting a dirty theme would trigger the
+      // unsaved-changes guard. The redirect to the theme list got blocked,
+      // leaving the user on the now-deleted theme's URL — which 404s once
+      // the GET cache is invalidated.
+      createThemeViaApi("Dirty delete").then((theme) => {
+        visitThemeEditor(theme.id);
+      });
+
+      cy.log("dirty the editor by renaming the theme");
+      cy.findByLabelText("Theme name").clear().type("Renamed but unsaved");
+
+      cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
+
+      cy.log("delete the theme");
+      cy.findByRole("button", { name: /Delete theme/ }).click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("button", { name: /Delete/ }).click();
+      });
+
+      H.undoToast().findByText("Theme deleted successfully").should("exist");
+
+      cy.log("should land on the themes listing — not 404 or leave-prompt");
+      cy.url().should("include", "/admin/embedding/themes");
+      cy.url().should("not.match", /\/themes\/\d+/);
+      H.main().findByText("We're a little lost...").should("not.exist");
+    });
+
     it("does not show the delete button when creating a new theme", () => {
       cy.visit("/admin/embedding/themes/new");
 
