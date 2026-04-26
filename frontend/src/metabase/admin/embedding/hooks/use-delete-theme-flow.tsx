@@ -16,6 +16,7 @@ export function useDeleteThemeFlow({
   const [deleteTheme] = useDeleteEmbeddingThemeMutation();
   const [sendToast] = useToast();
   const [themeToDelete, setThemeToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const requestDelete = (themeId: number) => setThemeToDelete(themeId);
   const cancelDelete = () => setThemeToDelete(null);
@@ -24,6 +25,9 @@ export function useDeleteThemeFlow({
     if (themeToDelete === null) {
       return;
     }
+    // Prevent the editor from rendering NotFound during the window between
+    // cache invalidation (when the GET refetches and 404s) and the redirect.
+    setIsDeleting(true);
     try {
       await deleteTheme(themeToDelete).unwrap();
       sendToast({ message: t`Theme deleted successfully`, icon: "check" });
@@ -32,6 +36,7 @@ export function useDeleteThemeFlow({
     } catch (error) {
       console.error("Failed to delete theme:", error);
       sendToast({ message: t`Failed to delete theme`, icon: "warning" });
+      setIsDeleting(false);
     }
   };
 
@@ -43,5 +48,5 @@ export function useDeleteThemeFlow({
     />
   );
 
-  return { requestDelete, modal };
+  return { requestDelete, modal, isDeleting };
 }

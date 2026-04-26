@@ -7,8 +7,8 @@ import { useEmbeddingThemeEditor } from "metabase/admin/embedding/hooks/use-embe
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
+import { useDispatch } from "metabase/redux";
 import { Flex, Loader, Stack } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import { EditorPanel } from "./EditorPanel";
 import { PreviewPanel } from "./PreviewPanel";
@@ -30,19 +30,24 @@ export function EmbeddingThemeEditorApp({
   // (save or delete), since those flows leave the editor while `isDirty` is true.
   const isSavingRef = useRef(false);
 
-  const shouldWarnOnLeave = editor.isDirty && !isSavingRef.current;
-  useBeforeUnload(shouldWarnOnLeave);
-
   const goToThemeList = () => {
     dispatch(push("/admin/embedding/themes"));
   };
 
-  const { requestDelete, modal: deleteModal } = useDeleteThemeFlow({
-    onDeleted: () => {
-      isSavingRef.current = true;
-      goToThemeList();
-    },
+  const {
+    requestDelete,
+    modal: deleteModal,
+    isDeleting,
+  } = useDeleteThemeFlow({
+    onDeleted: goToThemeList,
   });
+
+  // Suppress the unsaved-changes prompt during delete: `isDeleting` is set
+  // (state, so it triggers a re-render) before the mutation awaits, ensuring
+  // the LeaveRouteConfirmModal sees `isEnabled=false` before the redirect.
+  const shouldWarnOnLeave =
+    editor.isDirty && !isSavingRef.current && !isDeleting;
+  useBeforeUnload(shouldWarnOnLeave);
 
   const handleSave = async () => {
     isSavingRef.current = true;
@@ -58,8 +63,18 @@ export function EmbeddingThemeEditorApp({
     );
   }
 
-  if (editor.isNotFound || !editor.currentTheme) {
+  // During deletion, the GET refetches and 404s after cache invalidation, but
+  // the redirect to the theme list is on its way — don't flash NotFound.
+  if (!isDeleting && (editor.isNotFound || !editor.currentTheme)) {
     return <NotFound />;
+  }
+
+  if (!editor.currentTheme) {
+    return (
+      <Stack align="center" justify="center" h="100%">
+        <Loader />
+      </Stack>
+    );
   }
 
   return (
