@@ -64,20 +64,33 @@
    :meta     {:formula-version 3
               :synonym-threshold 0.9}})
 
+(def ^:private sample-calculated-at "2026-04-23T12:00:00Z")
+
+(defn- with-sample-calculated-at
+  [score]
+  (assoc-in score [:meta :calculated-at] sample-calculated-at))
+
 (deftest complexity-endpoint-returns-latest-stored-score-test
   (testing "superusers read the latest persisted score snapshot instead of recomputing it on demand"
-    (mt/with-dynamic-fn-redefs [data-complexity-score/latest-score (constantly sample-score)]
-      (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-        (is (= (m.util/deep-snake-keys sample-score) resp))
-        (is (contains? (:meta resp) :formula_version))
-        (is (not (contains? (:meta resp) :formula-version)))
-        (is (contains? (get-in resp [:library :components]) :entity_count))
-        (is (not (contains? (get-in resp [:library :components]) :entity-count)))))))
+    (let [captured-fingerprint (atom nil)]
+      (mt/with-dynamic-fn-redefs [task.complexity-score/current-fingerprint (constantly "api-test-fp")
+                                  data-complexity-score/latest-score
+                                  (fn [fingerprint]
+                                    (reset! captured-fingerprint fingerprint)
+                                    (with-sample-calculated-at sample-score))]
+        (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
+          (is (= "api-test-fp" @captured-fingerprint))
+          (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score)) resp))
+          (is (contains? (:meta resp) :formula_version))
+          (is (= sample-calculated-at (get-in resp [:meta :calculated_at])))
+          (is (not (contains? (:meta resp) :formula-version)))
+          (is (contains? (get-in resp [:library :components]) :entity_count))
+          (is (not (contains? (get-in resp [:library :components]) :entity-count))))))))
 
 (deftest complexity-endpoint-404s-when-no-score-has-been-persisted-yet-test
   (testing "the endpoint 404s until the background scorer has produced its first snapshot"
     (mt/with-dynamic-fn-redefs [data-complexity-score/latest-score (constantly nil)]
-      (is (= "Not found."
+      (is (= "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
              (mt/user-http-request :crowberto :get 404 endpoint))))))
 
 (deftest complexity-refresh-endpoint-returns-fresh-score-test
@@ -87,8 +100,9 @@
                     task.complexity-score/current-fingerprint (constantly "api-test-fp")
                     complexity/complexity-scores              (fn [& _] sample-score)
                     data-complexity-score/record-score!       (fn [fingerprint stored-score]
-                                                                (reset! persisted? [fingerprint stored-score]))]
-        (is (= (m.util/deep-snake-keys sample-score)
+                                                                (reset! persisted? [fingerprint stored-score])
+                                                                (with-sample-calculated-at stored-score))]
+        (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score))
                (mt/user-http-request :crowberto :post 200 refresh-endpoint)))
         (is (= ["api-test-fp" sample-score] @persisted?))))))
 

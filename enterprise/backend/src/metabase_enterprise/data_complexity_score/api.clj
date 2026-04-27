@@ -9,7 +9,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util :as m.util]))
+   [metabase.util :as m.util]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,6 +56,7 @@
     [:map
      [:formula_version   pos-int?]
      [:synonym_threshold number?]
+     [:calculated_at {:optional true} some?]
      [:embedding_model {:optional true} EmbeddingModelMeta]]]])
 
 ;; Per-JVM single-flight guard for the /complexity endpoint. Each scoring run walks the entire
@@ -73,8 +75,9 @@
   Superuser-only."
   [_route _query _body]
   (api/check-superuser)
-  (api/check-404 (some-> (data-complexity-score/latest-score)
-                         m.util/deep-snake-keys)))
+  (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint))
+                         m.util/deep-snake-keys)
+                 (tru "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot.")))
 
 (api.macros/defendpoint :post "/complexity/refresh" :- ComplexityScoresResponse
   "Run the Data Complexity Score job now, persist the fresh snapshot, and return it.
@@ -88,15 +91,15 @@
     (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
   (try
     (let [fingerprint (task.complexity-score/current-fingerprint)
-          result      (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
-      (data-complexity-score/record-score! fingerprint result)
+          result      (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
+          stored      (data-complexity-score/record-score! fingerprint result)]
       ;; Advance the last-published fingerprint iff Snowplow actually accepted the event — mirrors
       ;; the scheduled path's gate in `task.complexity-score/run-scoring!`. Without this, a
       ;; superuser-triggered refresh leaves the setting stale and the next boot would redundantly
       ;; re-score even though a valid snapshot was just persisted.
       (when (::complexity/snowplow-published? (meta result))
         (settings/data-complexity-scoring-last-fingerprint! fingerprint))
-      (m.util/deep-snake-keys result))
+      (m.util/deep-snake-keys (or stored result)))
     (finally
       (.set api-scoring-running? false))))
 

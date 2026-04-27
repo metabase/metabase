@@ -15,10 +15,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private job-key
-  (jobs/key "metabase-enterprise.data-complexity-score.task.complexity-score-trimmer.job"))
+  (jobs/key "metabase.task.data-complexity-score-trimmer.trim.job"))
 
 (def ^:private trigger-key
-  (triggers/key "metabase-enterprise.data-complexity-score.task.complexity-score-trimmer.trigger"))
+  (triggers/key "metabase.task.data-complexity-score-trimmer.trim.trigger"))
 
 (def ^:private retention-months 3)
 

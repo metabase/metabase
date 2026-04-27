@@ -7,6 +7,22 @@ import type { DataComplexityScoresResponse } from "../../types";
 
 import { DataComplexityCards } from "./DataComplexityCards";
 
+/* eslint-disable testing-library/no-node-access -- Snapshot cleanup is applied to a cloned DOM tree. */
+const cleanForSnapshot = (element: Element) => {
+  const clone = element.cloneNode(true) as Element;
+  clone.querySelectorAll("style").forEach((style) => style.remove());
+  [clone, ...Array.from(clone.querySelectorAll("*"))].forEach((node) => {
+    node.removeAttribute("class");
+    node.removeAttribute("style");
+    node.removeAttribute("id");
+    node.removeAttribute("aria-describedby");
+    node.removeAttribute("aria-labelledby");
+  });
+
+  return clone;
+};
+/* eslint-enable testing-library/no-node-access */
+
 const mockScores: DataComplexityScoresResponse = {
   library: {
     total: 18,
@@ -60,80 +76,20 @@ const mockScoresWithError: DataComplexityScoresResponse = {
 };
 
 describe("DataComplexityCards", () => {
-  afterEach(() => {
-    fetchMock.removeRoutes();
-    fetchMock.callHistory.clear();
-  });
-
   it("renders the data complexity cards", async () => {
-    const user = userEvent.setup();
-
     fetchMock.get("path:/api/ee/data-complexity-score/complexity", mockScores);
 
-    renderWithProviders(<DataComplexityCards />);
+    const { container } = renderWithProviders(<DataComplexityCards />);
 
     expect(
       await screen.findByText("Curated semantic layer"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Models and metrics from the curated Library subset."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Full semantic layer")).toBeInTheDocument();
-    expect(
-      screen.getByText("Library entities plus every active physical table."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Metabot-visible layer")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "The subset the internal Metabot can surface with its current scope.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("18")).toBeInTheDocument();
-    expect(screen.getByText("54")).toBeInTheDocument();
-    expect(screen.getByText("30")).toBeInTheDocument();
-    expect(screen.getAllByText("Lower is better")).toHaveLength(3);
+    expect(cleanForSnapshot(container)).toMatchSnapshot();
 
-    await user.click(screen.getByText("Curated semantic layer"));
-    const modal = within(await screen.findByRole("dialog"));
+    await userEvent.click(screen.getByText("Curated semantic layer"));
+    const modal = await screen.findByRole("dialog");
 
-    expect(await modal.findByText("Size")).toBeInTheDocument();
-    expect(
-      modal.getByText("How much surface area this layer exposes."),
-    ).toBeInTheDocument();
-    expect(modal.getByText("Ambiguity")).toBeInTheDocument();
-    expect(
-      modal.getByText(
-        "Signals that similar or repeated names could make answers harder to trust.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      modal.getByText(
-        "How many tables, models, and metrics are included in this layer.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      modal.getByText(
-        "Exact duplicate names after normalization, which can make entities harder to distinguish.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      modal.getByText(
-        "Pairs of entity names that are semantically similar enough to be treated as possible synonyms.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      modal.getByText(
-        "Active physical-table fields exposed through this layer.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      modal.getByText("Duplicate measure names across included tables."),
-    ).toBeInTheDocument();
-    expect(modal.getByText("1 entity")).toBeInTheDocument();
-    expect(modal.getByText("8 fields")).toBeInTheDocument();
-    expect(modal.getByText("0 collisions")).toBeInTheDocument();
-    expect(modal.getByText("0 repeated names")).toBeInTheDocument();
-    expect(modal.getByText("Close")).toBeInTheDocument();
+    expect(cleanForSnapshot(modal)).toMatchSnapshot();
   });
 
   it("shows a fallback message when the complexity endpoint fails", async () => {
@@ -150,8 +106,6 @@ describe("DataComplexityCards", () => {
   });
 
   it("shows component errors inside the modal", async () => {
-    const user = userEvent.setup();
-
     fetchMock.get(
       "path:/api/ee/data-complexity-score/complexity",
       mockScoresWithError,
@@ -164,7 +118,7 @@ describe("DataComplexityCards", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Score unavailable")).toBeInTheDocument();
 
-    await user.click(screen.getByText("Metabot-visible layer"));
+    await userEvent.click(screen.getByText("Metabot-visible layer"));
     const modal = within(await screen.findByRole("dialog"));
 
     expect(

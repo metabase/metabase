@@ -1,24 +1,18 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { DataComplexityHeader } from "./ConversationStatsPage";
 
 describe("DataComplexityHeader", () => {
-  afterEach(() => {
-    fetchMock.removeRoutes();
-    fetchMock.callHistory.clear();
-  });
-
-  it("refreshes data complexity scores when the refresh button is clicked", async () => {
-    const user = userEvent.setup();
-
+  it("recomputes data complexity scores when the recompute button is clicked", async () => {
     fetchMock.post("path:/api/ee/data-complexity-score/complexity/refresh", {});
 
     renderWithProviders(<DataComplexityHeader />);
 
-    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    await userEvent.click(screen.getByRole("button", { name: "Recompute" }));
 
     await waitFor(() => {
       expect(
@@ -27,6 +21,57 @@ describe("DataComplexityHeader", () => {
           { method: "POST" },
         ),
       ).toBe(true);
+    });
+  });
+
+  it("disables the recompute button while recomputation is running", async () => {
+    let resolveRequest!: (value: unknown) => void;
+    const pendingResponse = new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+
+    fetchMock.post(
+      "path:/api/ee/data-complexity-score/complexity/refresh",
+      pendingResponse,
+    );
+
+    renderWithProviders(<DataComplexityHeader />);
+
+    const button = screen.getByRole("button", { name: "Recompute" });
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
+
+    await act(async () => {
+      resolveRequest({});
+    });
+
+    await waitFor(() => {
+      expect(button).toBeEnabled();
+    });
+  });
+
+  it("shows a toast when recomputation fails", async () => {
+    fetchMock.post(
+      "path:/api/ee/data-complexity-score/complexity/refresh",
+      500,
+    );
+
+    renderWithProviders(
+      <>
+        <DataComplexityHeader />
+        <UndoListing />
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Recompute" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Could not recompute data complexity."),
+      ).toBeInTheDocument();
     });
   });
 });

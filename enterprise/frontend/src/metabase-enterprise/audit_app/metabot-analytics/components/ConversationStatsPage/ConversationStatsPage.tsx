@@ -5,6 +5,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
@@ -326,6 +328,22 @@ export function DataComplexityHeader() {
     refreshDataComplexityScores,
     { isLoading: refreshDataComplexityScoresLoading },
   ] = useRefreshDataComplexityScoresMutation();
+  const [sendToast] = useToast();
+
+  const handleRecompute = useCallback(async () => {
+    try {
+      await refreshDataComplexityScores().unwrap();
+    } catch (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: getErrorMessage(
+          error,
+          t`Could not recompute data complexity.`,
+        ),
+      });
+    }
+  }, [refreshDataComplexityScores, sendToast]);
 
   return (
     <Flex align="center" justify="space-between">
@@ -336,10 +354,11 @@ export function DataComplexityHeader() {
       <Flex gap="sm" wrap="wrap" align="center">
         <Button
           variant="default"
-          onClick={() => refreshDataComplexityScores()}
+          onClick={handleRecompute}
           loading={refreshDataComplexityScoresLoading}
+          disabled={refreshDataComplexityScoresLoading}
         >
-          {t`Refresh`}
+          {t`Recompute`}
         </Button>
       </Flex>
     </Flex>

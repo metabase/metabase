@@ -121,6 +121,7 @@ export type DataComplexityScoresResponse = {
   meta: {
     formula_version: number;
     synonym_threshold: number;
+    calculated_at?: string;
     embedding_model?: {
       provider: string;
       model_name: string;
