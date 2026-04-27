@@ -159,7 +159,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
         <ConfirmModal
           opened={isConfirmOpen}
           title={t`Remove this visualization?`}
-          message={t`Any saved question that uses it will change to a table instead.`}
+          message={t`Any saved question that uses it will switch to a default visualization based on its data.`}
           confirmButtonText={t`Remove`}
           confirmButtonProps={{ disabled: isDeleting }}
           onClose={() => setIsConfirmOpen(false)}
