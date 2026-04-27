@@ -11,7 +11,6 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
@@ -212,21 +211,16 @@
     (svg-string->bytes svg-string)))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes."
+  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
-  (let [options      (json/encode {:applicationColors (appearance/application-colors)
-                                   :startOfWeek       (lib-be/start-of-week)
-                                   :customFormatting  (appearance/custom-formatting)
-                                   :tokenFeatures     (premium-features/token-features)
-                                   :locale            (i18n/user-locale-string)})
-        run          (fn [context]
-                       (js.engine/execute-fn-name context "initialize_context" options)
-                       (.asString (js.engine/execute-fn-name context "javascript_visualization"
-                                                             (json/encode cards-with-data)
-                                                             (json/encode dashcard-viz-settings)
-                                                             options)))
-        response     (with-static-viz-context context
-                       (run context))]
+  (let [response (with-static-viz-context context
+                   (.asString (js.engine/execute-fn-name context "javascript_visualization"
+                                                         (json/encode cards-with-data)
+                                                         (json/encode dashcard-viz-settings)
+                                                         (json/encode {:applicationColors (appearance/application-colors)
+                                                                       :startOfWeek (lib-be/start-of-week)
+                                                                       :customFormatting (appearance/custom-formatting)
+                                                                       :tokenFeatures (premium-features/token-features)}))))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
