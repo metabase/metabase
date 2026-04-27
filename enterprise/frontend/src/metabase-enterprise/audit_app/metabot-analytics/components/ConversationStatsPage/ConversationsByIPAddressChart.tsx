@@ -6,7 +6,10 @@ import { Skeleton } from "metabase/ui";
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
-import { toBreakoutRawSeries } from "./breakout-raw-series";
+import {
+  mapBreakoutDimension,
+  toBreakoutRawSeries,
+} from "./breakout-raw-series";
 import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
 import type { ChartInnerProps, ChartProps } from "./types";
 
@@ -71,17 +74,17 @@ function ConversationsByIPAddressChartInner({
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
 
-  const rawSeries = useMemo(
-    () =>
-      toBreakoutRawSeries(data, jsQuery, {
-        metric,
-        display: "row",
-        maxCategories: 8,
-        otherLabel: t`Other`,
-        nullLabel: t`Unknown`,
-      }),
-    [data, jsQuery, metric],
-  );
+  const rawSeries = useMemo(() => {
+    const labeledData = mapBreakoutDimension(data, (value) =>
+      value == null ? t`Unknown` : value,
+    );
+    return toBreakoutRawSeries(labeledData, jsQuery, {
+      metric,
+      display: "row",
+      maxCategories: 8,
+      otherLabel: t`Other`,
+    });
+  }, [data, jsQuery, metric]);
 
   return (
     <BreakoutChartCard

@@ -1,6 +1,9 @@
 import type { DatasetQuery } from "metabase-types/api";
 
-import { toBreakoutRawSeries } from "./breakout-raw-series";
+import {
+  mapBreakoutDimension,
+  toBreakoutRawSeries,
+} from "./breakout-raw-series";
 
 const jsQuery = { database: 1, type: "query", query: {} } as DatasetQuery;
 
@@ -28,14 +31,6 @@ describe("toBreakoutRawSeries", () => {
     ).toBeNull();
   });
 
-  it("rewrites null dimension values using nullLabel", () => {
-    const out = toBreakoutRawSeries(response([[null, 3]]), jsQuery, {
-      ...baseOpts,
-      nullLabel: "Unknown",
-    });
-    expect(out?.[0].data.rows).toEqual([["Unknown", 3]]);
-  });
-
   it("collapses rows past maxCategories into an Other bucket that sums the overflow", () => {
     const out = toBreakoutRawSeries(
       response([
@@ -53,5 +48,18 @@ describe("toBreakoutRawSeries", () => {
       ["B", 4],
       ["Other", 3 + 2 + 1],
     ]);
+  });
+});
+
+describe("mapBreakoutDimension", () => {
+  it("rewrites the breakout cell using the supplied function", () => {
+    const out = mapBreakoutDimension(response([[null, 3]]), (v) =>
+      v == null ? "Unknown" : v,
+    );
+    expect(out?.data?.rows).toEqual([["Unknown", 3]]);
+  });
+
+  it("returns the response unchanged when there is no data", () => {
+    expect(mapBreakoutDimension(undefined, (v) => v)).toBeUndefined();
   });
 });

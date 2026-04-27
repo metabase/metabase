@@ -7,7 +7,10 @@ import { Skeleton } from "metabase/ui";
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
-import { toBreakoutRawSeries } from "./breakout-raw-series";
+import {
+  mapBreakoutDimension,
+  toBreakoutRawSeries,
+} from "./breakout-raw-series";
 import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
 import type { ChartInnerProps, ChartProps } from "./types";
 
@@ -72,17 +75,17 @@ function ConversationsByProfileBarChartInner({
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
 
-  const rawSeries = useMemo(
-    () =>
-      toBreakoutRawSeries(data, jsQuery, {
-        metric,
-        display: "bar",
-        maxCategories: 8,
-        otherLabel: t`Other`,
-        transformDimension: renderMetabotProfileLabel,
-      }),
-    [data, jsQuery, metric],
-  );
+  const rawSeries = useMemo(() => {
+    const labeledData = mapBreakoutDimension(data, (value) =>
+      typeof value === "string" ? renderMetabotProfileLabel(value) : value,
+    );
+    return toBreakoutRawSeries(labeledData, jsQuery, {
+      metric,
+      display: "bar",
+      maxCategories: 8,
+      otherLabel: t`Other`,
+    });
+  }, [data, jsQuery, metric]);
 
   return (
     <BreakoutChartCard
