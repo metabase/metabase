@@ -8,9 +8,10 @@
   the dependency_status table."
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.store :as deps.store]
+   [metabase-enterprise.dependencies.store.database :as deps.store.db]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -73,6 +74,13 @@
    entity-type
    (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
+(def ^:dynamic *store*
+  "The [[deps.store/DependencyStore]] to use for dependency persistence.
+   Bound per-request. Defaults to the database-backed store.
+   NOTE: The constructor [[deps.store.db/database-dependency-store]] must remain
+   pure/cheap since it's evaluated eagerly as the root binding at load time."
+  (deps.store.db/database-dependency-store))
+
 (defn- compute-deps-for-entity!
   "Compute and store dependencies for an entity, then update its dependency_status.
   Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
@@ -80,7 +88,7 @@
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (t2/with-transaction [_]
     (let [deps (deps.calculation/calculate-deps entity-type entity)]
-      (models.dependency/replace-dependencies! entity-type (:id entity) deps)
+      (deps.store/store-deps! *store* entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity)
       (deps.dependency-status/upsert-status! entity-type (:id entity)))))
 
