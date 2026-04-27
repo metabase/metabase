@@ -14,6 +14,7 @@
   #{:direct-dependency
     :co-dashboard
     :source-table-jaccard
+    :co-execution
     :ensemble})
 
 (mr/def ::view-name
