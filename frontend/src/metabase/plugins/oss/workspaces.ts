@@ -1,20 +1,13 @@
 import type { ComponentType, ReactNode } from "react";
 
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
 type WorkspacesPlugin = {
-  WorkspacesSetupPage: ComponentType;
-  WorkspacesTableRemappingsPage: ComponentType;
   WorkspacesNav: ComponentType;
   getWorkspaceAdminRoutes: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
-  WorkspacesSetupPage: NotFoundPlaceholder,
-  WorkspacesTableRemappingsPage: NotFoundPlaceholder,
   WorkspacesNav: PluginPlaceholder,
   getWorkspaceAdminRoutes: () => null,
 });
