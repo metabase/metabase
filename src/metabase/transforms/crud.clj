@@ -13,6 +13,7 @@
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.models.transform :as transform.model]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -38,6 +39,8 @@
 (defn check-feature-enabled!
   "Check that the premium features required for this transform type are enabled."
   [transform]
+  (when (transforms.settings/transforms-disabled)
+    (api/throw-403 (deferred-tru "Transforms are disabled.")))
   (api/check (transforms.u/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 

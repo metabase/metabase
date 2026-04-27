@@ -31,6 +31,7 @@
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
+    (transforms.settings/transforms-disabled) false
     (transforms-base.u/query-transform? transform) (transforms.gating/query-transforms-enabled?)
     (transforms-base.u/python-transform? transform) (transforms.gating/python-transforms-enabled?)
     :else false))

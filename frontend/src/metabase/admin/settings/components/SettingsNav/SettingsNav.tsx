@@ -89,6 +89,7 @@ export function SettingsNav() {
         ]}
       </SettingsNavItem>
       <NavDivider />
+      <SettingsNavItem path="data-studio" label={t`Data Studio`} icon="sql" />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
       {/* Python Runner settings are managed by Metabase Cloud for hosted instances */}
       {hasPythonTransforms && !isHosted && (

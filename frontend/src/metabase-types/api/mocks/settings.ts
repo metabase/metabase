@@ -403,6 +403,7 @@ export const createMockSettings = (
   "token-features": createMockTokenFeatures(),
   "token-status": null,
   "tracing-enabled": false,
+  "transforms-disabled": false,
   "transforms-enabled": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),

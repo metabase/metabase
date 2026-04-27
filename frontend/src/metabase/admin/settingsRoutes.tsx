@@ -14,6 +14,7 @@ import { SettingsNav } from "./settings/components/SettingsNav";
 import { AppearanceSettingsPage } from "./settings/components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/AuthenticationSettingsPage";
 import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
+import { DataStudioSettingsPage } from "./settings/components/SettingsPages/DataStudioSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
@@ -92,6 +93,7 @@ export const getSettingsRoutes = () => (
       component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
     />
     <Route path="cloud" component={CloudSettingsPage} />
+    <Route path="data-studio" component={DataStudioSettingsPage} />
     <Route path="*" component={NotFound} />
   </Route>
 );
