@@ -95,6 +95,7 @@ function ConversationsByDayChartInner({
   dateFilter,
   userId,
   groupId,
+  tenantId,
   metric,
   onDimensionClick,
   h,
@@ -110,6 +111,7 @@ function ConversationsByDayChartInner({
         dateFilter,
         userId,
         groupId,
+        tenantId,
         metric,
         bucketName,
       }),
@@ -120,6 +122,7 @@ function ConversationsByDayChartInner({
       dateFilter,
       userId,
       groupId,
+      tenantId,
       metric,
       bucketName,
     ],
@@ -155,12 +158,14 @@ function buildTimeseriesBreakoutQuery({
   dateFilter,
   userId,
   groupId,
+  tenantId,
   metric,
   bucketName,
 }: BuildQueryOpts): Query {
   let q = Lib.queryFromTableOrCardMetadata(provider, table);
   q = applyDateFilter(q, dateFilter);
   q = applyUserFilter(q, userId);
+  q = applyUserFilter(q, tenantId, "tenant_id");
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
   q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
   q = applyUsageStatsAggregation(q, metric);

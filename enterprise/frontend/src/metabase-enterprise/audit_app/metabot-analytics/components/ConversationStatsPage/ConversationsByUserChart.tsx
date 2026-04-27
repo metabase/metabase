@@ -50,6 +50,7 @@ function ConversationsByUserChartInner({
   dateFilter,
   userId,
   groupId,
+  tenantId,
   metric,
   onDimensionClick,
   h,
@@ -63,10 +64,20 @@ function ConversationsByUserChartInner({
         dateFilter,
         userId,
         groupId,
+        tenantId,
         metric,
         breakoutColumn: "user_display_name",
       }),
-    [provider, table, groupMembersTable, dateFilter, userId, groupId, metric],
+    [
+      provider,
+      table,
+      groupMembersTable,
+      dateFilter,
+      userId,
+      groupId,
+      tenantId,
+      metric,
+    ],
   );
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);

@@ -16,12 +16,13 @@ import type { VisualizationSettings } from "metabase-types/api";
 
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
 
-// the user-set inputs that drive every chart on the stats page — three
-// filters (date / user / group) plus the metric the tabs select
+// the user-set inputs that drive every chart on the stats page —
+// filters (date / user / group / tenant) plus the metric the tabs select
 export type StatsFilters = {
   dateFilter: DateFilterValue;
   userId?: number;
   groupId?: number;
+  tenantId?: number;
   metric: UsageStatsMetric;
 };
 
@@ -287,12 +288,14 @@ export function buildSourceBreakoutQuery({
   dateFilter,
   userId,
   groupId,
+  tenantId,
   metric,
   breakoutColumn,
 }: SourceBreakoutQueryOpts): Query {
   let q = Lib.queryFromTableOrCardMetadata(provider, table);
   q = applyDateFilter(q, dateFilter);
   q = applyUserFilter(q, userId);
+  q = applyUserFilter(q, tenantId, "tenant_id");
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
   q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
   q = applyUsageStatsAggregation(q, metric);

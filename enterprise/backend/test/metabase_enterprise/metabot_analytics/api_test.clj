@@ -259,6 +259,32 @@
           (finally
             (delete-conversations! [convo-a convo-b])))))))
 
+(deftest list-conversations-tenant-filter-test
+  (mt/with-premium-features #{:audit-app :tenants}
+    (mt/with-temp [:model/Tenant {tenant-a :id} {}
+                   :model/Tenant {tenant-b :id} {}
+                   :model/User {user-a :id} {:email     "metabot-analytics-tenant-a@metabase.com"
+                                             :tenant_id tenant-a}
+                   :model/User {user-b :id} {:email     "metabot-analytics-tenant-b@metabase.com"
+                                             :tenant_id tenant-b}]
+      (let [convo-a (str (random-uuid))
+            convo-b (str (random-uuid))]
+        (try
+          (insert-conversation! {:conversation-id convo-a :user-id user-a
+                                 :created-at (offset-date-time "2026-05-01T00:00:00Z")
+                                 :summary "tenant-a convo"})
+          (insert-conversation! {:conversation-id convo-b :user-id user-b
+                                 :created-at (offset-date-time "2026-05-02T00:00:00Z")
+                                 :summary "tenant-b convo"})
+          (testing "tenant-id narrows to conversations owned by users in that tenant"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations?tenant-id=%d" tenant-a))
+                  ids      (set (map :conversation_id (:data response)))]
+              (is (contains? ids convo-a))
+              (is (not (contains? ids convo-b)))))
+          (finally
+            (delete-conversations! [convo-a convo-b])))))))
+
 (deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id"

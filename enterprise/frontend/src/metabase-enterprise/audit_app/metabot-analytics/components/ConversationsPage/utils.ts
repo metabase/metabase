@@ -20,6 +20,7 @@ export type UrlState = {
   date: string | null;
   user: string | null;
   group: string | null;
+  tenant: string | null;
 };
 
 export const urlStateConfig: UrlStateConfig<UrlState> = {
@@ -30,8 +31,17 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     date: parseString(query.date) ?? DEFAULT_DATE,
     user: parseString(query.user),
     group: parseString(query.group) ?? DEFAULT_GROUP,
+    tenant: parseString(query.tenant),
   }),
-  serialize: ({ page, sort_column, sort_direction, date, user, group }) => ({
+  serialize: ({
+    page,
+    sort_column,
+    sort_direction,
+    date,
+    user,
+    group,
+    tenant,
+  }) => ({
     page: page === 0 ? undefined : String(page),
     sort_column: sort_column === DEFAULT_SORT_COLUMN ? undefined : sort_column,
     sort_direction:
@@ -39,6 +49,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     date: date === DEFAULT_DATE ? undefined : (date ?? undefined),
     user: user ?? undefined,
     group: group === DEFAULT_GROUP ? undefined : (group ?? undefined),
+    tenant: tenant ?? undefined,
   }),
 };
 

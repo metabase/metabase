@@ -31,6 +31,7 @@ export type StatsUrlState = {
   date: string | null;
   user: string | null;
   group: string | null;
+  tenant: string | null;
   metric: UsageStatsMetric;
 };
 
@@ -54,12 +55,14 @@ export const statsUrlStateConfig: UrlStateConfig<StatsUrlState> = {
     date: parseString(query.date) ?? DEFAULT_DATE,
     user: parseString(query.user),
     group: parseString(query.group) ?? DEFAULT_GROUP,
+    tenant: parseString(query.tenant),
     metric: parseMetric(query.metric),
   }),
-  serialize: ({ date, user, group, metric }) => ({
+  serialize: ({ date, user, group, tenant, metric }) => ({
     date: date === DEFAULT_DATE ? undefined : (date ?? undefined),
     user: user ?? undefined,
     group: group === DEFAULT_GROUP ? undefined : (group ?? undefined),
+    tenant: tenant ?? undefined,
     metric: metric === DEFAULT_METRIC ? undefined : metric,
   }),
 };

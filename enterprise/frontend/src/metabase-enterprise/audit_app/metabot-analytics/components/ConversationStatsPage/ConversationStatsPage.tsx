@@ -33,6 +33,7 @@ import { ConversationsByGroupChart } from "./ConversationsByGroupChart";
 import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
 import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
 import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
+import { ConversationsByTenantChart } from "./ConversationsByTenantChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
 import type { UsageStatsMetric } from "./query-utils";
 import type { ChartProps } from "./types";
@@ -47,10 +48,8 @@ const DEFAULT_DATE_FILTER: DateFilterValue = {
 
 export function ConversationStatsPage({ location }: WithRouterProps) {
   const dispatch = useDispatch();
-  const [{ date, user, group, metric }, { patchUrlState }] = useUrlState(
-    location,
-    statsUrlStateConfig,
-  );
+  const [{ date, user, group, tenant, metric }, { patchUrlState }] =
+    useUrlState(location, statsUrlStateConfig);
 
   const dateFilter: DateFilterValue = useMemo(() => {
     if (!date) {
@@ -63,7 +62,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     return DEFAULT_DATE_FILTER;
   }, [date]);
 
-  const { userOptions, groupOptions } = useFilterOptions();
+  const { userOptions, groupOptions, tenantOptions, hasTenants } =
+    useFilterOptions();
 
   const userId = useMemo(() => (user ? parseInt(user, 10) : undefined), [user]);
   const groupId = useMemo(() => {
@@ -73,6 +73,13 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     const parsed = parseInt(group, 10);
     return Number.isFinite(parsed) ? parsed : undefined;
   }, [group]);
+  const tenantId = useMemo(() => {
+    if (!hasTenants || !tenant) {
+      return undefined;
+    }
+    const parsed = parseInt(tenant, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [hasTenants, tenant]);
 
   const conversationsAudit = useAuditTable(VIEW_CONVERSATIONS);
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
@@ -85,6 +92,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     dateFilter,
     userId,
     groupId,
+    tenantId,
     metric,
   };
 
@@ -100,12 +108,13 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             date,
             user,
             group,
+            tenant,
             ...filterOverrides,
           }),
         }),
       );
     },
-    [dispatch, date, user, group],
+    [dispatch, date, user, group, tenant],
   );
 
   const handleDayClick = useCallback(
@@ -148,8 +157,12 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val })}
+            tenant={tenant}
+            onTenantChange={(val) => patchUrlState({ tenant: val })}
             userOptions={userOptions}
             groupOptions={groupOptions}
+            tenantOptions={tenantOptions}
+            hasTenants={hasTenants}
           />
         </Flex>
 
@@ -184,7 +197,14 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
           <ConversationsByProfileBarChart {...sharedChartProps} />
         </SimpleGrid>
 
-        <SimpleGrid cols={3} spacing="lg">
+        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
+          {hasTenants && (
+            <ConversationsByTenantChart
+              {...sharedChartProps}
+              tenantOptions={tenantOptions}
+              h={500}
+            />
+          )}
           <ConversationsByGroupChart {...sharedChartProps} h={500} />
           <ConversationsByUserChart
             {...sharedChartProps}

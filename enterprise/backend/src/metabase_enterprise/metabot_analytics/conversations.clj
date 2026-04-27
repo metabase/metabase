@@ -46,7 +46,7 @@
 (defn- list-where-clause
   "Compose a conjunctive WHERE from optional filters. Returns `nil` when no
    filter applies so the caller can `cond->` cleanly."
-  [{:keys [user-id group-id date]}]
+  [{:keys [user-id group-id tenant-id date]}]
   (let [clauses (cond-> []
                   user-id (conj [:= :c.user_id user-id])
                   (seq date) (conj (date-string->constraints :c.created_at date))
@@ -55,7 +55,13 @@
                                   :from   [[:permissions_group_membership :pgm]]
                                   :where  [:and
                                            [:= :pgm.user_id :c.user_id]
-                                           [:= :pgm.group_id group-id]]}]))
+                                           [:= :pgm.group_id group-id]]}])
+                  tenant-id
+                  (conj [:exists {:select [1]
+                                  :from   [[:core_user :u]]
+                                  :where  [:and
+                                           [:= :u.id :c.user_id]
+                                           [:= :u.tenant_id tenant-id]]}]))
         clauses (remove nil? clauses)]
     (when (seq clauses)
       (into [:and] clauses))))
@@ -142,13 +148,16 @@
 
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
-   summaries. Supports optional filtering by `user-id`, `group-id`, and a
-   serialized `date` parameter string, plus sorting by an allow-listed
+   summaries. Supports optional filtering by `user-id`, `group-id`, `tenant-id`,
+   and a serialized `date` parameter string, plus sorting by an allow-listed
    `sort-by` column in either direction (defaults to newest-first)."
-  [{:keys [limit offset user-id group-id date sort-by sort-dir]}]
+  [{:keys [limit offset user-id group-id tenant-id date sort-by sort-dir]}]
   (let [limit     (or limit default-limit)
         offset    (or offset default-offset)
-        where     (list-where-clause {:user-id user-id :group-id group-id :date date})
+        where     (list-where-clause {:user-id   user-id
+                                      :group-id  group-id
+                                      :tenant-id tenant-id
+                                      :date      date})
         sort-col  (get sort-columns sort-by :c.created_at)
         direction (if (= sort-dir "asc") :asc :desc)
         total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]

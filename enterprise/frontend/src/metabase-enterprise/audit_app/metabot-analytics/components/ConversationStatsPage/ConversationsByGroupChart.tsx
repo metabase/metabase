@@ -83,6 +83,7 @@ function ConversationsByGroupChartInner({
   dateFilter,
   userId,
   groupId,
+  tenantId,
   metric,
   onDimensionClick,
   h,
@@ -91,6 +92,7 @@ function ConversationsByGroupChartInner({
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
+    q = applyUserFilter(q, tenantId, "tenant_id");
     q = joinGroupMembers(q, groupMembersTable);
     q = excludeAllUsersGroup(q);
     q = applyGroupIdFilter(q, groupId);
@@ -98,7 +100,16 @@ function ConversationsByGroupChartInner({
     q = breakoutByJoinedGroupName(q);
     q = applyMetricOrderBy(q, metric);
     return q;
-  }, [provider, table, groupMembersTable, dateFilter, userId, groupId, metric]);
+  }, [
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+    metric,
+  ]);
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
 

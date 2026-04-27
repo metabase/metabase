@@ -13,8 +13,12 @@ type ConversationFiltersProps = {
   onUserChange: (val: string | null) => void;
   group: string | null;
   onGroupChange: (val: string | null) => void;
+  tenant: string | null;
+  onTenantChange: (val: string | null) => void;
   userOptions: { value: string; label: string }[];
   groupOptions: { value: string; label: string }[];
+  tenantOptions: { value: string; label: string }[];
+  hasTenants: boolean;
 };
 
 export function ConversationFilters({
@@ -24,8 +28,12 @@ export function ConversationFilters({
   onUserChange,
   group,
   onGroupChange,
+  tenant,
+  onTenantChange,
   userOptions,
   groupOptions,
+  tenantOptions,
+  hasTenants,
 }: ConversationFiltersProps) {
   const [dateOpened, setDateOpened] = useState(false);
 
@@ -51,6 +59,16 @@ export function ConversationFilters({
           />
         </Popover.Dropdown>
       </Popover>
+      {hasTenants && (
+        <Select
+          data={[{ value: "", label: t`All tenants` }, ...tenantOptions]}
+          value={tenant ?? ""}
+          onChange={(val) => onTenantChange(val === "" ? null : val)}
+          searchable
+          w={180}
+          bdrs="sm"
+        />
+      )}
       <Select
         placeholder={t`Group`}
         data={groupOptions}

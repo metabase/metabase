@@ -20,15 +20,18 @@ import { PAGE_SIZE, urlStateConfig } from "./utils";
 
 export function ConversationsPage({ location }: WithRouterProps) {
   const [
-    { page, sort_column, sort_direction, date, user, group },
+    { page, sort_column, sort_direction, date, user, group, tenant },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
   const sortingOptions = { sort_column, sort_direction };
-  const { userOptions, groupOptions } = useFilterOptions();
+  const { userOptions, groupOptions, tenantOptions, hasTenants } =
+    useFilterOptions();
 
   const groupId =
     group && group !== DEFAULT_GROUP ? parseInt(group, 10) : undefined;
+
+  const tenantId = hasTenants && tenant ? parseInt(tenant, 10) : undefined;
 
   // Exclude-shape date filters (e.g. "exclude-days-Mon") can't be expressed
   // as a single [start, end) range that the list endpoint accepts; drop them
@@ -47,6 +50,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
       "sort-dir": sort_direction,
       "user-id": user ? parseInt(user, 10) : undefined,
       "group-id": groupId,
+      "tenant-id": tenantId,
       date: dateParam,
     },
     { refetchOnMountOrArgChange: true },
@@ -73,8 +77,12 @@ export function ConversationsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+            tenant={tenant}
+            onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
             userOptions={userOptions}
             groupOptions={groupOptions}
+            tenantOptions={tenantOptions}
+            hasTenants={hasTenants}
           />
         </Flex>
 
