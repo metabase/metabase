@@ -2332,4 +2332,3 @@
                 card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
             (is (not (contains? card-ser :table_id))    "table_id always skipped for cards — re-derived on import")
             (is (contains? card-ser :database_id) "database_id exported — not derivable from broken query")))))))
-
