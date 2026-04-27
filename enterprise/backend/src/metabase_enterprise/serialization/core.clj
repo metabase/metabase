@@ -5,6 +5,7 @@
    [metabase-enterprise.serialization.v2.ingest]
    [metabase-enterprise.serialization.v2.load]
    [metabase-enterprise.serialization.v2.storage]
+   [metabase-enterprise.serialization.v2.storage.files]
    [metabase-enterprise.serialization.v2.storage.util]
    [potemkin :as p]))
 
@@ -14,6 +15,7 @@
   metabase-enterprise.serialization.v2.ingest/keep-me
   metabase-enterprise.serialization.v2.load/keep-me
   metabase-enterprise.serialization.v2.storage/keep-me
+  metabase-enterprise.serialization.v2.storage.files/keep-me
   metabase-enterprise.serialization.v2.storage.util/keep-me)
 
 (p/import-vars
@@ -36,6 +38,8 @@
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
   store!]
+ [metabase-enterprise.serialization.v2.storage.files
+  file-writer]
  [metabase-enterprise.serialization.v2.storage.util
   resolve-storage-path
   slugify-name])

@@ -11,6 +11,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { Search } from "metabase/entities/search";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
@@ -29,7 +30,6 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { Box, Group, Paper, Text } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 const getPageFromLocation = (location) => {
   const maybePage = location.query?.page

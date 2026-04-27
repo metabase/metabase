@@ -2,9 +2,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Menu, Tooltip } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 export function TransformToolsMenu() {

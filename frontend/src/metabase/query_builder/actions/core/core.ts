@@ -1,10 +1,16 @@
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase/common/utils/card";
+import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import {
   API_UPDATE_QUESTION,
@@ -19,8 +25,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { clone } from "metabase/utils/clone";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
-import { entityCompatibleQuery } from "metabase/utils/entities";
-import { createThunkAction } from "metabase/utils/redux";
 import { isNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -28,10 +32,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-} from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   DashboardTabId,

@@ -3,8 +3,8 @@ import type { FormikErrors } from "formik";
 import { P, isMatching } from "ts-pattern";
 
 import { useAdminSetting } from "metabase/api/utils";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { useSelector } from "metabase/utils/redux";
 import type { MetabotProvider } from "metabase-types/api";
 
 type ApiKeylessProviders = "metabase";

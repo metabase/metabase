@@ -12,9 +12,9 @@ import CS from "metabase/css/core/index.css";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { Segments } from "metabase/entities/segments";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Segment } from "metabase-types/api";
 
