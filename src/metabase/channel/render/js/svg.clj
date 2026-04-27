@@ -235,9 +235,8 @@
     (svg-string->bytes svg-string)))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes.
-   `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom visualization plugins."
-  [cards-with-data dashcard-viz-settings _custom-viz-bundles]
+  "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes."
+  [cards-with-data dashcard-viz-settings]
   (let [options      (json/encode {:applicationColors (appearance/application-colors)
                                    :startOfWeek       (lib-be/start-of-week)
                                    :customFormatting  (appearance/custom-formatting)
