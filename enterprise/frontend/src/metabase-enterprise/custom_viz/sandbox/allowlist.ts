@@ -10,7 +10,6 @@ import {
 
 // Native references shared with distortions.ts so identity comparisons match.
 export const CREATE_ELEMENT = Document.prototype.createElement;
-export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
 export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
 
 // %TypedArray%.prototype is not directly referenceable — it's the shared hidden prototype
@@ -118,7 +117,6 @@ const CANVAS_AND_GEOMETRY_FUNCTIONS = [
 export const ALLOWED_FUNCTIONS = new Set<object>(
   [
     CREATE_ELEMENT,
-    CREATE_ELEMENT_NS,
     document.createTextNode,
     document.createDocumentFragment,
     document.getElementById,

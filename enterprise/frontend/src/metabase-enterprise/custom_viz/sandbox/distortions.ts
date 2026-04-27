@@ -1,7 +1,6 @@
 import {
   ALLOWED_FUNCTIONS,
   CREATE_ELEMENT,
-  CREATE_ELEMENT_NS,
   INSERT_ADJACENT_HTML,
 } from "./allowlist";
 import { getFunctionName } from "./debugging";
@@ -35,9 +34,6 @@ export function makeDistortionCallback(pluginId: string) {
     }
     if (fun === CREATE_ELEMENT) {
       return createElementDistortion(pluginId);
-    }
-    if (fun === CREATE_ELEMENT_NS) {
-      return createElementNSDistortion(pluginId);
     }
     if (fun === INSERT_ADJACENT_HTML) {
       return insertAdjacentHTMLDistortion();
@@ -116,30 +112,6 @@ function createElementDistortion(pluginId: string) {
       throw new Error(`[plugin ${pluginId}] blocked createElement: ${tag}`);
     }
     return CREATE_ELEMENT.call(this, tag, options as ElementCreationOptions);
-  };
-}
-
-function createElementNSDistortion(pluginId: string) {
-  return function createElementNS(
-    this: Document,
-    ns: string | null,
-    qualifiedName: string,
-    options?: ElementCreationOptions | string,
-  ) {
-    const localName = (
-      qualifiedName.split(":").pop() ?? qualifiedName
-    ).toLowerCase();
-    if (BLOCKED_TAGS.has(localName)) {
-      throw new Error(
-        `[plugin ${pluginId}] blocked createElementNS: ${qualifiedName}`,
-      );
-    }
-    return CREATE_ELEMENT_NS.call(
-      this,
-      ns,
-      qualifiedName,
-      options as ElementCreationOptions,
-    );
   };
 }
 
