@@ -2831,7 +2831,8 @@
            premium-features
            server
            settings
-           util}
+           util
+           enterprise/remote-sync}
    :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/dashboard-subscription-filters
@@ -3077,7 +3078,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.init}
+           metabase-enterprise.remote-sync.init
+           metabase-enterprise.remote-sync.source.git}
    :uses #{analytics
            api
            app-db
