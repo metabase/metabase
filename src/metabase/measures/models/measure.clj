@@ -195,8 +195,7 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
-  (let [table-path (or (:table_id measure)
-                       (-> measure :definition serdes/serialized-query-source-table))]
+  (let [table-path (-> measure :definition serdes/serialized-query-source-table)]
     (into (serdes/storage-path-prefixes (serdes/table->path table-path))
           [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
 
@@ -212,22 +211,12 @@
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings]
+          :dimensions :dimension_mappings
+          ;; always re-derived from definition by before-insert via lib/primary-source-table-id
+          :table_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}
-               ;; table_id is usually derivable from definition, but must be kept when the
-               ;; definition is broken/empty and table_id is the only reference.
-               :table_id   (let [{:keys [import]} (serdes/fk :model/Table)]
-                             {::serdes/fk true
-                              :export-with-context
-                              (fn [{:keys [definition table_id]} _k _v]
-                                (if (try (lib/primary-source-table-id definition)
-                                         (catch Exception _ nil))
-                                  ::serdes/skip
-                                  (when table_id
-                                    (serdes/*export-table-fk* table_id))))
-                              :import import})}
+               :definition {:export serdes/export-mbql :import import-measure-definition}}
    :defaults {:archived false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
