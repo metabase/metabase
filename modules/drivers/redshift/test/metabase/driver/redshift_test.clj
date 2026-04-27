@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
@@ -13,7 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
@@ -711,3 +712,12 @@
         (let [multi-field (nth fields 2)]
           (is (= "SUPER" (:database_type multi-field)))
           (is (= :type/JSON (:effective_type multi-field))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (are [role expected] (= expected
+                          (driver.sql/set-role-statement :redshift role))
+    "role\"; SELECT sleep(10); --"
+    "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
+
+    "role*\"; SELECT sleep(10); --"
+    "SET SESSION AUTHORIZATION \"role*\"\"; SELECT sleep(10); --\";"))

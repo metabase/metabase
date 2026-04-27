@@ -1039,8 +1039,9 @@
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
-  ;; REVERT to handle the case where the users role attribute has changed
-  (format "REVERT; EXECUTE AS USER = '%s';" role))
+  (let [role (str/replace role #"'" "''")]
+    ;; REVERT to handle the case where the users role attribute has changed
+    (format "REVERT; EXECUTE AS USER = '%s';" role)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
   [_ e]

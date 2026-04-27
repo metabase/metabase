@@ -309,15 +309,17 @@
 
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]
-  (let [default-role (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed (fn [r]
-                          (if (or (re-matches #"\".*\"" r) (= role default-role))
-                            r
-                            (format "\"%s\"" r)))
-        quoted-role (->> (str/split role #",")
-                         (map quote-if-needed)
-                         (str/join ","))
-        statement   (format "SET ROLE %s" quoted-role)]
+  (let [default-role     (driver.sql/default-database-role :clickhouse nil)
+        quote-if-needed  (fn [r]
+                           (if (or (re-matches #"\".*\"" r) (= role default-role))
+                             r
+                             (format "\"%s\"" r)))
+        escape-if-needed #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
+        quoted-role      (->> (str/split role #",")
+                              (map quote-if-needed)
+                              (map escape-if-needed)
+                              (str/join ","))
+        statement        (format "SET ROLE %s" quoted-role)]
     statement))
 
 (defmethod driver.sql/default-database-role :clickhouse

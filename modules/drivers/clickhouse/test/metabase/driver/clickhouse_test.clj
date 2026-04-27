@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib-be.core :as lib-be]
@@ -519,3 +520,8 @@
                                     (driver/native-result-metadata :clickhouse broken-query)))
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (is (= "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+         (driver.sql/set-role-statement :clickhouse "\"x\"; SELECT sleep(10); --\"")
+         (driver.sql/set-role-statement :clickhouse "x\"; SELECT sleep(10); --"))))

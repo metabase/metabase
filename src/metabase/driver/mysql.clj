@@ -1195,7 +1195,8 @@
 
 (defmethod driver.sql/set-role-statement :mysql
   [_driver role]
-  (format "SET ROLE '%s';" role))
+  (let [role (str/replace role #"'" "''")]
+    (format "SET ROLE '%s';" role)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]

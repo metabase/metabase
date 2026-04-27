@@ -2215,9 +2215,7 @@
                 (.execute stmt "SELECT pg_sleep(6)")))))))))
 
 (deftest ^:parallel parse-final-identifier-test
-  (mt/test-driver
-    :postgres
-
+  (mt/test-driver :postgres
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"
@@ -2240,3 +2238,12 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (are [role expected] (= expected
+                          (driver.sql/set-role-statement :postgres role))
+    "role\"; SELECT sleep(10); --"
+    "SET ROLE \"role\"\"; SELECT sleep(10); --\";"
+
+    "role*\"; SELECT sleep(10); --"
+    "SET ROLE \"role*\"\"; SELECT sleep(10); --\";"))

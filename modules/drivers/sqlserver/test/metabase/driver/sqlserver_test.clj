@@ -912,3 +912,7 @@
                                       privileges)]
                (when (seq dbo-orders)
                  (is (every? :select dbo-orders)))))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (is (= "REVERT; EXECUTE AS USER = 'role''; SELECT sleep(10); --';"
+         (driver.sql/set-role-statement :sqlserver "role'; SELECT sleep(10); --"))))

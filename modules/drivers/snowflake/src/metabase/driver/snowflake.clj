@@ -962,7 +962,8 @@
 (defmethod driver.sql/set-role-statement :snowflake
   [_ role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
+        needs-quote           (re-find special-chars-pattern role)
+        role                  (str/replace role #"\"" "\"\"")]
     (if needs-quote
       (format "USE ROLE \"%s\";" role)
       (format "USE ROLE %s;" role))))

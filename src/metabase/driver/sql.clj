@@ -104,7 +104,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod set-role-statement :default
-  [_ _ _]
+  [_driver _role]
   nil)
 
 (defmulti default-database-role

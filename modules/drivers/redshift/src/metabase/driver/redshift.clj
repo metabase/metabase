@@ -659,7 +659,8 @@
 (defmethod driver.sql/set-role-statement :redshift
   [_ role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
+        needs-quote           (re-find special-chars-pattern role)
+        role                  (str/replace role #"\"" "\"\"")]
     (if needs-quote
       (format "SET SESSION AUTHORIZATION \"%s\";" role)
       (format "SET SESSION AUTHORIZATION %s;" role))))
