@@ -10,6 +10,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
+import { McpExploreButton } from "./McpExploreButton";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
