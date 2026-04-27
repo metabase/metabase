@@ -10,7 +10,7 @@ import {
   type FilterUrlState,
   filterUrlStateConfig,
   mergeUrlStateConfig,
-} from "../ConversationFilters";
+} from "../ConversationFilters/url-state";
 
 export const PAGE_SIZE = 25;
 

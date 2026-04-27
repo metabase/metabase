@@ -3043,6 +3043,7 @@
    :uses #{api
            driver
            metabot
+           query-processor
            request
            slackbot
            sql-tools

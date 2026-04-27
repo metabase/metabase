@@ -12,7 +12,7 @@ import {
   type FilterUrlState,
   filterUrlStateConfig,
   mergeUrlStateConfig,
-} from "../ConversationFilters";
+} from "../ConversationFilters/url-state";
 
 import type { UsageStatsMetric } from "./query-utils";
 
