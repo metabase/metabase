@@ -48,7 +48,8 @@
     (f (f query rff)) -> (f query rff)
 
   All of these middlewares assume MBQL 5."
-  [#'qp.middleware.enterprise/swap-destination-db-middleware
+  [#'qp.middleware.enterprise/apply-workspace-sql-remapping-middleware
+   #'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata

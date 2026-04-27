@@ -531,9 +531,12 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             # Capture original values BEFORE any modifications (important for lookup)
             original_schema = node.db
             original_table = node.name
-            # Preserve original quoting status for renamed identifiers
-            original_schema_quoted = node.args.get("db").quoted if node.args.get("db") else False
-            original_table_quoted = node.this.quoted if node.this else False
+            # Preserve original quoting status for renamed identifiers.
+            # Some Table nodes have non-Identifier children (e.g., ExplodingGenerateSeries,
+            # Anonymous) that lack a `quoted` attribute — default to False for those.
+            db_node = node.args.get("db")
+            original_schema_quoted = db_node.quoted if isinstance(db_node, exp.Identifier) else False
+            original_table_quoted = node.this.quoted if isinstance(node.this, exp.Identifier) else False
 
             # Rename schema if present
             if original_schema and original_schema in schemas:
