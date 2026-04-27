@@ -5,7 +5,11 @@
    reads from the `table_remapping` app-DB table via Toucan2. Tests can bind
    [[*remapping-store*]] with a simple map-backed implementation to avoid DB access."
   (:require
+   [metabase-enterprise.workspaces.models.table-remapping]
+   [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
+
+(comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -81,3 +85,16 @@
    Returns empty map if no remappings exist."
   [db-id]
   (remappings-for-db* *remapping-store* db-id))
+
+;;; ------------------------------------------------ Sync hook ---------------------------------------------------
+
+(defenterprise workspace-remap-schema+name
+  "Enterprise impl of the sync hook declared in `metabase.sync.fetch-metadata`.
+   Returns `[to-schema to-name]` for the isolated warehouse table when a remapping
+   exists. Reads through the active [[*remapping-store*]] so tests can stub it.
+   Deliberately ungated on premium features: if rows exist they must be respected,
+   regardless of current token state."
+  :feature :none
+  [db-id schema table-name]
+  (when-let [pair (get (remappings-for-db db-id) [schema table-name])]
+    pair))
