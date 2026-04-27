@@ -13,7 +13,7 @@ function ownFunctionsOf(
   });
 }
 
-export function getterOf(key: string): object | undefined {
+export function getterFromWindowOf(key: string): object | undefined {
   return (
     Object.getOwnPropertyDescriptor(window, key)?.get ??
     Object.getOwnPropertyDescriptor(Window.prototype, key)?.get

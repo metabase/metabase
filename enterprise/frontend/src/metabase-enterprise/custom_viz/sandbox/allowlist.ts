@@ -5,7 +5,7 @@ import {
   allMembersOf,
   allMethodsOf,
   entireClassOf,
-  getterOf,
+  getterFromWindowOf,
 } from "./helpers";
 
 // Native references shared with distortions.ts so identity comparisons match.
@@ -128,12 +128,12 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     window.ResizeObserver,
     window.MutationObserver,
     window.IntersectionObserver,
-    getterOf("navigator"),
-    getterOf("location"),
-    getterOf("screen"),
-    getterOf("devicePixelRatio"),
-    getterOf("innerWidth"),
-    getterOf("innerHeight"),
+    getterFromWindowOf("navigator"),
+    getterFromWindowOf("location"),
+    getterFromWindowOf("screen"),
+    getterFromWindowOf("devicePixelRatio"),
+    getterFromWindowOf("innerWidth"),
+    getterFromWindowOf("innerHeight"),
     window.setTimeout,
     window.clearTimeout,
     window.setInterval,
