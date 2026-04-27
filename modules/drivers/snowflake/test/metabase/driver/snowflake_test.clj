@@ -1003,7 +1003,7 @@
     "role*\"; SELECT sleep(10); --"
     "USE ROLE \"role*\"\"; SELECT sleep(10); --\";"))
 
-(deftest ^:parallel remark-test
+(deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
     (mt/test-driver :snowflake
       (let [expected-map {"pulseId" nil
