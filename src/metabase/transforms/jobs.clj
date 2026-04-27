@@ -82,7 +82,7 @@
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (cond
-    (transforms.settings/transforms-disabled)
+    (not (transforms.settings/transforms-enabled))
     (log/warnf "Skip running transform %d because transforms are disabled" transform-id)
 
     (not (transforms.u/check-feature-enabled transform))

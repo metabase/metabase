@@ -39,7 +39,7 @@
 (defn check-feature-enabled!
   "Check that the premium features required for this transform type are enabled."
   [transform]
-  (when (transforms.settings/transforms-disabled)
+  (when-not (transforms.settings/transforms-enabled)
     (api/throw-403 (deferred-tru "Transforms are disabled.")))
   (api/check (transforms.u/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))

@@ -24,11 +24,3 @@
   :default    false
   :export?    false
   :audit      :getter)
-
-(setting/defsetting transforms-disabled
-  (deferred-tru "When enabled, prevents all transforms from running. Acts as a kill switch for the Data Studio.")
-  :type       :boolean
-  :visibility :admin
-  :default    false
-  :export?    false
-  :audit      :getter)

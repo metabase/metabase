@@ -12,9 +12,9 @@ export function DataStudioSettingsPage() {
     <SettingsPageWrapper title={t`Data Studio`}>
       <SettingsSection>
         <AdminSettingInput
-          name="transforms-disabled"
-          title={t`Disable transforms`}
-          description={t`When enabled, prevents all transforms from running. Existing scheduled jobs and manual runs will be blocked until this is turned off.`}
+          name="transforms-enabled"
+          title={t`Enable transforms`}
+          description={t`When turned off, no transforms will run. Existing scheduled jobs and manual runs are blocked until this is turned back on.`}
           inputType="boolean"
         />
       </SettingsSection>
