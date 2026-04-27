@@ -10,37 +10,42 @@ export function makeDistortionCallback(pluginId: string) {
     if (typeof fun !== "function") {
       return fun;
     }
-    try {
-      if (!Function.prototype.toString.call(fun).includes("[native code]")) {
-        return fun;
-      }
-    } catch {
-      return fun;
-    }
+
     // Bound functions (name starts with "bound ") report [native code] but
     // are user-space wrappers (e.g. React's bound dispatchSetState) — must pass through.
     const fname = (fun as { name?: string }).name ?? "";
     if (fname.startsWith("bound ")) {
       return fun;
     }
+
     if (fun === CANVAS_WIDTH_SETTER) {
       return canvasWidthSetterDistortion;
     }
+
     if (fun === CANVAS_HEIGHT_SETTER) {
       return canvasHeightSetterDistortion;
     }
+
     if (SANITIZED_SETTERS.has(fun)) {
       return SANITIZED_SETTERS.get(fun) as object;
     }
+
     if (fun === CREATE_ELEMENT) {
       return createElementDistortion(pluginId);
     }
+
     if (fun === INSERT_ADJACENT_HTML) {
       return insertAdjacentHTMLDistortion();
     }
+
     if (ALLOWED_FUNCTIONS.has(fun)) {
       return fun;
     }
+
+    if (!Function.prototype.toString.call(fun).startsWith("[native code]")) {
+      return fun;
+    }
+
     const name = getFunctionName(fun);
     return function blocked() {
       throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
@@ -53,6 +58,7 @@ const SANITIZED_SETTERS = new Map<
   object,
   (this: Element, value: string) => void
 >();
+
 for (const key of ["innerHTML", "outerHTML"] as const) {
   const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, key);
   if (descriptor?.set) {
