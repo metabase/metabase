@@ -1,10 +1,10 @@
 function ownFunctionsOf(
   obj: object,
-  pick: (d: PropertyDescriptor) => unknown,
+  pick: (descriptor: PropertyDescriptor) => unknown,
 ): object[] {
   return Object.getOwnPropertyNames(obj).flatMap((key) => {
-    const d = Object.getOwnPropertyDescriptor(obj, key);
-    const fn = d && pick(d);
+    const descriptor = Object.getOwnPropertyDescriptor(obj, key);
+    const fn = descriptor && pick(descriptor);
     return typeof fn === "function" ? [fn] : [];
   });
 }
@@ -17,23 +17,23 @@ export function getterOf(key: string): object | undefined {
 }
 
 export function allGettersOf(proto: object): object[] {
-  return ownFunctionsOf(proto, (d) => d.get);
+  return ownFunctionsOf(proto, (descriptor) => descriptor.get);
 }
 
 export function allMethodsOf(obj: object): object[] {
-  return ownFunctionsOf(obj, (d) => d.value);
+  return ownFunctionsOf(obj, (descriptor) => descriptor.value);
 }
 
 export function allSettersOf(proto: object): object[] {
-  return ownFunctionsOf(proto, (d) => d.set);
+  return ownFunctionsOf(proto, (descriptor) => descriptor.set);
+}
+
+export function allGettersAndMethodsOf(proto: object): object[] {
+  return [...allGettersOf(proto), ...allMethodsOf(proto)];
 }
 
 export function allMembersOf(proto: object): object[] {
-  return [
-    ...allGettersOf(proto),
-    ...allMethodsOf(proto),
-    ...allSettersOf(proto),
-  ];
+  return [...allGettersAndMethodsOf(proto), ...allSettersOf(proto)];
 }
 
 export function allClassMethodsOf(
@@ -109,42 +109,33 @@ const DOM_PROTOTYPE_FUNCTIONS = [
   ...allMembersOf(Node.prototype),
   ...allMembersOf(Element.prototype),
   ...allMembersOf(HTMLElement.prototype),
-  ...allGettersOf(EventTarget.prototype),
   ...allMethodsOf(EventTarget.prototype),
-  // Read-only browser info — getters only, no mutation.
+  ...allGettersOf(EventTarget.prototype),
   ...allGettersOf(Navigator.prototype),
   ...allGettersOf(Screen.prototype),
 ];
 
 // Event hierarchy — plugin event handlers read type, target, clientX/Y, etc.
 const EVENT_PROTOTYPE_FUNCTIONS = [
-  ...allGettersOf(Event.prototype),
-  ...allMethodsOf(Event.prototype),
-  ...allGettersOf(UIEvent.prototype),
-  ...allMethodsOf(UIEvent.prototype),
-  ...allGettersOf(MouseEvent.prototype),
-  ...allMethodsOf(MouseEvent.prototype),
-  ...allGettersOf(PointerEvent.prototype),
-  ...allMethodsOf(PointerEvent.prototype),
-  ...allGettersOf(WheelEvent.prototype),
-  ...allMethodsOf(WheelEvent.prototype),
-  ...allGettersOf(KeyboardEvent.prototype),
-  ...allMethodsOf(KeyboardEvent.prototype),
-  ...allGettersOf(TouchEvent.prototype),
-  ...allMethodsOf(TouchEvent.prototype),
-  ...allGettersOf(Touch.prototype),
+  ...allGettersAndMethodsOf(Event.prototype),
+  ...allGettersAndMethodsOf(UIEvent.prototype),
+  ...allGettersAndMethodsOf(MouseEvent.prototype),
+  ...allGettersAndMethodsOf(PointerEvent.prototype),
+  ...allGettersAndMethodsOf(WheelEvent.prototype),
+  ...allGettersAndMethodsOf(KeyboardEvent.prototype),
+  ...allGettersAndMethodsOf(TouchEvent.prototype),
+  ...allGettersAndMethodsOf(Touch.prototype),
 ];
 
 // Canvas — 2D context methods, HTMLCanvasElement, and geometry.
 const CANVAS_FUNCTIONS = [
   ...allMembersOf(HTMLCanvasElement.prototype),
   ...allMembersOf(CanvasRenderingContext2D.prototype),
+  ...allMembersOf(CSSStyleDeclaration.prototype),
   ...allGettersOf(TextMetrics.prototype),
   ...allGettersOf(DOMRect.prototype),
   ...allGettersOf(DOMRectReadOnly.prototype),
   ...allGettersOf(ResizeObserverEntry.prototype),
-  // CSSStyleDeclaration — style.cssText, style.setProperty, etc.
-  ...allMembersOf(CSSStyleDeclaration.prototype),
 ];
 
 // Covers what plugin code + bundled libs call directly.
@@ -165,14 +156,12 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     window.ResizeObserver,
     window.MutationObserver,
     window.IntersectionObserver,
-    ...CONSOLE_METHODS,
     getterOf("navigator"),
     getterOf("location"),
     getterOf("screen"),
     getterOf("devicePixelRatio"),
     getterOf("innerWidth"),
     getterOf("innerHeight"),
-    window.Date,
     window.setTimeout,
     window.clearTimeout,
     window.setInterval,
@@ -183,6 +172,7 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     window.TextEncoder,
     window.TextDecoder,
     window.performance,
+    ...CONSOLE_METHODS,
     ...ECMASCRIPT_BUILT_IN_METHODS,
     ...TYPED_ARRAY_CONSTRUCTORS,
     ...CSS_GEOMETRY_CONSTRUCTORS,
