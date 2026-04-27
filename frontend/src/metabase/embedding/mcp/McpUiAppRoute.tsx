@@ -5,7 +5,7 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion"
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
@@ -125,7 +125,6 @@ export function McpUiAppRoute() {
           withChartTypeSelector={false}
           onDrillThrough={handleDrillThrough}
         >
-          {/* Title row: question title (left) + explore button (right) */}
           <Flex
             justify="space-between"
             align="center"
@@ -133,7 +132,9 @@ export function McpUiAppRoute() {
             mb="xs"
             style={{ flexShrink: 0 }}
           >
-            <McpQuestionTitle />
+            <div>
+              <McpQuestionTitle />
+            </div>
 
             <McpExploreButton app={app} instanceUrl={instanceUrl} />
           </Flex>
