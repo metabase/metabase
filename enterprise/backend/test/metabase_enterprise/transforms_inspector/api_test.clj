@@ -2,6 +2,7 @@
   "Tests for transform inspector endpoints at /api/ee/transforms/:id/inspect*."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.api :as transforms-inspector.api]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -159,3 +160,20 @@
                                       {:query query})
                 (is (pos? (:count (mt/metric-value system :metabase-transforms/inspector-query-duration-ms
                                                    {:lens-type "generic-summary" :status "ok"}))))))))))))
+
+(deftest query-result->status-label-test
+  (let [classify #'transforms-inspector.api/query-result->status-label]
+    (testing "canceled-chan signal beats anything else, including a completed result"
+      (is (= "canceled" (classify true {:status :completed})))
+      (is (= "canceled" (classify true nil)))
+      (is (= "canceled" (classify true {:status :failed}))))
+    (testing "nil result inside the streaming body means QP short-circuited on cancel"
+      (is (= "canceled" (classify false nil))))
+    (testing "QP outcome keywords map to their labels"
+      (is (= "ok"          (classify false {:status :completed})))
+      (is (= "error"       (classify false {:status :failed})))
+      (is (= "interrupted" (classify false {:status :interrupted}))))
+    (testing "any unrecognised :status keyword falls through to the drift sentinel"
+      (is (= "unknown" (classify false {:status :weird-new-value})))
+      (is (= "unknown" (classify false {})))
+      (is (= "unknown" (classify false {:status nil}))))))

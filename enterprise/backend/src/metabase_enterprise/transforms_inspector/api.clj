@@ -11,6 +11,7 @@
    [metabase.events.core :as events]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
@@ -42,6 +43,19 @@
      :complexity (if known?
                    (-> (lens.core/lens-metadata (keyword lens-id) {}) :complexity :level name)
                    "unknown")}))
+
+(defn- query-result->status-label
+  "Classify a `qp/process-query` outcome for the `:status` Prometheus label.
+   `canceled?` short-circuits to \"canceled\"; otherwise the keyword in
+   `(:status result)` decides. Unknown keywords fall through to
+   \"unknown\" as a drift sentinel."
+  [canceled? result]
+  (cond
+    (or canceled? (nil? result))      "canceled"
+    (= :completed (:status result))   "ok"
+    (= :failed (:status result))      "error"
+    (= :interrupted (:status result)) "interrupted"
+    :else                             "unknown"))
 
 (api.macros/defendpoint :get "/:id/inspect"
   :- ::inspector.schema/discovery-response
@@ -129,9 +143,13 @@
                                 (update :info merge info)
                                 qp/userland-query)
                             rff)
-                    ;; qp/process-query can signal failure by returning {:status :failed}
-                    ;; instead of throwing — see qp.streaming/-streaming-response.
-                    status (if (= :failed (:status result)) "error" "ok")]
+                    ;; Pass `(qp.pipeline/canceled?)` because `qp.streaming/-streaming-response`
+                    ;; synthesizes `{:status :canceled}` *after* this body returns — it never
+                    ;; appears on `result` from inside the streaming body, so we read the chan
+                    ;; directly. The chan is bound by the streaming-response wrapper for the
+                    ;; duration of this body. `:failed` / `:interrupted` come from
+                    ;; qp.middleware.catch-exceptions.
+                    status (query-result->status-label (qp.pipeline/canceled?) result)]
                 (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
                                      {:lens-type (lens-type-label lens-id) :status status}
                                      (u/since-ms timer))
