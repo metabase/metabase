@@ -33,6 +33,7 @@ import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
+import { NewExplorationPage } from "metabase/explorations";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -321,6 +322,8 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route path="explore" component={MetricsViewerPage} />
+
+          <Route path="explorations" component={NewExplorationPage} />
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
