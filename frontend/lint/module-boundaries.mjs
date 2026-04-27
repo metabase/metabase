@@ -38,6 +38,7 @@ const elements = [
     type: "lib",
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/**",
+    enforceOutgoing: true,
   }),
   // basic
   createElement({
