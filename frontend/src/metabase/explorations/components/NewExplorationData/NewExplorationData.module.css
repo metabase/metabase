@@ -1,0 +1,7 @@
+.section {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.sectionTitle {
+  border-bottom: 1px solid var(--mb-color-border);
+}
