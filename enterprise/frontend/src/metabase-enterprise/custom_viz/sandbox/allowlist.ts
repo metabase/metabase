@@ -42,6 +42,16 @@ export function allClassMethodsOf(
   return [...allMethodsOf(ctor), ...allMethodsOf(ctor.prototype)];
 }
 
+export function allClassMembersOf(
+  ctor: object & { prototype: object },
+): object[] {
+  return [...allMembersOf(ctor), ...allMembersOf(ctor.prototype)];
+}
+
+export function entireClassOf(ctor: object & { prototype: object }): object[] {
+  return [ctor, ...allClassMembersOf(ctor)];
+}
+
 // %TypedArray%.prototype is not directly referenceable — it's the shared hidden prototype
 // that all typed array classes (Int8Array, Float64Array, etc.) inherit from.
 function getTypedArrayPrototype(): object {
@@ -95,14 +105,6 @@ const TYPED_ARRAY_CONSTRUCTORS = [
   window.BigUint64Array,
 ];
 
-// CSS matrix / geometry constructors — needed by animation/transform libraries.
-const CSS_GEOMETRY_CONSTRUCTORS = [
-  window.DOMMatrix,
-  window.DOMPoint,
-  window.DOMRect,
-  (window as unknown as Record<string, unknown>).WebKitCSSMatrix as object,
-];
-
 // DOM prototype methods, getters, and setters — manipulation and traversal APIs.
 const DOM_PROTOTYPE_FUNCTIONS = [
   ...allMembersOf(Document.prototype),
@@ -127,15 +129,26 @@ const EVENT_PROTOTYPE_FUNCTIONS = [
   ...allGettersAndMethodsOf(Touch.prototype),
 ];
 
-// Canvas — 2D context methods, HTMLCanvasElement, and geometry.
-const CANVAS_FUNCTIONS = [
-  ...allMembersOf(HTMLCanvasElement.prototype),
-  ...allMembersOf(CanvasRenderingContext2D.prototype),
-  ...allMembersOf(CSSStyleDeclaration.prototype),
-  ...allGettersOf(TextMetrics.prototype),
-  ...allGettersOf(DOMRect.prototype),
-  ...allGettersOf(DOMRectReadOnly.prototype),
-  ...allGettersOf(ResizeObserverEntry.prototype),
+// WebKitCSSMatrix is non-standard and absent in non-WebKit browsers.
+const WebKitCSSMatrix = (
+  window as unknown as {
+    WebKitCSSMatrix?: object & { prototype: object };
+  }
+).WebKitCSSMatrix;
+
+// Canvas + CSS geometry — 2D context, canvas element, style declarations,
+// and the matrix/rect constructors used by animation/transform libraries.
+const CANVAS_AND_GEOMETRY_FUNCTIONS = [
+  ...entireClassOf(DOMMatrix),
+  ...entireClassOf(DOMPoint),
+  ...entireClassOf(DOMRect),
+  ...entireClassOf(DOMRectReadOnly),
+  ...entireClassOf(HTMLCanvasElement),
+  ...entireClassOf(CanvasRenderingContext2D),
+  ...entireClassOf(CSSStyleDeclaration),
+  ...entireClassOf(TextMetrics),
+  ...entireClassOf(ResizeObserverEntry),
+  ...(WebKitCSSMatrix ? entireClassOf(WebKitCSSMatrix) : []),
 ];
 
 // Covers what plugin code + bundled libs call directly.
@@ -175,9 +188,8 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     ...CONSOLE_METHODS,
     ...ECMASCRIPT_BUILT_IN_METHODS,
     ...TYPED_ARRAY_CONSTRUCTORS,
-    ...CSS_GEOMETRY_CONSTRUCTORS,
     ...DOM_PROTOTYPE_FUNCTIONS,
     ...EVENT_PROTOTYPE_FUNCTIONS,
-    ...CANVAS_FUNCTIONS,
+    ...CANVAS_AND_GEOMETRY_FUNCTIONS,
   ].filter(Boolean) as object[],
 );
