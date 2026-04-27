@@ -174,12 +174,20 @@
 
 (defn- ensure-unpacked!
   "Guarantee that the cache dir for `plugin` is on disk. If `bundle` is null in the
-   row (dev-only plugin) this returns nil. Returns the directory `Path` on success."
+   row (dev-only plugin) this returns nil. Returns the directory `Path` on success.
+
+   Recomputes the SHA-256 of the stored bytes against `bundle_hash` before unpacking
+   so a mismatch (DB corruption or tampering with one column but not the other) is
+   refused rather than served."
   ^Path [{:keys [id bundle_hash]}]
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
       (when-not (u.files/exists? dir)
         (when-let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
+          (let [actual-hash (bytes-hash bundle-bytes)]
+            (when-not (= actual-hash bundle_hash)
+              (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
+                              {:plugin-id id :expected bundle_hash :actual actual-hash}))))
           (unpack-bundle! dir bundle-bytes)
           (evict-other-cache-dirs! id bundle_hash)))
       dir)))

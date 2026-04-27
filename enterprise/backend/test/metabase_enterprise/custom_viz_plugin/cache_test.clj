@@ -179,6 +179,19 @@
           (is (= (:hash validated) (:bundle_hash row)))
           (is (not= "oldhash" (:bundle_hash row))))))))
 
+;;; ------------------------------------------------ integrity check on serve ------------------------------------------------
+
+(deftest get-bundle-rejects-mismatched-hash-test
+  (testing "SECURITY: get-bundle refuses to serve when stored bytes don't match bundle_hash"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-temp [:model/CustomVizPlugin plugin {:identifier   "tampered-viz"
+                                                    :display_name "tampered-viz"
+                                                    :status       :active
+                                                    :bundle       (cvp.tu/valid-bundle-bytes "tampered-viz")
+                                                    :bundle_hash  "deadbeef"}]
+        (is (nil? (cache/get-bundle plugin))
+            "mismatch between bundle bytes and bundle_hash must not be served")))))
+
 ;;; ------------------------------------------------ resolve-bundle precedence ------------------------------------------------
 
 (deftest resolve-bundle-dev-url-takes-precedence-test
