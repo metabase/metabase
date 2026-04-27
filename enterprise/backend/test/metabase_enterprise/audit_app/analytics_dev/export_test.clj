@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.test.embedded-postgres.core :as emb-pg]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -96,7 +97,7 @@
     (some (fn [[i [la lb]]]
             (when (not= la lb)
               (format "line %d: exported=%s\n           checked-in=%s" (inc i) (pr-str la) (pr-str lb))))
-          (map-indexed vector (map vector a-lines (concat b-lines (repeat nil)))))))
+          (map-indexed vector (u/map-all vector a-lines b-lines)))))
 
 (defn- create-tmp-dir ^File []
   (.toFile (Files/createTempDirectory "ia-export-test" (make-array FileAttribute 0))))
@@ -115,12 +116,6 @@
               only-checked-in  (sort (set/difference checked-in-paths exported-paths))
               shared-paths     (sort (set/intersection exported-paths checked-in-paths))]
           (is (= [nil nil] (take 2 (data/diff only-checked-in only-exported))))
-          (is (= [] only-exported)
-              (str "files in the export that aren't checked in:\n  "
-                   (str/join "\n  " only-exported)))
-          (is (= [] only-checked-in)
-              (str "files checked in that weren't produced by the export:\n  "
-                   (str/join "\n  " only-checked-in)))
           (is (= [] (for [path shared-paths
                           :let [a (get exported-files path)
                                 b (get checked-in-files path)]
