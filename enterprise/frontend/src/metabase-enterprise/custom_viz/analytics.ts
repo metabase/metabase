@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackCustomVizPluginCreated = (result: "success" | "failure") => {
   trackSimpleEvent({ event: "custom_viz_plugin_created", result });
