@@ -1,11 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type {
-  Field as ApiField,
   CardId,
   CardType,
   DatabaseId,
   DatasetColumn,
+  Field,
   FieldId,
   TableId,
 } from "metabase-types/api";
@@ -232,7 +231,7 @@ export function returnedColumns(
 export function fromLegacyColumn(
   query: Query,
   stageIndex: number,
-  columnOrField: DatasetColumn | Field | ApiField,
+  columnOrField: DatasetColumn | Field,
 ): ColumnMetadata {
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }
