@@ -17,9 +17,9 @@ import { Api } from "metabase/api";
 import "metabase/common/components/Popover/Popover.module.css";
 import { Editor } from "metabase/documents/components/Editor/Editor";
 import { commonReducers } from "metabase/reducers-common";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import {
   createMockCard,
   createMockCardQueryMetadata,
