@@ -220,7 +220,6 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (let [plugin (api/write-check (select-one-plugin :id id))]
     (t2/delete! :model/CustomVizPlugin :id id)
     (cache/purge-plugin-cache! plugin)
@@ -234,7 +233,6 @@
    _query-params
    body :- [:map
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (api/check-superuser)
   (let [existing (api/write-check (select-one-plugin :id id))
         updates  (select-keys body [:enabled])]
     (when (seq updates)
@@ -260,7 +258,6 @@
          ["file" [:map
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass File)]]]]]]]
-  (api/check-superuser)
   (let [existing (api/write-check (select-one-plugin :id id))
         tempfile (check-upload! file)]
     (try
@@ -350,9 +347,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
-  (api/check-superuser)
+  (api/write-check (t2/select-one :model/CustomVizPlugin :id id))
   (check-dev-mode-enabled!)
-  (api/write-check (select-one-plugin :id id))
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
@@ -394,7 +390,6 @@
    plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (let [plugin (api/write-check (select-one-plugin :id id))]
     (api/check-400 (dev-only-plugin? plugin)
                    "Refresh is only supported for dev-only plugins")

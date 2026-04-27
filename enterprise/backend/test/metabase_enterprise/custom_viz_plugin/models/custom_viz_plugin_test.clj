@@ -28,10 +28,10 @@
                                                     :display_name "perm-test"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (binding [api/*current-user-id* 1]
-          (is (true? (boolean (mi/can-read? plugin)))))
+        (binding [api/*current-user-id* (mt/user->id :rasta)]
+          (is (true? (mi/can-read? plugin))))
         (binding [api/*current-user-id* nil]
-          (is (false? (boolean (mi/can-read? plugin))))))))
+          (is (false? (mi/can-read? plugin)))))))
   (testing "write requires superuser"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "perm-test-2"
                                                     :display_name "perm-test-2"
