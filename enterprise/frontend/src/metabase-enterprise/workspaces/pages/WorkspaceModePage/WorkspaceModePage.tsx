@@ -5,41 +5,37 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useGetSettingQuery, useUpdateSettingMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useAdminSetting } from "metabase/api/utils";
 import { Button, Group, Radio, Stack, Text } from "metabase/ui";
-import type { WorkspaceMode } from "metabase-types/api";
-
-const DEFAULT_MODE: WorkspaceMode = "main";
+import { WORKSPACE_MODES } from "metabase-types/api";
 
 export function WorkspaceModePage() {
-  const { data: currentMode } = useGetSettingQuery("workspace-mode");
-  const [updateSetting, { isLoading: isSaving }] = useUpdateSettingMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const {
+    value: initialMode,
+    updateSetting,
+    isLoading,
+  } = useAdminSetting("workspace-mode");
+  const [mode, setMode] = useState(initialMode);
+  const isDirty = mode !== initialMode;
 
-  const initial = (currentMode as WorkspaceMode | undefined) ?? DEFAULT_MODE;
-  const [mode, setMode] = useState<WorkspaceMode>(initial);
-  const isDirty = mode !== initial;
+  const handleChange = (newValue: string) => {
+    const newMode = WORKSPACE_MODES.find((mode) => mode === newValue);
+    if (newMode) {
+      setMode(newMode);
+    }
+  };
 
   const handleSave = async () => {
-    const { error } = await updateSetting({
+    await updateSetting({
       key: "workspace-mode",
       value: mode,
     });
-    if (error) {
-      sendErrorToast(t`Failed to update workspace mode`);
-    } else {
-      sendSuccessToast(t`Workspace mode updated`);
-    }
   };
 
   return (
     <SettingsPageWrapper title={t`Workspace mode`}>
       <SettingsSection>
-        <Radio.Group
-          value={mode}
-          onChange={(value) => setMode(value as WorkspaceMode)}
-        >
+        <Radio.Group value={mode} onChange={handleChange}>
           <Stack>
             <Radio
               value="main"
@@ -73,10 +69,11 @@ export function WorkspaceModePage() {
       <Group justify="flex-end">
         <Button
           variant="filled"
-          loading={isSaving}
-          disabled={!isDirty}
+          disabled={isLoading || !isDirty}
           onClick={handleSave}
-        >{t`Save`}</Button>
+        >
+          {t`Save`}
+        </Button>
       </Group>
     </SettingsPageWrapper>
   );

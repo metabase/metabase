@@ -261,5 +261,6 @@ function getDatabaseMapping(
   return {
     database_id: getDatabaseId(values.database_id),
     input_schemas: values.input_schemas,
+    status: "unprovisioned",
   };
 }

@@ -61,7 +61,9 @@ export function DatabaseMappingSection({
   const handleUpdate = (mapping: WorkspaceDatabase) => {
     onChange(
       mappings.map((current) =>
-        current.database_id === selectedDatabaseId ? mapping : current,
+        current.database_id === selectedDatabaseId
+          ? { ...mapping, status: current.status }
+          : current,
       ),
     );
   };

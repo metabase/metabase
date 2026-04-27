@@ -24,7 +24,7 @@ export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   output_schema?: string;
-  status?: WorkspaceDatabaseStatus;
+  status: WorkspaceDatabaseStatus;
 };
 
 export type CreateWorkspaceRequest = {
