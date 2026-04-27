@@ -62,34 +62,26 @@
   - Named 'Internal Metabase Database'
   - Not marked as is_audit (gets normal permissions, is editable)
 
-  Options:
-  - `:sync?` — whether to sync the database schema after creating it. Defaults to `true`.
-    The analytics-dev export pipeline passes `false` because it only needs the Database row,
-    not synced field metadata.
-
   Returns the created database map."
-  ([user-id]
-   (create-analytics-dev-database! user-id {:sync? true}))
-  ([user-id {:keys [sync?]}]
-   (let [db-type (mdb/db-type)]
-     (if-let [existing (find-analytics-dev-database)]
-       (do
-         (log/info "Analytics dev database already exists:" (:id existing))
-         existing)
-       (let [db (t2/insert-returning-instance! :model/Database
-                                               {:name canonical-db-name
-                                                :description "Development database for analytics views and content"
-                                                :engine (name db-type)
-                                                :details {:is-audit-dev true}
-                                                :is_audit false ; Important: not an audit DB
-                                                :is_full_sync true
-                                                :is_on_demand false
-                                                :creator_id user-id
-                                                :auto_run_queries true})]
-         (log/info "Created analytics dev database:" (:id db))
-         (when sync?
-           (sync/sync-database! db {:scan :schema}))
-         db)))))
+  [user-id]
+  (let [db-type (mdb/db-type)]
+    (if-let [existing (find-analytics-dev-database)]
+      (do
+        (log/info "Analytics dev database already exists:" (:id existing))
+        existing)
+      (let [db (t2/insert-returning-instance! :model/Database
+                                              {:name             canonical-db-name
+                                               :description      "Development database for analytics views and content"
+                                               :engine           (name db-type)
+                                               :details          {:is-audit-dev true}
+                                               :is_audit         false                   ; Important: not an audit DB
+                                               :is_full_sync     true
+                                               :is_on_demand     false
+                                               :creator_id       user-id
+                                               :auto_run_queries true})]
+        (log/info "Created analytics dev database:" (:id db))
+        (sync/sync-database! db {:scan :schema})
+        db))))
 
 (defn delete-analytics-dev-database!
   "Deletes the analytics dev database and all related metadata."

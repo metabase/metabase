@@ -49,7 +49,7 @@
   [target-dir]
   (audit/analytics-dev-mode! true)
   (let [user (seed-superuser!)]
-    (analytics-dev/create-analytics-dev-database! (:id user) {:sync? false})
+    (analytics-dev/create-analytics-dev-database! (:id user))
     (analytics-dev/import-analytics-content! (:email user))
     (let [collection (analytics-dev/find-analytics-collection)]
       (when-not collection
