@@ -14,7 +14,10 @@
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- with-tracked-ids [f]
   (let [ids (atom {:dbs #{} :workspaces #{} :workspace-dbs #{}})]
