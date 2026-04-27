@@ -26,11 +26,23 @@
   :feature :library
   [content-type collection-id]
   (when collection-id
-    (when-let [{:keys [allowed-content-types error-message]} (some-> (t2/select-one-fn :type [:model/Collection :type]
-                                                                                       :id collection-id)
-                                                                     library-collection-content-specs)]
-      (when-not (allowed-content-types content-type)
-        (throw (ex-info error-message {})))))
+    (let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
+      (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
+                                                                       library-collection-content-specs)]
+        (when-not (allowed-content-types content-type)
+          (throw (ex-info error-message {}))))
+      (when (and (= content-type :table) (not= collection-type collection/library-data-collection-type))
+        (throw (ex-info "Tables can only be added to 'Data' collections" {})))))
+  #_(let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
+      (when collection-type
+        (when (and (= collection-type collection/library-collection-type) (not (contains? #{collection/library-data-collection-type
+                                                                                            collection/library-metrics-collection-type}
+                                                                                          content-type)))
+          (throw (ex-info "Cannot add anything to the Library collection" {})))
+        (when (and (= collection-type collection/library-data-collection-type) (not (= :table content-type)))
+          (throw (ex-info "Can only add tables to the 'Data' collection" {})))
+        (when (and (= collection-type collection/library-metrics-collection-type) (not (= :metric content-type)))
+          (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))))
   true)
 
 (defenterprise check-library-update

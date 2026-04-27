@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -174,6 +175,7 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
                   :data_layer   :internal}]
+    (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -188,6 +190,11 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
+
+    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+    ;; Tables can be moved out of any collection, however.
+    (when (:collection_id changes)
+      (collection/check-allowed-content :table (:collection_id changes)))
 
     ;; Prevent setting data_authority back to unconfigured once configured
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)

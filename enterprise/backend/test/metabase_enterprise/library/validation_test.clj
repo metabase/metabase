@@ -70,6 +70,23 @@
           (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-metrics-collection-type)))
               "new collection with :type set is allowed"))))))
 
+(deftest tables-cannot-be-moved-to-non-library-data-collections
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection library-data {:name "Library Data" :type collection/library-data-collection-type}
+                   :model/Collection regular      {:name "Regular Collection" :type nil}
+                   :model/Table      table        {:collection_id (:id library-data)
+                                                   :is_published  true}]
+      (testing "Cannot insert a published table into a regular collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
+                              (t2/insert! :model/Table (merge (mt/with-temp-defaults :model/Table)
+                                                              {:collection_id (:id regular)
+                                                               :is_published  true})))))
+      (testing "Cannot move a published table to a regular collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
+                              (t2/update! :model/Table (:id table) {:collection_id (:id regular)}))))
+      (testing "Can move a table out to no collection"
+        (is (some? (t2/update! :model/Table (:id table) {:collection_id nil})))))))
+
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
