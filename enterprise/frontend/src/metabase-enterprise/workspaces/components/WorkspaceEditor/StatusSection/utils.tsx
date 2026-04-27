@@ -2,10 +2,8 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Icon, Loader } from "metabase/ui";
-import type { WorkspaceDatabase } from "metabase-types/api";
 
-type Workspace = { databases: WorkspaceDatabase[] };
-
+import type { WorkspaceInfo } from "../../../types";
 import {
   isDatabaseProvisioned,
   isDatabaseProvisioning,
@@ -13,7 +11,7 @@ import {
   isDatabaseUnprovisioning,
 } from "../../../utils";
 
-export function getStatusIcon(workspace: Workspace): ReactNode {
+export function getStatusIcon(workspace: WorkspaceInfo): ReactNode {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return <Loader size="sm" />;
   }
@@ -26,7 +24,7 @@ export function getStatusIcon(workspace: Workspace): ReactNode {
   return <Icon name="warning" c="warning" />;
 }
 
-export function getStatusMessage(workspace: Workspace): string {
+export function getStatusMessage(workspace: WorkspaceInfo): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning this workspace…`;
   }
@@ -42,7 +40,7 @@ export function getStatusMessage(workspace: Workspace): string {
   return t`This workspace is partially provisioned.`;
 }
 
-export function getButtonLabel(workspace: Workspace): string {
+export function getButtonLabel(workspace: WorkspaceInfo): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning…`;
   }

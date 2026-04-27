@@ -6,7 +6,7 @@ import type { Workspace } from "metabase-types/api";
 import { POLLING_INTERVAL } from "../constants";
 import { isDatabaseProvisioning, isDatabaseUnprovisioning } from "../utils";
 
-export function useListWorkspacesQueryWithPolling() {
+export function useFetchWorkspaceList() {
   const [isPolling, setIsPolling] = useState(false);
 
   const {

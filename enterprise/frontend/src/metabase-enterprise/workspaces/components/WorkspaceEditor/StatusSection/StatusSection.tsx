@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Text } from "metabase/ui";
@@ -16,6 +15,7 @@ import {
   isDatabaseProvisioning,
   isDatabaseUnprovisioning,
 } from "../../../utils";
+import { TitleSection } from "../../TitleSection";
 
 import { getButtonLabel, getStatusIcon, getStatusMessage } from "./utils";
 
@@ -28,22 +28,32 @@ export function StatusSection({ workspace }: StatusSectionProps) {
   if (workspaceId == null) {
     return null;
   }
+
   const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
 
   return (
-    <SettingsSection>
-      <Group justify="space-between" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap">
-          {getStatusIcon(workspace)}
-          <Text>{getStatusMessage(workspace)}</Text>
-        </Group>
+    <TitleSection
+      label={t`Status`}
+      description={t`Provision to enable transforms in this workspace.`}
+    >
+      <Group p="md" justify="space-between" wrap="nowrap">
+        <WorkspaceStatus workspace={workspace} />
         {isProvisioned ? (
           <UnprovisionButton workspace={workspace} workspaceId={workspaceId} />
         ) : (
           <ProvisionButton workspace={workspace} workspaceId={workspaceId} />
         )}
       </Group>
-    </SettingsSection>
+    </TitleSection>
+  );
+}
+
+function WorkspaceStatus({ workspace }: { workspace: WorkspaceInfo }) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      {getStatusIcon(workspace)}
+      <Text>{getStatusMessage(workspace)}</Text>
+    </Group>
   );
 }
 

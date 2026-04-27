@@ -81,7 +81,9 @@ export function getColumns(): TreeTableColumnDef<Workspace>[] {
 }
 
 export function getEmptyLabel(isFiltered: boolean): string {
-  return isFiltered ? t`No workspaces found` : t`No workspaces yet`;
+  return isFiltered
+    ? t`No workspaces found`
+    : t`Create a workspace to develop transforms in isolation.`;
 }
 
 function getStatusLabel(workspace: Workspace): string {
