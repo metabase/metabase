@@ -220,6 +220,21 @@
           (.delete file))
         (throw e)))))
 
+(defn- keep-only-remapped-pairs
+  "Filter a parsed FieldValues YAML to keep only (value, label) pairs where the label
+  is non-empty. Returns nil if there are no remapped pairs, so the caller can skip
+  writing the file. Prevents exporting raw sample data (IPs, IDs, etc.) for fields
+  that don't have human-readable remaps."
+  [yaml-data]
+  (let [values (:values yaml-data)
+        labels (:human_readable_values yaml-data)
+        pairs  (map vector values labels)
+        remaps (filter (fn [[_ label]] (and (some? label) (not= "" label))) pairs)]
+    (when (seq remaps)
+      (assoc yaml-data
+             :values (mapv first remaps)
+             :human_readable_values (mapv second remaps)))))
+
 (defn- transform-exported-yamls!
   "Transform exported YAMLs from dev format back to canonical.
 
@@ -239,11 +254,15 @@
     (let [relative-path (str/replace (.getPath file)
                                      (str (.getPath (io/file export-dir)) "/")
                                      "")
-          target-file (io/file target-dir relative-path)]
-      (.mkdirs (.getParentFile target-file))
-      (let [yaml-data (yaml/parse-string (slurp file))
-            transformed (yaml->canonical (.getName file) yaml-data user-email)]
-        (spit target-file (yaml/generate-string transformed))))))
+          target-file (io/file target-dir relative-path)
+          yaml-data (yaml/parse-string (slurp file))
+          filtered (if (.endsWith (.getName file) "___fieldvalues.yaml")
+                     (keep-only-remapped-pairs yaml-data)
+                     yaml-data)]
+      (when filtered
+        (.mkdirs (.getParentFile target-file))
+        (let [transformed (yaml->canonical (.getName file) filtered user-email)]
+          (spit target-file (yaml/generate-string transformed)))))))
 
 (defn export-analytics-content!
   "Export dev collection and transform back to canonical format."
