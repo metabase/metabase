@@ -198,7 +198,8 @@
     (try
       (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
                   :no-settings true :no-transforms true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts) (.getPath temp-path)))]
+            report (serdes/with-cache (serialization/store! (serialization/extract opts)
+                                                            (serialization/file-writer (.getPath temp-path))))]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))

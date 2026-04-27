@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
 import { Pulses } from "metabase/entities/pulses";
+import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { PulseApi } from "metabase/services";
-import { createThunkAction } from "metabase/utils/redux";
 import type {
   ChannelApiResponse,
   DashboardSubscription,

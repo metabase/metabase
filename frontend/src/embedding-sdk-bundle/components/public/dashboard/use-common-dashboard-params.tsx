@@ -9,6 +9,7 @@ import {
   reset as dashboardReset,
 } from "metabase/redux/dashboard";
 import { navigateBackToDashboard } from "metabase/redux/query-builder";
+import type { StoreDashboard } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isJWT } from "metabase/utils/jwt";
 import { parseNumber } from "metabase/utils/number";
@@ -19,7 +20,6 @@ import {
   type QuestionDashboardCard,
   isBaseEntityID,
 } from "metabase-types/api";
-import type { StoreDashboard } from "metabase-types/store";
 
 export const useCommonDashboardParams = ({
   dashboardId,

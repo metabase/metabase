@@ -507,7 +507,7 @@
                                                          :state      "initial"
                                                          :creator_id (mt/user->id :rasta)}]
       (model-index/add-values! model-index)
-      (is (= "dataset" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
+      (is (= "indexed-entity" (:model (u/rlast (search.ingestion/searchable-documents))))))))
 
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
@@ -547,8 +547,7 @@
    "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"          #{"action" "model_index_value" "report_card"}
    "report_card"       #{"action" "model_index_value"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}
-   "workspace"         #{"collection"}})
+   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants

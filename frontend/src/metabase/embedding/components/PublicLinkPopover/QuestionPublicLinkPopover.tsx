@@ -4,18 +4,15 @@ import {
   useCreateCardPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
 } from "metabase/api";
+import { type ExportFormat, exportFormats } from "metabase/common/types/export";
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
-import {
-  exportFormats,
-  publicQuestion as getPublicQuestionUrl,
-} from "metabase/utils/urls";
+import { publicQuestion as getPublicQuestionUrl } from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { PublicLinkPopover } from "./PublicLinkPopover";
-import type { ExportFormatType } from "./types";
 
 export const QuestionPublicLinkPopover = ({
   question,
@@ -30,7 +27,7 @@ export const QuestionPublicLinkPopover = ({
 }) => {
   const uuid = question.publicUUID();
 
-  const [extension, setExtension] = useState<ExportFormatType | null>(null);
+  const [extension, setExtension] = useState<ExportFormat | null>(null);
 
   const url = uuid
     ? getPublicQuestionUrl({

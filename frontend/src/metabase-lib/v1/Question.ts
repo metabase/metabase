@@ -5,18 +5,12 @@ import slugg from "slugg";
 import _ from "underscore";
 
 /* eslint-disable no-restricted-imports */
-import { applyParameter } from "metabase/querying/parameters/utils/query";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
-} from "metabase/utils/card";
+} from "metabase/common/utils/card";
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
-import type { NotificationTriggerType } from "metabase-lib/v1/Alert/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -27,7 +21,6 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardDisplayType,
@@ -160,10 +153,10 @@ class Question {
 
     const card = question.card();
     const { id, original_card_id } = card;
-    if (isTransientId(id)) {
+    if (isTransientCardId(id)) {
       question = question.setCard(_.omit(question.card(), "id"));
     }
-    if (isTransientId(original_card_id)) {
+    if (isTransientCardId(original_card_id)) {
       question = question.setCard(_.omit(question.card(), "original_card_id"));
     }
 
@@ -395,45 +388,6 @@ class Question {
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
-  }
-
-  /**
-   * Returns the type of alert that current question supports
-   *
-   * The `visualization_settings` in card object doesn't contain default settings,
-   * so you can provide the complete visualization settings object to `alertType`
-   * for taking those into account
-   */
-  alertType(visualizationSettings): NotificationTriggerType | null {
-    const display = this.display();
-
-    if (!this.canRun()) {
-      return null;
-    }
-
-    const isLineAreaBar =
-      display === "line" || display === "area" || display === "bar";
-
-    if (display === "progress") {
-      return ALERT_TYPE_PROGRESS_BAR_GOAL;
-    } else if (isLineAreaBar) {
-      const vizSettings = visualizationSettings
-        ? visualizationSettings
-        : this.card().visualization_settings;
-      const goalEnabled = vizSettings["graph.show_goal"];
-      const hasSingleYAxisColumn =
-        vizSettings["graph.metrics"] &&
-        vizSettings["graph.metrics"].length === 1;
-
-      // We don't currently support goal alerts for multiseries question
-      if (goalEnabled && hasSingleYAxisColumn) {
-        return ALERT_TYPE_TIMESERIES_GOAL;
-      } else {
-        return ALERT_TYPE_ROWS;
-      }
-    } else {
-      return ALERT_TYPE_ROWS;
-    }
   }
 
   /**
@@ -914,6 +868,10 @@ class Question {
 
     return new Question(card, metadata, parameterValues);
   }
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

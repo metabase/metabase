@@ -9,8 +9,8 @@ import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Switch, useModalsStack } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
 export function DashboardSettingsSidebar() {

@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [select-keys some empty? not-empty])
   (:require
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]

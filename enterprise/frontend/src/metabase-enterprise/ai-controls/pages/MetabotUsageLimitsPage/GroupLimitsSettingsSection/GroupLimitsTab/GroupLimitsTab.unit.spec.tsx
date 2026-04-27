@@ -79,7 +79,7 @@ describe("GroupLimitsTab", () => {
     expect(screen.getByText("Administrators")).toBeInTheDocument();
     expect(screen.getByText("Marketing")).toBeInTheDocument();
 
-    const adminInput = screen.getByRole("spinbutton", {
+    const adminInput = screen.getByRole("textbox", {
       name: /Administrators/,
     });
     expect(adminInput).toBeInTheDocument();
@@ -115,8 +115,8 @@ describe("GroupLimitsTab", () => {
       ],
     });
 
-    expect(screen.getByDisplayValue("100")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("50")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("100 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("50 million")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -136,12 +136,14 @@ describe("GroupLimitsTab", () => {
   it("updates the input value when user types", async () => {
     setup();
 
-    const adminInput = screen.getByRole("spinbutton", {
+    const adminInput = screen.getByRole("textbox", {
       name: /Administrators/,
     });
-    await userEvent.type(adminInput, "250");
-
-    expect(adminInput).toHaveValue(250);
+    await userEvent.type(adminInput, "1");
+    expect(adminInput).toHaveValue("1 million");
+    await userEvent.clear(adminInput);
+    await userEvent.type(adminInput, "10");
+    expect(adminInput).toHaveValue("10 million");
   });
 
   it("shows error message when error is present", () => {

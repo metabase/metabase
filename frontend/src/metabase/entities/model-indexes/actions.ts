@@ -6,10 +6,10 @@ import {
   deleteModelIndex,
   listModelIndexes,
 } from "metabase/api";
+import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
-import type { Dispatch } from "metabase-types/store";
 
 import { getPkRef } from "./utils";
 

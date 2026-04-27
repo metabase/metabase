@@ -2,7 +2,8 @@
   "Settings for MCP Apps CORS origins."
   (:require
    [clojure.string :as str]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;;; ------------------------------------------------ Client → Domain Mapping --------------------------------
@@ -17,6 +18,16 @@
    "cursor-vscode"  []})
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
+
+(defsetting mcp-enabled?
+  (deferred-tru "Whether the MCP server is enabled.")
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :getter     #(and (llm.settings/ai-features-enabled?)
+                    (setting/get-value-of-type :boolean :mcp-enabled?))
+  :export?    true
+  :doc        false)
 
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")

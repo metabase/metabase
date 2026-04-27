@@ -17,6 +17,23 @@ interface Window {
     heightCalculationMethod?: string;
     onReady?: () => void;
   };
+
+  MetabaseSiteLocalization?: {
+    headers: {
+      language: string;
+      "plural-forms"?: string;
+      "content-type"?: string;
+    };
+    translations: Record<string, unknown>;
+  };
+  MetabaseUserLocalization?: {
+    headers: {
+      language: string;
+      "plural-forms"?: string;
+      "content-type"?: string;
+    };
+    translations: Record<string, unknown>;
+  };
 }
 
 // This allows importing static SVGs from TypeScript files

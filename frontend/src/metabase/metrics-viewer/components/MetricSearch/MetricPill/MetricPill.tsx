@@ -19,7 +19,7 @@ import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
 import S from "./MetricPill.module.css";
 
-type PillPopoverState = "closed" | "swap" | "context-menu" | "breakout-picker";
+type PillPopoverState = "closed" | "menu" | "swap" | "breakout-picker";
 
 type MetricPillProps = {
   metric: SelectedMetric;
@@ -102,13 +102,11 @@ export function MetricPill({
 
   const handleOpen = useCallback(() => {
     onOpen?.();
-    setPopoverState("swap");
+    setPopoverState("menu");
   }, [onOpen]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setPopoverState("context-menu");
+  const handleOpenReplace = useCallback(() => {
+    setPopoverState("swap");
   }, []);
 
   const handleOpenBreakoutPicker = useCallback(() => {
@@ -150,7 +148,6 @@ export function MetricPill({
               e.stopPropagation();
               handleOpen();
             }}
-            onContextMenu={handleContextMenu}
             removeButtonProps={{
               mr: 0,
               "aria-label": metric.name
@@ -176,7 +173,7 @@ export function MetricPill({
             </Flex>
           </Pill>
         </Popover.Target>
-        <Popover.Dropdown p={0}>
+        <Popover.Dropdown p={0} mt="-0.15rem">
           <MetricSearchDropdown
             selectedMetricIds={selectedMetricIds}
             selectedMeasureIds={selectedMeasureIds}
@@ -191,12 +188,10 @@ export function MetricPill({
         </Popover.Dropdown>
       </Popover>
       <Menu
-        opened={popoverState === "context-menu"}
+        opened={popoverState === "menu"}
         onChange={(opened) => {
           if (!opened) {
-            setPopoverState((prev) =>
-              prev === "context-menu" ? "closed" : prev,
-            );
+            setPopoverState((prev) => (prev === "menu" ? "closed" : prev));
           }
         }}
         position="bottom-start"
@@ -210,7 +205,13 @@ export function MetricPill({
             className={S.menuTarget}
           />
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown mt="-0.15rem">
+          <Menu.Item
+            leftSection={<Icon name="sync" />}
+            onClick={handleOpenReplace}
+          >
+            {t`Replace`}
+          </Menu.Item>
           {dimensions.size > 0 && definition && (
             <>
               {breakoutDimension && (
@@ -267,7 +268,7 @@ export function MetricPill({
               className={S.menuTarget}
             />
           </Popover.Target>
-          <Popover.Dropdown p={0}>
+          <Popover.Dropdown p={0} mt="-0.15rem">
             <BreakoutDimensionPicker
               definition={definition}
               currentBreakoutDimension={breakoutDimension}

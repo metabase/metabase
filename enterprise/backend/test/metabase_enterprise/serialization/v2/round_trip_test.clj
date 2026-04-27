@@ -176,7 +176,7 @@
                             out-file (io/file output-dir file)]
                       :when (.exists out-file)
                       :let [delta (compare-files ref-file out-file)]]
-                (is (nil? delta)
+                (is (= nil delta)
                     (str "Content mismatch for file: " (strip-base-path source-dir file)))
                 ;; Leave behind files for developers to inspect
                 (when (and (.exists dev-inspect-dir) delta)

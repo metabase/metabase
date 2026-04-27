@@ -15,7 +15,7 @@ Analytics events in Metabase use Snowplow with typed event schemas. All events m
 **Key Files:**
 - `frontend/src/metabase-types/analytics/event.ts` - Event type definitions
 - `frontend/src/metabase-types/analytics/schema.ts` - Schema registry
-- `frontend/src/metabase/utils/analytics.ts` - Core tracking functions
+- `frontend/src/metabase/analytics/` - Core tracking functions (import from `metabase/analytics`)
 - Feature-specific `analytics.ts` files - Tracking function wrappers
 
 ## Quick Checklist
@@ -91,7 +91,7 @@ export type DataStudioEvent =
 In your feature's `analytics.ts` file (e.g., `enterprise/frontend/src/metabase-enterprise/data-studio/analytics.ts`):
 
 ```typescript
-import { trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackDataStudioTablePickerFiltersApplied = () => {
   trackSimpleEvent({
@@ -471,7 +471,7 @@ Event type definitions (all in one place):
 frontend/src/metabase-types/analytics/event.ts
 
 Core tracking utilities:
-frontend/src/metabase/utils/analytics.ts
+frontend/src/metabase/analytics/ (import from `metabase/analytics`)
 ```
 
 ## Real-World Examples

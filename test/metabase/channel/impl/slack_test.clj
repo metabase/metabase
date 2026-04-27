@@ -9,6 +9,27 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest notification-recipient->channel-prefers-channel-id-test
+  (testing "prefers channel_id over value when both are present"
+    (is (= "C0ABC123"
+           (#'channel.slack/notification-recipient->channel
+            {:type    :notification-recipient/raw-value
+             :details {:value "#my-channel" :channel_id "C0ABC123"}}))))
+  (testing "falls back to value when channel_id is absent"
+    (is (= "#my-channel"
+           (#'channel.slack/notification-recipient->channel
+            {:type    :notification-recipient/raw-value
+             :details {:value "#my-channel"}}))))
+  (testing "returns channel_id even when value is nil"
+    (is (= "C0ABC123"
+           (#'channel.slack/notification-recipient->channel
+            {:type    :notification-recipient/raw-value
+             :details {:channel_id "C0ABC123"}}))))
+  (testing "returns nil for non-raw-value recipient types"
+    (is (nil? (#'channel.slack/notification-recipient->channel
+               {:type    :notification-recipient/user
+                :details {:value "#my-channel" :channel_id "C0ABC123"}})))))
+
 (deftest slack-post-receives-at-most-50-blocks-test
   (let [block-inputs (atom [])]
     (with-redefs [slack/post-chat-message! (fn [message-content] (swap! block-inputs conj (:blocks message-content)))]

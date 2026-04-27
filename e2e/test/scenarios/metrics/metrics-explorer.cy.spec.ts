@@ -120,25 +120,38 @@ const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 /**
  * Add a metric or measure to the explorer via the search panel
  */
-const addMetric = (name: string) => {
+const addMetric = (name: string, runExpression: boolean = true) => {
   // for some reason `type` clicks in the middle of the input first
   // so we use `{end}` to make sure we type at the end
-  H.MetricsViewer.searchInput().type(`{end}, ${name}`);
+  H.MetricsViewer.searchInput().type(`{end}, ${name}`, {
+    waitForAnimations: true,
+  });
   H.MetricsViewer.searchResults().findByText(name).click();
 
-  H.MetricsViewer.runButton().click();
+  if (runExpression) {
+    H.MetricsViewer.runButton().click();
+  }
 };
-const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
+const addMetricMath = (
+  expression: ({ metricName: string } | string)[],
+  runExpression: boolean = true,
+) => {
   H.MetricsViewer.searchInput().type("{end}, ");
   for (const item of expression) {
     if (typeof item === "string") {
-      H.MetricsViewer.searchInput().type(`{end}${item}`);
+      H.MetricsViewer.searchInput().type(`{end}${item}`, {
+        waitForAnimations: true,
+      });
     } else {
-      H.MetricsViewer.searchInput().type(`{end}${item.metricName}`);
+      H.MetricsViewer.searchInput().type(`{end}${item.metricName}`, {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().findByText(item.metricName).click();
     }
   }
-  H.MetricsViewer.runButton().click();
+  if (runExpression) {
+    H.MetricsViewer.runButton().click();
+  }
 };
 
 /**
@@ -150,7 +163,7 @@ const selectBreakout = (
   index = 0,
   binning?: string,
 ) => {
-  H.MetricsViewer.searchBarPills().contains(cardname).rightclick();
+  H.MetricsViewer.searchBarPills().contains(cardname).click();
   H.popover().findByText("Break out").click();
   const breakout = H.popover()
     .findAllByText(dimensionName)
@@ -181,6 +194,19 @@ const verifyMetricCount = (count: number) => {
 };
 
 /**
+ * Open the rename flow on an expression pill by clicking it and then the
+ * "Rename" menu item that appears in the action menu.
+ */
+const openExpressionRename = (pillIndex: number) => {
+  H.MetricsViewer.searchBarPills()
+    .should("have.length.at.least", pillIndex + 1)
+    .eq(pillIndex)
+    .click();
+
+  H.popover().findByRole("menuitem", { name: "rename icon Rename" }).click();
+};
+
+/**
  * Switch to a specific tab
  */
 const switchToTab = (tabName: string) => {
@@ -198,26 +224,39 @@ const rgbToHex = (rgb: string): string => {
  * Get hex color(s) from a search bar pill's color indicator.
  * Returns an array of hex color strings.
  */
+const DEFAULT_PLACEHOLDER_COLOR = "#071722";
+
+const readColorsFromIndicator = ($pill: JQuery): string[] => {
+  const colors: string[] = [];
+  $pill
+    .find("[data-testid='color-indicator-container']")
+    .children()
+    .each((_i, el) => {
+      const $el = Cypress.$(el);
+      // Multi-dot: backgroundColor is set; single icon: color is set
+      const bg = $el.css("background-color");
+      const fg = $el.css("color");
+      const raw =
+        bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
+      colors.push(rgbToHex(raw));
+    });
+  return colors;
+};
+
 const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return H.MetricsViewer.searchBarPills()
     .should("have.length.greaterThan", pillIndex)
     .eq(pillIndex)
-    .findByTestId("color-indicator-container")
-    .children()
-    .then(($children) => {
-      const colors: string[] = [];
-      $children.each((_i, el) => {
-        const $el = Cypress.$(el);
-        // Multi-dot: backgroundColor is set; single icon: color is set
-        const bg = $el.css("background-color");
-        const fg = $el.css("color");
-        const raw =
-          bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
-        colors.push(rgbToHex(raw));
-      });
-      return colors;
-    });
+    .should(($pill) => {
+      const colors = readColorsFromIndicator($pill);
+      expect(colors.length, "pill should have at least one color").to.be.gt(0);
+      expect(
+        colors.every((c) => c === DEFAULT_PLACEHOLDER_COLOR),
+        "pill colors should not all be the default placeholder color",
+      ).to.be.false;
+    })
+    .then(($pill) => readColorsFromIndicator($pill));
 };
 
 /**
@@ -305,7 +344,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
 
-      H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
+      H.MetricsViewer.searchBarPills().contains("Count of orders").click();
       H.popover().should("not.contain", "Edit in Data Studio");
     });
 
@@ -368,7 +407,7 @@ describe("scenarios > metrics > explorer", () => {
       );
     });
 
-    it("Should not show me metrics that live in collections I do not have permissions to see", () => {
+    it("should not show me metrics that live in collections I do not have permissions to see", () => {
       cy.signIn("nocollection");
       H.MetricsViewer.goToViewer();
       H.MetricsViewer.searchInput().type("Count of");
@@ -381,7 +420,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchResults().should("contain.text", "Test Measure");
     });
 
-    it("Should not show me measures that live in tables I do not have permissions to see", () => {
+    it("should not show me measures that live in tables I do not have permissions to see", () => {
       cy.signIn("nodata");
       H.MetricsViewer.goToViewer();
       H.MetricsViewer.searchInput().type("Test Measure");
@@ -412,7 +451,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
-      cy.wait("@getMetric");
       cy.wait("@dataset");
     });
 
@@ -422,7 +460,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
         const currentYear = new Date().getFullYear();
-        for (let year = 2022; year <= currentYear; year++) {
+        for (let year = 2025; year <= currentYear; year++) {
           cy.findByText(String(year)).should("be.visible");
         }
       });
@@ -433,7 +471,7 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length", 5);
 
-      H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
+      H.MetricsViewer.searchBarPills().contains("Count of orders").click();
       H.popover().findByText("Change breakout").click();
       H.popover().findByText("Category").click();
 
@@ -441,7 +479,7 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("heading", { name: /Category/ })
         .should("be.visible");
 
-      H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
+      H.MetricsViewer.searchBarPills().contains("Count of orders").click();
       H.popover().findByText("Remove breakout").click();
       H.MetricsViewer.breakoutLegend().should("not.exist");
     });
@@ -493,15 +531,16 @@ describe("scenarios > metrics > explorer", () => {
         "Expand formula editor and create expression with second metric instance",
       );
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput()
-        .clear()
-        .type("Count of orders, Count of orders + Count of products");
-      H.MetricsViewer.searchResults().findByText("Count of products").click();
-      cy.wait("@getMetric");
+      addMetricMath(
+        [
+          { metricName: "Count of orders" },
+          "+",
+          { metricName: "Count of products" },
+        ],
+        false,
+      );
 
-      H.MetricsViewer.searchInput().type(", Count of orders");
-      cy.findByTestId("run-expression-button").click();
-
+      addMetric("Count of orders");
       cy.wait("@dataset");
 
       cy.log("Should have 2 metric pills (expression pill is separate)");
@@ -523,7 +562,7 @@ describe("scenarios > metrics > explorer", () => {
       assertPillColorsInChart(2);
 
       cy.log("Apply breakout to first instance of Count of orders");
-      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.MetricsViewer.searchBarPills().eq(0).click();
       H.popover().findByText("Break out").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
@@ -567,7 +606,7 @@ describe("scenarios > metrics > explorer", () => {
       assertLegendColorsMatchPill(0);
 
       cy.log("Apply breakout to second instance of Count of orders");
-      H.MetricsViewer.searchBarPills().eq(2).rightclick();
+      H.MetricsViewer.searchBarPills().eq(2).click();
       H.popover().findByText("Break out").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
@@ -598,7 +637,7 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       cy.log("Remove breakout from first instance");
-      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.MetricsViewer.searchBarPills().eq(0).click();
       H.popover().findByText("Remove breakout").click();
 
       cy.log(
@@ -634,13 +673,13 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Set up: two instances of Count of orders with an expression");
       cy.findByTestId("metrics-formula-input").click();
 
-      H.MetricsViewer.searchInput().type(", Count of orders");
-      cy.findByTestId("run-expression-button").click();
+      addMetric("Count of orders");
+      cy.wait("@dataset");
 
       H.MetricsViewer.searchBarPills().should("have.length", 2);
 
       cy.log("Apply breakout to first instance of Count of orders");
-      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.MetricsViewer.searchBarPills().eq(0).click();
       H.popover().findByText("Break out").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
@@ -720,16 +759,28 @@ describe("scenarios > metrics > explorer", () => {
         { metricName: "Test Measure" },
       ]);
       cy.wait("@dataset");
-      H.MetricsViewer.searchBarPills().eq(1).rightclick();
-      H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+      cy.log("Expression pill menu only offers Rename, no breakout options");
+      H.MetricsViewer.searchBarPills().eq(1).click();
+      H.popover().within(() => {
+        cy.findByRole("menuitem", { name: "rename icon Rename" }).should(
+          "exist",
+        );
+        cy.findByText(/Break out/).should("not.exist");
+        cy.findByText(/Change breakout/).should("not.exist");
+        cy.findByText(/Remove breakout/).should("not.exist");
+      });
     });
 
     it("should show an expression dimension pill with per-metric accordion", () => {
       cy.log("Create expression: Count of orders + Count of products");
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(
-        ", Count of orders + Count of products",
-      );
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      H.MetricsViewer.searchResults().findByText("Count of orders").click();
+      cy.wait("@getMetric");
+
+      H.MetricsViewer.searchInput().type(" + Count of products");
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
@@ -774,9 +825,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().findAllByTestId("expression-metric-header").eq(1).click();
 
       H.popover().within(() => {
-        cy.get("[data-element-id=list-item][aria-selected=false]")
-          .contains(/Created At/)
-          .click();
+        cy.findByText("Birth Date").click();
       });
 
       cy.wait("@dataset");
@@ -791,8 +840,10 @@ describe("scenarios > metrics > explorer", () => {
       cy.log(
         "Create expression with only expression entity: Count of orders + Count of products",
       );
-      H.MetricsViewer.searchInput().clear();
-      H.MetricsViewer.searchInput().type("Count of orders + Count of products");
+
+      cy.findByTestId("metrics-formula-input").click();
+
+      H.MetricsViewer.searchInput().type(" + Count of products");
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
@@ -811,9 +862,7 @@ describe("scenarios > metrics > explorer", () => {
 
       // Pick a non-default dimension (e.g. "Created At" for Products)
       H.popover().within(() => {
-        cy.get("[data-element-id=list-item][aria-selected=false]")
-          .contains(/Created At/)
-          .click();
+        cy.findByText("Birth Date").click();
       });
 
       cy.wait("@dataset");
@@ -868,6 +917,321 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   // ============================================================================
+  // Expression Custom Names
+  // ============================================================================
+
+  describe("Expression custom names", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
+      cy.wait("@dataset");
+    });
+
+    it("should allow setting a custom name on an expression pill", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Click the expression pill to open name editor");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Count of orders");
+      openExpressionRename(1);
+
+      cy.log("Type a custom name");
+      cy.findByTestId("expression-name-input")
+        .should("be.focused")
+        .clear()
+        .type("My Custom Expression{enter}");
+
+      cy.log("Pill should display the custom name");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "My Custom Expression");
+
+      cy.log("Add breakout on the first metric to trigger the legend");
+      selectBreakout("Count of orders", "Source");
+      cy.wait("@dataset");
+
+      cy.log("Legend should display the custom expression name");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findAllByText("My Custom Expression")
+          .should("exist")
+          .should("have.length", 2);
+        cy.findByText(/Test Measure/).should("not.exist");
+      });
+
+      cy.log("Chart tooltip should display the custom name");
+      H.cartesianChartCircle()
+        .should("have.length.at.least", 4)
+        .eq(4)
+        .trigger("mousemove", { force: true });
+      H.echartsTooltip().within(() => {
+        cy.findByText("My Custom Expression").should("exist");
+        cy.findByText(/Test Measure/).should("not.exist");
+      });
+    });
+
+    it("should revert to formula text when custom name is cleared", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Set a custom name");
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      openExpressionRename(1);
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("Temporary Name{enter}");
+
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Temporary Name");
+
+      cy.log("Clear the custom name");
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      openExpressionRename(1);
+      cy.findByTestId("expression-name-input").clear().type("{enter}");
+
+      cy.log(
+        "Pill should revert to formula-derived text (contains metric names)",
+      );
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("not.contain.text", "Temporary Name")
+        .should("contain.text", "Count of orders");
+
+      cy.log("Add breakout on the first metric to trigger the legend");
+      selectBreakout("Count of orders", "Source");
+      cy.wait("@dataset");
+
+      cy.log(
+        "Legend should use the formula-derived name, not the old custom name",
+      );
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByText("Temporary Name").should("not.exist");
+        cy.findAllByText("Count of orders + Test Measure")
+          .should("exist")
+          .should("have.length", 2);
+      });
+
+      cy.log(
+        "Tooltip should use the formula-derived name, not the old custom name",
+      );
+      H.cartesianChartCircle()
+        .should("have.length.at.least", 4)
+        .eq(4)
+        .trigger("mousemove", { force: true });
+      H.echartsTooltip().within(() => {
+        cy.findByText("Temporary Name").should("not.exist");
+        cy.findByText("Count of orders + Test Measure").should("exist");
+      });
+    });
+
+    it("should preserve custom name when re-running with the same expression", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Set a custom name on the expression pill");
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      openExpressionRename(1);
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("My Stable Name{enter}");
+
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "My Stable Name");
+
+      cy.log("Enter formula mode and re-run the expression");
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      cy.log("Custom name should still be preserved");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 3)
+        .eq(1)
+        .should("contain.text", "My Stable Name");
+
+      cy.log("Tooltip should display the preserved custom name");
+      H.cartesianChartCircle()
+        .should("have.length.at.least", 4)
+        .eq(4)
+        .trigger("mousemove", { force: true });
+      H.echartsTooltip().within(() => {
+        cy.findByText("My Stable Name").should("exist");
+        cy.findByText(/Test Measure/).should("not.exist");
+      });
+    });
+
+    it("should not change expression pill color when renaming", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Capture the expression pill color before renaming");
+      const expressionPillIndex = 1;
+      getPillColors(expressionPillIndex).then((colorsBefore) => {
+        cy.log("Set a custom name on the expression pill");
+        H.MetricsViewer.searchBarPills().should("have.length", 2);
+        openExpressionRename(1);
+        cy.findByTestId("expression-name-input")
+          .clear()
+          .type("Renamed Expression{enter}", { waitForAnimations: true });
+
+        H.MetricsViewer.searchBarPills()
+          .should("have.length", 2)
+          .eq(1)
+          .should("contain.text", "Renamed Expression");
+
+        cy.log("Verify the pill color has not changed after renaming");
+        getPillColors(expressionPillIndex).then((colorsAfter) => {
+          expect(colorsAfter).to.deep.equal(colorsBefore);
+        });
+      });
+    });
+
+    it("should preserve custom name when the expression is edited in place but keeps at least one original metric", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Set a custom name on the expression pill");
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      openExpressionRename(1);
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("Preserved Name{enter}");
+
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Preserved Name");
+
+      cy.log(
+        "Edit in place: delete '+ Test Measure' from the end of the expression " +
+          "while keeping the 'Count of orders' token intact, then append a new operand. " +
+          "The surviving identity carries the custom name.",
+      );
+      cy.findByTestId("metrics-formula-input").click();
+      // Cursor at end → one {backspace} deletes the atomic "Test Measure"
+      // token, the next three delete " + " char-by-char. The first metric
+      // token in the expression ("Count of orders") is untouched and its
+      // MetricIdentity (with customName) survives.
+      H.MetricsViewer.searchInput().type(
+        "{end}{backspace}{backspace}{backspace}{backspace} * Count of products",
+        { waitForAnimations: true },
+      );
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+
+      cy.log(
+        "The expression now reads 'Count of orders * Count of products' " +
+          "and keeps the user-assigned name because one identity survived.",
+      );
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Preserved Name");
+    });
+
+    it("should keep each expression's own name when an earlier expression is removed", () => {
+      // Regression: names used to shift up by ordinal position, so deleting
+      // the first expression made the second one inherit "First Name".
+      // Now names are bound to identities — the surviving expression keeps
+      // its own "Second Name".
+      cy.log("Build two separately-named expressions");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().clear();
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      H.MetricsViewer.searchBarPills().should("have.length", 1);
+      openExpressionRename(0);
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("First Name{enter}");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain.text", "First Name");
+
+      cy.findByTestId("metrics-formula-input").click();
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      openExpressionRename(1);
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("Second Name{enter}");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain.text", "First Name");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .should("contain.text", "Second Name");
+
+      cy.log(
+        "Delete the first expression in place (atomic-range-aware {del} " +
+          "sequence). The second expression's identities — and therefore " +
+          "its custom name — are preserved by CodeMirror's range tracking.",
+      );
+      cy.findByTestId("metrics-formula-input").click();
+      // text: "Count of orders + Test Measure, Count of orders + Test Measure"
+      // cursor at {home} = 0. Seven forward-deletes remove, in order:
+      // "Count of orders" (atomic), " ", "+", " ", "Test Measure" (atomic),
+      // ",", " ". What remains is exactly the second expression.
+      H.MetricsViewer.searchInput().type(
+        "{home}{del}{del}{del}{del}{del}{del}{del}",
+        { waitForAnimations: true },
+      );
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+
+      cy.log(
+        "The surviving expression must keep its own 'Second Name' and " +
+          "must NOT inherit 'First Name' from the removed expression.",
+      );
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 1)
+        .eq(0)
+        .should("contain.text", "Second Name")
+        .should("not.contain.text", "First Name");
+    });
+  });
+
+  // ============================================================================
   // Tabs
   // ============================================================================
 
@@ -915,7 +1279,11 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should not show dimensions that are already in tabs in the dimension picker", () => {
-      addMetric("Count of products");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
       cy.wait("@dataset");
       H.MetricsViewer.tabsShouldBe([
         "Created At",
@@ -932,6 +1300,16 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText("State").should("not.exist");
         cy.findByText("Title").should("not.exist");
         cy.findByText("Category").should("not.exist");
+
+        // metric math should not cause dimensions to be repeated
+        cy.findAllByText("Birth Date").should("have.length", 1);
+
+        cy.findByText("Rating").click();
+      });
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Product → Rating").should("exist");
+        cy.findAllByText("Multiple dimensions").should("not.exist");
       });
     });
 
@@ -1162,6 +1540,10 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.assertVizType("Line");
       cy.findByTestId("chart-layout-picker").should("be.visible");
       cy.findByLabelText("Stack layout").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "stack_series_enabled",
+        triggered_from: "metrics_viewer",
+      });
 
       cy.log("should split the chart into separate panels");
       H.splitPanelAxisLines().should("have.length", 2);
@@ -1358,7 +1740,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllFilterPills().should("have.length", 0);
     });
 
-    it("Should allow me to apply filters to each metric individually", () => {
+    it("should allow me to apply filters to each metric individually", () => {
       addMetric("Count of products");
       switchToTab("Category");
       H.MetricsViewer.changeVizType("line");
@@ -1416,10 +1798,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2027");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("July 7, 2024");
+          .type("July 7, 2027");
         cy.button("Add filter").click();
       });
 
@@ -1435,7 +1817,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("January 1, 2024");
+          .type("January 1, 2027");
         cy.button("Update filter").click();
       });
 
@@ -1485,10 +1867,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 1, 2024");
+          .type("February 1, 2027");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2027");
         cy.button("Add filter").click();
       });
 
@@ -1570,7 +1952,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("exist");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        12,
+        10,
       );
     });
 
@@ -1587,6 +1969,38 @@ describe("scenarios > metrics > explorer", () => {
     });
   });
 
+  describe("Dimension filters", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+    });
+
+    it("should not show 'No compatible dimensions' after deleting and retyping an expression with metrics in a different order (UXW-3748)", () => {
+      cy.log("Create expression: Count of orders + Count of products");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+
+      cy.log(
+        "Re-enter the formula editor, delete the whole expression, retype with metrics in the opposite order",
+      );
+      H.MetricsViewer.searchInput().clear();
+      addMetricMath([
+        { metricName: "Count of products" },
+        "+",
+        { metricName: "Count of orders" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Expression should run without 'No compatible dimensions' error");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+    });
+  });
+
   describe("metric math", () => {
     beforeEach(() => {
       interceptDatasetQuery();
@@ -1594,6 +2008,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
+
     it("should apply filters and dimensions to individual metric instances within expressions", () => {
       selectBreakout("Count of orders", "Category");
       cy.wait("@dataset");
@@ -1673,6 +2088,54 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end} + 0", { delay: 100 });
       H.MetricsViewer.runButton().click();
       assertMetricMath();
+    });
+
+    it("should handle metrics with numeric names in expressions", () => {
+      const NUMERIC_METRIC_NAME = "123";
+      H.createQuestion({
+        name: NUMERIC_METRIC_NAME,
+        type: "metric",
+        description: "A metric with a numeric name",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      cy.log("Add numeric metric '123' as standalone");
+      addMetric("123");
+      cy.wait("@dataset");
+
+      cy.log("Sum metric '123' with itself — both selected from dropdown");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(`+ ${NUMERIC_METRIC_NAME}`);
+      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("exist");
+
+      cy.log(
+        "Append literal number 123 — typed without selecting from dropdown",
+      );
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type("+ 123");
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("exist");
+
+      cy.log("Append metric '123' as standalone — selected from dropdown");
+      addMetric("123");
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("exist");
+
+      cy.log("Verify final pill layout");
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain", "Count of orders");
+      H.MetricsViewer.searchBarPills().eq(1).should("contain", "123 + 123");
+      H.MetricsViewer.searchBarPills().eq(2).should("contain", "123");
     });
   });
 });

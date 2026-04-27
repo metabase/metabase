@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type {
   MetabotSuggestedTransform,
   MetabotTransformInfo,
@@ -16,7 +17,6 @@ import {
   createMockPythonTransformSource,
   createMockTransform,
 } from "metabase-types/api/mocks/transform";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { MetabotAgentEditSuggestionChatMessage } from "../../state/types";
 

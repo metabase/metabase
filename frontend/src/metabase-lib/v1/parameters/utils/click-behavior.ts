@@ -216,8 +216,8 @@ function getTargetsForDimensionOptions(
           column: (column: DatasetColumn) =>
             Boolean(
               column.effective_type &&
-                parentType &&
-                isa(column.effective_type, parentType),
+              parentType &&
+              isa(column.effective_type, parentType),
             ),
           parameter: (parameter) =>
             dimensionFilterForParameter(parameter)(templateTagDimension),
@@ -253,8 +253,8 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
         column: (column: DatasetColumn) =>
           Boolean(
             column.effective_type &&
-              parentType &&
-              isa(column.effective_type, parentType),
+            parentType &&
+            isa(column.effective_type, parentType),
           ),
         parameter: (parameter) =>
           variableFilterForParameter(parameter)(templateTagVariable),

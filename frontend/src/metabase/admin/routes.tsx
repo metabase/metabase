@@ -14,6 +14,8 @@ import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
 import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
+import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
+import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -59,8 +61,8 @@ import {
   PLUGIN_TENANTS,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
-import type { State } from "metabase-types/store";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
@@ -205,6 +207,8 @@ export const getRoutes = (
             )}
 
             <Route path="security" component={EmbeddingSecuritySettings} />
+            <Route path="themes" component={EmbeddingThemeListingApp} />
+            <Route path="themes/:themeId" component={EmbeddingThemeEditorApp} />
           </Route>
         </Route>
 

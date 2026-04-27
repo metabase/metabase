@@ -4,13 +4,13 @@ import { Route } from "react-router";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
 
@@ -68,7 +68,7 @@ describe("SecurityCenterBanner", () => {
     setup();
 
     expect(
-      await screen.findByText(/No notification channels are configured/),
+      await screen.findByText(/Please configure notification channels/),
     ).toBeInTheDocument();
   });
 
@@ -100,7 +100,7 @@ describe("SecurityCenterBanner", () => {
     });
 
     expect(
-      await screen.findByText(/Active security advisories require attention/),
+      await screen.findByText(/Please configure notification channels/),
     ).toBeInTheDocument();
   });
 
@@ -117,7 +117,7 @@ describe("SecurityCenterBanner", () => {
     });
 
     // Wait for the error banner text to confirm advisory data has loaded
-    await screen.findByText(/Active security advisories require attention/);
+    await screen.findByText(/Please configure notification channels/);
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
@@ -138,14 +138,17 @@ describe("SecurityCenterBanner", () => {
     });
 
     expect(
-      await screen.findByText(/Active security advisories require attention/),
+      await screen.findByText(/Please configure notification channels/),
     ).toBeInTheDocument();
   });
 
-  it("includes a link to security center settings", async () => {
+  it("includes a link to security center notification settings", async () => {
     setup();
 
-    const link = await screen.findByText("Set up notifications");
-    expect(link).toHaveAttribute("href", "/admin/security-center");
+    const link = await screen.findByText("Security center");
+    expect(link).toHaveAttribute(
+      "href",
+      "/admin/security-center?open=notifications",
+    );
   });
 });

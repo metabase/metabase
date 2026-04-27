@@ -21,6 +21,13 @@ import {
   OPEN_NAVBAR,
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
+import {
+  createMockAppState,
+  createMockEmbedOptions,
+  createMockEmbedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";
 import {
@@ -28,13 +35,6 @@ import {
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import {
-  createMockAppState,
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import Navbar from "./Navbar";
 

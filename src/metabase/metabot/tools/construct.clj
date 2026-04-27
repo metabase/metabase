@@ -1,231 +1,167 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
-   [clojure.walk :as walk]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
+   [metabase.agent-lib.core :as agent-lib]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.filters :as filter-tools]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
-   [metabase.metabot.util :as metabot-u]
+   [metabase.metabot.tools.util :as tools.u]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- normalize-ai-args
-  "Normalize nested tool arguments to kebab-case keys and keyword enums."
-  [value]
-  (let [normalized (when value
-                     (metabot-u/recursive-update-keys value metabot-u/safe->kebab-case-en))
-        enum-keys #{:operation :bucket :function :sort-order :direction :field-granularity}
-        normalize-enum (fn [v]
-                         (cond
-                           (keyword? v) v
-                           (string? v) (case v
-                                         "ascending" :asc
-                                         "descending" :desc
-                                         (keyword v))
-                           :else v))]
-    (walk/postwalk
-     (fn [x]
-       (if (map? x)
-         (reduce-kv (fn [m k v]
-                      (assoc m k (if (enum-keys k) (normalize-enum v) v)))
-                    {}
-                    x)
-         x))
-     normalized)))
+;;; ------------------------------------------------ Schema ------------------------------------------------
 
-;; Query construction is handled by construct_notebook_query for parity with ai-service.
+(def ^:private source-entity-schema
+  "Schema for source_entity — identifies the primary data source."
+  [:map
+   [:type [:enum "table" "model" "question" "metric"]]
+   [:id :int]])
 
-(def ^:private construct-field-schema
-  [:map {:closed true}
-   [:field_id :string]
-   [:field_granularity {:optional true} [:maybe :string]]
-   [:bucket {:optional true} [:maybe :string]]])
-
-(def ^:private construct-field-aggregation-schema
-  [:map {:closed true}
-   [:field_id {:optional true} :string]
-   [:function [:enum "count" "count-distinct" "distinct" "sum" "min" "max" "avg"]]
-   [:sort_order {:optional true} [:maybe [:enum "ascending" "descending"]]]
-   [:bucket {:optional true} [:maybe :string]]])
-
-(def ^:private construct-measure-aggregation-schema
-  [:map {:closed true}
-   [:measure_id :int]
-   [:sort_order {:optional true} [:maybe :string]]])
-
-(def ^:private construct-metric-schema
-  [:or construct-field-aggregation-schema construct-measure-aggregation-schema])
-
-(def ^:private construct-order-by-schema
-  [:map {:closed true}
-   [:field construct-field-schema]
-   [:direction :string]])
-
-;; Canonical operation values per filter_type.
-;; These appear as enum constraints in the JSON Schema sent to the LLM.
-(def ^:private multi-value-operations
-  ["equals"             "not-equals"
-   "string-starts-with" "string-ends-with"
-   "string-contains"    "string-not-contains"
-   ;; aliases the LLM may send from system-instruction shorthand
-   "contains"           "not-contains"
-   "starts-with"        "ends-with"])
-
-(def ^:private single-value-operations
-  ["greater-than"          "greater-than-or-equal"
-   "less-than"             "less-than-or-equal"
-   ;; LLM may use equals/not-equals with a single value instead of multi_value
-   "equals"                "not-equals"])
-
-(def ^:private no-value-operations
-  ["is-null"            "is-not-null"
-   "string-is-empty"    "string-is-not-empty"
-   "is-true"            "is-false"
-   ;; aliases
-   "is-empty"           "is-not-empty"])
-
-(def ^:private construct-multi-value-filter-schema
-  [:map {:closed true
-         :decode/tool filter-tools/decode-temporal-filter}
-   [:filter_type [:enum "multi_value"]]
-   [:field_id :string]
-   [:operation (into [:enum] multi-value-operations)]
-   [:bucket {:optional true} [:maybe :string]]
-   [:value {:optional true} [:maybe :any]]
-   [:values {:optional true} [:maybe [:sequential :any]]]])
-
-(def ^:private construct-single-value-filter-schema
-  [:map {:closed true
-         :decode/tool filter-tools/decode-temporal-filter}
-   [:filter_type [:enum "single_value"]]
-   [:field_id :string]
-   [:operation (into [:enum] single-value-operations)]
-   [:bucket {:optional true} [:maybe :string]]
-   [:value {:optional true} [:maybe :any]]
-   [:values {:optional true} [:maybe [:sequential :any]]]])
-
-(def ^:private construct-no-value-filter-schema
-  [:map {:closed true}
-   [:filter_type [:enum "no_value"]]
-   [:field_id :string]
-   [:operation (into [:enum] no-value-operations)]])
-
-(def ^:private construct-segment-filter-schema
-  [:map {:closed true}
-   [:filter_type [:enum "segment"]]
-   [:segment_id :int]])
-
-(def ^:private construct-filter-schema
-  [:or
-   construct-multi-value-filter-schema
-   construct-single-value-filter-schema
-   construct-no-value-filter-schema
-   construct-segment-filter-schema])
-
-(def ^:private construct-source-metric-schema
-  [:map {:closed true}
-   [:metric_id :int]])
-
-(def ^:private construct-source-model-schema
-  [:map {:closed true}
-   [:model_id :int]])
-
-(def ^:private construct-source-table-schema
-  [:map {:closed true}
-   [:table_id :int]])
+(def construct-program-schema
+  "Schema for the program parameter of construct_notebook_query.
+  Intentionally loose — agent-lib validates and repairs internally."
+  [:map
+   [:source [:map
+             [:type :string]
+             [:id {:optional true} [:maybe :int]]
+             [:ref {:optional true} [:maybe :string]]]]
+   [:operations [:sequential [:sequential :any]]]])
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
    [:chart_type :string]])
 
-;; The LLM sometimes nests visualization inside query, so we accept it as optional
-;; in each query variant and pull it out during normalization.
-(def ^:private construct-query-metric-schema
+(def ^:private construct-notebook-query-args-schema
   [:map {:closed true}
-   [:query_type [:enum "metric"]]
-   [:source construct-source-metric-schema]
-   [:filters [:sequential construct-filter-schema]]
-   [:group_by [:sequential construct-field-schema]]
+   [:reasoning {:optional true} :string]
+   [:source_entity source-entity-schema]
+   [:referenced_entities {:optional true} [:maybe [:sequential source-entity-schema]]]
+   [:program construct-program-schema]
    [:visualization {:optional true} construct-visualization-schema]])
 
-(def ^:private construct-query-aggregate-schema
-  [:map {:closed true}
-   [:query_type [:enum "aggregate"]]
-   [:source [:or construct-source-model-schema construct-source-table-schema]]
-   [:aggregations [:sequential construct-metric-schema]]
-   [:filters [:sequential construct-filter-schema]]
-   [:group_by [:sequential construct-field-schema]]
-   [:limit [:maybe :int]]
-   [:visualization {:optional true} construct-visualization-schema]])
+;;; ---------------------------------------- Source resolution ----------------------------------------
 
-(def ^:private construct-query-raw-schema
-  [:map {:closed true}
-   [:query_type [:enum "raw"]]
-   [:source [:or construct-source-model-schema construct-source-table-schema]]
-   [:filters [:sequential construct-filter-schema]]
-   [:fields [:sequential construct-field-schema]]
-   [:order_by [:sequential construct-order-by-schema]]
-   [:limit [:maybe :int]]
-   [:visualization {:optional true} construct-visualization-schema]])
+(defn- resolve-source-database-id
+  "Resolve the database ID for a source_entity."
+  [{:keys [type id]}]
+  (case type
+    "table"                (:db_id (tools.u/get-table id :db_id))
+    ("model" "question")   (:database_id (tools.u/get-card id))
+    "metric"               (:database_id (tools.u/get-card id))
+    (throw (ex-info (str "Unsupported source_entity type: " type)
+                    {:agent-error? true :status-code 400}))))
 
-(def construct-query-schema
-  "Schema for the query parameter of construct_notebook_query.
-  Shared with the slackbot query tool variant."
-  [:or construct-query-metric-schema construct-query-aggregate-schema construct-query-raw-schema])
+(defn- source-entity->model-str
+  "Map source_entity type to the model string used by agent-lib evaluation context."
+  [type]
+  (case type
+    "table"      "table"
+    "model"      "dataset"
+    "question"   "card"
+    "metric"     "metric"
+    type))
 
-(def ^:private construct-operation-aliases
-  {"contains"     :string-contains
-   "not-contains" :string-not-contains
-   "starts-with"  :string-starts-with
-   "ends-with"    :string-ends-with
-   "is-empty"     :string-is-empty
-   "is-not-empty" :string-is-not-empty})
+(defn program-source->source-entity
+  "Convert a structured-program `:source` map (using agent-lib model strings: `table`,
+  `card`, `dataset`, `metric`) into the `source-entity` shape consumed by
+  [[execute-program]] (using metabot type strings: `table`, `question`, `model`,
+  `metric`). Throws if the source isn't one of the four database-resolved types
+  (e.g. `context` or nested `program` sources are rejected)."
+  [{:keys [type id] :as source}]
+  (let [entity-type (case type
+                      "table"   "table"
+                      "card"    "question"
+                      "dataset" "model"
+                      "metric"  "metric"
+                      (throw (ex-info (str "Unsupported program source type: " (pr-str type))
+                                      {:agent-error? true
+                                       :status-code  400
+                                       :source       source})))]
+    {:type entity-type :id id}))
 
-(defn- normalize-construct-operation
-  [operation]
-  (let [op (cond
-             (keyword? operation) operation
-             (string? operation) (keyword operation)
-             :else operation)]
-    (get construct-operation-aliases (name op) op)))
+(defn- source-metadata-for
+  "Resolve the lib metadata object for a source entity."
+  [type id metadata-provider]
+  (case type
+    "table"              (lib.metadata/table metadata-provider id)
+    ("model" "question") (lib.metadata/card metadata-provider id)
+    "metric"             (lib.metadata/card metadata-provider id)
+    nil))
 
-(defn- normalize-construct-filter
-  [filter]
-  (let [normalized (normalize-ai-args filter)
-        filter-type (:filter-type normalized)
-        normalized (cond-> normalized
-                     (:operation normalized) (update :operation normalize-construct-operation))]
-    (case filter-type
-      :multi-value (-> normalized
-                       (dissoc :filter-type :value)
-                       (update :values (fn [vals]
-                                         (cond
-                                           (sequential? vals) (vec vals)
-                                           (some? (:value normalized)) [(:value normalized)]
-                                           :else []))))
-      :single-value (-> normalized
-                        (dissoc :filter-type :values)
-                        (assoc :value (or (:value normalized)
-                                          (first (:values normalized)))))
-      :no-value (-> normalized
-                    (dissoc :filter-type :value :values))
-      :segment (-> normalized
-                   (dissoc :filter-type :field-id :operation :bucket :value :values))
-      (dissoc normalized :filter-type))))
+(defn- surrounding-tables-for
+  "Derive surrounding tables from a source query's visible columns."
+  [metadata-provider source-metadata source-id]
+  (try
+    (let [query (lib/query metadata-provider source-metadata)]
+      (->> (lib/visible-columns query)
+           (keep :table-id)
+           distinct
+           (remove #{source-id})
+           (mapv (fn [tid] {:id tid}))))
+    (catch Exception _ [])))
 
-(defn- normalize-construct-filters
-  [filters]
-  (mapv normalize-construct-filter filters))
+(defn- available-measure-ids
+  "Return the set of measure IDs available on a source entity, or empty set."
+  [metadata-provider source-metadata]
+  (try
+    (->> (lib/available-measures (lib/query metadata-provider source-metadata))
+         (keep :id)
+         set)
+    (catch Exception _ #{})))
+
+(defn- build-evaluation-context
+  "Build the EvaluationContext for agent-lib from source_entity and referenced_entities."
+  [{:keys [type id]} referenced-entities metadata-provider]
+  (let [model-str      (source-entity->model-str type)
+        source-metadata (source-metadata-for type id metadata-provider)
+        surrounding     (surrounding-tables-for metadata-provider source-metadata id)
+        measure-ids     (available-measure-ids metadata-provider source-metadata)]
+    {:source-entity       {:model model-str :id id}
+     :referenced-entities (or (mapv (fn [{:keys [type id]}]
+                                      {:model (source-entity->model-str type) :id id})
+                                    referenced-entities)
+                              [])
+     :surrounding-tables  surrounding
+     :measure-ids         measure-ids
+     :source-metadata     source-metadata}))
+
+;;; ---------------------------------------- Result columns ----------------------------------------
+
+(defn- result-columns-for-query
+  "Generate result columns from a pMBQL query for LLM consumption."
+  [pmbql-query metadata-provider]
+  (let [query (lib/query metadata-provider pmbql-query)
+        cols  (lib/returned-columns query)]
+    (mapv #(tools.u/->result-column query %) cols)))
+
+;;; ---------------------------------------- Query execution ----------------------------------------
+
+(defn execute-program
+  "Execute a structured program via agent-lib.
+  Returns the raw result map with :structured-output.
+  Shared between construct-notebook-query-tool and slackbot-construct-notebook-query-tool."
+  [source-entity referenced-entities program]
+  (let [database-id (resolve-source-database-id source-entity)
+        mp          (lib-be/application-database-metadata-provider database-id)
+        context     (build-evaluation-context source-entity referenced-entities mp)
+        pmbql-query (agent-lib/evaluate-program program mp context)
+        query-id    (u/generate-nano-id)]
+    {:structured-output {:query-id       query-id
+                         :query          pmbql-query
+                         :result-columns (result-columns-for-query pmbql-query mp)}
+     :instructions      (instructions/query-created-instructions-for query-id)}))
+
+;;; ---------------------------------------- Chart helpers ----------------------------------------
 
 (defn- chart-type->keyword
   [chart-type]
@@ -233,21 +169,6 @@
     (keyword? chart-type) chart-type
     (string? chart-type)  (keyword chart-type)
     :else                 chart-type))
-
-(defn- query-type->keyword
-  [query-type]
-  (cond
-    (keyword? query-type) query-type
-    (string? query-type)  (keyword query-type)
-    :else                 query-type))
-
-(def ^:private construct-notebook-query-args-schema
-  "Schema for the `construct_notebook_query` tool arguments.
-  Filter sub-schemas carry `:decode/tool` transforms for temporal value coercion."
-  [:map {:closed true}
-   [:reasoning {:optional true} :string]
-   [:query construct-query-schema]
-   [:visualization {:optional true} construct-visualization-schema]])
 
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
@@ -264,73 +185,28 @@
                       {:result_columns result-columns})}))
 
 (defn- structured->chart-xml
-  "Render the full chart XML (matching Python Visualization.llm_representation)
-  for the construct_notebook_query tool result."
+  "Render the full chart XML for the construct_notebook_query tool result."
   [structured chart-id chart-type]
   (llm-rep/visualization->xml
    {:chart-id               chart-id
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
-(def ^:private tool-arg-transformer
-  "Malli transformer that applies `:decode/tool` transforms declared on sub-schemas.
-  Used by [[decode-tool-args]] to coerce LLM arguments (e.g., date strings → integers
-  for extraction buckets) before the tool function runs."
-  (mtx/transformer {:name :tool}))
-
-(defn- decode-tool-args
-  "Decode tool arguments through the Malli schema, applying `:decode/tool` transforms.
-  This is attached as `:decode` metadata on the tool var so that [[run-tool]] calls it
-  before invoking the tool function."
-  [args]
-  (mc/decode construct-notebook-query-args-schema args tool-arg-transformer))
-
-(defn execute-query
-  "Execute a notebook query based on normalized query parameters.
-  Returns the raw query result from filter-tools.
-  Shared between construct-notebook-query-tool and slackbot-construct-notebook-query-tool."
-  [query]
-  (let [normalized-query (normalize-ai-args query)
-        query-type (query-type->keyword (:query-type normalized-query))]
-    (log/debug "execute-query" {:query-type query-type})
-    (case query-type
-      :metric
-      (filter-tools/query-metric
-       {:metric-id (get-in normalized-query [:source :metric-id])
-        :filters (normalize-construct-filters (:filters normalized-query))
-        :group-by (normalize-ai-args (:group-by normalized-query))})
-      :aggregate
-      (filter-tools/query-datasource
-       {:model-id (get-in normalized-query [:source :model-id])
-        :table-id (get-in normalized-query [:source :table-id])
-        :aggregations (normalize-ai-args (:aggregations normalized-query))
-        :filters (normalize-construct-filters (:filters normalized-query))
-        :group-by (normalize-ai-args (:group-by normalized-query))
-        :limit (:limit normalized-query)})
-      :raw
-      (filter-tools/query-datasource
-       {:model-id (get-in normalized-query [:source :model-id])
-        :table-id (get-in normalized-query [:source :table-id])
-        :fields (normalize-ai-args (:fields normalized-query))
-        :filters (normalize-construct-filters (:filters normalized-query))
-        :order-by (normalize-ai-args (:order-by normalized-query))
-        :limit (:limit normalized-query)})
-      {:output (str "Unsupported query_type: " query-type)})))
+;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
-           :decode    decode-tool-args
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
-  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning source_entity referenced_entities program visualization]} :- construct-notebook-query-args-schema]
   (try
-    (let [;; LLM sometimes nests visualization inside query — pull it out
-          effective-viz    (or visualization (:visualization query))
-          normalized-visualization (normalize-ai-args effective-viz)
-          chart-type               (or (chart-type->keyword (:chart-type normalized-visualization))
-                                       :table)
-          query-result             (execute-query (dissoc query :visualization))
-          structured               (or (:structured-output query-result) (:structured_output query-result))]
+    (let [;; LLM sometimes nests visualization inside program — pull it out
+          effective-viz            (or visualization (:visualization program))
+          normalized-visualization (some-> effective-viz (update-keys (comp keyword u/->kebab-case-en name)))
+          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
+                                      :table)
+          query-result            (execute-program source_entity referenced_entities (dissoc program :visualization))
+          structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)

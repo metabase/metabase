@@ -1,7 +1,9 @@
+import type { Location } from "history";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -33,24 +35,30 @@ import S from "./SecurityCenterPage.module.css";
 
 const DEFAULT_FILTER: AdvisoryFilter = {
   severity: "all",
-  status: "all",
   showAcknowledged: false,
 };
 
 const MAX_POLL_COUNT = 30;
 
-export function SecurityCenterPage() {
+type SecurityCenterPageProps = {
+  location?: Location<{ open?: string }>;
+};
+
+export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
   const [isPolling, setIsPolling] = useState(false);
   const {
     data: advisories,
     lastCheckedAt,
     isError,
     acknowledgeAdvisory,
+    acknowledgeAdvisories,
   } = useSecurityAdvisories(isPolling);
   const [syncAdvisories, { isLoading: isSyncing }] =
     useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => location?.query?.open === "notifications",
+  );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
   const [sendToast] = useToast();
@@ -116,8 +124,6 @@ export function SecurityCenterPage() {
   const targetVersion = getTargetUpgradeVersion(advisories);
   const filtered = filterAdvisories(advisories, filter);
 
-  const nothingToShow = filtered.length === 0 || advisories.length === 0;
-
   if (isError) {
     return (
       <Box className={S.root}>
@@ -137,65 +143,64 @@ export function SecurityCenterPage() {
 
   return (
     <NotificationConfigProvider value={notificationConfig}>
-      <Box className={S.root} data-testid="security-center-page">
-        <Stack gap="lg" className={S.header}>
-          <Group gap="sm" align="center">
-            <Title order={1}>{t`Security Center`}</Title>
-            <Box style={{ flex: 1 }} />
-            <Button
-              variant="subtle"
-              leftSection={
-                isSyncInProgress ? <Loader size="1rem" /> : <Icon name="sync" />
-              }
-              onClick={handleSync}
-              disabled={isSyncInProgress}
-              data-testid="sync-advisories"
-            >
-              {isSmallScreen ? null : t`Check now`}
-            </Button>
-            <Button
-              variant="subtle"
-              leftSection={isSmallScreen ? undefined : <Icon name="gear" />}
-              onClick={() => setSettingsOpen(true)}
-              data-testid="notification-config-toggle"
-            >
-              {isSmallScreen ? <Icon name="gear" /> : t`Notification settings`}
-            </Button>
-          </Group>
-          <Text c="text-secondary" data-testid="current-version">
-            {t`Current version`}: {currentVersion}
-          </Text>
-          {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
-        </Stack>
-        <Stack gap="xl" className={S.content}>
-          <AdvisoryFilterBar
-            className={S.filterBar}
-            filter={filter}
-            onChange={setFilter}
-          />
-          {nothingToShow ? (
-            <EmptyState
-              className={S.emptyState}
-              icon="shield_outline"
-              message={
-                advisories.length === 0
-                  ? t`Your instance is up to date — no known security issues affect your configuration.`
-                  : t`Nothing match your filters.`
-              }
+      <AdminSettingsLayout>
+        <Box className={S.root} data-testid="security-center-page">
+          <Stack gap="md" className={S.header}>
+            <Group gap="sm" align="center">
+              <Title order={1}>{t`Security Center`}</Title>
+              <Box style={{ flex: 1 }} />
+              <Button
+                variant="subtle"
+                leftSection={
+                  isSyncInProgress ? (
+                    <Loader size="1rem" />
+                  ) : (
+                    <Icon name="sync" />
+                  )
+                }
+                onClick={handleSync}
+                disabled={isSyncInProgress}
+                data-testid="sync-advisories"
+              >
+                {isSmallScreen ? null : t`Check now`}
+              </Button>
+              <Button
+                variant="subtle"
+                leftSection={isSmallScreen ? undefined : <Icon name="gear" />}
+                onClick={() => setSettingsOpen(true)}
+                data-testid="notification-config-toggle"
+              >
+                {isSmallScreen ? (
+                  <Icon name="gear" />
+                ) : (
+                  t`Notification settings`
+                )}
+              </Button>
+            </Group>
+            <Text c="text-secondary" data-testid="current-version">
+              {t`Current version`}: {currentVersion}
+            </Text>
+            {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
+          </Stack>
+          <Stack gap="xl" className={S.content}>
+            <AdvisoryFilterBar
+              className={S.filterBar}
+              filter={filter}
+              onChange={setFilter}
             />
-          ) : (
             <AdvisoryList
               className={S.list}
               advisories={filtered}
               onAcknowledge={acknowledgeAdvisory}
+              onAcknowledgeAll={acknowledgeAdvisories}
             />
-          )}
-        </Stack>
-        <NotificationChannelConfigModal
-          opened={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-        />
-      </Box>
+          </Stack>
+          <NotificationChannelConfigModal
+            opened={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </Box>
+      </AdminSettingsLayout>
     </NotificationConfigProvider>
   );
 }

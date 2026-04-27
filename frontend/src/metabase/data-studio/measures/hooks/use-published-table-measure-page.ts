@@ -8,7 +8,7 @@ import {
   useUpdateMeasureMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";

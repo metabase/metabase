@@ -222,7 +222,7 @@ const mainConfig = {
     runMode:
       process.env["CYPRESS_RETRIES"] != null
         ? parseInt(process.env["CYPRESS_RETRIES"], 10)
-        : 2,
+        : 1,
     openMode: 0,
   },
 };

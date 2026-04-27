@@ -7,13 +7,16 @@ import {
 } from "metabase/documents/selectors";
 import { Collections } from "metabase/entities/collections";
 import { getMetabotVisible } from "metabase/metabot/state";
+import { connect } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getDetailViewState,
   getIsAppSwitcherVisible,
   getIsCollectionPathVisible,
   getIsLogoVisible,
+  getIsMetricsViewer,
   getIsNavBarEnabled,
   getIsNavbarOpen,
   getIsNewButtonVisible,
@@ -22,8 +25,6 @@ import {
 } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import { connect } from "metabase/utils/redux";
-import type { State } from "metabase-types/store";
 
 import AppBar from "../../components/AppBar";
 
@@ -43,6 +44,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   detailView: getDetailViewState(state),
+  isMetricsViewer: getIsMetricsViewer(state, props),
 });
 
 const mapDispatchToProps = {

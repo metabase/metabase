@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 
 import { act } from "__support__/ui";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch } from "metabase/redux/store";
 
 import {
   addUndo,
@@ -35,6 +35,16 @@ describe("metabase/redux/undo", () => {
       store.dispatch(addUndo({ id: MOCK_ID }));
 
       expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should replace an existing undo when adding another one with the same id", async () => {
+      const store = createMockStore();
+
+      await store.dispatch(addUndo({ id: MOCK_ID, message: "First toast" }));
+      await store.dispatch(addUndo({ id: MOCK_ID, message: "Updated toast" }));
+
+      expect(store.getState().undo).toHaveLength(1);
+      expect(store.getState().undo[0].message).toBe("Updated toast");
     });
   });
 

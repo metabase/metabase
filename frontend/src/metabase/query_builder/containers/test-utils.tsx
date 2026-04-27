@@ -35,8 +35,10 @@ import {
 } from "__support__/ui";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import { serializeCardForUrl } from "metabase/utils/card";
+import type { RequestState, State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
@@ -62,8 +64,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import type { RequestState, State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryBuilder } from "./QueryBuilder";
 

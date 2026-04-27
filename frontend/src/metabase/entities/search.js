@@ -9,9 +9,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { entityForObject } from "metabase/entities/utils";
 import { ObjectUnionSchema } from "metabase/schema";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 import { Actions } from "./actions";
 import { Bookmarks } from "./bookmarks";
@@ -22,6 +20,7 @@ import { Questions } from "./questions";
 import { Segments } from "./segments";
 import { SnippetCollections } from "./snippet-collections";
 import { Snippets } from "./snippets";
+import { createEntity, entityCompatibleQuery, entityForObject } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -30,9 +29,9 @@ export const Search = createEntity({
   name: "search",
   path: "/api/search",
 
-  rtk: {
+  rtk: () => ({
     useListQuery,
-  },
+  }),
 
   api: {
     list: async (query = {}, dispatch) => {
