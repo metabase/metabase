@@ -89,13 +89,6 @@ const EVENT_PROTOTYPE_FUNCTIONS = [
   ...allGettersAndMethodsOf(Touch.prototype),
 ];
 
-// WebKitCSSMatrix is non-standard and absent in non-WebKit browsers.
-const WebKitCSSMatrix = (
-  window as unknown as {
-    WebKitCSSMatrix?: object & { prototype: object };
-  }
-).WebKitCSSMatrix;
-
 // Canvas + CSS geometry — 2D context, canvas element, style declarations,
 // and the matrix/rect constructors used by animation/transform libraries.
 const CANVAS_AND_GEOMETRY_FUNCTIONS = [
@@ -108,7 +101,6 @@ const CANVAS_AND_GEOMETRY_FUNCTIONS = [
   ...entireClassOf(CSSStyleDeclaration),
   ...entireClassOf(TextMetrics),
   ...entireClassOf(ResizeObserverEntry),
-  ...(WebKitCSSMatrix ? entireClassOf(WebKitCSSMatrix) : []),
 ];
 
 // Covers what plugin code + bundled libs call directly.
@@ -128,12 +120,6 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     window.ResizeObserver,
     window.MutationObserver,
     window.IntersectionObserver,
-    getterFromWindowOf("navigator"),
-    getterFromWindowOf("location"),
-    getterFromWindowOf("screen"),
-    getterFromWindowOf("devicePixelRatio"),
-    getterFromWindowOf("innerWidth"),
-    getterFromWindowOf("innerHeight"),
     window.setTimeout,
     window.clearTimeout,
     window.setInterval,
@@ -144,6 +130,12 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     window.TextEncoder,
     window.TextDecoder,
     window.performance,
+    getterFromWindowOf("navigator"),
+    getterFromWindowOf("location"),
+    getterFromWindowOf("screen"),
+    getterFromWindowOf("devicePixelRatio"),
+    getterFromWindowOf("innerWidth"),
+    getterFromWindowOf("innerHeight"),
     ...CONSOLE_METHODS,
     ...ECMASCRIPT_BUILT_IN_METHODS,
     ...TYPED_ARRAY_CONSTRUCTORS,
