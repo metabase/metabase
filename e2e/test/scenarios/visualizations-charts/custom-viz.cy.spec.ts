@@ -1725,4 +1725,83 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("18,760").should("be.visible");
     });
   });
+
+  describe("sandbox", () => {
+    it("blocks disallowed native APIs called by injected plugin code", () => {
+      H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
+      H.setupCustomVizPlugin();
+
+      H.createQuestion(
+        {
+          name: "Custom Viz Sandbox Test",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "sandboxCardId" },
+      );
+
+      // Canary endpoint the sandboxed plugin must NOT be able to reach.
+      // A request hitting this alias would mean the sandbox failed.
+      cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+        "canary",
+      );
+
+      // Prepend a `window.fetch(...)` call to the legitimate bundle. The
+      // bundle is a top-level IIFE, so the injected statement runs the
+      // moment `sandbox.evaluate(text)` is called — the distortion wrapper
+      // should throw "blocked API call: fetch" before fetch ever fires.
+
+      cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+        req.continue((res) => {
+          res.body =
+            'console.log("injected bundle");window.fetch("/api/canary-should-be-blocked-by-sandbox");\n' +
+            (res.body as string);
+          res.send();
+        });
+      }).as("injectedBundle");
+
+      cy.get<number>("@sandboxCardId").then((id) => {
+        cy.visit(`/question/${id}`, {
+          onBeforeLoad(win) {
+            cy.spy(win.console, "log").as("consoleLog");
+            cy.spy(win.console, "error").as("consoleError");
+          },
+        });
+      });
+      cy.wait("@injectedBundle");
+
+      // sandbox.evaluate threw → loadCustomVizPlugin caught it → toast
+      // surfaced and the viz fell back to the default table.
+      cy.findByTestId("visualization-root")
+        .findByTestId("table-root")
+        .should("be.visible");
+      H.undoToastList()
+        .findByText(/"demo-viz" visualization is currently unavailable/)
+        .should("be.visible");
+      // The injected console.log ran inside the sandbox (allowlisted),
+      // proving the bundle started executing before the blocked fetch
+      // tripped the distortion.
+      cy.get("@consoleLog").should("be.calledWith", "injected bundle");
+
+      // loadCustomVizPlugin caught the sandbox error and logged it via
+      // console.error("Failed to load plugin ...", error). The Error's
+      // message is the distortion's "[plugin <id>] blocked API call:
+      // window.fetch".
+      cy.get("@consoleError").should(
+        "have.been.calledWithMatch",
+        /Failed to load plugin/,
+        Cypress.sinon.match.has(
+          "message",
+          Cypress.sinon.match(/\[plugin \d+\] blocked API call: window\.fetch/),
+        ),
+      );
+
+      // The injected fetch must never have left the sandbox.
+      cy.get("@canary.all").should("have.length", 0);
+    });
+  });
 });
