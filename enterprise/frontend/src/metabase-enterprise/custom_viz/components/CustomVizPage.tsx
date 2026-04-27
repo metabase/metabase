@@ -16,10 +16,10 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
+import { useDispatch } from "metabase/redux";
 import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { getUrlProtocol } from "metabase/utils/formatting/url";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import {
   useCreateCustomVizPluginMutation,
