@@ -196,7 +196,6 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its cached bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (let [plugin (api/write-check (t2/select-one :model/CustomVizPlugin :id id))]
     (t2/delete! :model/CustomVizPlugin :id id)
     (cache/purge-plugin-cache! plugin)
@@ -212,8 +211,7 @@
             [:enabled        {:optional true} [:maybe :boolean]]
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
-  (api/check-superuser)
-  (let [existing        (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
+  (let [existing        (api/write-check (t2/select-one :model/CustomVizPlugin :id id))
         updates         (select-keys body [:enabled :access_token :pinned_version])
         pinned-changed? (and (contains? updates :pinned_version)
                              (not= (:pinned_version updates) (:pinned_version existing)))
@@ -298,9 +296,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
-  (api/check-superuser)
+  (api/write-check (t2/select-one :model/CustomVizPlugin :id id))
   (check-dev-mode-enabled!)
-  (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
@@ -341,7 +338,6 @@
   "Re-fetch the bundle from the git repository.
    For dev-only plugins, re-fetches the manifest from the dev server instead."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (let [plugin (api/write-check (t2/select-one :model/CustomVizPlugin :id id))]
     (if (dev-only-plugin? plugin)
       ;; dev-only: re-fetch manifest from dev server

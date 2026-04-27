@@ -23,15 +23,15 @@
 
 (deftest permissions-test
   (testing "read is available to any authenticated user"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/ts-test"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test"
                                                     :identifier   "perm-test"
                                                     :display_name "perm-test"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
         (binding [api/*current-user-id* 1]
-          (is (true? (boolean (mi/can-read? plugin)))))
+          (is (true? (mi/can-read? plugin))))
         (binding [api/*current-user-id* nil]
-          (is (false? (boolean (mi/can-read? plugin))))))))
+          (is (false? (mi/can-read? plugin)))))))
   (testing "write requires superuser"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test-2"
                                                     :identifier   "perm-test-2"
