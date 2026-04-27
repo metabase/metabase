@@ -48,6 +48,7 @@ defineGlobal("Element", MockElement);
 
 const mockWindow = new MockEventTarget();
 defineGlobal("window", mockWindow);
+Object.assign(mockWindow, { ResizeObserver });
 
 const createMockDocument = () => {
   const document = new MockEventTarget();
