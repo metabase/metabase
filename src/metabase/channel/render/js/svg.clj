@@ -12,8 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.json :as json])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -47,12 +46,6 @@
     (js.engine/load-resource bundle-path)
     (js.engine/load-resource interface-path)))
 
-(defn make-untrusted-context
-  "Create a new JS context for static viz rendering. UNTRUSTED: this context is sandboxed
-   and must only be used to run code that may include third-party custom viz plugins."
-  []
-  (js.engine/context))
-
 (def ^:private ^Pool static-viz-context-pool
   "Pool of Truffle JS engine objects. They are not thread-safe, so the access to them has to be carefully managed
   between threads. Each engine with loaded static viz code takes ~130 MB in memory, so we don't want too many of them.
@@ -67,7 +60,7 @@
     (Pool. (reify IPool$Generator
              (generate [_ _]
                ;; Generate a tuple of the engine and the expiry timestamp.
-               [(load-viz-bundle (make-untrusted-context))
+               [(load-viz-bundle (js.engine/context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
              (destroy [_ _ _v]))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
@@ -87,40 +80,24 @@
            10000 ;; Recheck every 10 seconds
            TimeUnit/MILLISECONDS)))
 
-(def ^:dynamic ^:private *taint-context*
-  "Bound to an atom; set to true when custom viz JS has been loaded into a pooled context,
-   so that it gets disposed instead of released back to the pool."
-  nil)
-
-(defn taint-context!
-  "Mark the current static-viz context as tainted so it won't be reused."
-  []
-  (when *taint-context*
-    (log/debug "Tainting static-viz context; will be disposed instead of returned to pool")
-    (reset! *taint-context* true)))
-
 (defn do-with-static-viz-context
   "Impl for [[with-static-viz-context]]."
   [f]
   (if config/is-dev?
-    (f (load-viz-bundle (make-untrusted-context)))
+    (f (load-viz-bundle (js.engine/context)))
     (loop []
       (let [[context expiry-ts :as tuple] (.acquire static-viz-context-pool :engines)]
         (if (>= (System/nanoTime) expiry-ts)
           (do (.dispose static-viz-context-pool :engines tuple)
               (recur))
-          (binding [*taint-context* (atom false)]
-            (try (f context)
-                 (finally
-                   (if @*taint-context*
-                     (.dispose static-viz-context-pool :engines tuple)
-                     (.release static-viz-context-pool :engines tuple))))))))))
+          (try (f context)
+               (finally (.release static-viz-context-pool :engines tuple))))))))
 
 (defmacro with-static-viz-context
   "Execute `body` where `binding-name` is bound to a static viz context. In dev mode, this will be a new context each
   time. In prod or test modes, it will return an instance from `static-viz-context-pool`."
   [binding-name & body]
-  `(do-with-static-viz-context (^:once fn* [~binding-name] ~@body)))
+  `(do-with-static-viz-context (fn [~binding-name] ~@body)))
 
 (defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of

@@ -7,7 +7,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]))
 
-;;; ---------------------------------------------------
+;;; --------------------------------------------------- Helpers ---------------------------------------------------
 
 (defn- extract-value-sources
   "Extracts column references from mappings that aren't strings"
