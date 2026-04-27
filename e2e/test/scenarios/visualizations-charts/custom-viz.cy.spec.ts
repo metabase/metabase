@@ -527,6 +527,11 @@ describe("admin > custom visualizations", () => {
           cy.findByRole("button", { name: "Plugin actions" }).click();
           H.popover().findByText("Remove").click();
 
+          H.modal().within(() => {
+            cy.findByText("Remove this visualization?").should("be.visible");
+            cy.findByRole("button", { name: "Remove" }).click();
+          });
+
           H.main()
             .findByText("You don't have any custom visualizations.")
             .should("be.visible");
