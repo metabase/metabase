@@ -101,3 +101,21 @@ Element.prototype.getClientRects =
 // Mock elementFromPoint for ProseMirror/TipTap compatibility in tests
 document.elementFromPoint = document.elementFromPoint || (() => null);
 document.elementsFromPoint = document.elementsFromPoint || (() => []);
+
+// IntersectionObserver is not available in jsdom. Default to a no-op stub so
+// hooks like useNodeInViewport don't crash. Tests that need to drive
+// intersection events can override globalThis.IntersectionObserver locally.
+globalThis.IntersectionObserver =
+  globalThis.IntersectionObserver ||
+  class IntersectionObserver {
+    constructor() {}
+    root = null;
+    rootMargin = "0px";
+    thresholds = [0];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  };

@@ -228,9 +228,9 @@ export const CardEmbedComponent = memo(
     const [menuView, setMenuView] = useState<string | null>(null);
 
     const setRef = useCallback(
-      (el: HTMLElement | null) => {
+      (el: HTMLDivElement | null) => {
         viewportRef(el);
-        cardEmbedRef.current = el as HTMLDivElement | null;
+        cardEmbedRef.current = el;
       },
       [viewportRef, cardEmbedRef],
     );
