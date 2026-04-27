@@ -47,7 +47,8 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil)."
+   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
+   :mcpSessionId (JSON-encoded or nil)."
   [vars]
   (cond
     (io/resource embed-mcp-template-path)
@@ -147,11 +148,13 @@
   :description "Interactive Metabase SDK visualization for a query"
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
-                       session-key (:session-key opts)]
+                       session-key (:session-key opts)
+                       session-id  (:session-id opts)]
                    (render-embed-mcp-template
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
-                     :sessionToken   (when session-key (json/encode session-key))})))})
+                     :sessionToken   (when session-key (json/encode session-key))
+                     :mcpSessionId   (when session-id (json/encode session-id))})))})
 
 (register-ui-tool!
  :visualize-query
