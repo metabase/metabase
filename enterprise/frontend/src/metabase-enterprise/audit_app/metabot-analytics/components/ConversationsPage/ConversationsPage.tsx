@@ -9,11 +9,7 @@ import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/Met
 import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
-import {
-  ConversationFilters,
-  DEFAULT_GROUP,
-  useFilterOptions,
-} from "../ConversationFilters";
+import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
@@ -25,13 +21,15 @@ export function ConversationsPage({ location }: WithRouterProps) {
   ] = useUrlState(location, urlStateConfig);
 
   const sortingOptions = { sort_column, sort_direction };
-  const { userOptions, groupOptions, tenantOptions, hasTenants } =
-    useFilterOptions();
-
-  const groupId =
-    group && group !== DEFAULT_GROUP ? parseInt(group, 10) : undefined;
-
-  const tenantId = hasTenants && tenant ? parseInt(tenant, 10) : undefined;
+  const {
+    userId,
+    groupId,
+    tenantId,
+    userOptions,
+    groupOptions,
+    tenantOptions,
+    hasTenants,
+  } = useFilterOptions({ date, user, group, tenant });
 
   // Exclude-shape date filters (e.g. "exclude-days-Mon") can't be expressed
   // as a single [start, end) range that the list endpoint accepts; drop them
@@ -48,7 +46,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
       offset: page * PAGE_SIZE,
       "sort-by": sort_column,
       "sort-dir": sort_direction,
-      "user-id": user ? parseInt(user, 10) : undefined,
+      "user-id": userId,
       "group-id": groupId,
       "tenant-id": tenantId,
       date: dateParam,

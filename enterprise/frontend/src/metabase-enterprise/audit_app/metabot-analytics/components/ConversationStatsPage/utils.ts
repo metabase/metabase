@@ -8,7 +8,11 @@ import {
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 
-import { DEFAULT_DATE, DEFAULT_GROUP } from "../ConversationFilters";
+import {
+  type FilterUrlState,
+  filterUrlStateConfig,
+  mergeUrlStateConfig,
+} from "../ConversationFilters";
 
 import type { UsageStatsMetric } from "./query-utils";
 
@@ -27,20 +31,13 @@ export function getFilterDays(dateValue: string): number {
   return 30;
 }
 
-export type StatsUrlState = {
-  date: string | null;
-  user: string | null;
-  group: string | null;
-  tenant: string | null;
+type StatsPageUrlState = {
   metric: UsageStatsMetric;
 };
 
-const DEFAULT_METRIC: UsageStatsMetric = "conversations";
+export type StatsUrlState = FilterUrlState & StatsPageUrlState;
 
-function parseString(param: QueryParam): string | null {
-  const value = getFirstParamValue(param);
-  return value && value.trim().length > 0 ? value.trim() : null;
-}
+const DEFAULT_METRIC: UsageStatsMetric = "conversations";
 
 function parseMetric(param: QueryParam): UsageStatsMetric {
   const value = getFirstParamValue(param);
@@ -50,19 +47,14 @@ function parseMetric(param: QueryParam): UsageStatsMetric {
   return DEFAULT_METRIC;
 }
 
-export const statsUrlStateConfig: UrlStateConfig<StatsUrlState> = {
+const statsPageUrlStateConfig: UrlStateConfig<StatsPageUrlState> = {
   parse: (query) => ({
-    date: parseString(query.date) ?? DEFAULT_DATE,
-    user: parseString(query.user),
-    group: parseString(query.group) ?? DEFAULT_GROUP,
-    tenant: parseString(query.tenant),
     metric: parseMetric(query.metric),
   }),
-  serialize: ({ date, user, group, tenant, metric }) => ({
-    date: date === DEFAULT_DATE ? undefined : (date ?? undefined),
-    user: user ?? undefined,
-    group: group === DEFAULT_GROUP ? undefined : (group ?? undefined),
-    tenant: tenant ?? undefined,
+  serialize: ({ metric }) => ({
     metric: metric === DEFAULT_METRIC ? undefined : metric,
   }),
 };
+
+export const statsUrlStateConfig: UrlStateConfig<StatsUrlState> =
+  mergeUrlStateConfig(filterUrlStateConfig, statsPageUrlStateConfig);

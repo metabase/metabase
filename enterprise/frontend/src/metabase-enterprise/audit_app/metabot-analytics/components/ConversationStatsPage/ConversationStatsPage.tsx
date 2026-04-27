@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -6,8 +6,6 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
@@ -17,11 +15,7 @@ import {
   VIEW_USAGE_LOG,
 } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
-import {
-  ConversationFilters,
-  DEFAULT_GROUP,
-  useFilterOptions,
-} from "../ConversationFilters";
+import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import {
   type UrlState as ConversationsUrlState,
   urlStateConfig as conversationsUrlStateConfig,
@@ -39,47 +33,21 @@ import type { UsageStatsMetric } from "./query-utils";
 import type { ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
 
-const DEFAULT_DATE_FILTER: DateFilterValue = {
-  type: "relative",
-  value: -30,
-  unit: "day",
-  options: { includeCurrent: true },
-};
-
 export function ConversationStatsPage({ location }: WithRouterProps) {
   const dispatch = useDispatch();
   const [{ date, user, group, tenant, metric }, { patchUrlState }] =
     useUrlState(location, statsUrlStateConfig);
 
-  const dateFilter: DateFilterValue = useMemo(() => {
-    if (!date) {
-      return DEFAULT_DATE_FILTER;
-    }
-    const parsed = deserializeDateParameterValue(date);
-    if (parsed && "type" in parsed) {
-      return parsed as DateFilterValue;
-    }
-    return DEFAULT_DATE_FILTER;
-  }, [date]);
-
-  const { userOptions, groupOptions, tenantOptions, hasTenants } =
-    useFilterOptions();
-
-  const userId = useMemo(() => (user ? parseInt(user, 10) : undefined), [user]);
-  const groupId = useMemo(() => {
-    if (!group || group === DEFAULT_GROUP) {
-      return undefined;
-    }
-    const parsed = parseInt(group, 10);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }, [group]);
-  const tenantId = useMemo(() => {
-    if (!hasTenants || !tenant) {
-      return undefined;
-    }
-    const parsed = parseInt(tenant, 10);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }, [hasTenants, tenant]);
+  const {
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+    userOptions,
+    groupOptions,
+    tenantOptions,
+    hasTenants,
+  } = useFilterOptions({ date, user, group, tenant });
 
   const conversationsAudit = useAuditTable(VIEW_CONVERSATIONS);
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
