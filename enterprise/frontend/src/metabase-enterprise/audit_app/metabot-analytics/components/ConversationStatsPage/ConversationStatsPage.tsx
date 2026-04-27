@@ -10,11 +10,6 @@ import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
 
 import {
   VIEW_CONVERSATIONS,
@@ -39,7 +34,8 @@ import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
 import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
 import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
-import type { StatsFilters, UsageStatsMetric } from "./query-utils";
+import type { UsageStatsMetric } from "./query-utils";
+import type { ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
 
 const DEFAULT_DATE_FILTER: DateFilterValue = {
@@ -48,8 +44,6 @@ const DEFAULT_DATE_FILTER: DateFilterValue = {
   unit: "day",
   options: { includeCurrent: true },
 };
-
-type ChartsTable = TableMetadata | CardMetadata;
 
 export function ConversationStatsPage({ location }: WithRouterProps) {
   const dispatch = useDispatch();
@@ -84,10 +78,15 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
-  const provider = conversationsAudit.provider;
-  const metricTable =
-    metric === "tokens" ? usageLogAudit.table : conversationsAudit.table;
-  const groupMembersTable = groupMembersAudit.table;
+  const sharedChartProps: ChartProps = {
+    provider: conversationsAudit.provider,
+    table: metric === "tokens" ? usageLogAudit.table : conversationsAudit.table,
+    groupMembersTable: groupMembersAudit.table,
+    dateFilter,
+    userId,
+    groupId,
+    metric,
+  };
 
   const navigateToConversations = useCallback(
     (filterOverrides: Partial<ConversationsUrlState>) => {
@@ -175,108 +174,26 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
           </Tabs.List>
         </Tabs>
 
-        <ChartGrid
-          provider={provider}
-          metricTable={metricTable}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          metric={metric}
-          onDayClick={handleDayClick}
-          onUserClick={handleUserClick}
+        <ConversationsByDayChart
+          {...sharedChartProps}
+          onDimensionClick={handleDayClick}
         />
+
+        <SimpleGrid cols={2} spacing="lg">
+          <ConversationsBySourceChart {...sharedChartProps} />
+          <ConversationsByProfileBarChart {...sharedChartProps} />
+        </SimpleGrid>
+
+        <SimpleGrid cols={3} spacing="lg">
+          <ConversationsByGroupChart {...sharedChartProps} h={500} />
+          <ConversationsByUserChart
+            {...sharedChartProps}
+            onDimensionClick={handleUserClick}
+            h={500}
+          />
+          <ConversationsByIPAddressChart {...sharedChartProps} h={500} />
+        </SimpleGrid>
       </SettingsPageWrapper>
     </MetabotAdminLayout>
-  );
-}
-
-type ChartGridProps = StatsFilters & {
-  provider: MetadataProvider | null;
-  metricTable: ChartsTable | null;
-  groupMembersTable: ChartsTable | null;
-  onDayClick: (value: unknown) => void;
-  onUserClick: (value: unknown) => void;
-};
-
-function ChartGrid({
-  provider,
-  metricTable,
-  groupMembersTable,
-  dateFilter,
-  userId,
-  groupId,
-  metric,
-  onDayClick,
-  onUserClick,
-}: ChartGridProps) {
-  return (
-    <>
-      <ConversationsByDayChart
-        provider={provider}
-        table={metricTable}
-        groupMembersTable={groupMembersTable}
-        dateFilter={dateFilter}
-        userId={userId}
-        groupId={groupId}
-        metric={metric}
-        onDimensionClick={onDayClick}
-      />
-
-      <SimpleGrid cols={2} spacing="lg">
-        <ConversationsBySourceChart
-          provider={provider}
-          table={metricTable}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          metric={metric}
-        />
-        <ConversationsByProfileBarChart
-          provider={provider}
-          table={metricTable}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          metric={metric}
-        />
-      </SimpleGrid>
-
-      <SimpleGrid cols={3} spacing="lg">
-        <ConversationsByGroupChart
-          provider={provider}
-          table={metricTable}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          metric={metric}
-          h={500}
-        />
-        <ConversationsByUserChart
-          provider={provider}
-          table={metricTable}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          metric={metric}
-          onDimensionClick={onUserClick}
-          h={500}
-        />
-        <ConversationsByIPAddressChart
-          provider={provider}
-          table={metricTable}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          metric={metric}
-          h={500}
-        />
-      </SimpleGrid>
-    </>
   );
 }
