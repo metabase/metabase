@@ -78,12 +78,28 @@
   query)
 
 (defenterprise apply-workspace-remapping
-  "Pre-processing middleware to rewrite 'global' table references with 'isolated' tables in the workspace schema."
+  "Pre-processing middleware (Phase 1). Swaps MBQL table metadata for workspace isolation.
+   Does not touch native SQL — that happens in Phase 2 after full compilation."
   metabase-enterprise.workspaces.query-processor.middleware
   [query]
   query)
 
 ;;;; Execution middleware
+
+(defenterprise apply-workspace-sql-remapping
+  "Execution middleware (Phase 2). The authoritative SQL rewriter for workspace isolation.
+   Parses compiled SQL, rewrites table references, re-emits. Runs for all queries against
+   remapped databases after snippets, card refs, and parameters are fully resolved."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [qp]
+  qp)
+
+(defn apply-workspace-sql-remapping-middleware
+  "Helper middleware wrapper for [[apply-workspace-sql-remapping]] to make sure we do [[defenterprise]] dispatch
+  correctly on each QP run rather than just once when we combine all of the QP middleware."
+  [qp]
+  (fn [query rff]
+    ((apply-workspace-sql-remapping qp) query rff)))
 
 ;;; (f qp) => qp
 
