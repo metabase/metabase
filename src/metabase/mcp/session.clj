@@ -136,38 +136,31 @@
 ;; DB-backed store for base64-encoded drill-through query payloads.
 ;; Replaces the in-memory atom that broke under load-balanced (multi-pod) deployments.
 ;;
-;; Drill handles use the deterministic key "drill:{session_id}" so that
-;; render_drill_through can look up the payload without any ID travelling through
-;; LLM context. Upserted (last write wins): only one drill can be pending at a time.
-
-(defn- drill-handle-id [session-id] (str "drill:" session-id))
+;; The table is keyed by session_id — at most one pending drill per session.
+;; Upserted (last write wins) so a second drill overwrites the first.
 
 (defn store-drill-handle!
   "Upsert the drill-through query payload for `session-id`. Last write wins."
   [session-id encoded-query]
-  (let [id (drill-handle-id session-id)]
-    (t2/query {:insert-into :mcp_ui_query_handle
-               :values      [{:id            id
-                              :session_id    session-id
+  (t2/query {:insert-into   :mcp_ui_query_handle
+             :values        [{:id            session-id
                               :encoded_query encoded-query
                               :created_at    :%now}]
-               :on-conflict [:id]
-               :do-update-set [:encoded_query :created_at]})))
+             :on-conflict   [:id]
+             :do-update-set [:encoded_query :created_at]}))
 
 (defn consume-drill-handle!
   "Retrieve and delete the drill-through query payload for `session-id`.
    Returns nil if no pending drill exists."
   [session-id]
-  (let [id  (drill-handle-id session-id)
-        row (t2/select-one :mcp_ui_query_handle :id id)]
-    (when row
-      (t2/delete! :mcp_ui_query_handle :id id)
-      (:encoded_query row))))
+  (when-let [row (t2/select-one :mcp_ui_query_handle :id session-id)]
+    (t2/delete! :mcp_ui_query_handle :id session-id)
+    (:encoded_query row)))
 
 (defn- delete-session-handles!
   "Delete the drill-through query handle for `session-id`. Called on session teardown."
   [session-id]
-  (t2/delete! :mcp_ui_query_handle :id (drill-handle-id session-id)))
+  (t2/delete! :mcp_ui_query_handle :id session-id))
 
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)
