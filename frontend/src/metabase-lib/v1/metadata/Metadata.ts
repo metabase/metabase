@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { MetadataBrand } from "metabase-lib";
+import { MetadataSymbol } from "metabase-lib";
 import type {
   CardId,
   DatabaseId,
@@ -46,7 +46,10 @@ interface MetadataOpts {
  *   Do not rely on data being implicitly loaded in some other place.
  */
 class Metadata {
-  readonly [MetadataBrand]: void;
+  // We brand this type with the MetadataSymbol to
+  // to mark it as a Metadata instance.
+
+  readonly [MetadataSymbol]?: void;
   databases: Record<string, Database> = {};
   schemas: Record<string, Schema> = {};
   tables: Record<string, Table> = {};
@@ -60,7 +63,6 @@ class Metadata {
 
   constructor(opts?: MetadataOpts) {
     Object.assign(this, opts);
-    this[MetadataBrand] = undefined;
   }
 
   /**

@@ -10,7 +10,12 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-export declare const MetadataBrand: unique symbol;
+/**
+ * We do not have full type-safety into the CLJS of metabase-lib, so
+ * we mark objects that are instances of Metadata using this symbol
+ * without having to import them here.
+ */
+export declare const MetadataSymbol: unique symbol;
 
 /**
  * Structural shape consumed by {@link metadataProvider}. The CLJS-side provider
@@ -22,7 +27,7 @@ export declare const MetadataBrand: unique symbol;
  * via the {@link metadataInput} helper.
  */
 export interface Metadata {
-  readonly [MetadataBrand]: void;
+  readonly [MetadataSymbol]?: void;
   databases?: Record<string, unknown>;
   tables?: Record<string, unknown>;
   fields?: Record<string, unknown>;
@@ -32,12 +37,6 @@ export interface Metadata {
   questions?: Record<string, unknown>;
   snippets?: Record<string, unknown>;
   settings?: object;
-}
-
-export function metadataInput(
-  input: Omit<Metadata, typeof MetadataBrand>,
-): Metadata {
-  return input as Metadata;
 }
 
 import type {
