@@ -44,12 +44,7 @@ export function getURLForCardState(
   query: QueryParams = {},
   objectId: string,
 ) {
-  interface Options {
-    hash: string;
-    query: QueryParams;
-    objectId?: string;
-  }
-  const options: Options = {
+  const options: Urls.CardUrlBuilderParams = {
     hash:
       card && dirty
         ? serializeCardForUrl(card, {
@@ -63,7 +58,7 @@ export function getURLForCardState(
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
-      options.query.objectId = objectId;
+      (options.query as QueryParams).objectId = objectId;
     } else {
       options.objectId = objectId;
     }

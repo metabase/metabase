@@ -33,6 +33,10 @@ export type CardUrlBuilderParams = {
   // Route to the unsaved-with-hash URL even though the card has a real id —
   // used for dirty edits to a saved question that shouldn't land on the saved path.
   forceUnsaved?: boolean;
+  // Pre-serialized card hash to append even on the saved-card path. Used by the
+  // QB to keep the in-memory card state recoverable on reload while still showing
+  // the canonical /question/{id}-{slug} URL.
+  hash?: string;
 };
 
 export function card(
@@ -45,10 +49,13 @@ export function card(
     parameterValues,
     includeDisplayIsLocked = false,
     forceUnsaved = false,
+    hash,
   }: CardUrlBuilderParams = {},
 ) {
   query = encodeIfNeeded(query, getEncodedUrlSearchParams);
   query = prefixIfNeeded(query, "?");
+
+  hash = prefixIfNeeded(hash ?? "", "#");
 
   const isModel = card?.type === "model" || card?.model === "dataset";
   const fallbackPath = isModel ? "model" : "question";
@@ -56,14 +63,14 @@ export function card(
 
   if (!card || !card.id || isTransientCardId(card.id) || forceUnsaved) {
     const unsavedPath = path === "metric" ? "question" : path;
-    const hash = card?.dataset_query
+    const computedHash = card?.dataset_query
       ? `#${serializeCardForUrl(card as SavedCard | UnsavedCard, {
           creationType,
           parameterValues,
           includeDisplayIsLocked,
         })}`
       : "";
-    return `/${unsavedPath}${query}${hash}`;
+    return `/${unsavedPath}${query}${hash || computedHash}`;
   }
 
   const { card_id, id, name } = card;
@@ -98,5 +105,5 @@ export function card(
     path = `${path}/${objectId}`;
   }
 
-  return `${path}${query}`;
+  return `${path}${query}${hash}`;
 }
