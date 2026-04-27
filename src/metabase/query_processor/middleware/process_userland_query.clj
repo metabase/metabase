@@ -185,16 +185,16 @@
       destination-db-id (assoc :database_id destination-db-id))))
 
 (def ^:dynamic ^:private *execution-context-ref*
-  "Bound to a volatile by [[process-userland-query-middleware]] for each userland query.
+  "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
   [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the
   EE postprocessing `binding` blocks are still on the stack. The around middleware reads it in both the
   success-path rff and the error-path catch — the latter is the whole point, since by the time control reaches
   that catch the EE bindings have already been popped during exception unwind.
 
-  Why a volatile and not just `set!` on the dynamic var: the QP can run on a thread spawned by the streaming
-  response (via `bound-fn` / `binding-conveyor-fn`), and conveyed bindings on that thread are a snapshot —
-  `set!` would mutate only the spawned thread's frame, not the caller's. A volatile is a shared mutable cell
-  that any thread holding a reference can read/write, so the value flows back to the caller correctly."
+  Why a shared mutable ref (atom) instead of just `set!` on the dynamic var: the QP can run on a thread spawned
+  by the streaming response (via `bound-fn` / `binding-conveyor-fn`), and conveyed bindings on that thread are a
+  snapshot — `set!` would mutate only the spawned thread's frame, not the caller's. A shared mutable cell that
+  any thread holding a reference can read/write makes the value flow back to the caller correctly."
   nil)
 
 (defn capture-execution-context-middleware
@@ -206,7 +206,7 @@
   [qp]
   (fn [query rff]
     (when *execution-context-ref*
-      (vreset! *execution-context-ref* (snapshot-execution-context)))
+      (reset! *execution-context-ref* (snapshot-execution-context)))
     (qp query rff)))
 
 (defn- enrich-with-execution-context
@@ -239,11 +239,11 @@
     (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
-      ;; The volatile is written from inside [[capture-execution-context-middleware]] (positioned in the execute
+      ;; The atom is written from inside [[capture-execution-context-middleware]] (positioned in the execute
       ;; chain inside the EE postprocessing bindings) and read in both the success-path rff and the error-path
       ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
       ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
-      (binding [*execution-context-ref* (volatile! nil)]
+      (binding [*execution-context-ref* (atom nil)]
         (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
