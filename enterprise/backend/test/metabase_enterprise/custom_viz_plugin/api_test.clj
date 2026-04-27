@@ -298,6 +298,15 @@
                                       (.getBytes "this is plain text, not a zip" "UTF-8"))]
           (is (some? resp)))))))
 
+(deftest register-plugin-oversize-rejected-by-multipart-test
+  (testing "uploads larger than max-bundle-bytes are rejected by Ring multipart middleware (413, before reaching the handler)"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        ;; one byte over the cap is enough — the multipart layer aborts streaming
+        ;; before the body is fully buffered.
+        (let [oversized (byte-array (inc cache/max-bundle-bytes))]
+          (multipart-upload! :crowberto 413 "ee/custom-viz-plugin/" oversized))))))
+
 (deftest register-dev-plugin-test
   (mt/with-premium-features #{:custom-viz}
     (with-dev-mode-enabled

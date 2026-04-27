@@ -92,10 +92,10 @@
                                   (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
                                                   {:status-code 400 :max-entries max-entries})))
                      f          (.toFile (.resolveIn e dst-path))
-                     next-total (if (.isFile e)
-                                  (do (io/make-parents f)
-                                      (with-open [out (io/output-stream f)]
-                                        (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)))
-                                  (do (.mkdirs f) total-bytes))]
+                     next-total (long (if (.isFile e)
+                                        (do (io/make-parents f)
+                                            (with-open [out (io/output-stream f)]
+                                              (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)))
+                                        (do (.mkdirs f) total-bytes)))]
                  (recur next-count next-total))))
            entry-count))))))

@@ -131,7 +131,8 @@
   `dist/index.js` for the JS bundle, plus any whitelisted assets under
   `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`
   field."
-  {:multipart true}
+  {:multipart {:max-file-size  cache/max-bundle-bytes
+               :max-file-count 1}}
   [_route-params
    _query-params
    _body
@@ -247,7 +248,8 @@
   "Replace the bundle for an existing plugin. Accepts a multipart tar.gz upload in
    the same format as the `POST /` endpoint. The manifest's `name` field must
    match the plugin's existing `identifier`."
-  {:multipart true}
+  {:multipart {:max-file-size  cache/max-bundle-bytes
+               :max-file-count 1}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
