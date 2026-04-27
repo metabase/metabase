@@ -79,3 +79,26 @@
       (is (every? #(= :ok (:status %)) picked))
       (is (= 1 @c1))
       (is (= 1 @c2)))))
+
+(defn- register-ordered-view!
+  "Register a view that pushes its name into `order-atom` when `compute!`
+   fires. Returns the view name."
+  [order-atom phase]
+  (let [view (keyword (str "runner-test-order-" (name phase) "-" (random-uuid)))]
+    (scorer/register-view! view
+                           {:phase       phase
+                            :typed-pairs #{[:card :card]}
+                            :compute!    (fn [_opts]
+                                           (swap! order-atom conj view)
+                                           1)})
+    view))
+
+(deftest ^:sequential run-all-views!-runs-base-before-fusion-test
+  (testing "run-all-views! orders :base views before :fusion views"
+    (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+      (let [order  (atom [])
+            base   (register-ordered-view! order :base)
+            fusion (register-ordered-view! order :fusion)
+            _      (runner/run-all-views!)
+            picked (filter #{base fusion} @order)]
+        (is (= [base fusion] picked))))))

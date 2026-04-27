@@ -2907,6 +2907,7 @@
    :api  #{metabase-enterprise.dependencies.analysis
            metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.dependency-types
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
    :uses #{analyze
@@ -3262,7 +3263,8 @@
    :api  #{metabase-enterprise.similarity.init}
    :uses #{app-db
            models
-           util}}
+           util
+           enterprise/dependencies}}
 
   enterprise/snippet-collections
   {:team "Graphy"

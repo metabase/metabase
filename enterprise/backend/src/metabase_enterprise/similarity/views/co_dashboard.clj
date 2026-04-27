@@ -77,5 +77,6 @@
                (compute-pairs))))
 
 (scorer/register-view! :co-dashboard
-                       {:typed-pairs #{[:card :card]}
+                       {:phase       :base
+                        :typed-pairs #{[:card :card]}
                         :compute!    compute!})

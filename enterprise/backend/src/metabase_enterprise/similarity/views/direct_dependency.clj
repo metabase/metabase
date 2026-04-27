@@ -37,5 +37,6 @@
                (batch-projections now))))
 
 (scorer/register-view! :direct-dependency
-                       {:typed-pairs :all-from-dependency
+                       {:phase       :base
+                        :typed-pairs :all-from-dependency
                         :compute!    compute!})

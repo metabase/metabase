@@ -50,8 +50,21 @@
          :status :error
          :error (.getMessage t)}))))
 
+(defn- views-by-phase
+  "Group registered views by `:phase`. Views without an explicit `:phase`
+   default to `:base`. Returns `{:base [view-name ...] :fusion [view-name ...]}`."
+  []
+  (->> (scorer/all-views)
+       (group-by (fn [[_ view-def]] (:phase view-def :base)))
+       (reduce-kv (fn [acc phase entries]
+                    (assoc acc phase (mapv first entries)))
+                  {})))
+
 (defn run-all-views!
-  "Run every registered view. Returns a vector of per-view result maps."
+  "Run every registered view, base phase before fusion phase. Returns a vector
+   of per-view result maps in execution order. Fusion-phase views read from
+   the rows that base-phase views just produced, so ordering matters."
   [& {:keys [batch-size] :or {batch-size 500}}]
-  (mapv #(run-view! % :batch-size batch-size)
-        (keys (scorer/all-views))))
+  (let [{:keys [base fusion]} (views-by-phase)]
+    (into (mapv #(run-view! % :batch-size batch-size) base)
+          (mapv #(run-view! % :batch-size batch-size) fusion))))
