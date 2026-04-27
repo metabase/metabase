@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { getEngines } from "metabase/databases/selectors";
+import { useSelector } from "metabase/redux";
 import {
   Box,
   Button,
@@ -15,7 +16,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { EngineKey } from "metabase-types/api";
 
 import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";

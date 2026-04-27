@@ -2,6 +2,7 @@ agent-api-enabled?: null
 aggregated-query-row-limit: null
 ai-features-enabled?: null
 allowed-iframe-hosts: null
+analytics-pii-retention-enabled: null
 application-colors: null
 application-favicon-url: null
 application-font: null

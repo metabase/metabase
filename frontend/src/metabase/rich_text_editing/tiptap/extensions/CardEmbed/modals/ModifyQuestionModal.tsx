@@ -8,10 +8,10 @@ import {
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
-import { useDispatch, useSelector, useStore } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";

@@ -25,9 +25,9 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type {
   Dashboard,
   ModerationReview,

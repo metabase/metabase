@@ -7,10 +7,10 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
 import { type Plan, getPlan } from "metabase/common/utils/plan";
+import { useDispatch, useSelector } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { MigrationCreationError } from "./MigrationCreationError";

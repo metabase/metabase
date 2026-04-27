@@ -9,28 +9,29 @@ import {
   useGetFieldQuery,
   useGetFieldValuesQuery,
 } from "metabase/api";
-import { FieldSchema } from "metabase/schema";
-import {
-  getMetadata,
-  getMetadataUnfiltered,
-} from "metabase/selectors/metadata";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  notify,
-} from "metabase/utils/entities";
 import {
   compose,
   createAction,
   createThunkAction,
   handleActions,
-  updateData,
   withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/utils/redux";
+} from "metabase/redux";
+import { FieldSchema } from "metabase/schema";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+  updateData,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "./utils";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -55,7 +56,7 @@ export const Fields = createEntity({
   path: "/api/field",
   schema: FieldSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchFieldValues") {
         return {
@@ -67,7 +68,7 @@ export const Fields = createEntity({
         useGetQuery: useGetFieldQuery,
       };
     },
-  },
+  }),
 
   api: {
     get: (entityQuery, options, dispatch) =>

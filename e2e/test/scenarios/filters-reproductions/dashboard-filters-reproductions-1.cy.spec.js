@@ -201,12 +201,18 @@ describe("issue 8030 + 32444", () => {
         H.saveDashboard();
 
         cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 4);
+
+        // Reset the intercept after save so we only count filter-triggered queries.
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
+        ).as("getCardQueryAfterFilter");
 
         addFilterValue("Aerodynamic Bronze Hat");
 
-        cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 5);
+        cy.wait("@getCardQueryAfterFilter");
+        // Only the card connected to the filter should re-execute.
+        cy.get("@getCardQueryAfterFilter.all").should("have.length", 1);
       });
     });
   });
