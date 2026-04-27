@@ -1254,6 +1254,8 @@
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (export-mbql-map opts) (*export-field-fk* id)]
 
+    ;; Field refs whose id is not a raw numeric field id — e.g. a source-card column name string
+    ;; or an already-exported FK vector — still need their opts walked so :lib/uuid is stripped.
     [:field (opts :guard map?) id]
     [:field (export-mbql-map opts) id]
 
