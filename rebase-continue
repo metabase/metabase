@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "restack"
+      ],
+      "branch": "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
+    }
+  ]
 }
