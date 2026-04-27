@@ -25,46 +25,44 @@
 
 (deftest ^:sequential pairwise-jaccard-respects-thresholds-test
   (testing "pairs with intersection ≥ 2 produce edges; single-overlap pairs do not"
-    (mt/with-premium-features #{:similarity-graph}
-      (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/SimilarEdgeStatus]
-        (mt/with-temp [:model/Card {ca :id} {}
-                       :model/Card {cb :id} {}
-                       :model/Card {cc :id} {}]
-          (let [t1 (mt/id :orders)
-                t2 (mt/id :products)
-                t3 (mt/id :people)]
-            (insert-card-tables! ca [t1 t2])
-            (insert-card-tables! cb [t2 t3])
-            (insert-card-tables! cc [t1 t2 t3])
-            (try
-              (runner/run-view! :source-table-jaccard)
-              (testing "(A, C): intersection 2, union 3 ⇒ 2/3 (above threshold)"
-                (let [edge (edge-between ca cc)]
-                  (is (some? edge))
-                  (is (== (/ 2.0 3) (:score edge)))))
-              (testing "symmetric storage"
-                (is (some? (edge-between cc ca))))
-              (testing "(B, C): intersection 2, union 3 ⇒ 2/3"
-                (is (some? (edge-between cb cc))))
-              (testing "(A, B): intersection 1 — below intersection-min, no edge"
-                (is (nil? (edge-between ca cb)))
-                (is (nil? (edge-between cb ca))))
-              (finally
-                (t2/delete! :query_table :card_id [:in [ca cb cc]])))))))))
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/SimilarEdgeStatus]
+      (mt/with-temp [:model/Card {ca :id} {}
+                     :model/Card {cb :id} {}
+                     :model/Card {cc :id} {}]
+        (let [t1 (mt/id :orders)
+              t2 (mt/id :products)
+              t3 (mt/id :people)]
+          (insert-card-tables! ca [t1 t2])
+          (insert-card-tables! cb [t2 t3])
+          (insert-card-tables! cc [t1 t2 t3])
+          (try
+            (runner/run-view! :source-table-jaccard)
+            (testing "(A, C): intersection 2, union 3 ⇒ 2/3 (above threshold)"
+              (let [edge (edge-between ca cc)]
+                (is (some? edge))
+                (is (== (/ 2.0 3) (:score edge)))))
+            (testing "symmetric storage"
+              (is (some? (edge-between cc ca))))
+            (testing "(B, C): intersection 2, union 3 ⇒ 2/3"
+              (is (some? (edge-between cb cc))))
+            (testing "(A, B): intersection 1 — below intersection-min, no edge"
+              (is (nil? (edge-between ca cb)))
+              (is (nil? (edge-between cb ca))))
+            (finally
+              (t2/delete! :query_table :card_id [:in [ca cb cc]]))))))))
 
 (deftest ^:sequential native-card-without-tables-excluded-test
   (testing "a card with zero query_table rows does not appear in any edges"
-    (mt/with-premium-features #{:similarity-graph}
-      (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/SimilarEdgeStatus]
-        (mt/with-temp [:model/Card {ca :id} {}
-                       :model/Card {cb :id} {}]
-          (let [t1 (mt/id :orders)
-                t2 (mt/id :products)]
-            (insert-card-tables! ca [t1 t2])
-            ;; cb has no query_table rows
-            (try
-              (runner/run-view! :source-table-jaccard)
-              (is (nil? (edge-between ca cb)))
-              (is (nil? (edge-between cb ca)))
-              (finally
-                (t2/delete! :query_table :card_id ca)))))))))
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/SimilarEdgeStatus]
+      (mt/with-temp [:model/Card {ca :id} {}
+                     :model/Card {cb :id} {}]
+        (let [t1 (mt/id :orders)
+              t2 (mt/id :products)]
+          (insert-card-tables! ca [t1 t2])
+          ;; cb has no query_table rows
+          (try
+            (runner/run-view! :source-table-jaccard)
+            (is (nil? (edge-between ca cb)))
+            (is (nil? (edge-between cb ca)))
+            (finally
+              (t2/delete! :query_table :card_id ca))))))))

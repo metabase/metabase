@@ -7,17 +7,11 @@
   (:require
    [metabase-enterprise.similarity.models.similar-edge-status :as similar-edge-status]
    [metabase-enterprise.similarity.scorer :as scorer]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- assert-feature! []
-  (when-not (premium-features/has-feature? :similarity-graph)
-    (throw (ex-info "Similarity graph feature not enabled"
-                    {:feature :similarity-graph}))))
 
 (defn- assert-registered! [view-name]
   (when-not (scorer/lookup view-name)
@@ -34,7 +28,6 @@
    `delete!` + `compute!` together inside the transaction form the atomic swap
    — if `compute!` throws, the prior view edges are preserved."
   [view-name & {:keys [batch-size] :or {batch-size 500}}]
-  (assert-feature!)
   (assert-registered! view-name)
   (let [view-def (scorer/lookup view-name)
         timer    (u/start-timer)]
@@ -60,6 +53,5 @@
 (defn run-all-views!
   "Run every registered view. Returns a vector of per-view result maps."
   [& {:keys [batch-size] :or {batch-size 500}}]
-  (assert-feature!)
   (mapv #(run-view! % :batch-size batch-size)
         (keys (scorer/all-views))))

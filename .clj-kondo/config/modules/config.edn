@@ -3262,7 +3262,6 @@
    :api  #{metabase-enterprise.similarity.init}
    :uses #{app-db
            models
-           premium-features
            util}}
 
   enterprise/snippet-collections
