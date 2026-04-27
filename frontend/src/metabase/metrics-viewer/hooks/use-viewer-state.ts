@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { measureApi, metricApi } from "metabase/api";
+import { useDispatch, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
-import { useDispatch, useStore } from "metabase/utils/redux";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DimensionMetadata,

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
 

@@ -12,11 +12,11 @@ import {
   DEFAULT_ALERT_SCHEDULE,
   formatNotificationScheduleDescription,
 } from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
-import { useSelector } from "metabase/utils/redux";
 import type {
   NotificationCronSubscription,
   ScheduleSettings,

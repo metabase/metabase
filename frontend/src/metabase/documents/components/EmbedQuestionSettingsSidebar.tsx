@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -14,7 +15,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   VisualizationDisplay,

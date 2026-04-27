@@ -19,10 +19,10 @@ import type {
 import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { connect } from "metabase/utils/redux";
 import type { Collection } from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";

@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import * as Yup from "yup";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { getErrorMessage } from "metabase/api/utils";
-import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import {
   Form,
   FormCheckbox,
@@ -18,17 +16,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { getUrlProtocol } from "metabase/utils/formatting/url";
 import { useDispatch } from "metabase/utils/redux";
@@ -57,8 +45,6 @@ type FormState = {
   pinVersion: boolean;
   pinnedVersion: string;
 };
-
-const WARNING_ACK_KEY = "custom_viz_add_warning";
 
 const ALLOWED_REPO_URL_PROTOCOLS = new Set([
   "http:",
@@ -106,14 +92,6 @@ export function CustomVizPage({ params }: Props) {
 
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
-
-  const [warningAcknowledged, { ack }] =
-    useUserAcknowledgement(WARNING_ACK_KEY);
-
-  const [pendingValues, setPendingValues] = useState<FormState | null>(null);
-  const [dontWarnAgain, setDontWarnAgain] = useState(false);
-  const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
 
   const initialValues = useMemo<FormState>(
     () => ({
@@ -164,46 +142,6 @@ export function CustomVizPage({ params }: Props) {
     },
     [createPlugin, updatePlugin, plugin, isEdit, dispatch],
   );
-
-  const handleSubmit = useCallback(
-    async (values: FormState) => {
-      if (!isEdit && !warningAcknowledged) {
-        setPendingValues(values);
-        setDontWarnAgain(false);
-        setConfirmError(null);
-        return;
-      }
-      await submitValues(values);
-    },
-    [isEdit, warningAcknowledged, submitValues],
-  );
-
-  const handleConfirm = useCallback(async () => {
-    if (!pendingValues) {
-      return;
-    }
-    setConfirming(true);
-    setConfirmError(null);
-    try {
-      await submitValues(pendingValues);
-      if (dontWarnAgain) {
-        ack();
-      }
-      setPendingValues(null);
-    } catch (error) {
-      setConfirmError(getErrorMessage(error));
-    } finally {
-      setConfirming(false);
-    }
-  }, [pendingValues, dontWarnAgain, ack, submitValues]);
-
-  const handleCancelConfirm = useCallback(() => {
-    if (confirming) {
-      return;
-    }
-    setPendingValues(null);
-    setConfirmError(null);
-  }, [confirming]);
 
   const handleCancel = useCallback(() => {
     dispatch(push(Urls.customViz()));
@@ -257,30 +195,32 @@ export function CustomVizPage({ params }: Props) {
           <FormProvider
             initialValues={initialValues}
             validationSchema={validationSchema}
-            onSubmit={handleSubmit}
+            onSubmit={submitValues}
             enableReinitialize
           >
             {({ dirty, values }) => (
               <Form>
-                <Stack gap={0}>
-                  <Title order={2} mb="2.5rem">
+                <Stack gap="40px">
+                  <Title order={2}>
                     {isEdit
                       ? t`Edit visualization`
                       : t`Add a new visualization`}
                   </Title>
-                  <FormTextInput
-                    name="repoUrl"
-                    label={t`Repository URL`}
-                    description={t`The location of the git repository where your visualization bundle is.`}
-                    placeholder="https://github.com/user/custom-viz-plugin"
-                    disabled={isEdit}
-                    autoFocus={!isEdit}
-                    styles={{
-                      description: { color: "var(--mb-color-text-tertiary)" },
-                      root: { marginBottom: "1rem" },
-                    }}
-                  />
                   <Stack gap="md">
+                    <FormTextInput
+                      name="repoUrl"
+                      label={t`Repository URL`}
+                      description={t`The location of the git repository where your visualization bundle is.`}
+                      placeholder="https://github.com/user/custom-viz-plugin"
+                      disabled={isEdit}
+                      autoFocus={!isEdit}
+                      styles={{
+                        description: {
+                          color: "var(--mb-color-text-tertiary)",
+                        },
+                      }}
+                    />
+
                     <FormCheckbox
                       name="isPrivateRepo"
                       label={t`This is a private repository`}
@@ -295,7 +235,7 @@ export function CustomVizPage({ params }: Props) {
                       />
                     )}
                   </Stack>
-                  <Stack gap="md" mt="2rem">
+                  <Stack gap="md">
                     <Flex gap="sm" align="center">
                       <FormSwitch
                         size="sm"
@@ -328,14 +268,6 @@ export function CustomVizPage({ params }: Props) {
                     </Button>
                     <FormSubmitButton
                       label={isEdit ? t`Save` : t`Add visualization`}
-                      // In create mode the real submit happens inside the
-                      // confirmation modal — keep the form button's label
-                      // stable so Formik's transient "fulfilled" state doesn't
-                      // flash "Success" before the user has actually added
-                      // anything.
-                      activeLabel={isEdit ? undefined : t`Add visualization`}
-                      successLabel={isEdit ? undefined : t`Add visualization`}
-                      failedLabel={isEdit ? undefined : t`Add visualization`}
                       disabled={!dirty}
                       variant="filled"
                     />
@@ -346,42 +278,6 @@ export function CustomVizPage({ params }: Props) {
           </FormProvider>
         </Box>
       </SettingsSection>
-
-      <Modal
-        opened={pendingValues !== null}
-        onClose={handleCancelConfirm}
-        title={t`Add this visualization?`}
-        size="lg"
-      >
-        <Stack gap="lg" mt="md">
-          <Text>
-            {jt`Be aware that custom visualizations ${<strong key="arbitrary-code">{t`can execute arbitrary code`}</strong>} and should only be added from trusted sources.`}
-          </Text>
-          <Checkbox
-            checked={dontWarnAgain}
-            onChange={(event) => setDontWarnAgain(event.currentTarget.checked)}
-            label={t`Don't warn me about this again`}
-            disabled={confirming}
-          />
-          {confirmError && <Text c="danger">{confirmError}</Text>}
-          <Flex justify="flex-end" gap="md">
-            <Button
-              variant="subtle"
-              onClick={handleCancelConfirm}
-              disabled={confirming}
-            >
-              {t`Cancel`}
-            </Button>
-            <Button
-              variant="filled"
-              onClick={handleConfirm}
-              loading={confirming}
-            >
-              {t`Add this visualization`}
-            </Button>
-          </Flex>
-        </Stack>
-      </Modal>
     </SettingsPageWrapper>
   );
 }
