@@ -70,19 +70,18 @@
           {[{{table :structured-output} :content}] :resources}
           (tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
+          table-id (:id table)
+          category-field-id (some (fn [{:keys [display_name field_id]}]
+                                    (when (= "Category" display_name)
+                                      field_id))
+                                  (:fields table))
           ;; (1) construct a query
           construct-result (tools.construct/construct-notebook-query-tool
-                            {:query
-                             {:query_type "aggregate"
-                              :source {:table_id (:id table)}
-                              :aggregations [{:function "count"}]
-                              :filters []
-                              :group_by [{:field_id (some (fn [{:keys [display_name field_id]}]
-                                                            (when (= "Category" display_name)
-                                                              field_id))
-                                                          (:fields table))}]
-                              :limit nil
-                              :visualization {:chart_type "bar"}}})
+                            {:source_entity {:type "table" :id table-id}
+                             :program       {:source     {:type "table" :id table-id}
+                                             :operations [["aggregate" ["count"]]
+                                                          ["breakout" ["field" category-field-id]]]}
+                             :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
           chart-id (get-in construct-result [:structured-output :chart-id])]

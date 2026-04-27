@@ -7,6 +7,7 @@ import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
@@ -18,7 +19,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import {
   useGetGsheetsFolderQuery,
@@ -165,7 +165,7 @@ function GoogleSheetsConnectModal({
           <Text>
             2.{" "}
             {c("{0} is an email address")
-              .jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+              .jt`Enter: ${<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>

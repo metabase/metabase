@@ -39,6 +39,11 @@
   &[data-expanded="true"] {
     cursor: text;
   }
+
+  &[data-disabled] {
+    background: transparent;
+    cursor: not-allowed;
+  }
 }
 
 .selectedInput {
@@ -57,6 +62,11 @@
   svg {
     width: 0.75rem !important;
     height: 0.75rem !important;
+  }
+
+  [data-disabled] & {
+    background: transparent;
+    cursor: not-allowed;
   }
 }
 

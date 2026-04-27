@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/utils/redux";
+import { connect } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 
 const mapDispatchToProps = {

@@ -2943,97 +2943,10 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest unify-source-tables-format-test
-  (testing "v60.2026-03-03T12:00:00: convert source-tables from map to vec format"
-    (impl/test-migrations ["v60.2026-03-03T12:00:00"] [migrate!]
-      (let [user-id     (:id (new-instance-with-default :core_user))
-            db-id       (:id (new-instance-with-default :metabase_database))
-            ;; source-tables as map with int values (FE format)
-            int-source  (json/encode {:type "python" :body "x=1" :source-database db-id
-                                      :source-tables {"orders" 42 "products" 99}})
-            ;; source-tables as map with ref values (normalized format)
-            ref-source  (json/encode {:type "python" :body "x=1" :source-database db-id
-                                      :source-tables {"input" {"database_id" db-id "schema" "public"
-                                                               "table" "my_table" "table_id" 7}}})
-            ;; query transform (no source-tables) — should be untouched
-            query-source (json/encode {:type "query" :query {:database db-id}})
-            target       (json/encode {:type "table" :schema "public" :name "out"})
-            insert-transform!
-            (fn [source]
-              (t2/insert-returning-pk!
-               :transform {:name               (mt/random-name)
-                           :source             source
-                           :target             target
-                           :source_type        "python"
-                           :source_database_id db-id
-                           :created_at         :%now
-                           :updated_at         :%now}))
-            int-id   (insert-transform! int-source)
-            ref-id   (insert-transform! ref-source)
-            query-id (insert-transform! query-source)
-            ;; Also test workspace_transform
-            ws-id    (:id (t2/insert-returning-instance!
-                           :workspace {:name       "test-ws"
-                                       :creator_id user-id
-                                       :created_at :%now
-                                       :updated_at :%now}))
-            _        (t2/insert! :workspace_transform
-                                 {:ref_id       (str (random-uuid))
-                                  :workspace_id ws-id
-                                  :name         "ws-transform"
-                                  :source       int-source
-                                  :target       target
-                                  :created_at   :%now
-                                  :updated_at   :%now})
-            get-source-tables (fn [table-name pk-map]
-                                (let [where (into [:and] (map (fn [[k v]] [:= k v]) pk-map))
-                                      row   (first (t2/query {:select [:source] :from [table-name] :where where}))]
-                                  (get (json/decode (:source row)) "source-tables")))]
-        (testing "Before migration, source-tables are maps"
-          (is (map? (get-source-tables :transform {:id int-id})))
-          (is (map? (get-source-tables :transform {:id ref-id}))))
-
-        (migrate!)
-
-        (testing "After migration, int-value maps become vec of entries"
-          (let [st (get-source-tables :transform {:id int-id})]
-            (is (sequential? st))
-            (is (= 2 (count st)))
-            (is (= #{"orders" "products"} (set (map #(get % "alias") st))))
-            (is (= #{42 99} (set (map #(get % "table_id") st))))))
-
-        (testing "After migration, ref-value maps become vec of entries with alias"
-          (let [st (get-source-tables :transform {:id ref-id})]
-            (is (sequential? st))
-            (is (= "input" (get (first st) "alias")))
-            (is (= 7 (get (first st) "table_id")))))
-
-        (testing "Query transforms are untouched"
-          (is (nil? (get-source-tables :transform {:id query-id}))))
-
-        (testing "workspace_transform is also migrated"
-          (let [ws-rows (t2/query {:select [:source] :from [:workspace_transform] :where [:= :workspace_id ws-id]})
-                st      (get (json/decode (:source (first ws-rows))) "source-tables")]
-            (is (sequential? st))
-            (is (= 2 (count st)))))
-
-        (testing "Rollback converts vec back to map"
-          (migrate! :down 59)
-          (let [st (get-source-tables :transform {:id int-id})]
-            (is (map? st))
-            (is (= 42 (get st "orders")))
-            (is (= 99 (get st "products")))))))))
-
 (deftest backfill-transform-target-tables-test
-  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and invalidate workspace caches"
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
-      (let [user-id   (:id (new-instance-with-default :core_user))
-            db-id     (:id (new-instance-with-default :metabase_database))
-            ws-id     (:id (t2/insert-returning-instance!
-                            :workspace {:name       "test-ws"
-                                        :creator_id user-id
-                                        :created_at :%now
-                                        :updated_at :%now}))
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
             source    (json/encode {:type "query" :query {:database db-id}})
             ;; -- Transform with a target that has no existing metabase_table → should create provisional row --
             _         (t2/insert-returning-pk!
@@ -3044,19 +2957,7 @@
                                    :source_database_id db-id
                                    :target_db_id       db-id
                                    :created_at         :%now
-                                   :updated_at         :%now})
-            ;; -- workspace_transform to verify analysis_version bump --
-            _         (t2/insert! :workspace_transform
-                                  {:ref_id       (str (random-uuid))
-                                   :workspace_id ws-id
-                                   :name         "ws-tx"
-                                   :source       source
-                                   :target       (json/encode {:type "table" :schema "public" :name "orders"})
-                                   :created_at   :%now
-                                   :updated_at   :%now})]
-        (testing "Before migration"
-          (is (= 1 (:graph_version (t2/select-one :workspace :id ws-id))))
-          (is (= 1 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))
+                                   :updated_at         :%now})]
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
           (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
@@ -3070,8 +2971,4 @@
             (is (true? (:transform_target provisional)))
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
-            (is (= "New Target Table" (:display_name provisional)))))
-        (testing "Workspace caches invalidated"
-          ;; Both BackfillTransformTargetTables and BackfillTransformTargetTableId bump these
-          (is (= 3 (:graph_version (t2/select-one :workspace :id ws-id))))
-          (is (= 3 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))))))
+            (is (= "New Target Table" (:display_name provisional)))))))))

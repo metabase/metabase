@@ -1,7 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -278,18 +278,15 @@
                                :keyword_queries  ["orders"]
                                :entity_types     ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
-             ;; Iteration 2: Construct a simple raw query (no fields/aggregations = select all)
+             ;; Iteration 2: Construct a simple query via agent-lib program
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
-                               :query         {:query_type "raw"
-                                               :source     {:table_id orders-table-id}
-                                               :filters    []
-                                               :fields     []
-                                               :order_by   []
-                                               :limit      10}
+                               :source_entity {:type "table" :id orders-table-id}
+                               :program       {:source     {:type "table" :id orders-table-id}
+                                               :operations [["limit" 10]]}
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response
@@ -485,11 +482,11 @@
                                          {:profile-id "internal"})))))
 
     ;; clear! is much faster than a new mt/with-prometheus-system!
-      (prometheus/clear! :metabase-metabot/agent-requests)
-      (prometheus/clear! :metabase-metabot/agent-iterations)
-      (prometheus/clear! :metabase-metabot/agent-errors)
-      (prometheus/clear! :metabase-metabot/agent-duration-ms)
-      (prometheus/clear! :metabase-metabot/llm-requests)
+      (analytics/clear! :metabase-metabot/agent-requests)
+      (analytics/clear! :metabase-metabot/agent-iterations)
+      (analytics/clear! :metabase-metabot/agent-errors)
+      (analytics/clear! :metabase-metabot/agent-duration-ms)
+      (analytics/clear! :metabase-metabot/llm-requests)
 
       (testing "records agent-errors on failure"
         (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]

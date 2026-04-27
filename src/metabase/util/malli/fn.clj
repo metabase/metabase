@@ -143,23 +143,54 @@
                        (for [arity (:arities arities-value)]
                          (arity-schema (:values arity) return-schema options)))))))
 
-(defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
+(def ^:dynamic *enforce*
+  "Whether [[validate-input]] and [[validate-output]] should validate things or not.
+
+  Setting this to false disables the `:test/pre` and `:test/post` assertions, but not mainstream `:pre` and `:post`.
+
+  Use [[metabase.util.malli/disable-enforcement]] to bind this to false in a dynamic context.
+
+  Note that this var only exists in CLJ land and not in CLJS; in CLJS Malli schemas are just stripped off."
+  true)
+
+(defn- maybe-test-prepost [lang preds]
+  ;; Perhaps surprisingly, we want to generate the preconditions in CLJS in dev and prod mode - that's because the CLJ
+  ;; side compiler is always in prod mode when compiling CLJS. The `:pre` and `:post` conditions are stripped out
+  ;; entirely by the shadow-cljs compiler in release mode.
+  (when (or (not config/is-prod?)
+            (= lang :cljs))
+    (case lang
+      :cljs preds
+      :clj  (for [pred preds]
+              `(or (not *enforce*) ~pred)))))
+
+(defn- deparameterized-arity [lang {:keys [body args prepost], :as _arity}]
   (concat
    [(:arglist (md/parse args))]
    (when prepost
-     [prepost])
+     (if (empty? body)
+       ;; If the arity is just args and a map literal, it gets parsed as prepost with an empty body.
+       ;; That's not really a prepost, but rather the body, so return it untouched.
+       [prepost]
+       (let [test-pre  (maybe-test-prepost lang (:test/pre  prepost))
+             test-post (maybe-test-prepost lang (:test/post prepost))
+             pre       (not-empty (into (vec (:pre  prepost)) test-pre))
+             post      (not-empty (into (vec (:post prepost)) test-post))]
+         [(cond-> {}
+            pre  (assoc :pre  pre)
+            post (assoc :post post))])))
    body))
 
 (defn deparameterized-fn-tail
   "Generate a deparameterized `fn` tail (the contents of a `fn` form after the `fn` symbol)."
-  [parsed]
+  [lang parsed]
   (let [arities (:arities (:values parsed))
         arities-type (:key arities)
         arities-value (:values (:value arities))
         body (case arities-type
-               :single   (deparameterized-arity arities-value)
+               :single   (deparameterized-arity lang arities-value)
                :multiple (for [arity (:arities arities-value)]
-                           (deparameterized-arity (:values arity))))]
+                           (deparameterized-arity lang (:values arity))))]
     body))
 
 (defn deparameterized-fn-form
@@ -169,13 +200,8 @@
     (deparameterized-fn-form (parse-fn-tail '[:- :int [x :- :int] (inc x)]))
     ;; =>
     (fn [x] (inc x))"
-  [parsed & [fn-name]]
-  `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed)))
-
-(def ^:dynamic *enforce*
-  "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
-  use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
-  true)
+  [lang parsed & [fn-name]]
+  `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail lang parsed)))
 
 (defn- validate [error-context schema value error-type]
   (when *enforce*
@@ -376,9 +402,9 @@
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  [error-context parsed & [fn-name]]
+  [error-context lang parsed & [fn-name]]
   (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
-    `(let [~'&f ~(deparameterized-fn-form parsed fn-name)
+    `(let [~'&f ~(deparameterized-fn-form lang parsed fn-name)
            ~@(into [] cat captured)]
        (core/fn ~@(instrumented-fn-tail error-context fn-schema)))))
 
@@ -449,10 +475,11 @@
         ;; Match mu/defn behavior:
         instrument? (macros/case
                       :cljs false
-                      :clj (instrument-ns? *ns*))]
+                      :clj (instrument-ns? *ns*))
+        lang        (macros/case :cljs :cljs, :clj :clj)]
     (if-not instrument?
-      (deparameterized-fn-form parsed)
+      (deparameterized-fn-form lang parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:
                             {:fn-name (list 'quote (first fn-tail))} {})]
-        (instrumented-fn-form error-context parsed)))))
+        (instrumented-fn-form error-context lang parsed)))))

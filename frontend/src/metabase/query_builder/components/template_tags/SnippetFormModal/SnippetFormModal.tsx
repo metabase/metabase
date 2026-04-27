@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { Snippets } from "metabase/entities/snippets";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Flex, Modal } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type {
   CreateSnippetRequest,
   NativeQuerySnippet,

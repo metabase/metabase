@@ -169,7 +169,7 @@
   [:map {:closed true}
    [:data_source [:enum "table" "model" "metric"]]
    [:source_id :int]
-   [:field_id :string]])
+   [:field_id [:or :int :string]]])
 
 (mu/defn ^{:tool-name "get_field_values"
            :scope     scope/agent-metadata-read}

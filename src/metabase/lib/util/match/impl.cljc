@@ -65,10 +65,10 @@
 
 (defn update-in-unless-empty
   "Like `update-in`, but only updates in the existing value is non-empty."
-  [m ks f & args]
+  [m ks f]
   (if-not (seq (get-in m ks))
     m
-    (apply update-in m ks f args)))
+    (update-in m ks f)))
 
 (defn vector!
   "Return nil if `obj` is not a vector, otherwise return `obj`."

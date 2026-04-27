@@ -36,6 +36,7 @@
   TokenStatus
   clear-cache!
   token-check-url
+  transform-metered-as
   transform-stats]
 
  (metabase.premium-features.settings
@@ -85,7 +86,6 @@
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
-  enable-workspaces?
   enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?

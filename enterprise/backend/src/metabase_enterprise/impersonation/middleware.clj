@@ -25,7 +25,7 @@
     query))
 
 (defenterprise apply-impersonation-postprocessing
-  "Post-processing middleware. Binds the dynamic var"
+  "Post-processing middleware. Binds the impersonation role dynamic var for driver use."
   ;; run this even when the `:advanced-permissions` feature is not enabled, so that we can assert that it *is* enabled
   ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
@@ -37,3 +37,9 @@
         (binding [impersonation.driver/*impersonation-role* role]
           (qp query rff)))
       (qp query rff))))
+
+(defenterprise currently-impersonated?
+  "True when a connection-impersonation role is bound for the current query."
+  :feature :none
+  []
+  (some? impersonation.driver/*impersonation-role*))

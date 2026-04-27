@@ -1,10 +1,12 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { forwardRef, useCallback, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
+import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type {
   MetabotAgentChatMessage,
   MetabotAgentTextChatMessage,
@@ -71,7 +73,10 @@ export const UserMessage = ({
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
     {message.type === "text" && (
-      <AIMarkdown className={cx(Styles.message, Styles.messageUser)}>
+      <AIMarkdown
+        className={cx(Styles.message, Styles.messageUser)}
+        singleNewlinesAreParagraphs
+      >
         {message.message}
       </AIMarkdown>
     )}
@@ -240,20 +245,39 @@ export const AgentErrorMessage = ({
   ...props
 }: FlexProps & {
   message: MetabotErrorMessage;
-}) => (
-  <MessageContainer chatRole="agent" {...props}>
-    {message.type === "alert" ? (
-      <Flex gap="sm">
-        <Icon name="warning" c="error" size="1rem" mt="2px" flex="0 0 auto" />
-        <Text c="error" className={Styles.message}>
-          {message.message}
-        </Text>
-      </Flex>
-    ) : (
-      <Text className={Styles.message}>{message.message}</Text>
-    )}
-  </MessageContainer>
-);
+}) => {
+  return (
+    <MessageContainer chatRole="agent" {...props}>
+      {match(message.type)
+        .with("alert", () => (
+          <Flex gap="sm">
+            <Icon
+              name="warning"
+              c="error"
+              size="1rem"
+              mt="2px"
+              flex="0 0 auto"
+            />
+            <Text c="error" className={Styles.message}>
+              {message.message}
+            </Text>
+          </Flex>
+        ))
+        .with("locked", () => (
+          <Flex direction="column" gap="md" flex={1}>
+            <Text className={Styles.message}>
+              {t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`}
+            </Text>
+            <MetabotManagedProviderLimitActions />
+          </Flex>
+        ))
+        .with("message", () => (
+          <Text className={Styles.message}>{message.message}</Text>
+        ))
+        .exhaustive()}
+    </MessageContainer>
+  );
+};
 
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],

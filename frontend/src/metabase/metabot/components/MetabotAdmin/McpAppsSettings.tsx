@@ -8,7 +8,10 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { Box, Flex, Stack, Switch, Text, TextInput } from "metabase/ui";
 
-const getMcpClients = () =>
+import { CursorInstallLink } from "./CursorInstallLink";
+import { McpServerUrlSection } from "./MCPServerUrlSection";
+
+const getMcpClients = (enabledClients: string[]) =>
   [
     {
       key: "claude",
@@ -16,7 +19,13 @@ const getMcpClients = () =>
     },
     {
       key: "cursor-vscode",
-      label: t`Cursor and VS Code`,
+      label: (
+        <Stack gap="xs">
+          <span>{t`Cursor and VS Code`}</span>
+
+          {enabledClients.includes("cursor-vscode") && <CursorInstallLink />}
+        </Stack>
+      ),
     },
     {
       key: "chatgpt",
@@ -65,22 +74,19 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
         )}`
       }
     >
-      {isEnabled ? (
+      {isEnabled && (
         <Stack gap="lg">
           <CommonMcpClientsSection />
 
           <CustomMcpOriginsSection />
         </Stack>
-      ) : (
-        <></>
       )}
+      <McpServerUrlSection />
     </SettingsSection>
   );
 };
 
 function CommonMcpClientsSection() {
-  const mcpClients = getMcpClients();
-
   const { value: savedValue, updateSetting } = useAdminSetting(
     "mcp-apps-cors-enabled-clients",
   );
@@ -88,6 +94,8 @@ function CommonMcpClientsSection() {
   const [enabledClients, setEnabledClients] = useState<string[]>(
     savedValue ?? [],
   );
+
+  const mcpClients = getMcpClients(enabledClients);
 
   const handleToggle = useCallback(
     (clientKey: string, checked: boolean) => {

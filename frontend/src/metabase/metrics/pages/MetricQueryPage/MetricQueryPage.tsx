@@ -13,9 +13,9 @@ import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Center } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -62,8 +62,10 @@ export function MetricQueryPage({
   );
 }
 
-interface MetricQueryPageBodyProps
-  extends Omit<MetricQueryPageProps, "params"> {
+interface MetricQueryPageBodyProps extends Omit<
+  MetricQueryPageProps,
+  "params"
+> {
   card: CardApiType;
   urls: MetricUrls;
 }

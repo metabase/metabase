@@ -1,16 +1,20 @@
 import type {
   MetricBreakoutValuesResponse,
   RowValues,
-  VisualizationSettings,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
-import { createMockDatasetData } from "metabase-types/api/mocks/dataset";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
-import type { BreakoutColorMap, MetricSourceId } from "../types/viewer-state";
+import type { ExpressionDimensionItem } from "../components/DimensionPillBar";
+import type {
+  BreakoutColorMap,
+  MetricSourceId,
+  MetricsViewerFormulaEntity,
+} from "../types/viewer-state";
 
 import {
+  GEO_METRIC,
   REVENUE_METRIC,
   TOTAL_MEASURE,
   createMetricMetadata,
@@ -20,9 +24,8 @@ import {
   setupMeasureDefinition,
 } from "./__tests__/test-helpers";
 import {
-  buildCartesianVizSettings,
-  computeBreakoutColorSettings,
-  computeColorVizSettings,
+  type SplitByBreakoutParams,
+  buildDimensionItemsFromDefinitions,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
   splitByBreakout,
@@ -47,7 +50,6 @@ const metricCol = createMockColumn({
 });
 
 const CARD_OPTS = { id: 1, name: "Revenue", display: "line" } as const;
-const EMPTY_VIZ: VisualizationSettings = {};
 
 function makeColorMap(values: string[]): BreakoutColorMap {
   const palette = [
@@ -59,6 +61,37 @@ function makeColorMap(values: string[]): BreakoutColorMap {
     "#F2A86F",
   ];
   return new Map(values.map((v, i) => [v, palette[i % palette.length]]));
+}
+
+const METRIC_ENTITY: MetricsViewerFormulaEntity = {
+  id: "metric:1" as MetricSourceId,
+  type: "metric",
+  definition: null,
+};
+
+type OptionalKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+function callSplitByBreakout({
+  entity = METRIC_ENTITY,
+  series,
+  breakoutColorMap,
+  isFirstSeries = true,
+  hasMultipleSeries = false,
+  display = "line",
+  definitions = {},
+}: OptionalKeys<
+  SplitByBreakoutParams,
+  "entity" | "isFirstSeries" | "hasMultipleSeries" | "display" | "definitions"
+>) {
+  return splitByBreakout({
+    entity,
+    series,
+    breakoutColorMap,
+    isFirstSeries,
+    hasMultipleSeries,
+    display,
+    definitions,
+  });
 }
 
 describe("splitByBreakout", () => {
@@ -76,13 +109,10 @@ describe("splitByBreakout", () => {
         },
       });
 
-      const { series: result } = splitByBreakout(
+      const { series: result } = callSplitByBreakout({
         series,
-        1,
-        true,
-        makeColorMap(["Gadgets", "Widgets"]),
-        EMPTY_VIZ,
-      );
+        breakoutColorMap: makeColorMap(["Gadgets", "Widgets"]),
+      });
 
       expect(result).toHaveLength(2);
 
@@ -91,37 +121,12 @@ describe("splitByBreakout", () => {
         ["2024-01", 10],
         ["2024-02", 30],
       ]);
-      expect(result[0].card.name).toBe("Gadgets");
 
       expect(result[1].data.cols).toEqual([dimensionCol, metricCol]);
       expect(result[1].data.rows).toEqual([
         ["2024-01", 20],
         ["2024-02", 40],
       ]);
-      expect(result[1].card.name).toBe("Widgets");
-    });
-
-    it("prefixes breakout value with card name when seriesCount > 1", () => {
-      const series = createMockSingleSeries(CARD_OPTS, {
-        data: {
-          cols: [dimensionCol, breakoutCol, metricCol],
-          rows: [
-            ["2024-01", "Gadgets", 10],
-            ["2024-01", "Widgets", 20],
-          ],
-        },
-      });
-
-      const { series: result } = splitByBreakout(
-        series,
-        2,
-        true,
-        makeColorMap(["Gadgets", "Widgets"]),
-        EMPTY_VIZ,
-      );
-
-      expect(result[0].card.name).toBe("Revenue: Gadgets");
-      expect(result[1].card.name).toBe("Revenue: Widgets");
     });
   });
 
@@ -138,13 +143,10 @@ describe("splitByBreakout", () => {
         },
       });
 
-      const { series: result } = splitByBreakout(
+      const { series: result } = callSplitByBreakout({
         series,
-        1,
-        true,
-        makeColorMap(["Gadgets", "Widgets"]),
-        EMPTY_VIZ,
-      );
+        breakoutColorMap: makeColorMap(["Gadgets", "Widgets"]),
+      });
 
       expect(result).toHaveLength(2);
 
@@ -153,11 +155,9 @@ describe("splitByBreakout", () => {
         ["Gadgets", 10],
         ["Gadgets", 30],
       ]);
-      expect(result[0].card.name).toBe("Gadgets");
 
       expect(result[1].data.cols).toEqual([breakoutCol, metricCol]);
       expect(result[1].data.rows).toEqual([["Widgets", 20]]);
-      expect(result[1].card.name).toBe("Widgets");
     });
   });
 
@@ -172,13 +172,10 @@ describe("splitByBreakout", () => {
       },
     });
 
-    const { series: result } = splitByBreakout(
+    const { series: result } = callSplitByBreakout({
       series,
-      1,
-      true,
-      makeColorMap(["Gadgets", "Widgets"]),
-      EMPTY_VIZ,
-    );
+      breakoutColorMap: makeColorMap(["Gadgets", "Widgets"]),
+    });
 
     const ids = result.map((s) => s.card.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -195,14 +192,10 @@ describe("splitByBreakout", () => {
       },
     });
 
-    const colorMap = makeColorMap(["Gadgets", "Widgets"]);
-    const { series: result } = splitByBreakout(
+    const { series: result } = callSplitByBreakout({
       series,
-      1,
-      true,
-      colorMap,
-      EMPTY_VIZ,
-    );
+      breakoutColorMap: makeColorMap(["Gadgets", "Widgets"]),
+    });
 
     expect(result[0].card.visualization_settings.series_settings).toBeDefined();
     expect(result[1].card.visualization_settings.series_settings).toBeDefined();
@@ -215,13 +208,10 @@ describe("splitByBreakout", () => {
       data: { cols: [dimensionCol, breakoutCol, metricCol], rows },
     });
 
-    const { series: result } = splitByBreakout(
+    const { series: result } = callSplitByBreakout({
       series,
-      1,
-      true,
-      makeColorMap(values),
-      EMPTY_VIZ,
-    );
+      breakoutColorMap: makeColorMap(values),
+    });
 
     expect(result).toHaveLength(1);
     expect(result[0]).toBe(series);
@@ -238,13 +228,10 @@ describe("splitByBreakout", () => {
       },
     });
 
-    const { series: result } = splitByBreakout(
+    const { series: result } = callSplitByBreakout({
       series,
-      1,
-      true,
-      makeColorMap(["Gadgets", "Widgets"]),
-      EMPTY_VIZ,
-    );
+      breakoutColorMap: makeColorMap(["Gadgets", "Widgets"]),
+    });
 
     expect(result[0].data.cols).toBe(result[1].data.cols);
   });
@@ -266,16 +253,12 @@ describe("splitByBreakout", () => {
       ["Gizmos", "#A989C5"],
     ]);
 
-    const { series: result, activeBreakoutColorMap } = splitByBreakout(
+    const { series: result, activeBreakoutColorMap } = callSplitByBreakout({
       series,
-      1,
-      true,
-      colorMap,
-      EMPTY_VIZ,
-    );
+      breakoutColorMap: colorMap,
+    });
 
     expect(result).toHaveLength(1);
-    expect(result[0].card.name).toBe("Widgets");
     expect(activeBreakoutColorMap).toEqual(new Map([["Widgets", "#88BF4D"]]));
   });
 
@@ -290,23 +273,20 @@ describe("splitByBreakout", () => {
       },
     });
 
-    const colorMap: BreakoutColorMap = new Map([
+    const breakoutColorMap: BreakoutColorMap = new Map([
       ["Gadgets", "#509EE3"],
       ["Widgets", "#88BF4D"],
     ]);
 
-    const { series: result } = splitByBreakout(
+    const { series: result } = callSplitByBreakout({
       series,
-      1,
-      true,
-      colorMap,
-      EMPTY_VIZ,
-    );
+      breakoutColorMap,
+    });
 
     expect(result).toHaveLength(2);
     // series order follows colorMap iteration order, not data order
-    expect(result[0].card.name).toBe("Gadgets");
-    expect(result[1].card.name).toBe("Widgets");
+    expect(result[0].data.rows[0][1]).toBe(10);
+    expect(result[1].data.rows[0][1]).toBe(20);
 
     const gadgetColor =
       result[0].card.visualization_settings.series_settings?.[
@@ -446,177 +426,6 @@ describe("computeSourceBreakoutColors", () => {
   });
 });
 
-describe("buildCartesianVizSettings", () => {
-  describe("without breakout", () => {
-    const data = createMockDatasetData({
-      cols: [dimensionCol, metricCol],
-      rows: [
-        ["2024-01", 10],
-        ["2024-02", 20],
-      ],
-    });
-
-    it("sets single dimension and metric from data columns", () => {
-      const result = buildCartesianVizSettings(data, false, false, "Revenue");
-
-      expect(result["graph.dimensions"]).toEqual(["CREATED_AT"]);
-      expect(result["graph.metrics"]).toEqual(["COUNT"]);
-    });
-
-    it("disables axis labels", () => {
-      const result = buildCartesianVizSettings(data, false, false, "Revenue");
-
-      expect(result["graph.x_axis.labels_enabled"]).toBe(false);
-      expect(result["graph.y_axis.labels_enabled"]).toBe(false);
-    });
-  });
-
-  describe("with breakout", () => {
-    const data = createMockDatasetData({
-      cols: [dimensionCol, breakoutCol, metricCol],
-      rows: [
-        ["2024-01", "Gadgets", 10],
-        ["2024-01", "Widgets", 20],
-        ["2024-02", "Gadgets", 30],
-        ["2024-02", "Widgets", 40],
-      ],
-    });
-
-    it("includes breakout column in graph.dimensions", () => {
-      const result = buildCartesianVizSettings(data, true, false, "Revenue");
-
-      expect(result["graph.dimensions"]).toEqual(["CREATED_AT", "CATEGORY"]);
-      expect(result["graph.metrics"]).toEqual(["COUNT"]);
-    });
-
-    it("sets series_settings colors from breakout color map", () => {
-      const result = buildCartesianVizSettings(
-        data,
-        true,
-        false,
-        "Revenue",
-        makeColorMap(["Gadgets", "Widgets"]),
-      );
-
-      expect(result.series_settings).toEqual({
-        Gadgets: { color: "#509EE3" },
-        Widgets: { color: "#88BF4D" },
-      });
-    });
-
-    it("prefixes color keys with card name when hasMultipleCards is true", () => {
-      const result = buildCartesianVizSettings(
-        data,
-        true,
-        true,
-        "Revenue",
-        makeColorMap(["Gadgets", "Widgets"]),
-      );
-
-      expect(result.series_settings).toEqual({
-        "Revenue: Gadgets": { color: "#509EE3" },
-        "Revenue: Widgets": { color: "#88BF4D" },
-      });
-    });
-
-    it("preserves breakout colors regardless of data row order", () => {
-      const reorderedData = createMockDatasetData({
-        cols: [dimensionCol, breakoutCol, metricCol],
-        rows: [
-          ["2024-01", "Widgets", 20],
-          ["2024-01", "Gadgets", 10],
-        ],
-      });
-
-      const result = buildCartesianVizSettings(
-        reorderedData,
-        true,
-        false,
-        "Revenue",
-        makeColorMap(["Gadgets", "Widgets"]),
-      );
-
-      expect(result.series_settings).toEqual({
-        Gadgets: { color: "#509EE3" },
-        Widgets: { color: "#88BF4D" },
-      });
-    });
-  });
-});
-
-describe("computeBreakoutColorSettings", () => {
-  it("maps breakout values to series_settings keyed by formatted name", () => {
-    const colorMap = makeColorMap(["Gadgets", "Widgets"]);
-    const result = computeBreakoutColorSettings(
-      colorMap,
-      breakoutCol,
-      false,
-      "Revenue",
-    );
-
-    expect(result).toEqual({
-      series_settings: {
-        Gadgets: { color: "#509EE3" },
-        Widgets: { color: "#88BF4D" },
-      },
-    });
-  });
-
-  it("prefixes series names with card name when hasMultipleCards is true", () => {
-    const colorMap = makeColorMap(["Gadgets", "Widgets"]);
-    const result = computeBreakoutColorSettings(
-      colorMap,
-      breakoutCol,
-      true,
-      "Revenue",
-    );
-
-    expect(result).toEqual({
-      series_settings: {
-        "Revenue: Gadgets": { color: "#509EE3" },
-        "Revenue: Widgets": { color: "#88BF4D" },
-      },
-    });
-  });
-});
-
-describe("computeColorVizSettings", () => {
-  it("returns empty object when color is undefined", () => {
-    expect(
-      computeColorVizSettings({
-        displayType: "line",
-        seriesKey: "COUNT",
-        color: undefined,
-      }),
-    ).toEqual({});
-  });
-
-  it("returns series_settings for non-map display types", () => {
-    expect(
-      computeColorVizSettings({
-        displayType: "line",
-        seriesKey: "COUNT",
-        color: "#509EE3",
-      }),
-    ).toEqual({
-      series_settings: {
-        COUNT: { color: "#509EE3" },
-      },
-    });
-  });
-
-  it("returns map.colors for map display type", () => {
-    const result = computeColorVizSettings({
-      displayType: "map",
-      seriesKey: "COUNT",
-      color: "#509EE3",
-    });
-
-    expect(result).toHaveProperty(["map.colors"]);
-    expect(result).not.toHaveProperty("series_settings");
-  });
-});
-
 describe("getSelectedMetricsInfo", () => {
   const metricMetadata = createMetricMetadata([REVENUE_METRIC]);
   const metricDefinition = setupDefinition(metricMetadata, REVENUE_METRIC.id);
@@ -737,5 +546,138 @@ describe("getSelectedMetricsInfo", () => {
         tableId: ORDERS_ID,
       },
     ]);
+  });
+});
+
+describe("buildDimensionItemsFromDefinitions", () => {
+  const revenueMetadata = createMetricMetadata([REVENUE_METRIC]);
+  const revenueDefinition = setupDefinition(revenueMetadata, REVENUE_METRIC.id);
+  const revenueSourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+  const revenueProjected = setupDefinitionWithBreakout(
+    revenueMetadata,
+    REVENUE_METRIC.id,
+    0,
+  );
+  const geoMetadata = createMetricMetadata([GEO_METRIC]);
+  const geoDefinition = setupDefinition(geoMetadata, GEO_METRIC.id);
+  const geoSourceId: MetricSourceId = `metric:${GEO_METRIC.id}`;
+  const definitions = {
+    [revenueSourceId]: {
+      id: revenueSourceId,
+      definition: revenueDefinition,
+    },
+    [geoSourceId]: {
+      id: geoSourceId,
+      definition: geoDefinition,
+    },
+  };
+  const emptyProjectionConfig = {};
+
+  describe("standalone metric entities", () => {
+    it("produces a metric item with label when a dimension is selected", () => {
+      const dimensionMapping = { 0: "dim-created-at" };
+      const modifiedDefinitionsBySlotIndex = new Map([[0, revenueProjected]]);
+      const sourceColors = { 0: ["#509EE3"] };
+      const metricSlots = [
+        { slotIndex: 0, entityIndex: 0, sourceId: revenueSourceId },
+      ];
+      const formulaEntities: MetricsViewerFormulaEntity[] = [
+        {
+          id: revenueSourceId,
+          type: "metric",
+          definition: revenueDefinition,
+        },
+      ];
+      const items = buildDimensionItemsFromDefinitions(
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        metricSlots,
+        formulaEntities,
+        emptyProjectionConfig,
+      );
+
+      expect(items).toHaveLength(1);
+      expect(items[0].type).toBe("metric");
+      expect(items[0].label).toBe("Created At");
+      expect(items[0].icon).toBeDefined();
+    });
+  });
+
+  describe("expression entities", () => {
+    const formulaEntities: MetricsViewerFormulaEntity[] = [
+      {
+        id: "expression:test",
+        type: "expression",
+        name: "Test Expression",
+        tokens: [
+          {
+            type: "metric",
+            sourceId: revenueSourceId,
+            count: 1,
+          },
+          {
+            type: "operator",
+            op: "+",
+          },
+          {
+            type: "metric",
+            sourceId: geoSourceId,
+            count: 1,
+          },
+        ],
+      },
+    ];
+    const sourceColors = { 0: ["#509EE3"] };
+    const metricSlots = [
+      { slotIndex: 0, entityIndex: 0, sourceId: revenueSourceId },
+      { slotIndex: 1, entityIndex: 0, sourceId: geoSourceId },
+    ];
+    // modifiedDefinitionsBySlotIndex is not used for expressions
+    // which could be cleaned up. why do we call getModifiedDefinition in buildExpressionMetricSources when we have the modified definitions already?
+    const modifiedDefinitionsBySlotIndex = new Map();
+
+    it("shows a unified label when the dimensions are the same", () => {
+      const dimensionMapping = { 0: "dim-created-at", 1: "dim-created-at" };
+
+      const items = buildDimensionItemsFromDefinitions(
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        metricSlots,
+        formulaEntities,
+        emptyProjectionConfig,
+      );
+
+      expect(items).toHaveLength(1);
+      const expressionItem = items[0] as ExpressionDimensionItem;
+      expect(expressionItem.type).toBe("expression");
+      expect(expressionItem.label).toBe("Created At");
+      expect(expressionItem.icon).toBeDefined();
+      expect(expressionItem.metricSources).toHaveLength(2);
+    });
+
+    it("shows 'multiple dimensions' label when the dimensions are different", () => {
+      const dimensionMapping = { 0: "dim-category", 1: "dim-created-at" };
+
+      const items = buildDimensionItemsFromDefinitions(
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        metricSlots,
+        formulaEntities,
+        emptyProjectionConfig,
+      );
+
+      expect(items).toHaveLength(1);
+      const expressionItem = items[0] as ExpressionDimensionItem;
+      expect(expressionItem.type).toBe("expression");
+      expect(expressionItem.label).toBe("Multiple dimensions");
+      expect(expressionItem.icon).toBeUndefined();
+      expect(expressionItem.metricSources).toHaveLength(2);
+    });
   });
 });

@@ -19,7 +19,7 @@ function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
               c.recipients?.length || 0,
             )}
           </strong>
-        )} ${(<strong key="type">{c.schedule_type}</strong>)}`}
+        )} ${<strong key="type">{c.schedule_type}</strong>}`}
         .
       </span>
     ) : c.channel_type === "slack" ? (

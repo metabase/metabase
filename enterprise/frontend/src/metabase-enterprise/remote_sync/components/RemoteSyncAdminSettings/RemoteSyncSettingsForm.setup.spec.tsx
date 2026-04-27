@@ -9,9 +9,15 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionItem,
+  EnterpriseSettingKey,
+  SettingDefinition,
+} from "metabase-types/api";
 import {
   createMockCollection,
+  createMockSettingDefinition,
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -43,6 +49,7 @@ const setupEndpoints = ({
   dirty = [] as any[],
   rootCollectionItems = [] as CollectionItem[],
   settingsError,
+  envSettings = [],
 }: {
   remoteSyncEnabled?: boolean;
   remoteSyncUrl?: string;
@@ -55,6 +62,7 @@ const setupEndpoints = ({
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
   settingsError?: { status: number; message: string };
+  envSettings?: EnterpriseSettingKey[];
 } = {}) => {
   const settings = createMockSettings({
     "remote-sync-enabled": remoteSyncEnabled,
@@ -66,8 +74,17 @@ const setupEndpoints = ({
     "remote-sync-transforms": remoteSyncTransforms,
   });
 
+  const settingDefinitions: SettingDefinition[] = envSettings.map((key) =>
+    createMockSettingDefinition({
+      key,
+      value: settings[key],
+      is_env_setting: true,
+      env_name: `MB_${key.toUpperCase().replace(/-/g, "_")}`,
+    } as SettingDefinition),
+  );
+
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
+  setupSettingsEndpoints(settingDefinitions);
   setupRemoteSyncEndpoints({
     dirty,
     branches: [remoteSyncBranch],
@@ -112,6 +129,7 @@ interface SetupOpts {
   rootCollectionItems?: CollectionItem[];
   variant?: RemoteSyncSettingsFormProps["variant"];
   settingsError?: { status: number; message: string };
+  envSettings?: EnterpriseSettingKey[];
 }
 
 export const setup = ({
@@ -127,6 +145,7 @@ export const setup = ({
   rootCollectionItems = [],
   variant,
   settingsError,
+  envSettings = [],
 }: SetupOpts = {}) => {
   setupEndpoints({
     remoteSyncEnabled,
@@ -139,6 +158,7 @@ export const setup = ({
     dirty,
     rootCollectionItems,
     settingsError,
+    envSettings,
   });
 
   renderWithProviders(

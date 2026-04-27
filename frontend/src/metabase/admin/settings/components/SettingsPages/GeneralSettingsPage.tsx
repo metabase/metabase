@@ -4,6 +4,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
@@ -11,10 +12,10 @@ import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
-import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
+import { AnonymousTrackingInput } from "../widgets/UsageTracking/AnonymousTrackingInput";
 
 export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
@@ -45,16 +46,12 @@ export function GeneralSettingsPage() {
         <PLUGIN_LANDING_PAGE.LandingPageWidget />
       </SettingsSection>
 
-      <SettingsSection
-        title={enableAnonymousTracking ? t`Email and tracking` : t`Email`}
-      >
+      <SettingsSection title={t`Email`}>
         <AdminSettingInput
           name="admin-email"
           title={t`Email address for help requests`}
           inputType="text"
         />
-
-        {enableAnonymousTracking && <AnonymousTrackingInput />}
       </SettingsSection>
 
       <SettingsSection title={t`Tables, X-Rays and domains`}>
@@ -82,12 +79,19 @@ export function GeneralSettingsPage() {
           title={t`Allowed domains for iframes in dashboards`}
           description={
             <>
-              {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${(<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>)}`}
+              {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>}`}
             </>
           }
           inputType="textarea"
         />
       </SettingsSection>
+
+      <SettingsSection title={t`Usage tracking`}>
+        {enableAnonymousTracking && <AnonymousTrackingInput />}
+
+        <CollectUserDataInput />
+      </SettingsSection>
+
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
   );

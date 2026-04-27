@@ -87,7 +87,7 @@ describe(suiteTitle, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
@@ -821,6 +821,9 @@ describe(suiteTitle, () => {
 
     cy.button("Unpublish").should("be.visible");
 
+    cy.log("Selecting custom colors");
+    cy.findByTestId("theme-card-Custom").click();
+
     cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
       cy.findByText("Brand color").should("be.visible");
@@ -901,6 +904,9 @@ describe(suiteTitle, () => {
       resourceName: DASHBOARD_NAME,
       preselectSso: true,
     });
+
+    cy.log("Selecting custom colors");
+    cy.findByTestId("theme-card-Custom").click();
 
     cy.log("click on brand color picker");
     cy.findByTestId("brand-color-picker").findByRole("button").click();

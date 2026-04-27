@@ -25,6 +25,7 @@ const elements = [
     mode: "full",
   }),
   createElement({ type: "lib", name: "utils" }),
+  createElement({ type: "lib", name: "analytics", enforceOutgoing: true }),
   createElement({ type: "lib", name: "css", enforceOutgoing: true }),
   createElement({
     type: "lib",
@@ -37,10 +38,10 @@ const elements = [
   createElement({
     type: "basic",
     name: "mlv2",
-    pattern: "frontend/src/metabase-lib/*/**",
+    pattern: "frontend/src/metabase-lib/**",
   }),
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
-  createElement({ type: "basic", name: "api" }),
+  createElement({ type: "shared", name: "api" }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
@@ -52,8 +53,8 @@ const elements = [
     name: "query_builder",
     enforceOutgoing: true,
   }),
-  createElement({ type: "feature", name: "admin" }),
-  createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
+  createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "enterprise",
