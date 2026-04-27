@@ -10,6 +10,8 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   ;; loaded for its `::Filter` malli schema referenced in the PUT body.
+   [metabase.legacy-mbql.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -294,7 +296,8 @@
             [:owner_user_id           {:optional true} [:maybe :int]]
             [:settings                {:optional true} [:maybe [:map
                                                                 {:closed true}
-                                                                [:default_row_limit {:optional true} [:maybe ms/PositiveInt]]]]]]]
+                                                                [:default_row_limit     {:optional true} [:maybe ms/PositiveInt]]
+                                                                [:default_filter_clause {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Filter]]]]]]]]
   (first (update-tables! [id] body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

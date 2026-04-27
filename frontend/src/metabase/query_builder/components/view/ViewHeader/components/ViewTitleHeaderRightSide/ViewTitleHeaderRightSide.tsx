@@ -21,6 +21,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { ColumnsHeaderButton } from "../ColumnsHeaderButton";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
@@ -161,6 +162,12 @@ export function ViewTitleHeaderRightSide({
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
+      {ColumnsHeaderButton.shouldRender({
+        question,
+        queryBuilderMode,
+        isObjectDetail,
+        isActionListVisible,
+      }) && <ColumnsHeaderButton question={question} />}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,

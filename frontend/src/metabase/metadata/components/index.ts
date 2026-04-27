@@ -27,6 +27,7 @@ export * from "./SortableFieldList";
 export * from "./SyncOptionsModal";
 export * from "./SyncTableSchemaButton";
 export * from "./TableBreadcrumbs";
+export * from "./TableDefaultFilterPanel";
 export * from "./TableDefaultsPanel";
 export * from "./TableFieldList";
 export * from "./TableSortableFieldList";

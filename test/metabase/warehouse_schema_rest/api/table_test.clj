@@ -783,6 +783,46 @@
                (:settings (mt/user-http-request :crowberto :get 200
                                                 (format "table/%d" table-id)))))))))
 
+(deftest update-table-settings-default-filter-clause-test
+  (testing "PUT /api/table/:id accepts :settings.default_filter_clause, validates as MBQL Filter"
+    (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
+                   :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                                             (dissoc :id :entity_id)
+                                             (assoc :db_id (:id db)))]
+      (let [table-id (:id table)
+            put      (fn [status body] (mt/user-http-request :crowberto :put status
+                                                             (format "table/%d" table-id) body))
+            get-     (fn [] (mt/user-http-request :crowberto :get 200 (format "table/%d" table-id)))
+            price-id (mt/id :venues :price)]
+
+        ;; NOTE: settings are persisted as JSON. Legacy MBQL keywords and vectors
+        ;; round-trip as strings and lists respectively. Downstream consumers are
+        ;; expected to renormalise via `mbql.normalize/normalize-tokens`
+        ;; (frontend: `Lib.fromLegacyFilterClause`).
+        (testing "sets a valid filter clause"
+          (put 200 {:settings {:default_filter_clause [:= [:field price-id nil] 4]}})
+          (is (= ["=" ["field" price-id nil] 4]
+                 (:default_filter_clause (:settings (get-))))))
+
+        (testing "sets a relative-date time-interval clause"
+          (put 200 {:settings {:default_filter_clause [:time-interval [:field price-id nil] -7 :day]}})
+          (is (= ["time-interval" ["field" price-id nil] -7 "day"]
+                 (:default_filter_clause (:settings (get-))))))
+
+        (testing "coexists with default_row_limit on the same table"
+          (put 200 {:settings {:default_row_limit 500}})
+          (is (=? {:default_row_limit 500
+                   :default_filter_clause ["time-interval" ["field" price-id nil] -7 "day"]}
+                  (:settings (get-)))))
+
+        (testing "clearing only the filter preserves row limit"
+          (put 200 {:settings {:default_filter_clause nil}})
+          (is (= {:default_row_limit 500} (:settings (get-)))))
+
+        (testing "rejects malformed filter clauses"
+          (put 400 {:settings {:default_filter_clause [:nope]}})
+          (put 400 {:settings {:default_filter_clause "not-a-vector"}}))))))
+
 (deftest ^:parallel table-segment-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "segments include :definition_description"

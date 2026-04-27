@@ -31,6 +31,7 @@ import { DefaultColumnsSection } from "../DefaultColumnsSection";
 import { FieldOrderPicker } from "../FieldOrderPicker";
 import { NameDescriptionInput } from "../NameDescriptionInput";
 import { ResponsiveButton } from "../ResponsiveButton";
+import { TableDefaultFilterPanel } from "../TableDefaultFilterPanel";
 import { TableDefaultsPanel } from "../TableDefaultsPanel";
 import { TableFieldList } from "../TableFieldList";
 import { TableSortableFieldList } from "../TableSortableFieldList";
@@ -261,6 +262,10 @@ const TableSectionBase = ({
       <Stack gap="lg">
         {!isSorting && isConcreteTableId(table.id) && (
           <TableDefaultsPanel table={table} />
+        )}
+
+        {!isSorting && isConcreteTableId(table.id) && (
+          <TableDefaultFilterPanel table={table} />
         )}
 
         {!isSorting && hasFields && <DefaultColumnsSection table={table} />}

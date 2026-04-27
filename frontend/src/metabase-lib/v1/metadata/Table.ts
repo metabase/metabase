@@ -145,20 +145,29 @@ function applyTableDefaults(
   if (!settings) {
     return question;
   }
-  const { default_row_limit } = settings;
-  if (typeof default_row_limit !== "number" || default_row_limit <= 0) {
-    return question;
-  }
-  // Native queries have no :limit at the MBQL level; admin defaults only apply
-  // to structured queries. This matches the shape of the question created by
-  // `Table.question()` (always `type: "query"` via `STRUCTURED_QUERY_TEMPLATE`).
+  // Native queries have no :limit or :filter at the MBQL level; admin defaults
+  // only apply to structured queries. This matches the shape of the question
+  // created by `Table.question()` (always `type: "query"` via
+  // `STRUCTURED_QUERY_TEMPLATE`).
   const datasetQuery = question.datasetQuery();
   if (!isStructuredDatasetQuery(datasetQuery)) {
     return question;
   }
-  return question.setDatasetQuery(
-    assocIn(datasetQuery, ["query", "limit"], default_row_limit),
-  );
+  let next = datasetQuery;
+  const { default_row_limit, default_filter_clause } = settings;
+  if (typeof default_row_limit === "number" && default_row_limit > 0) {
+    next = assocIn(next, ["query", "limit"], default_row_limit);
+  }
+  if (
+    Array.isArray(default_filter_clause) &&
+    default_filter_clause.length > 0
+  ) {
+    next = assocIn(next, ["query", "filter"], default_filter_clause);
+  }
+  if (next === datasetQuery) {
+    return question;
+  }
+  return question.setDatasetQuery(next);
 }
 
 function isStructuredDatasetQuery(

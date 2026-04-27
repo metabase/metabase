@@ -13,6 +13,7 @@ import {
   DefaultColumnsSection,
   FieldOrderPicker,
   NameDescriptionInput,
+  TableDefaultFilterPanel,
   TableDefaultsPanel,
 } from "metabase/metadata/components";
 import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
@@ -337,6 +338,10 @@ const TableSectionBase = ({
 
               {isConcreteTableId(table.id) && (
                 <TableDefaultsPanel table={table} />
+              )}
+
+              {isConcreteTableId(table.id) && (
+                <TableDefaultFilterPanel table={table} />
               )}
 
               <TableSectionGroup title={t`Metadata`}>
