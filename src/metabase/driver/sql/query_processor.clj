@@ -751,7 +751,7 @@
   [driver [_ expression-name opts :as _clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
-        expression-definition (driver-api/expression-with-name *inner-query* expression-name)]
+        expression-definition (expression-by-name driver *inner-query* expression-name)]
     (cond->>
      (->honeysql driver (cond (= source-table driver-api/qp.add.source)
                               (apply h2x/identifier :field source-query-alias source-alias)
