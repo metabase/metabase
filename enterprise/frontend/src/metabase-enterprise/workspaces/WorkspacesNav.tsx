@@ -9,7 +9,7 @@ export const WorkspacesNav = () => {
       icon="folder"
       folderPattern="workspaces"
     >
-      <SettingsNavItem path="workspaces" label={t`Setup`} />
+      <SettingsNavItem path="workspaces" label={t`Provisioning`} />
       <SettingsNavItem
         path="workspaces/table-remappings"
         label={t`Table remappings`}
