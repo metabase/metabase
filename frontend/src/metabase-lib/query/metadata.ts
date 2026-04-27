@@ -6,6 +6,7 @@ import type {
   DatasetColumn,
   Field,
   FieldId,
+  NormalizedField,
   TableId,
 } from "metabase-types/api";
 
@@ -231,7 +232,7 @@ export function returnedColumns(
 export function fromLegacyColumn(
   query: Query,
   stageIndex: number,
-  columnOrField: DatasetColumn | Field,
+  columnOrField: DatasetColumn | NormalizedField | Field,
 ): ColumnMetadata {
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }
