@@ -1,6 +1,6 @@
 (ns metabase.transforms.models.transform-run-cancelation
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -29,10 +29,10 @@
                 :id run-id
                 {:status "canceling"})
     (log/infof "Cancelation requested for transform run %s" run-id)
-    (prometheus/inc! :metabase-transforms/cancelation-requests {:status "ok"})
+    (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})
     nil
     (catch Throwable t
-      (prometheus/inc! :metabase-transforms/cancelation-requests {:status "error"})
+      (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"})
       (throw t))))
 
 (defn reducible-canceled-local-runs

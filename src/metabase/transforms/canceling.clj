@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
@@ -70,10 +70,10 @@
   `run` is the pre-fetched `:model/TransformRun` row (or nil); when nil the audit event is skipped, metrics still
   emit. The caller owns the fetch so we don't redundantly refetch a row it already has."
   [run-id run request-time outcome]
-  (prometheus/inc! :metabase-transforms/cancelation-completed {:outcome outcome})
+  (analytics/inc! :metabase-transforms/cancelation-completed {:outcome outcome})
   (when-let [latency (request-latency-ms request-time)]
-    (prometheus/observe! :metabase-transforms/cancelation-latency-ms
-                         {:outcome outcome} latency))
+    (analytics/observe! :metabase-transforms/cancelation-latency-ms
+                        {:outcome outcome} latency))
   (try
     (when run
       (events/publish-event! :event/transform-run-canceled
