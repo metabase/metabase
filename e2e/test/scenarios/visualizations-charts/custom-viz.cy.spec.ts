@@ -65,7 +65,7 @@ describe("admin > custom visualizations", () => {
         H.visitCustomVizSettings();
 
         H.main()
-          .findByRole("button", { name: /Enable Custom Visualizations/ })
+          .findByRole("button", { name: /Enable custom visualizations/ })
           .should("be.visible")
           .click();
 
