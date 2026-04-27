@@ -14,9 +14,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ignored-entity-id-table-names
-  "Legacy (V1) Metrics are no longer supported, and all their code has been removed. However the Tables are still in the
-  app DB (for now)... ignore them."
-  #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"})
+  "Legacy tables that still live in the app DB but no longer have Toucan models.
+  Legacy (V1) Metrics are no longer supported, and all their code has been removed.
+  Workspaces were removed in v60 but the tables remain until they are migrated away."
+  #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"
+    "workspace_log" "WORKSPACE_LOG" "workspace_transform" "WORKSPACE_TRANSFORM"})
 
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding

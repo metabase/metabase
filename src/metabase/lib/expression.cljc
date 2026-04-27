@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty get-in every?
+  (:refer-clojure :exclude [+ - * / case abs time concat replace float mapv some select-keys not-empty get-in every?
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]

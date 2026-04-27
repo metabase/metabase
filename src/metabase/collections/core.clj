@@ -17,7 +17,9 @@
   create-library-collection!
   descendant-ids
   library-collection
+  library-collection-type
   library-data-collection-type
+  library-metrics-collection-type
   location-path
   moving-from-remote-synced?
   moving-into-remote-synced?

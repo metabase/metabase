@@ -132,11 +132,11 @@
   {:mvn/version "2.25.4"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
   {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
-  org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
-  org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
+  org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
+  org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.poi/poi-ooxml-full             {:mvn/version "5.4.1"}
+  org.apache.poi/poi-ooxml-full             {:mvn/version "5.5.1"}
   org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
@@ -255,7 +255,7 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2025.10.23"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.04.15"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
@@ -520,7 +520,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2025.10.23"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.04.15"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}

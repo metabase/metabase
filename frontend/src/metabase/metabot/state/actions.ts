@@ -11,7 +11,6 @@ import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-st
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import type {
   JSONValue,
@@ -346,7 +345,6 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -384,7 +382,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbeddingSdk() && !isWorkspace) {
+                if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })

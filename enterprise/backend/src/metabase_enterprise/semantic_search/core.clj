@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.embedders]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
@@ -15,7 +16,13 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [potemkin :as p]
    [toucan2.realize :as t2.realize]))
+
+(p/import-vars
+ [metabase-enterprise.semantic-search.embedders
+  active-embedding-model
+  search-index-embedder])
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
