@@ -22,45 +22,80 @@ export function setupDashcardQueryEndpoints(
 
 type BatchDashcardRef = { id: DashCardId; card_id: CardId };
 
+type BatchErrorContext = {
+  error: string;
+  error_type?: string;
+  error_is_curated?: boolean;
+  json_query?: Record<string, unknown>;
+};
+
 export function buildCardQueryBatchNdjson(
   dashcards: BatchDashcardRef[],
   dataset: Dataset = createMockDataset(),
+  errors: Map<DashCardId, BatchErrorContext> = new Map(),
 ): string {
   const lines: string[] = [];
+  let succeeded = 0;
+  let failed = 0;
   for (const { id, card_id } of dashcards) {
-    lines.push(
-      JSON.stringify({
-        type: "card-begin",
-        dashcard_id: id,
-        card_id,
-        data: dataset.data,
-      }),
-    );
-    lines.push(
-      JSON.stringify({
-        type: "card-rows",
-        dashcard_id: id,
-        card_id,
-        rows: dataset.data?.rows ?? [],
-      }),
-    );
-    lines.push(
-      JSON.stringify({
-        type: "card-end",
-        dashcard_id: id,
-        card_id,
-        row_count: dataset.data?.rows?.length ?? 0,
-        status: "completed",
-        data: dataset.data,
-      }),
-    );
+    const errorContext = errors.get(id);
+    if (errorContext) {
+      lines.push(
+        JSON.stringify({
+          type: "card-error",
+          dashcard_id: id,
+          card_id,
+          status: "failed",
+          error: errorContext.error,
+          ...(errorContext.error_type != null && {
+            error_type: errorContext.error_type,
+          }),
+          ...(errorContext.error_is_curated != null && {
+            error_is_curated: errorContext.error_is_curated,
+          }),
+          ...(errorContext.json_query != null && {
+            json_query: errorContext.json_query,
+          }),
+          data: { cols: [], rows: [] },
+        }),
+      );
+      failed++;
+    } else {
+      lines.push(
+        JSON.stringify({
+          type: "card-begin",
+          dashcard_id: id,
+          card_id,
+          data: dataset.data,
+        }),
+      );
+      lines.push(
+        JSON.stringify({
+          type: "card-rows",
+          dashcard_id: id,
+          card_id,
+          rows: dataset.data?.rows ?? [],
+        }),
+      );
+      lines.push(
+        JSON.stringify({
+          type: "card-end",
+          dashcard_id: id,
+          card_id,
+          row_count: dataset.data?.rows?.length ?? 0,
+          status: "completed",
+          data: dataset.data,
+        }),
+      );
+      succeeded++;
+    }
   }
   lines.push(
     JSON.stringify({
       type: "complete",
       total: dashcards.length,
-      succeeded: dashcards.length,
-      failed: 0,
+      succeeded,
+      failed,
     }),
   );
   return lines.join("\n") + "\n";

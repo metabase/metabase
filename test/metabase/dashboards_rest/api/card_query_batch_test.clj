@@ -141,9 +141,12 @@
                      :model/Dashboard     {d :id}   {}
                      :model/DashboardCard {dc :id}  {:dashboard_id d :card_id c1}]
         (testing "wrong card_id for a valid dashcard"
-          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c2}]})]
+          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c2}]})
+                err   (first (card-errors lines))]
             (is (= 1 (count (card-errors lines))))
-            (is (= 404 (get-in (first (card-errors lines)) [:error :status])))
+            (is (= "failed" (:status err)))
+            (is (= "Card not found in dashboard" (:error err)))
+            (is (= {:cols [] :rows []} (:data err)))
             (is (= {:type "complete" :total 1 :succeeded 0 :failed 1}
                    (completion-message lines)))))
 
@@ -174,9 +177,12 @@
                      :model/DashboardCard {dc :id} {:dashboard_id d :card_id c}]
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c}]})]
+          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c}]})
+                err   (first (card-errors lines))]
             (is (= 1 (count (card-errors lines))))
-            (is (= 403 (get-in (first (card-errors lines)) [:error :status])))
+            (is (= "failed" (:status err)))
+            (is (= "missing-required-permissions" (:error_type err)))
+            (is (= "You don't have permission to view this card" (:error err)))
             (is (= {:type "complete" :total 1 :succeeded 0 :failed 1}
                    (completion-message lines)))))))))
 
@@ -185,6 +191,54 @@
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 (batch-url Integer/MAX_VALUE)
                                  {:parameters []})))))
+
+(deftest batch-query-failed-emits-failed-dataset-shape-test
+  (testing "QP-level failure emits a failed-Dataset envelope: status=failed, error string, empty data"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card          {card-id :id} {:database_id   (mt/id)
+                                                         :dataset_query {:database (mt/id)
+                                                                         :type     :native
+                                                                         :native   {:query "SELECT * FROM does_not_exist_xyz"}}}
+                     :model/Dashboard     {dash-id :id} {}
+                     :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id}]
+        (let [lines (batch-request! dash-id {:cards [{:dashcard_id dc-id :card_id card-id}]})
+              err   (first (card-errors lines))]
+          (is (= 1 (count (card-errors lines))))
+          (is (= "failed" (:status err)))
+          (is (string? (:error err)))
+          (is (= {:cols [] :rows []} (:data err))))))))
+
+(deftest batch-query-failed-includes-json-query-with-parameters-test
+  (testing "QP failures forward :json_query with the failing :parameters so the dashcardData cache
+           can detect when a user fixes a broken parameter mapping (#32573)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:database_id   (mt/id)
+                      :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard     {dash-id :id}
+                     {:parameters [{:id        "abc123"
+                                    :name      "ID"
+                                    :slug      "id"
+                                    :type      :id
+                                    :sectionId "id"}]}
+                     :model/DashboardCard {dc-id :id}
+                     {:dashboard_id       dash-id
+                      :card_id            card-id
+                      :parameter_mappings [{:card_id      card-id
+                                            :parameter_id "abc123"
+                                            :target       [:dimension [:field "DOES_NOT_EXIST" {:base-type :type/Integer}]]}]}]
+        (let [lines  (batch-request! dash-id
+                                     {:cards      [{:dashcard_id dc-id :card_id card-id}]
+                                      :parameters [{:id "abc123" :type "id" :value [42]}]})
+              err    (first (card-errors lines))
+              params (get-in err [:json_query :parameters])]
+          (is (= 1 (count (card-errors lines))))
+          (is (= "failed" (:status err)))
+          (is (some? (:json_query err))
+              "json_query is required so the FE params comparison can tell when the user fixes a broken mapping")
+          (is (= [{:type "id" :id "abc123" :value [42]
+                   :target ["dimension" ["field" "DOES_NOT_EXIST" {:base-type "type/Integer"}]]}]
+                 params)))))))
 
 (deftest batch-query-with-parameters-test
   (testing "parameters are applied to card queries"

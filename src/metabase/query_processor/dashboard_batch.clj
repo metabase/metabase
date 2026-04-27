@@ -242,18 +242,13 @@
                         (catch EofException _))
 
                       (= (:status result) :failed)
-                      ;; Forward the full QP error map (`error`,
-                      ;; `error_is_curated`, `error_type`, `ex-data`, ...) so
-                      ;; the FE can render a curated message.
                       (batch-ndjson/emit-card-error!
                        queue dashcard-id card-id
-                       (merge
-                        {:status  (or (-> result :ex-data :status-code)
-                                      (:status-code result)
-                                      500)
-                         :message (or (:error result)
-                                      "Unknown error running card query")}
-                        (dissoc result :class :stacktrace))))
+                       {:error            (or (:error result)
+                                              "Unknown error running card query")
+                        :error_type       (:error_type result)
+                        :error_is_curated (:error_is_curated result)
+                        :json_query       (:json_query result)}))
                     (qp.pipeline/default-result-handler result))]
           (qp (update query :info merge info) rff))))))
 
@@ -286,20 +281,16 @@
       ;; Client disconnected — nothing to report; writer thread will exit on its own.
       :error)
     (catch Throwable e
-      ;; Emit a fully-shaped QP error map so the FE can render a curated
-      ;; message / permission icon. `check-403`-style throws don't tag their
-      ;; ex-data with a `:type`, so default 403s to `missing-required-permissions`.
+      ;; `check-403`-style throws don't tag their ex-data with a `:type`, so default 403s to
+      ;; `missing-required-permissions` so the FE renders the permission icon.
       (let [data       (ex-data e)
             status     (or (:status-code data) 500)
-            message    (ex-message e)
             error-type (or (:type data)
                            (when (= status 403) qp.error-type/missing-required-permissions))]
         (log/warnf e "Batch card query failed for dashcard %d card %d" dashcard-id card-id)
         (batch-ndjson/emit-card-error! queue dashcard-id card-id
-                                       (cond-> {:status  status
-                                                :message message
-                                                :error   message}
-                                         error-type (assoc :error_type error-type)))
+                                       {:error      (ex-message e)
+                                        :error_type error-type})
         :error))))
 
 ;;; ------------------------------------------- Batch Orchestrator -------------------------------------------
@@ -410,21 +401,14 @@
                       :prefetched-card           (get card-id->card card-id)
                       :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})))]
             (try
-              ;; Emit a fully-shaped QP error map (`status`, `error`,
-              ;; `error_type`, ...) — `getDashcardResultsError` needs
-              ;; `error_type` to render the permission icon/message for 403s.
               (doseq [{:keys [dashcard-id card-id]} immediate-errors]
                 (vswap! failed inc)
                 (batch-ndjson/emit-card-error!
                  queue dashcard-id card-id
                  (if (contains? valid-pairs [dashcard-id card-id])
-                   {:status     403
-                    :message    "You don't have permission to view this card"
-                    :error      "You don't have permission to view this card"
+                   {:error      "You don't have permission to view this card"
                     :error_type qp.error-type/missing-required-permissions}
-                   {:status  404
-                    :message "Card not found in dashboard"
-                    :error   "Card not found in dashboard"})))
+                   {:error "Card not found in dashboard"})))
               ;; Run queries via claypoole — results flow to the queue as rows arrive.
               (doseq [result (cp/upmap pool run-card (or to-query []))]
                 (case result

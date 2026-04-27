@@ -41,7 +41,7 @@ export function getMissingColumnsFromVisualizationSettings(options: {
     if (!colsForCards[cardId]) {
       colsForCards[cardId] = new Set();
     }
-    series.data?.cols.forEach((col) => {
+    series.data?.cols?.forEach((col) => {
       colsForCards[cardId].add(col.name);
     });
   });

@@ -32,15 +32,22 @@ type BatchCardEnd = {
   data: Partial<DatasetData> & Record<string, unknown>;
 } & Record<string, unknown>;
 
+// The server emits `card-error` with the failed-Dataset envelope spread at the top level
+// alongside the routing fields (symmetric to `card-end`). Strip `type`/`dashcard_id`/`card_id`
+// and the remainder is a Dataset. `json_query` carries the parameters that were applied to the
+// failing query, so the dashcardData cache can detect when the user changes a param mapping
+// (e.g. removing a broken mapping → params differ → refetch — #32573).
 type BatchCardError = {
   type: "card-error";
   dashcard_id: DashCardId;
   card_id: CardId;
-  // `status` and `message` are always present; the rest of the QP error
-  // payload (`error`, `error_is_curated`, `error_type`, `ex-data`, ...) rides
-  // along so callers can surface curated messages.
-  error: { status: number; message: string } & Record<string, unknown>;
-};
+  status: "failed";
+  error: string;
+  error_type?: string;
+  error_is_curated?: boolean;
+  json_query?: Record<string, unknown>;
+  data: { cols: unknown[]; rows: unknown[] };
+} & Record<string, unknown>;
 
 type BatchComplete = {
   type: "complete";
@@ -65,7 +72,7 @@ export type BatchCallbacks = {
   onCardError: (
     dashcardId: DashCardId,
     cardId: CardId,
-    error: { status: number; message: string } & Record<string, unknown>,
+    dataset: Dataset,
   ) => void;
   onComplete: (summary: {
     total: number;
@@ -163,7 +170,12 @@ function handleMessage(
     }
     case "card-error": {
       partial.delete(keyOf(msg.dashcard_id, msg.card_id));
-      callbacks.onCardError(msg.dashcard_id, msg.card_id, msg.error);
+      const { type: _t, dashcard_id: _dc, card_id: _cid, ...dataset } = msg;
+      callbacks.onCardError(
+        msg.dashcard_id,
+        msg.card_id,
+        dataset as unknown as Dataset,
+      );
       return;
     }
     case "complete": {

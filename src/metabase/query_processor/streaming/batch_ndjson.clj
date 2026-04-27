@@ -89,16 +89,33 @@
   [^BlockingQueue queue dashcard-id card-id]
   (->BatchCardNdjsonWriter queue dashcard-id card-id (volatile! [])))
 
+(defn- failed-dataset
+  "Build a failed-Dataset envelope from QP error context. The returned map mirrors the shape the
+  per-card 4xx HTTP path puts on the wire, so the frontend can cache and render it without further
+  translation. Optional fields are included only when present."
+  [{:keys [error error_type error_is_curated json_query]
+    :or   {error "Error"}}]
+  (cond-> {:status "failed"
+           :error  error
+           :data   {:cols [] :rows []}}
+    error_type       (assoc :error_type       error_type)
+    error_is_curated (assoc :error_is_curated error_is_curated)
+    json_query       (assoc :json_query       json_query)))
+
 (defn emit-card-error!
   "Encode a `card-error` message for `(dashcard-id, card-id)` and enqueue it with flush.
-  Safe to call without a writer instance — used for pre-card validation failures, mid-stream
-  `:failed` results, and worker-level exception catches."
-  [^BlockingQueue queue dashcard-id card-id error]
+  The emitted message carries a failed-Dataset envelope spread at the top level alongside the
+  routing fields, symmetric to `card-end`. Safe to call without a writer instance — used for
+  pre-card validation failures, mid-stream `:failed` results, and worker-level exception catches.
+
+  `error-context` is a map with `:error` (message string), optional `:error_type`, and optional
+  `:error_is_curated`."
+  [^BlockingQueue queue dashcard-id card-id error-context]
   (enqueue! queue
-            (encode-line {:type        "card-error"
-                          :dashcard_id dashcard-id
-                          :card_id     card-id
-                          :error       error})
+            (encode-line (merge (failed-dataset error-context)
+                                {:type        "card-error"
+                                 :dashcard_id dashcard-id
+                                 :card_id     card-id}))
             true))
 
 (defn emit-complete!
