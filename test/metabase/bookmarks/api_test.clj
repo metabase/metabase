@@ -75,6 +75,15 @@
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))
 
+(deftest synced-collection-bookmark-test
+  (testing "GET /api/bookmark returns is_remote_synced: true for remote-synced collection bookmarks"
+    (mt/with-temp [:model/Collection synced-coll {:name "Synced" :is_remote_synced true}]
+      (bookmark-models (mt/user->id :rasta) synced-coll)
+      (is (true? (->> (mt/user-http-request :rasta :get 200 "bookmark")
+                      (filter #(= (:name %) "Synced"))
+                      first
+                      :is_remote_synced))))))
+
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp [:model/Collection archived-collection {:name "Test Collection"
