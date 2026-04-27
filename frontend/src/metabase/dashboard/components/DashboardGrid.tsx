@@ -398,7 +398,6 @@ class DashboardGridInner extends Component<
 
       addUndo({
         message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
-        undo: true,
         action: () =>
           setDashCardAttributes({
             id: replaceCardModalDashCard.id,

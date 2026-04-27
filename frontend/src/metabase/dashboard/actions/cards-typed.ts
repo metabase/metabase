@@ -501,7 +501,6 @@ export const removeCardFromDashboard = createThunkAction(
           message: isLastDashboardQuestionDashcard
             ? t`Trashed and removed card`
             : t`Removed card`,
-          undo: true,
           action: () =>
             dispatch(
               undoRemoveCardFromDashboard({
