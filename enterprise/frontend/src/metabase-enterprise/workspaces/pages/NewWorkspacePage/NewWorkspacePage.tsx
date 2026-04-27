@@ -7,7 +7,7 @@ import _ from "underscore";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type {

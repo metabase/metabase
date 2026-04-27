@@ -3,13 +3,13 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { useDispatch } from "metabase/redux";
 import {
   Card,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Workspace } from "metabase-types/api";
 

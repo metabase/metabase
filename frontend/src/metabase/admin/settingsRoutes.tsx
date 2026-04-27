@@ -70,10 +70,9 @@ export const getSettingsRoutes = () => (
       path="remote-sync"
       component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
     />
-    <Route
-      path="workspaces"
-      component={() => <PLUGIN_WORKSPACES.WorkspacesAdminSettings />}
-    />
+    <Route path="workspaces">
+      {PLUGIN_WORKSPACES.getWorkspaceAdminRoutes()}
+    </Route>
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />

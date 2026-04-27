@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import {
   NotFoundPlaceholder,
@@ -8,11 +8,13 @@ import {
 type WorkspacesPlugin = {
   WorkspacesAdminSettings: ComponentType;
   WorkspacesNav: ComponentType;
+  getWorkspaceAdminRoutes: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
   WorkspacesAdminSettings: NotFoundPlaceholder,
   WorkspacesNav: PluginPlaceholder,
+  getWorkspaceAdminRoutes: () => null,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultPlugin();

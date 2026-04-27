@@ -9,7 +9,7 @@ import type { Workspace, WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
-import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
+import { useGetWorkspaceQueryWithPolling } from "../../hooks/use-get-workspace-query-with-polling";
 
 type WorkspacePageParams = {
   workspaceId: string;
@@ -21,7 +21,8 @@ type WorkspacePageProps = {
 
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
-  const { workspace, isLoading, error } = useFetchWorkspace(workspaceId);
+  const { workspace, isLoading, error } =
+    useGetWorkspaceQueryWithPolling(workspaceId);
 
   if (isLoading || error != null || workspace == null) {
     return (

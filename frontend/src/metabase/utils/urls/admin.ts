@@ -5,6 +5,7 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  WorkspaceId,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
@@ -179,4 +180,16 @@ export function adminToolsModelCaching() {
 
 export function adminToolsGrantAccess() {
   return "/admin/tools/help/grant-access";
+}
+
+export function workspaceList() {
+  return "/admin/settings/workspaces";
+}
+
+export function newWorkspace() {
+  return "/admin/settings/workspaces/new";
+}
+
+export function workspace(workspaceId: WorkspaceId) {
+  return `/admin/settings/workspaces/${workspaceId}`;
 }

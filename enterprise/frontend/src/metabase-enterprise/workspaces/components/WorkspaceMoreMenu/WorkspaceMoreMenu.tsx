@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";

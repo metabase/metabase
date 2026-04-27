@@ -12,13 +12,13 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import * as Urls from "metabase/utils/urls";
 import type { Workspace } from "metabase-types/api";
 
-import { useFetchWorkspaceList } from "../../hooks/use-fetch-workspace-list";
+import { useListWorkspacesQueryWithPolling } from "../../hooks/use-list-workspaces-query-with-polling";
 
 import { WorkspaceList } from "./WorkspaceList";
 import { filterWorkspaces } from "./utils";
 
 export function WorkspaceListPage() {
-  const { workspaces, error, isLoading } = useFetchWorkspaceList();
+  const { workspaces, error, isLoading } = useListWorkspacesQueryWithPolling();
 
   if (error) {
     return <DelayedLoadingAndErrorWrapper loading={false} error={error} />;
