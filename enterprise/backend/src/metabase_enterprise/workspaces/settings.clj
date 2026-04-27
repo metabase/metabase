@@ -10,3 +10,13 @@
   :export?    false
   :encryption :no
   :default    :main)
+
+(defsetting has-remappings-enabled
+  (deferred-tru "Whether the table remapping feature is available.")
+  :type       :boolean
+  :visibility :authenticated
+  :export?    false
+  :setter     :none
+  :getter     (fn [] true)
+  :audit      :never
+  :doc        false)

@@ -732,6 +732,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
   "workspace-mode"?: WorkspaceMode | null;
+  "has-remappings-enabled": boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
