@@ -266,5 +266,19 @@ dashcards:
   serdes/meta:
   - {id: IW64bVIFFkpldy410Pe5F, model: Dashboard}
   - {id: q2TAw8RtBJbvTfeZYGKyw, model: DashboardCard}
+- entity_id: 00CApemGe5kKbBgF9wGna
+  card_id: lW4N1ScsUzDOVKzzzsGJW
+  created_at: '2026-04-27T13:45:01.042269Z'
+  row: 18
+  col: 0
+  size_x: 12
+  size_y: 9
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings: {column_settings: null}
+  serdes/meta:
+  - {id: IW64bVIFFkpldy410Pe5F, model: Dashboard}
+  - {id: 00CApemGe5kKbBgF9wGna, model: DashboardCard}
 tabs: []
 width: full
