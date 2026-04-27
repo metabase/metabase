@@ -28,6 +28,14 @@ export function allSettersOf(proto: object): object[] {
   return ownFunctionsOf(proto, (d) => d.set);
 }
 
+export function allMembersOf(proto: object): object[] {
+  return [
+    ...allGettersOf(proto),
+    ...allMethodsOf(proto),
+    ...allSettersOf(proto),
+  ];
+}
+
 const CONSOLE_METHODS = [
   // eslint-disable-next-line no-console -- plugin sandboxes may log for debugging
   console.log,
@@ -91,18 +99,10 @@ const CSS_GEOMETRY_CONSTRUCTORS = [
 
 // DOM prototype methods, getters, and setters — manipulation and traversal APIs.
 const DOM_PROTOTYPE_FUNCTIONS = [
-  ...allGettersOf(Document.prototype),
-  ...allMethodsOf(Document.prototype),
-  ...allSettersOf(Document.prototype),
-  ...allGettersOf(Node.prototype),
-  ...allMethodsOf(Node.prototype),
-  ...allSettersOf(Node.prototype),
-  ...allGettersOf(Element.prototype),
-  ...allMethodsOf(Element.prototype),
-  ...allSettersOf(Element.prototype),
-  ...allGettersOf(HTMLElement.prototype),
-  ...allMethodsOf(HTMLElement.prototype),
-  ...allSettersOf(HTMLElement.prototype),
+  ...allMembersOf(Document.prototype),
+  ...allMembersOf(Node.prototype),
+  ...allMembersOf(Element.prototype),
+  ...allMembersOf(HTMLElement.prototype),
   ...allGettersOf(EventTarget.prototype),
   ...allMethodsOf(EventTarget.prototype),
   // Read-only browser info — getters only, no mutation.
@@ -131,20 +131,14 @@ const EVENT_PROTOTYPE_FUNCTIONS = [
 
 // Canvas — 2D context methods, HTMLCanvasElement, and geometry.
 const CANVAS_FUNCTIONS = [
-  ...allMethodsOf(HTMLCanvasElement.prototype),
-  ...allGettersOf(HTMLCanvasElement.prototype),
-  ...allSettersOf(HTMLCanvasElement.prototype),
-  ...allMethodsOf(CanvasRenderingContext2D.prototype),
-  ...allGettersOf(CanvasRenderingContext2D.prototype),
-  ...allSettersOf(CanvasRenderingContext2D.prototype),
+  ...allMembersOf(HTMLCanvasElement.prototype),
+  ...allMembersOf(CanvasRenderingContext2D.prototype),
   ...allGettersOf(TextMetrics.prototype),
   ...allGettersOf(DOMRect.prototype),
   ...allGettersOf(DOMRectReadOnly.prototype),
   ...allGettersOf(ResizeObserverEntry.prototype),
   // CSSStyleDeclaration — style.cssText, style.setProperty, etc.
-  ...allGettersOf(CSSStyleDeclaration.prototype),
-  ...allMethodsOf(CSSStyleDeclaration.prototype),
-  ...allSettersOf(CSSStyleDeclaration.prototype),
+  ...allMembersOf(CSSStyleDeclaration.prototype),
 ];
 
 // Covers what plugin code + bundled libs call directly.
