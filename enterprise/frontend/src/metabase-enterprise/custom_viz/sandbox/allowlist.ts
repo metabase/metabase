@@ -36,6 +36,18 @@ export function allMembersOf(proto: object): object[] {
   ];
 }
 
+export function allClassMethodsOf(
+  ctor: object & { prototype: object },
+): object[] {
+  return [...allMethodsOf(ctor), ...allMethodsOf(ctor.prototype)];
+}
+
+// %TypedArray%.prototype is not directly referenceable — it's the shared hidden prototype
+// that all typed array classes (Int8Array, Float64Array, etc.) inherit from.
+function getTypedArrayPrototype(): object {
+  return Object.getPrototypeOf(Int8Array.prototype);
+}
+
 const CONSOLE_METHODS = [
   // eslint-disable-next-line no-console -- plugin sandboxes may log for debugging
   console.log,
@@ -47,29 +59,23 @@ const CONSOLE_METHODS = [
 
 // ECMAScript built-ins — covered wholesale to avoid whack-a-mole with getTime, map, slice, parse, etc.
 const ECMASCRIPT_BUILT_IN_METHODS = [
-  ...allMethodsOf(Date.prototype),
-  ...allMethodsOf(Date),
-  ...allMethodsOf(Array.prototype),
-  ...allMethodsOf(Array),
-  ...allMethodsOf(String.prototype),
-  ...allMethodsOf(String),
-  ...allMethodsOf(Number.prototype),
-  ...allMethodsOf(Number),
-  ...allMethodsOf(Boolean.prototype),
-  ...allMethodsOf(Object.prototype),
-  ...allMethodsOf(Object),
-  ...allMethodsOf(Function.prototype),
-  ...allMethodsOf(RegExp.prototype),
-  ...allMethodsOf(Promise.prototype),
-  ...allMethodsOf(Promise),
-  ...allMethodsOf(Map.prototype),
-  ...allMethodsOf(Set.prototype),
-  ...allMethodsOf(WeakMap.prototype),
-  ...allMethodsOf(WeakSet.prototype),
-  ...allMethodsOf(Error.prototype),
-  ...allMethodsOf(ArrayBuffer.prototype),
-  ...allMethodsOf(DataView.prototype),
-  ...allMethodsOf(Object.getPrototypeOf(Int8Array.prototype)), // %TypedArray%.prototype
+  ...allClassMethodsOf(Date),
+  ...allClassMethodsOf(Array),
+  ...allClassMethodsOf(String),
+  ...allClassMethodsOf(Number),
+  ...allClassMethodsOf(Boolean),
+  ...allClassMethodsOf(Object),
+  ...allClassMethodsOf(Function),
+  ...allClassMethodsOf(RegExp),
+  ...allClassMethodsOf(Promise),
+  ...allClassMethodsOf(Map),
+  ...allClassMethodsOf(Set),
+  ...allClassMethodsOf(WeakMap),
+  ...allClassMethodsOf(WeakSet),
+  ...allClassMethodsOf(Error),
+  ...allClassMethodsOf(ArrayBuffer),
+  ...allClassMethodsOf(DataView),
+  ...allMethodsOf(getTypedArrayPrototype()),
   ...allMethodsOf(Math),
   ...allMethodsOf(JSON),
 ];
