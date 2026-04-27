@@ -75,6 +75,19 @@
       (is (thrown-with-msg? Exception #"not valid JSON"
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-rejects-tar-bomb-test
+  (testing "SECURITY: validate-bundle! rejects archives that expand beyond the uncompressed cap"
+    ;; A megabyte of NUL compresses to a few hundred bytes. With a tight cap on
+    ;; uncompressed bytes the bomb is refused at extraction time.
+    (let [bomb-payload (byte-array (* 32 1024 1024))
+          bytes        (cvp.tu/make-tgz-bytes
+                        [["metabase-plugin.json" (json/encode {:name "bomb-viz"})]
+                         ["dist/index.js" "console.log('hi')"]
+                         ["dist/assets/big.bin" bomb-payload]])]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"max uncompressed bytes"
+                            (cache/validate-bundle! bytes))))))
+
 (deftest validate-bundle-rejects-incompatible-version-test
   (testing "plugin requiring incompatible Metabase version is rejected"
     (with-redefs [config/mb-version-info {:tag "v1.60.0"}

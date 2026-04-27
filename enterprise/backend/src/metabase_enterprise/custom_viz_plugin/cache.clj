@@ -63,6 +63,22 @@
   "Maximum size of an uploaded plugin bundle, in bytes. See [[max-bundle-mib]]."
   (* max-bundle-mib 1024 1024))
 
+(def ^:const ^:private max-uncompressed-bytes
+  "Cap on total uncompressed bytes from a bundle archive. Set to 5x the
+   compressed cap, which comfortably fits a real JS bundle + image assets but
+   refuses tar bombs (which need 1000x+ ratios to be interesting)."
+  (* 5 max-bundle-bytes))
+
+(def ^:const ^:private max-entries
+  "Cap on entry count in a bundle archive. A real plugin has a manifest, the JS
+   bundle, and a handful of image assets; 256 leaves plenty of slack without
+   inviting denial-of-service via metadata-only entries."
+  256)
+
+(def ^:private untgz-opts
+  {:max-uncompressed-bytes max-uncompressed-bytes
+   :max-entries            max-entries})
+
 ;;; ------------------------------------------------ Validate Bundle ------------------------------------------------
 
 (defn- delete-recursive! [^Path path]
@@ -85,11 +101,14 @@
                                            (into-array FileAttribute []))]
     (try
       (try
-        (u.compress/untgz bundle-bytes (.toFile scratch))
+        (u.compress/untgz bundle-bytes (.toFile scratch) untgz-opts)
         (catch Exception e
-          (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
-                          {:status-code 400}
-                          e))))
+          (if (:status-code (ex-data e))
+            ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
+            (throw e)
+            (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
+                            {:status-code 400}
+                            e)))))
       (let [manifest-file (.resolve scratch ^String (manifest/manifest-path))
             bundle-file   (.resolve scratch ^String (dist-path bundle-rel-path))
             _             (when-not (u.files/regular-file? manifest-file)
@@ -163,7 +182,7 @@
         tmp    (Files/createTempDirectory parent (str (.getFileName dir) ".tmp.")
                                           (into-array FileAttribute []))]
     (try
-      (u.compress/untgz bundle-bytes (.toFile tmp))
+      (u.compress/untgz bundle-bytes (.toFile tmp) untgz-opts)
       (Files/move tmp dir (into-array CopyOption []))
       (catch FileAlreadyExistsException _
         ;; Another thread won the race; keep their copy and discard ours.
