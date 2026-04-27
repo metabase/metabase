@@ -3,8 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
@@ -196,14 +195,7 @@
                    (comp (m/distinct-by (juxt :id :model)))))))
 
 (defn- search-items-reducible []
-  (let [models search.spec/search-models
-        ;; we're pushing indexed entities last in the search items reducible
-        ;; so that more important models gets indexed first, making the partial
-        ;; index more usable earlier
-        sorted-models (cond-> models
-                        (contains? models "indexed-entity")
-                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
-    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
+  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
 
 (def ^:private max-document-error-logs 10)
 
@@ -280,7 +272,7 @@
             duration (u/since-ms timer)]
         (log/debugf "Updated search entries in %.0fms Updated: %s Deleted: %s" duration (sort-by (comp - val) update-report) (sort-by (comp - val) delete-report))
         (analytics/inc! :metabase-search/index-update-ms duration)
-        (prometheus/observe! :metabase-search/index-update-duration-ms duration)
+        (analytics/observe! :metabase-search/index-update-duration-ms duration)
         (doseq [[model cnt] (merge-with + update-report delete-report)]
           (analytics/inc! :metabase-search/index-updates {:model model} cnt))))))
 
@@ -330,7 +322,7 @@
         {}))))
 
 (defn- track-queue-size! []
-  (analytics/set! :metabase-search/queue-size (.size queue)))
+  (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
 
 (defn- index-worker-exists? []
   (queue/listener-exists? listener-name))

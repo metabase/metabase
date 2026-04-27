@@ -6,10 +6,10 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type { DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";

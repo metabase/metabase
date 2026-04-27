@@ -701,14 +701,6 @@
       "duration": 488066
     },
     {
-      "spec": "../test/scenarios/data-studio/workspaces-metabot.cy.spec.ts",
-      "duration": 63
-    },
-    {
-      "spec": "../test/scenarios/data-studio/workspaces.cy.spec.ts",
-      "duration": 262450
-    },
-    {
       "spec": "../test/scenarios/dependencies/dependency-broken-list.cy.spec.ts",
       "duration": 60514
     },

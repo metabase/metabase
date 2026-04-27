@@ -420,7 +420,7 @@
     "debug": "^4.3.4",
     "dompurify": "^3.3.2",
     "elliptic": "^6.6.1",
-    "follow-redirects": "^1.15.5",
+    "follow-redirects": "^1.16.0",
     "lodash": "^4.18.1",
     "lodash-es": "^4.18.1",
     "markdown-it": "^14.1.1",
@@ -3141,7 +3141,7 @@
 
     "flatted": ["flatted@3.2.4", "", {}, "sha512-8/sOawo8tJ4QOBX8YlQBMxL8+RLZfxMQOif9o0KUKTNTjMYElWPE0r/m5VNFxTRd0NSw8qSy8dajrwX4RYI1Hw=="],
 
-    "follow-redirects": ["follow-redirects@1.15.6", "", {}, "sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA=="],
+    "follow-redirects": ["follow-redirects@1.16.0", "", {}, "sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw=="],
 
     "for-each": ["for-each@0.3.5", "", { "dependencies": { "is-callable": "^1.2.7" } }, "sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg=="],
 

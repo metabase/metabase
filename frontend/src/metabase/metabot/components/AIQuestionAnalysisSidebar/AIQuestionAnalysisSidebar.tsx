@@ -6,8 +6,8 @@ import { useAnalyzeChartMutation } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import {
   getChartImagePngDataUri,
   getChartSelector,

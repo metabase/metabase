@@ -66,18 +66,7 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue
-    :model/Workspace
-    :model/WorkspaceGraph
-    :model/WorkspaceInput
-    :model/WorkspaceInputExternal
-    :model/WorkspaceInputTransform
-    :model/WorkspaceLog
-    :model/WorkspaceMerge
-    :model/WorkspaceMergeTransform
-    :model/WorkspaceOutput
-    :model/WorkspaceOutputExternal
-    :model/WorkspaceTransform})
+    :model/UserKeyValue})
 
 (defn- all-model-names []
   (into (sorted-set)

@@ -10,6 +10,7 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { useDispatch } from "metabase/redux";
 import { useRouter } from "metabase/router";
 import {
   Box,
@@ -20,7 +21,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";

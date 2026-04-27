@@ -1,6 +1,6 @@
 import slugg from "slugg";
 
-import { serializeCardForUrl } from "metabase/utils/card";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";

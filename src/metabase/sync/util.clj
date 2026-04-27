@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -283,7 +283,7 @@
                                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
               result (sync-fn)]
           (when (instance? Throwable result)
-            (prometheus/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+            (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
 
 (defmacro sync-operation

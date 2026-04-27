@@ -21,6 +21,7 @@ import {
 } from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
+import { modelIconMap } from "metabase/utils/icon";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
@@ -268,7 +269,7 @@ function getSections({
 
 function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
-    return <Icon name="star" size={18} />;
+    return <Icon name={modelIconMap["segment"]} size={18} />;
   } else if (isExpressionClauseItem(item)) {
     return <Icon name="function" size={18} />;
   } else {

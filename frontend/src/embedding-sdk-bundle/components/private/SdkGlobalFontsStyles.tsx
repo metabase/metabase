@@ -3,8 +3,8 @@ import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import { useSelector } from "metabase/redux";
 import { getFontFiles } from "metabase/styled-components/selectors";
-import { useSelector } from "metabase/utils/redux";
 
 /**
  * css style to define the font files for the SDK

@@ -343,10 +343,12 @@ export function useFormulaEditor({
       // Extract the word at the cursor for the dropdown search
       const view = editorRef.current?.view;
       const cursorPos = view?.state.selection.main.head ?? newText.length;
+      const identities = view ? readMetricIdentities(view) : [];
       const { word, start: wordStart } = getWordAtCursor(
         newText,
         cursorPos,
         metricNamesRef.current,
+        identities,
       );
       // Anchor the dropdown at the word's left edge / line bottom in the viewport
       if (view) {
@@ -369,10 +371,12 @@ export function useFormulaEditor({
       }
       const docText = view.state.doc.toString();
       const cursorPos = view.state.selection.main.head;
+      const identities = readMetricIdentities(view);
       const { start, end } = getWordAtCursor(
         docText,
         cursorPos,
         metricNamesRef.current,
+        identities,
       );
 
       const metricName = metric.name ?? "";
@@ -544,10 +548,12 @@ export function useFormulaEditor({
     // Re-extract word at the new cursor position after a click
     const cursorPos = view.state.selection.main.head;
     const text = view.state.doc.toString();
+    const identities = readMetricIdentities(view);
     const { word, start: wordStart } = getWordAtCursor(
       text,
       cursorPos,
       metricNamesRef.current,
+      identities,
     );
     // Update the anchor position so the dropdown is correctly placed
     const coords = view.coordsAtPos(wordStart);
