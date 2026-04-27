@@ -1,0 +1,200 @@
+## Polymorphic similarity graph index — Phase 1 schema
+## Adds `similar_edge` (per-view scored edges between entities) and
+## `similar_edge_status` (per-view refresh tracking).
+## See notes/classifiers/card-sim-graph-index-phase-1-impl.md
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:00
+      author: Tyler Plude
+      comment: Create similar_edge table for the polymorphic similarity graph
+      changes:
+        - createTable:
+            tableName: similar_edge
+            remarks: Polymorphic per-view similarity edges between Metabase entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  remarks: The type of the source entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: int
+                  remarks: The ID of the source entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  remarks: The type of the target entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  remarks: The ID of the target entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: view
+                  type: varchar(60)
+                  remarks: View name (scorer namespace) e.g. co-dashboard, ensemble
+                  constraints:
+                    nullable: false
+              - column:
+                  name: score
+                  type: double
+                  remarks: View-specific similarity score (semantics depend on view)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: contributing_data
+                  type: ${text.type}
+                  remarks: Optional JSON-serialized payload of view-specific provenance
+              - column:
+                  name: last_computed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp the edge was last (re)computed by its scorer
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: similar_edge
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:01
+      author: Tyler Plude
+      comment: Unique constraint to prevent duplicate similar_edge rows per view
+      changes:
+        - addUniqueConstraint:
+            tableName: similar_edge
+            columnNames: from_entity_type, from_entity_id, to_entity_type, to_entity_id, view
+            constraintName: idx_unique_similar_edge
+      rollback:
+        - dropUniqueConstraint:
+            tableName: similar_edge
+            constraintName: idx_unique_similar_edge
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:02
+      author: Tyler Plude
+      comment: Index for finding similar_edge rows FROM a specific entity
+      changes:
+        - createIndex:
+            tableName: similar_edge
+            indexName: idx_similar_edge_from
+            columns:
+              - column:
+                  name: from_entity_type
+              - column:
+                  name: from_entity_id
+      rollback:
+        - dropIndex:
+            tableName: similar_edge
+            indexName: idx_similar_edge_from
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:03
+      author: Tyler Plude
+      comment: Index for finding similar_edge rows TO a specific entity
+      changes:
+        - createIndex:
+            tableName: similar_edge
+            indexName: idx_similar_edge_to
+            columns:
+              - column:
+                  name: to_entity_type
+              - column:
+                  name: to_entity_id
+      rollback:
+        - dropIndex:
+            tableName: similar_edge
+            indexName: idx_similar_edge_to
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:04
+      author: Tyler Plude
+      comment: Index supporting top-K-by-view queries (RRF fusion input)
+      changes:
+        - createIndex:
+            tableName: similar_edge
+            indexName: idx_similar_edge_view_score
+            columns:
+              - column:
+                  name: view
+              - column:
+                  name: score
+                  descending: true
+      rollback:
+        - dropIndex:
+            tableName: similar_edge
+            indexName: idx_similar_edge_view_score
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:10
+      author: Tyler Plude
+      comment: Create similar_edge_status table for per-view refresh tracking
+      changes:
+        - createTable:
+            tableName: similar_edge_status
+            remarks: Per-view similarity edge refresh status (analogous to dependency_status)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: view
+                  type: varchar(60)
+                  remarks: View name (scorer namespace)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_full_run_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of last full rebuild for this view
+              - column:
+                  name: last_delta_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of last delta-update run for this view
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: running
+                  remarks: ok | running | error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: ${text.type}
+                  remarks: Last failure message (truncated stack trace)
+      rollback:
+        - dropTable:
+            tableName: similar_edge_status
+
+  - changeSet:
+      id: v61.2026-04-27T00:00:11
+      author: Tyler Plude
+      comment: Unique constraint on similar_edge_status.view
+      changes:
+        - addUniqueConstraint:
+            tableName: similar_edge_status
+            columnNames: view
+            constraintName: idx_unique_similar_edge_status
+      rollback:
+        - dropUniqueConstraint:
+            tableName: similar_edge_status
+            constraintName: idx_unique_similar_edge_status

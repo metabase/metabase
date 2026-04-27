@@ -329,6 +329,12 @@
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
 
+(define-premium-feature ^{:added "0.61.0"} enable-similarity-graph?
+  "Should we enable the polymorphic entity similarity graph index? Powers Metabot
+   `find_related_entities` / `list_canonical_entities` tools and search graph
+   expansion."
+  :similarity-graph)
+
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -381,7 +387,8 @@
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
-   :ai_controls                    (enable-ai-controls?)})
+   :ai_controls                    (enable-ai-controls?)
+   :similarity_graph               (enable-similarity-graph?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

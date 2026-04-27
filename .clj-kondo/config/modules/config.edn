@@ -2945,6 +2945,15 @@
                     :model/Table
                     :model/Transform}}
 
+  enterprise/similarity
+  {:team "Bot Builders"
+   :api  #{metabase-enterprise.similarity.init
+           metabase-enterprise.similarity.models.similar-edge
+           metabase-enterprise.similarity.models.similar-edge-status
+           metabase-enterprise.similarity.views}
+   :uses #{models
+           util}}
+
   enterprise/email
   {:team "UX West"
    :api  #{metabase-enterprise.email.api}
