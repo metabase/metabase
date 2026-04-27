@@ -2,7 +2,11 @@ function ownFunctionsOf(
   obj: object,
   pick: (descriptor: PropertyDescriptor) => unknown,
 ): object[] {
-  return Object.getOwnPropertyNames(obj).flatMap((key) => {
+  const keys: (string | symbol)[] = [
+    ...Object.getOwnPropertyNames(obj),
+    ...Object.getOwnPropertySymbols(obj),
+  ];
+  return keys.flatMap((key) => {
     const descriptor = Object.getOwnPropertyDescriptor(obj, key);
     const fn = descriptor && pick(descriptor);
     return typeof fn === "function" ? [fn] : [];
