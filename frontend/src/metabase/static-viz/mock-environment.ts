@@ -1,15 +1,5 @@
 import ResizeObserver from "resize-observer-polyfill";
 
-const defineGlobal = (name: PropertyKey, value: unknown): void => {
-  Object.defineProperty(globalThis, name, {
-    value,
-    writable: true,
-    configurable: true,
-  });
-};
-
-defineGlobal("ResizeObserver", ResizeObserver);
-
 class MockEventTarget {
   listeners: Record<string, unknown[]> = {};
   addEventListener(): void {}
@@ -18,7 +8,6 @@ class MockEventTarget {
     return false;
   }
 }
-defineGlobal("EventTarget", MockEventTarget);
 
 class MockElement extends MockEventTarget {
   tagName: string;
@@ -44,9 +33,26 @@ class MockElement extends MockEventTarget {
     return this.attributes[name];
   }
 }
-defineGlobal("Element", MockElement);
 
 const mockWindow = new MockEventTarget();
+
+// Mirrors the old mock-environment.js, where `Object.assign(global.window, global)`
+// surfaced every polyfilled global on `window`. Code paths that read `window.X`
+// (e.g. metabase/utils/resize-observer reads `window.ResizeObserver`) get bundled
+// into the static-viz bundle and would otherwise see `undefined` under GraalVM.
+const defineGlobal = (name: PropertyKey, value: unknown): void => {
+  const descriptor: PropertyDescriptor = {
+    value,
+    writable: true,
+    configurable: true,
+  };
+  Object.defineProperty(globalThis, name, descriptor);
+  Object.defineProperty(mockWindow, name, descriptor);
+};
+
+defineGlobal("ResizeObserver", ResizeObserver);
+defineGlobal("EventTarget", MockEventTarget);
+defineGlobal("Element", MockElement);
 defineGlobal("window", mockWindow);
 
 const createMockDocument = () => {
@@ -79,7 +85,6 @@ const createMockDocument = () => {
 
 const mockDocument = createMockDocument();
 defineGlobal("document", mockDocument);
-Object.assign(mockWindow, { document: mockDocument });
 
 const mockNavigator = {
   userAgent: "GraalJS",
@@ -100,7 +105,6 @@ const mockNavigator = {
   },
 };
 defineGlobal("navigator", mockNavigator);
-Object.assign(mockWindow, { navigator: mockNavigator });
 
 defineGlobal("location", {
   href: "",
