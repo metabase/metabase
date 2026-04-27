@@ -1,50 +1,5 @@
 import { ALLOWED_FUNCTIONS } from "./allowlist";
-
-const FUNCTION_NAMES: WeakMap<object, string> = (() => {
-  const map = new WeakMap<object, string>();
-  const targets: Array<[object, string]> = [
-    [window, "window"],
-    [Window.prototype, "Window"],
-    [EventTarget.prototype, "EventTarget"],
-    [Node.prototype, "Node"],
-    [Element.prototype, "Element"],
-    [HTMLElement.prototype, "HTMLElement"],
-    [Document.prototype, "Document"],
-    [Navigator.prototype, "Navigator"],
-    [Screen.prototype, "Screen"],
-    [CanvasRenderingContext2D.prototype, "CanvasRenderingContext2D"],
-    [HTMLCanvasElement.prototype, "HTMLCanvasElement"],
-    [SVGElement.prototype, "SVGElement"],
-    [Event.prototype, "Event"],
-    [UIEvent.prototype, "UIEvent"],
-    [MouseEvent.prototype, "MouseEvent"],
-    [PointerEvent.prototype, "PointerEvent"],
-    [WheelEvent.prototype, "WheelEvent"],
-    [KeyboardEvent.prototype, "KeyboardEvent"],
-    [TouchEvent.prototype, "TouchEvent"],
-    [Touch.prototype, "Touch"],
-    [CSSStyleDeclaration.prototype, "CSSStyleDeclaration"],
-    [DOMRect.prototype, "DOMRect"],
-    [DOMRectReadOnly.prototype, "DOMRectReadOnly"],
-    [TextMetrics.prototype, "TextMetrics"],
-    [ResizeObserverEntry.prototype, "ResizeObserverEntry"],
-  ];
-  for (const [owner, prefix] of targets) {
-    for (const key of Object.getOwnPropertyNames(owner)) {
-      const descriptor = Object.getOwnPropertyDescriptor(owner, key);
-      if (!descriptor) {
-        continue;
-      }
-      if (typeof descriptor.value === "function") {
-        map.set(descriptor.value, `${prefix}.${key}`);
-      }
-      if (typeof descriptor.get === "function") {
-        map.set(descriptor.get, `${prefix}.get ${key}`);
-      }
-    }
-  }
-  return map;
-})();
+import { getFunctionName } from "./debugging";
 
 // Wraps innerHTML/outerHTML through DOMPurify before they reach the DOM.
 const SANITIZED_SETTERS = new Map<
@@ -91,11 +46,6 @@ const BLOCKED_TAGS = new Set([
 ]);
 const CREATE_ELEMENT = Document.prototype.createElement;
 const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
-const BLOCKED_DOCUMENT_METHODS = new Set<object>([
-  Document.prototype.write,
-  Document.prototype.writeln,
-  Document.prototype.open,
-]);
 const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
 
 function canvasWidthSetterDistortion(this: HTMLCanvasElement, value: number) {
@@ -176,14 +126,7 @@ export function makeDistortionCallback(pluginId: string) {
         );
       };
     }
-    if (BLOCKED_DOCUMENT_METHODS.has(v)) {
-      const methodName = (v as { name?: string }).name ?? "write";
-      return function blocked() {
-        throw new Error(
-          `[plugin ${pluginId}] blocked API call: document.${methodName}`,
-        );
-      };
-    }
+
     if (v === INSERT_ADJACENT_HTML) {
       return function insertAdjacentHTML(
         this: Element,
@@ -205,8 +148,7 @@ export function makeDistortionCallback(pluginId: string) {
     if (ALLOWED_FUNCTIONS.has(v)) {
       return v;
     }
-    const name =
-      FUNCTION_NAMES.get(v) || (v as { name?: string }).name || "unknown";
+    const name = getFunctionName(v);
     return function blocked() {
       throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
     };
