@@ -90,7 +90,7 @@ describe("Collections plugin utils", () => {
           getIcon({ model: "collection", authority_level: "official" }),
         ).toEqual({
           name: "official_collection",
-          color: "var(--mb-color-saturated-yellow)",
+          color: "saturated-yellow",
           tooltip: "Official collection",
         });
       });
