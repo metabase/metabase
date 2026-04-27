@@ -5,7 +5,6 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
-  (:refer-clojure :exclude [set!])
   (:require
    [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
@@ -32,7 +31,7 @@
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
 
-(clojure.core/set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
