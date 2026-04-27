@@ -15,6 +15,7 @@ import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
+
 const store = getSdkStore();
 
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };

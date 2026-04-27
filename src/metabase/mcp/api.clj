@@ -89,7 +89,8 @@
        :scope-denied) (jsonrpc-error id -32602 "Resource not found")
       :ok             (let [user-id     api/*current-user-id*
                             session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))]
-                        (jsonrpc-response id (mcp.resources/read-resource uri {:session-key session-key}))))))
+                        (jsonrpc-response id (mcp.resources/read-resource uri {:session-key session-key
+                                                                               :session-id  session-id}))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -333,7 +334,7 @@
            ;; fail origin validation — but there's no DNS-rebinding risk here since
            ;; the request is authenticated via session token.
            drill-request?  (and (= :post (:request-method request))
-                                (= "/ui/drills" (:uri request)))
+                                (= "/ui/drills" ((some-fn :path-info :uri) request)))
            origin-error    (when-not drill-request?
                              (validate-origin request))
            bearer-token    (oauth-server/extract-bearer-token request)
