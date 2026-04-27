@@ -61,7 +61,7 @@ function isUserDefinedFunction(fun: object): boolean {
   if (!Function.prototype.toString.call(fun).includes("[native code]")) {
     return true;
   }
-  const fname = (fun as { name?: string }).name ?? "";
+  const fname = Object.getOwnPropertyDescriptor(fun, "name")?.value;
   return fname.startsWith("bound ");
 }
 
