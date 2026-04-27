@@ -121,7 +121,16 @@
                                                :bundle_hash  "abcd"}]
         (let [result (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")]
           (doseq [plugin result]
-            (is (not (contains? plugin :bundle)))))))))
+            (is (not (contains? plugin :bundle)))))))
+    (testing "/list bundle_url is suffixed with ?v=<bundle_hash> so a re-uploaded bundle bypasses the immutable browser cache"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "cachebust-viz"
+                                               :display_name "Cachebust Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "deadbeefcafe"}]
+        (let [result (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+              entry  (first (filter #(= "cachebust-viz" (:identifier %)) result))]
+          (is (re-find #"\?v=deadbeefcafe$" (:bundle_url entry))))))))
 
 ;;; ------------------------------------------------ Bundle bytes not exposed ------------------------------------------------
 

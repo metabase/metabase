@@ -91,13 +91,16 @@
       (dissoc :bundle)))
 
 (defn- plugin->runtime-response
-  "Convert a plugin record to the safe runtime response shape."
+  "Convert a plugin record to the safe runtime response shape.
+   `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
+   instead of served from the browser's `immutable` cache."
   [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]}]
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
            :icon         icon
-           :bundle_url   (format "/api/ee/custom-viz-plugin/%d/bundle" id)
+           :bundle_url   (cond-> (format "/api/ee/custom-viz-plugin/%d/bundle" id)
+                           bundle_hash (str "?v=" bundle_hash))
            :bundle_hash  bundle_hash
            :manifest     manifest}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
