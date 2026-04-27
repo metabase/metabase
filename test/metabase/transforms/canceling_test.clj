@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.transforms.canceling :as canceling]
@@ -10,9 +11,6 @@
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
-
-(defn- approx= [expected actual]
-  (< (abs (- actual expected)) 0.001))
 
 (def ^:private run-defaults
   {:transform_name "test"
@@ -34,16 +32,16 @@
                        :model/TransformRun {run-id :id} (assoc run-defaults :transform_id nil)]
           (with-redefs [t2/update! (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Exception (trc/mark-cancel-started-run! run-id))))
-          (is (approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
-          (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))))
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))))
 
       (testing "mark-cancel-started-run! bumps {status=ok} on success and writes a row"
         (prometheus/clear! :metabase-transforms/cancelation-requests)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
                        :model/TransformRun {run-id :id}       (assoc run-defaults :transform_id transform-id)]
           (trc/mark-cancel-started-run! run-id)
-          (is (approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))
-          (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
           (is (some? (t2/select-one :model/TransformRunCancelation :run_id run-id)))))
 
       (testing "no cancel-chan registered: cancel-run! is a no-op with no completion metric"
@@ -51,8 +49,8 @@
         (mt/with-temp [:model/Transform    {transform-id :id} {}
                        :model/TransformRun run                (assoc run-defaults :transform_id transform-id)]
           (canceling/cancel-run! run (OffsetDateTime/now))
-          (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
-          (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))))
 
       (testing "cancel-run! with a registered channel: a throw inside the cancel path bumps {outcome=error}"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
@@ -62,8 +60,8 @@
             (canceling/chan-start-run! id cancel-chan)
             (with-redefs [t2/update! (fn [& _] (throw (ex-info "boom" {})))]
               (is (thrown? Exception (canceling/cancel-run! run (OffsetDateTime/now)))))
-            (is (approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
-            (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"}))))))
+            (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
+            (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"}))))))
 
       (testing "cancel-run! success path bumps {outcome=success} and records latency"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
@@ -73,11 +71,28 @@
           (let [cancel-chan (a/promise-chan)]
             (canceling/chan-start-run! id cancel-chan)
             (canceling/cancel-run! run (OffsetDateTime/now))
-            (is (approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
-            (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
+            (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
+            (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
             (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "success"}))))
             (is (zero? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "error"}))))
             (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id id))))))
+
+      (testing "cancel-old-transform-runs! sweep bumps {outcome=timeout} for stale canceling runs"
+        (prometheus/clear! :metabase-transforms/cancelation-completed)
+        (prometheus/clear! :metabase-transforms/cancelation-latency-ms)
+        (mt/with-temp [:model/Transform    {transform-id :id} {}
+                       :model/TransformRun {run-id :id}       (assoc run-defaults
+                                                                     :transform_id transform-id
+                                                                     :status "canceling")]
+          (t2/insert! :model/TransformRunCancelation
+                      {:run_id run-id
+                       :time   (.minusMinutes (OffsetDateTime/now) 5)})
+          (@#'canceling/cancel-old-transform-runs! nil)
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
+          (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "timeout"}))))
+          (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id run-id)))))
 
       (testing "telemetry failure in record-completion! does not double-count"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
@@ -88,5 +103,5 @@
             (with-redefs [events/publish-event! (fn [& _] (throw (ex-info "event boom" {})))]
               (canceling/cancel-run! run (OffsetDateTime/now)))
             ;; Healthy: success=1, error=0. Buggy (double-count): success=1, error=1.
-            (is (approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
-            (is (approx= 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))))))))
+            (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
+            (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))))))))
