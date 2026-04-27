@@ -9,6 +9,7 @@ import type { Card } from "metabase-types/api";
 interface McpGlobalConfig {
   instanceUrl?: string;
   sessionToken?: string;
+  mcpSessionId?: string;
 }
 
 // Drills that refine the current visualization without changing what it is.
@@ -75,7 +76,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
  * This is universal — works in all MCP clients (Claude Desktop, Cursor, VS Code).
  */
 async function storePendingCard(encodedQuery: string): Promise<void> {
-  const { instanceUrl, sessionToken } =
+  const { instanceUrl, sessionToken, mcpSessionId } =
     (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
   const response = await fetch(`${instanceUrl}/api/mcp/ui/drills`, {
@@ -83,6 +84,7 @@ async function storePendingCard(encodedQuery: string): Promise<void> {
     headers: {
       "Content-Type": "application/json",
       "X-Metabase-Session": sessionToken ?? "",
+      "Mcp-Session-Id": mcpSessionId ?? "",
     },
     body: JSON.stringify({
       encodedQuery,
