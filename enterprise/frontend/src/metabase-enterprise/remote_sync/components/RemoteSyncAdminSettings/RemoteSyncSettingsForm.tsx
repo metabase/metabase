@@ -400,13 +400,20 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     </Text>
                   }
                   type="password"
-                  {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
+                  {...getEnvSettingProps(settingDetails?.[TOKEN_KEY], {
+                    inputWrapperOrder: ["label", "description", "erorr"],
+                  })}
                 />
               </RemoteSyncSettingsSection>
 
               {/* Section 2: Sync mode for this instance */}
               <RemoteSyncSettingsSection
                 title={t`Sync mode for this instance`}
+                description={
+                  settingDetails?.[TYPE_KEY]?.is_env_setting
+                    ? t`Using ${settingDetails[TYPE_KEY].env_name}`
+                    : undefined
+                }
                 variant={variant}
               >
                 <FormRadioGroup name={TYPE_KEY}>
@@ -427,7 +434,10 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                               {t`Usually you should use this for your production ${applicationName} instance. All synced collections are read-only, and will automatically sync with the specified branch (we'd recommend syncing with main).`}
                             </Text>
                           }
-                          disabled={hasUnsyncedChanges}
+                          disabled={
+                            hasUnsyncedChanges ||
+                            !!settingDetails?.[TYPE_KEY]?.is_env_setting
+                          }
                           label={
                             <Text fw={700} lh="1.25rem" mb="xs">
                               {t`Read-only`}
@@ -439,6 +449,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     </Tooltip>
                     <Radio
                       value="read-write"
+                      disabled={!!settingDetails?.[TYPE_KEY]?.is_env_setting}
                       label={
                         <Text fw={700} lh="1.25rem" mb="xs">
                           {t`Read-write`}
@@ -460,7 +471,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   title={t`Branch to sync with`}
                   variant={variant}
                 >
-                  <Flex align="flex-end" gap="md">
+                  <Stack gap="md">
                     <Box style={{ flex: 1 }}>
                       <FormTextInput
                         name={BRANCH_KEY}
@@ -475,8 +486,12 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                       mb="0.6125rem"
                       name={AUTO_IMPORT_KEY}
                       size="sm"
+                      {...getEnvSettingProps(
+                        settingDetails?.[AUTO_IMPORT_KEY],
+                        { disabled: true },
+                      )}
                     />
-                  </Flex>
+                  </Stack>
                   {isRemoteSyncEnabled && (
                     <Box>
                       <PullChangesButton
@@ -524,18 +539,19 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               {/* Footer Actions - Outside Sections */}
               <Flex justify="space-between" align="center">
                 <Box>
-                  {isRemoteSyncEnabled && (
-                    <Button
-                      c="error"
-                      variant="subtle"
-                      size="md"
-                      w="12rem"
-                      leftSection={<Icon name="close" />}
-                      onClick={handleDisable}
-                    >
-                      {t`Disable remote sync`}
-                    </Button>
-                  )}
+                  {isRemoteSyncEnabled &&
+                    !settingDetails?.[REMOTE_SYNC_KEY]?.is_env_setting && (
+                      <Button
+                        c="error"
+                        variant="subtle"
+                        size="md"
+                        w="12rem"
+                        leftSection={<Icon name="close" />}
+                        onClick={handleDisable}
+                      >
+                        {t`Disable remote sync`}
+                      </Button>
+                    )}
                 </Box>
 
                 <Flex align="center" gap="md">
@@ -606,11 +622,12 @@ const RemoteSyncSettingsSection = ({
   );
 };
 
-const getEnvSettingProps = (setting?: SettingDefinition) => {
+const getEnvSettingProps = <T,>(setting?: SettingDefinition, extras?: T) => {
   if (setting?.is_env_setting) {
     return {
       description: t`Using ${setting.env_name}`,
       readOnly: true,
+      ...extras,
     };
   }
   return {};
