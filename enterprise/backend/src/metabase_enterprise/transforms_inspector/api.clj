@@ -3,7 +3,7 @@
    [metabase-enterprise.transforms-inspector.core :as inspector]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase-enterprise.transforms-inspector.schema :as inspector.schema]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -69,10 +69,10 @@
                      :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))}
                     (try
                       (let [r (inspector/discover-lenses transform)]
-                        (prometheus/inc! :metabase-transforms/inspector-discovery {:status "ok"})
+                        (analytics/inc! :metabase-transforms/inspector-discovery {:status "ok"})
                         r)
                       (catch Throwable t
-                        (prometheus/inc! :metabase-transforms/inspector-discovery {:status "error"})
+                        (analytics/inc! :metabase-transforms/inspector-discovery {:status "error"})
                         (throw t))))]
     (events/publish-event! :event/transform-inspect-discover
                            {:object  transform
@@ -96,12 +96,12 @@
                      :inspector/lens-id     lens-id}
                     (try
                       (let [r (inspector/get-lens transform lens-id params)]
-                        (prometheus/inc! :metabase-transforms/inspector-lens
-                                         (assoc (lens-labels lens-id) :status "ok"))
+                        (analytics/inc! :metabase-transforms/inspector-lens
+                                        (assoc (lens-labels lens-id) :status "ok"))
                         r)
                       (catch Throwable t
-                        (prometheus/inc! :metabase-transforms/inspector-lens
-                                         (assoc (lens-labels lens-id) :status "error"))
+                        (analytics/inc! :metabase-transforms/inspector-lens
+                                        (assoc (lens-labels lens-id) :status "error"))
                         (throw t))))]
     (events/publish-event! :event/transform-inspect-lens
                            {:object  transform
@@ -150,14 +150,14 @@
                     ;; duration of this body. `:failed` / `:interrupted` come from
                     ;; qp.middleware.catch-exceptions.
                     status (query-result->status-label (qp.pipeline/canceled?) result)]
-                (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
-                                     {:lens-type (lens-type-label lens-id) :status status}
-                                     (u/since-ms timer))
+                (analytics/observe! :metabase-transforms/inspector-query-duration-ms
+                                    {:lens-type (lens-type-label lens-id) :status status}
+                                    (u/since-ms timer))
                 result)
               (catch Throwable t
-                (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
-                                     {:lens-type (lens-type-label lens-id) :status "error"}
-                                     (u/since-ms timer))
+                (analytics/observe! :metabase-transforms/inspector-query-duration-ms
+                                    {:lens-type (lens-type-label lens-id) :status "error"}
+                                    (u/since-ms timer))
                 (throw t)))))))))
 
 (def ^{:arglists '([request respond raise])} routes

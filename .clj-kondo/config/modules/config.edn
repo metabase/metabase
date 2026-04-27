@@ -3344,7 +3344,7 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            driver
            events
