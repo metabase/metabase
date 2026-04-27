@@ -7,11 +7,10 @@ import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
+import { Box, Stack } from "metabase/ui";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 import type { NotificationType } from "../../types";
-
-import { ModalMessage } from "./ArchiveModal.styled";
 
 type ArchiveModalProps = {
   item: Alert | DashboardSubscription;
@@ -58,16 +57,18 @@ function ArchiveNotificationModal({
       ]}
       onClose={onClose}
     >
-      {isCreator(item, user) && hasUnsubscribed && (
-        <ModalMessage data-server-date>
-          {getCreatorMessage(type, user)}
-          {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
-        </ModalMessage>
-      )}
-      <ModalMessage>
-        {getDateMessage(item, type)}
-        {getRecipientsMessage(item)}
-      </ModalMessage>
+      <Stack gap="md">
+        {isCreator(item, user) && hasUnsubscribed && (
+          <Box data-server-date>
+            {getCreatorMessage(type, user)}
+            {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
+          </Box>
+        )}
+        <Box>
+          {getDateMessage(item, type)}
+          {getRecipientsMessage(item)}
+        </Box>
+      </Stack>
     </ModalContent>
   );
 }
