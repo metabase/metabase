@@ -55,7 +55,7 @@
                             {:agent-error? true
                              :transform-id transform_id})))
 
-        current-python (get-in current-transform [:source :query] "")
+        current-python (get-in current-transform [:source :body] "")
 
         ;; Apply edits based on mode
         new-python (case (:mode edit_action)
@@ -70,12 +70,12 @@
 
         ;; Build suggested transform
         suggested-transform (cond-> current-transform
-                              true (assoc-in [:source :query] new-python)
-                              true (assoc-in [:source :type] "python")
-                              transform_name (assoc :name transform_name)
+                              transform_name        (assoc :name transform_name)
                               transform_description (assoc :description transform_description)
-                              source_database (assoc-in [:source :source-database] source_database)
-                              source_tables (assoc-in [:source :source-tables] source_tables))]
+                              ;; source adjustments
+                              source_database       (assoc-in [:source :source-database] source_database)
+                              source_tables         (assoc-in [:source :source-tables] source_tables)
+                              true                  (assoc-in [:source :body] new-python))]
 
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)

@@ -1,8 +1,8 @@
 import { c, msgid, ngettext, t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import type { NamedUser } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
+import type { NamedUser } from "metabase/utils/user";
 import visualizations from "metabase/visualizations";
 import type {
   AnalysisFindingError,
@@ -60,7 +60,6 @@ export function getNodeDescription(node: DependencyNode): string | null {
   switch (node.type) {
     case "document":
     case "sandbox":
-    case "workspace-transform":
       return null;
     default:
       return node.data.description ?? "";
@@ -103,8 +102,6 @@ export function getNodeIconWithType(
       return "table";
     case "transform":
       return "transform";
-    case "workspace-transform":
-      return "transform";
     case "snippet":
       return "snippet";
     case "dashboard":
@@ -116,7 +113,7 @@ export function getNodeIconWithType(
     case "segment":
       return "segment";
     case "measure":
-      return "sum";
+      return "ruler";
   }
 }
 
@@ -156,17 +153,6 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
-    case "workspace-transform": {
-      const workspaceId = node.data.workspace_id;
-      const refId = node.data.ref_id;
-      if (workspaceId == null) {
-        return null;
-      }
-      return {
-        label: t`View this workspace transform`,
-        url: Urls.dataStudioWorkspace(workspaceId, refId),
-      };
-    }
     case "dashboard":
       return {
         label: t`View this dashboard`,
@@ -346,7 +332,6 @@ export function getNodeLocationInfo(
       }
       return null;
     case "transform":
-    case "workspace-transform":
     case "sandbox":
       return null;
   }
@@ -464,8 +449,6 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
     case "transform":
     case "sandbox":
       return node.data.table?.fields ?? [];
-    case "workspace-transform":
-      return [];
     case "snippet":
     case "dashboard":
     case "document":
@@ -539,8 +522,6 @@ export function getDependencyGroupType(
       return "table";
     case "transform":
       return "transform";
-    case "workspace-transform":
-      return "workspace-transform";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -570,8 +551,6 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Table`, color: "brand" };
     case "transform":
       return { label: t`Transform`, color: "warning" };
-    case "workspace-transform":
-      return { label: t`Workspace transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":

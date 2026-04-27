@@ -5,7 +5,7 @@ import {
   type PaneHeaderProps,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 import { TableMoreMenu } from "./TableMoreMenu";

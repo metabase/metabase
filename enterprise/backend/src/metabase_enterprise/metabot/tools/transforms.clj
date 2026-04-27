@@ -25,12 +25,12 @@
 
 (defenterprise-schema get-transform-python-library-details-tool
   "Get information about a Python library by path."
-  :feature :none
+  :feature :transforms-python
   [{:keys [path]} :- [:map {:closed true} [:path :string]]]
   (tools.transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
                                format-python-library-output))
 
-(defenterprise-schema write-transform-python-tool
+(defenterprise-schema write-transform-python-tool :- :map
   "Write new Python code or edit existing code for transforms.
 
   Supports two modes:
@@ -43,23 +43,10 @@
   Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
   Use the shared library in your code by adding `import common` at the top of the file.
   Keep `import common` at the top of the file even if it is currently unused."
-  :feature :none
+  :feature :transforms-python
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables]}
-   :- [:map {:closed true}
-       [:transform_id {:optional true} [:maybe :int]]
-       [:edit_action [:map
-                      [:mode [:enum "edit" "replace"]]
-                      [:edits {:optional true} [:maybe [:sequential [:map
-                                                                     [:old_string :string]
-                                                                     [:new_string :string]
-                                                                     [:replace_all {:optional true} [:maybe :boolean]]]]]]
-                      [:new_content {:optional true} [:maybe :string]]]]
-       [:thinking {:optional true} [:maybe :string]]
-       [:transform_name {:optional true} [:maybe :string]]
-       [:transform_description {:optional true} [:maybe :string]]
-       [:source_database {:optional true} [:maybe :int]]
-       [:source_tables {:optional true} [:maybe :map]]]]
+           database_id source_tables]}
+   :- tools.transforms/write-transform-python-schema]
   (try
     (tools.transforms/add-output
      (transforms-write-tools/write-transform-python
@@ -68,7 +55,7 @@
        :thinking thinking
        :transform_name transform_name
        :transform_description transform_description
-       :source_database source_database
+       :source_database database_id
        :source_tables source_tables
        :memory-atom shared/*memory-atom*
        :context (shared/current-context)})

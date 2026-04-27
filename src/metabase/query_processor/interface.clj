@@ -13,3 +13,8 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
   cluttered)."
   false)
+
+(def ^:dynamic *skip-middleware-because-app-db-access*
+  "Dynamic variable that skips middleware (when bound to true) because it accesses the app-db. Will be replaced in
+  QUE2-488"
+  false)

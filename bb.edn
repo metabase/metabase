@@ -85,7 +85,7 @@
 
   fix-unused-requires
   {:doc "Removes unused requires flagged by clj-kondo"
-   :examples [["./bin/mage fix-unused-requires src/metabase/lib/validate.cljc" "Fix unused requires in a specific file"]
+   :examples [["./bin/mage fix-unused-requires src/metabase/utils/validate.cljc" "Fix unused requires in a specific file"]
               ["./bin/mage fix-unused-requires src" "Fix unused requires in all files in src"]]
    :requires [[mage.fix-unused-requires :as fix]]
    :arg-schema [:sequential [:string {:name "file-or-directory"

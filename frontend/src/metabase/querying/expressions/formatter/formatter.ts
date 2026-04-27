@@ -2,7 +2,7 @@ import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
 import { format as pformat } from "prettier/standalone";
 
-import { parseNumber } from "metabase/lib/number";
+import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 

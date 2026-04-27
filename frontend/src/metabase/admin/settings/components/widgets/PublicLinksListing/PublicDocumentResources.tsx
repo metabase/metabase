@@ -5,7 +5,7 @@ import {
   useDeleteDocumentPublicLinkMutation,
   useListPublicDocumentsQuery,
 } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { Document } from "metabase-types/api";
 
 export const PublicLinksDocumentListing = () => {

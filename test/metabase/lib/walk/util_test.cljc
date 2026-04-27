@@ -67,7 +67,7 @@
     (is (= #{1000}
            (lib/all-source-card-ids (lib/query meta/metadata-provider query))))))
 
-(deftest ^:parallel all-source-card-ids-pmbql-native-query-template-tags-test
+(deftest ^:parallel all-source-card-ids-mbql5-native-query-template-tags-test
   (let [query (lib/query meta/metadata-provider {:lib/type      :mbql.stage/native
                                                  :native        "SELECT *;"
                                                  :template-tags {"tag_1" {:name         "tag_1"

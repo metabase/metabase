@@ -151,10 +151,12 @@ jobs:
           GREP: ${{ github.event.inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           FAIL_FAST: ${{ inputs.fail_fast }}
+          SPEC: ${{ github.event.inputs.spec }}
+          BURN_IN: ${{ github.event.inputs.burn_in }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
-          --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
+          --spec "${SPEC}" \
+          --env burn="${BURN_IN}" \
           --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure

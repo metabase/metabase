@@ -10,8 +10,8 @@
 
 ;;; -------------------- Helper Functions --------------------
 
-(defn- ensure-pmbql
-  "Ensure query is in pMBQL format. Converts legacy MBQL if needed."
+(defn- ensure-mbql5
+  "Ensure query is in MBQL 5 format. Converts legacy MBQL if needed."
   [metadata-provider mbql-query]
   (lib/query metadata-provider mbql-query))
 
@@ -52,12 +52,14 @@
   "Create a dimension mapping node from a persisted mapping."
   [{:keys [dimension-id table-id target]}]
   (let [[_field opts field-id] target
-        source-field (:source-field opts)]
+        source-field (:source-field opts)
+        base-type    (:base-type opts)]
     {:node/type    :ast/dimension-mapping
      :dimension-id dimension-id
      :table-id     table-id
      :column       (cond-> (column-node field-id nil table-id)
-                     source-field (assoc :source-field source-field))}))
+                     source-field (assoc :source-field source-field)
+                     base-type    (assoc :base-type base-type))}))
 
 ;;; -------------------- Dimension Reference Construction --------------------
 
@@ -288,35 +290,36 @@
    :clause    mbql-clause})
 
 (defn- extract-source-filters
-  "Extract filters from pMBQL query and convert to AST filter node.
+  "Extract filters from MBQL 5 query and convert to AST filter node.
    Returns nil if no filters, a single filter/mbql node if one filter,
    or a filter/and node containing filter/mbql nodes if multiple."
-  [pmbql-query]
-  (when-let [filters (lib/filters pmbql-query 0)]
+  [mbql5-query]
+  (when-let [filters (lib/filters mbql5-query 0)]
     (if (= 1 (count filters))
       (mbql-clause->filter-mbql-node (first filters))
       {:node/type :filter/and
        :children  (perf/mapv mbql-clause->filter-mbql-node filters)})))
 
 (defn- extract-source-joins
-  "Extract joins from pMBQL query and convert to AST join nodes."
-  [pmbql-query]
-  (when-let [joins (lib/joins pmbql-query 0)]
+  "Extract joins from MBQL 5 query and convert to AST join nodes."
+  [mbql5-query]
+  (when-let [joins (lib/joins mbql5-query 0)]
     (perf/mapv (fn [join]
                  {:node/type :ast/join
                   :mbql-join join})
                joins)))
 
-(defn- pmbql-query->source-node
-  "Parse pMBQL query into source node structure using lib functions.
+(defn- mbql5-query->source-node
+  "Parse MBQL 5 query into source node structure using lib functions.
    For source-card queries (metrics based on models or saved questions),
    falls back to the table-id from the entity metadata."
-  [source-type id metadata pmbql-query]
-  (let [table-id      (or (lib.util/source-table-id pmbql-query)
-                          (:table-id metadata))
-        aggregation   (first (lib/aggregations pmbql-query 0))
-        source-filter (extract-source-filters pmbql-query)
-        source-joins  (extract-source-joins pmbql-query)]
+  [source-type id metadata mbql5-query]
+  (let [source-card-id (lib.util/source-card-id mbql5-query)
+        table-id       (or (lib.util/source-table-id mbql5-query)
+                           (:table-id metadata))
+        aggregation    (first (lib/aggregations mbql5-query 0))
+        source-filter  (extract-source-filters mbql5-query)
+        source-joins   (extract-source-joins mbql5-query)]
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
@@ -324,8 +327,9 @@
                               {:node/type :aggregation/count})
              :base-table  (table-node table-id)
              :metadata    metadata}
-      source-joins  (assoc :joins source-joins)
-      source-filter (assoc :filters source-filter))))
+      source-card-id (assoc :source-card-id source-card-id)
+      source-joins   (assoc :joins source-joins)
+      source-filter  (assoc :filters source-filter))))
 
 ;;; -------------------- Main Construction --------------------
 
@@ -335,6 +339,13 @@
   (and (sequential? expression)
        (= 3 (count expression))
        (#{:metric :measure} (first expression))))
+
+(defn arithmetic-expression?
+  "Returns true if the expression is an arithmetic node [op opts expr expr ...]."
+  [expression]
+  (and (sequential? expression)
+       (>= (count expression) 4)
+       (operators/arithmetic? (first expression))))
 
 (defn expression-leaf-type
   "Returns :metric or :measure from an expression leaf."
@@ -354,49 +365,84 @@
   (when (expression-leaf? expression)
     (get (second expression) :lib/uuid)))
 
-(defn from-definition
-  "Create complete AST from MetricDefinition.
-   Converts legacy MBQL to pMBQL before processing.
-
-   Metadata is loaded from the provider using the expression leaf's type and ID.
-   Dimensions and dimension-mappings are loaded from the fetched metadata."
-  [definition]
-  (let [{:keys [expression metadata-provider filters projections]} definition
-        leaf-type  (expression-leaf-type expression)
-        leaf-id    (expression-leaf-id expression)
-        leaf-uuid  (expression-leaf-uuid expression)
-        _          (when-not leaf-type
-                     (throw (ex-info "Arithmetic metric math expressions are not yet supported in AST builder"
-                                     {:expression expression})))
-        ;; Load metadata from provider
-        source-type (case leaf-type :metric :source/metric :measure :source/measure)
-        metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
-        metadata   (first (lib.metadata.protocols/metadatas
-                           metadata-provider
-                           {:lib/type metadata-type :id #{leaf-id}}))
-        ;; Load dimensions/mappings from source metadata
+(defn- build-leaf-ast
+  "Build a complete single-source AST for one expression leaf.
+   Extracted from from-definition for reuse in arithmetic expressions."
+  [leaf-type leaf-id leaf-uuid metadata-provider filters projections]
+  (let [source-type    (case leaf-type :metric :source/metric :measure :source/measure)
+        metadata-type  (case leaf-type :metric :metadata/metric :measure :metadata/measure)
+        metadata       (first (lib.metadata.protocols/metadatas
+                               metadata-provider
+                               {:lib/type metadata-type :id #{leaf-id}}))
         dimensions         (lib-metric.dimension/get-persisted-dimensions metadata)
         dimension-mappings (lib-metric.dimension/get-persisted-dimension-mappings metadata)
         raw-query          (case leaf-type
                              :metric  (:dataset-query metadata)
                              :measure (:definition metadata))
-        pmbql-query        (ensure-pmbql metadata-provider raw-query)
+        mbql5-query        (ensure-mbql5 metadata-provider raw-query)
         ;; Extract flat filters for this leaf's UUID
         leaf-filters       (into []
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))
                                        (map :filter))
                                  (or filters []))
-        ;; Extract flat projections for this leaf's type/id
-        leaf-projections   (perf/some #(when (and (= leaf-type (:type %)) (= leaf-id (:id %)))
+        ;; Extract flat projections for this leaf's :lib/uuid
+        leaf-projections   (perf/some #(when (= leaf-uuid (:lib/uuid %))
                                          (:projection %))
                                       (or projections []))
         ;; Convert filters and projections to AST nodes
         ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
         ast-group-by       (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
-    {:node/type         :ast/root
-     :source            (pmbql-query->source-node source-type leaf-id metadata pmbql-query)
+    {:node/type         :ast/source-query
+     :source            (mbql5-query->source-node source-type leaf-id metadata mbql5-query)
      :dimensions        (perf/mapv dimension-node (or dimensions []))
      :mappings          (perf/mapv dimension-mapping-node (or dimension-mappings []))
      :filter            ast-filter
-     :group-by          (or ast-group-by [])
+     :group-by          (or ast-group-by [])}))
+
+(defn- arithmetic-operator
+  "Returns the arithmetic operator keyword if expression is an arithmetic node, nil otherwise."
+  [expression]
+  (when (arithmetic-expression? expression)
+    (first expression)))
+
+(defn- build-expression-ast
+  "Recursively build expression AST from a metric-math expression tree.
+   For numeric constants, produces :expression/constant.
+   For leaves, calls build-leaf-ast and wraps in :expression/leaf.
+   For arithmetic, recursively builds children and wraps in :expression/arithmetic."
+  [expression metadata-provider filters projections]
+  (cond
+    (number? expression)
+    {:node/type :expression/constant :value expression}
+
+    (expression-leaf-type expression)
+    (let [leaf-type (expression-leaf-type expression)
+          leaf-id   (expression-leaf-id expression)
+          leaf-uuid (expression-leaf-uuid expression)
+          sub-ast   (build-leaf-ast leaf-type leaf-id leaf-uuid metadata-provider filters projections)]
+      {:node/type :expression/leaf
+       :uuid      leaf-uuid
+       :ast       sub-ast})
+
+    :else
+    (let [op       (arithmetic-operator expression)
+          children (drop 2 expression)]
+      {:node/type :expression/arithmetic
+       :operator  op
+       :children  (perf/mapv #(build-expression-ast % metadata-provider filters projections) children)})))
+
+(defn from-definition
+  "Create complete AST from MetricDefinition.
+   Converts legacy MBQL to MBQL 5 before processing.
+
+   Metadata is loaded from the provider using the expression leaf's type and ID.
+   Dimensions and dimension-mappings are loaded from the fetched metadata.
+
+   Always produces a unified root shape {:node/type :ast/root, :expression ...}.
+   Single-leaf definitions become a single :expression/leaf node."
+  [definition]
+  (let [{:keys [expression metadata-provider filters projections]} definition
+        expr-ast (build-expression-ast expression metadata-provider filters projections)]
+    {:node/type         :ast/root
+     :expression        expr-ast
      :metadata-provider metadata-provider}))

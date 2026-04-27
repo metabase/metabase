@@ -26,6 +26,7 @@
     ;; Fallback: pass through if already in correct format or unknown type
     error))
 
+;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
 (defn driver->dialect
   "Map a Metabase driver keyword to a SQLGlot dialect string.
    Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
@@ -41,6 +42,8 @@
     :sqlserver           "tsql"
     :sparksql            "spark"
     :presto-jdbc         "presto"
+    :starburst           "trino"
+    :clickhouse          "clickhouse"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect

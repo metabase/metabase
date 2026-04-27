@@ -2253,6 +2253,14 @@
       (migrate!)
       (is (false? (sample-content-created?))))))
 
+(deftest ^:mb/old-migrations-test create-sample-content-effective-type-test
+  (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (migrate!)
+      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
+        (is (seq fields))
+        (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
+
 (defn- insert-returning-pk!
   [table record]
   (first (t2/insert-returning-pks! table record)))
@@ -2625,10 +2633,10 @@
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
 
 (deftest migrate-clickhouse-details-to-multi-db-test
-  (testing "v57.2025-08-22T00:16:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
+  (testing "v57.2025-08-23T16:00:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations
-       ["v57.2025-08-22T00:16:00"] [migrate!]
+       ["v57.2025-08-23T16:00:00"] [migrate!]
         (letfn [(insert-clickhouse-db [name details]
                   (let [details (merge {:host "localhost"
                                         :port 8123
@@ -2935,102 +2943,13 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest unify-source-tables-format-test
-  (testing "v60.2026-03-03T12:00:00: convert source-tables from map to vec format"
-    (impl/test-migrations ["v60.2026-03-03T12:00:00"] [migrate!]
-      (let [user-id     (:id (new-instance-with-default :core_user))
-            db-id       (:id (new-instance-with-default :metabase_database))
-            ;; source-tables as map with int values (FE format)
-            int-source  (json/encode {:type "python" :body "x=1" :source-database db-id
-                                      :source-tables {"orders" 42 "products" 99}})
-            ;; source-tables as map with ref values (normalized format)
-            ref-source  (json/encode {:type "python" :body "x=1" :source-database db-id
-                                      :source-tables {"input" {"database_id" db-id "schema" "public"
-                                                               "table" "my_table" "table_id" 7}}})
-            ;; query transform (no source-tables) — should be untouched
-            query-source (json/encode {:type "query" :query {:database db-id}})
-            target       (json/encode {:type "table" :schema "public" :name "out"})
-            insert-transform!
-            (fn [source]
-              (t2/insert-returning-pk!
-               :transform {:name               (mt/random-name)
-                           :source             source
-                           :target             target
-                           :source_type        "python"
-                           :source_database_id db-id
-                           :created_at         :%now
-                           :updated_at         :%now}))
-            int-id   (insert-transform! int-source)
-            ref-id   (insert-transform! ref-source)
-            query-id (insert-transform! query-source)
-            ;; Also test workspace_transform
-            ws-id    (:id (t2/insert-returning-instance!
-                           :workspace {:name       "test-ws"
-                                       :creator_id user-id
-                                       :created_at :%now
-                                       :updated_at :%now}))
-            _        (t2/insert! :workspace_transform
-                                 {:ref_id       (str (random-uuid))
-                                  :workspace_id ws-id
-                                  :name         "ws-transform"
-                                  :source       int-source
-                                  :target       target
-                                  :created_at   :%now
-                                  :updated_at   :%now})
-            get-source-tables (fn [table-name pk-map]
-                                (let [where (into [:and] (map (fn [[k v]] [:= k v]) pk-map))
-                                      row   (first (t2/query {:select [:source] :from [table-name] :where where}))]
-                                  (get (json/decode (:source row)) "source-tables")))]
-        (testing "Before migration, source-tables are maps"
-          (is (map? (get-source-tables :transform {:id int-id})))
-          (is (map? (get-source-tables :transform {:id ref-id}))))
-
-        (migrate!)
-
-        (testing "After migration, int-value maps become vec of entries"
-          (let [st (get-source-tables :transform {:id int-id})]
-            (is (sequential? st))
-            (is (= 2 (count st)))
-            (is (= #{"orders" "products"} (set (map #(get % "alias") st))))
-            (is (= #{42 99} (set (map #(get % "table_id") st))))))
-
-        (testing "After migration, ref-value maps become vec of entries with alias"
-          (let [st (get-source-tables :transform {:id ref-id})]
-            (is (sequential? st))
-            (is (= "input" (get (first st) "alias")))
-            (is (= 7 (get (first st) "table_id")))))
-
-        (testing "Query transforms are untouched"
-          (is (nil? (get-source-tables :transform {:id query-id}))))
-
-        (testing "workspace_transform is also migrated"
-          (let [ws-rows (t2/query {:select [:source] :from [:workspace_transform] :where [:= :workspace_id ws-id]})
-                st      (get (json/decode (:source (first ws-rows))) "source-tables")]
-            (is (sequential? st))
-            (is (= 2 (count st)))))
-
-        (testing "Rollback converts vec back to map"
-          (migrate! :down 59)
-          (let [st (get-source-tables :transform {:id int-id})]
-            (is (map? st))
-            (is (= 42 (get st "orders")))
-            (is (= 99 (get st "products")))))))))
-
 (deftest backfill-transform-target-tables-test
-  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and workspace FK columns"
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
-      (let [user-id   (:id (new-instance-with-default :core_user))
-            db-id     (:id (new-instance-with-default :metabase_database))
-            ws-id     (:id (t2/insert-returning-instance!
-                            :workspace {:name       "test-ws"
-                                        :creator_id user-id
-                                        :created_at :%now
-                                        :updated_at :%now}))
-            ref-id    (str (random-uuid))
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
             source    (json/encode {:type "query" :query {:database db-id}})
-            target    (json/encode {:type "table" :schema "public" :name "orders"})
-            ;; -- 1. Transform with a target that has no existing metabase_table → should create provisional row --
-            tx-id     (t2/insert-returning-pk!
+            ;; -- Transform with a target that has no existing metabase_table → should create provisional row --
+            _         (t2/insert-returning-pk!
                        :transform {:name               "create-output"
                                    :source             source
                                    :target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
@@ -3038,78 +2957,7 @@
                                    :source_database_id db-id
                                    :target_db_id       db-id
                                    :created_at         :%now
-                                   :updated_at         :%now})
-            ;; -- An existing metabase_table that inputs and outputs should resolve to --
-            table-id  (:id (t2/insert-returning-instance!
-                            :metabase_table {:db_id      db-id
-                                             :name       "orders"
-                                             :schema     "public"
-                                             :active     true
-                                             :created_at :%now
-                                             :updated_at :%now}))
-            ;; -- workspace_transform needed for workspace_output FK --
-            _         (t2/insert! :workspace_transform
-                                  {:ref_id       ref-id
-                                   :workspace_id ws-id
-                                   :name         "ws-tx"
-                                   :source       source
-                                   :target       target
-                                   :created_at   :%now
-                                   :updated_at   :%now})
-            ;; -- 2-3. workspace_output with null table FKs --
-            wo-id     (:id (t2/insert-returning-instance!
-                            :workspace_output {:workspace_id    ws-id
-                                               :ref_id          ref-id
-                                               :db_id           db-id
-                                               :global_schema   "public"
-                                               :global_table    "orders"
-                                               :isolated_schema "public"
-                                               :isolated_table  "orders"
-                                               :created_at      :%now
-                                               :updated_at      :%now}))
-            ;; -- 4-5. workspace_output_external with null table FKs --
-            woe-id    (:id (t2/insert-returning-instance!
-                            :workspace_output_external {:workspace_id    ws-id
-                                                        :transform_id    tx-id
-                                                        :db_id           db-id
-                                                        :global_schema   "public"
-                                                        :global_table    "orders"
-                                                        :isolated_schema "public"
-                                                        :isolated_table  "orders"
-                                                        :created_at      :%now
-                                                        :updated_at      :%now}))
-            ;; -- 6. workspace_input with null table_id --
-            wi-id     (:id (t2/insert-returning-instance!
-                            :workspace_input {:workspace_id ws-id
-                                              :db_id        db-id
-                                              :schema       "public"
-                                              :table        "orders"
-                                              :created_at   :%now
-                                              :updated_at   :%now}))
-            ;; -- 7. workspace_input_external with null table_id --
-            wie-id    (:id (t2/insert-returning-instance!
-                            :workspace_input_external {:workspace_id ws-id
-                                                       :db_id        db-id
-                                                       :schema       "public"
-                                                       :table        "orders"
-                                                       :created_at   :%now
-                                                       :updated_at   :%now}))
-            ;; -- workspace_input_external with no matching table — should stay nil --
-            wie-no-match-id (:id (t2/insert-returning-instance!
-                                  :workspace_input_external {:workspace_id ws-id
-                                                             :db_id        db-id
-                                                             :schema       "public"
-                                                             :table        "no_such_table"
-                                                             :created_at   :%now
-                                                             :updated_at   :%now}))]
-        (testing "Before backfill, all FKs are nil"
-          (is (nil? (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))
-          (is (nil? (t2/select-one-fn :isolated_table_id :workspace_output :id wo-id)))
-          (is (nil? (t2/select-one-fn :global_table_id :workspace_output_external :id woe-id)))
-          (is (nil? (t2/select-one-fn :isolated_table_id :workspace_output_external :id woe-id)))
-          (is (nil? (t2/select-one-fn :table_id :workspace_input :id wi-id)))
-          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-id)))
-          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))
+                                   :updated_at         :%now})]
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
           (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
@@ -3123,16 +2971,4 @@
             (is (true? (:transform_target provisional)))
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
-            (is (= "New Target Table" (:display_name provisional)))))
-        (testing "workspace_output FKs backfilled"
-          (is (= table-id (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))
-          (is (= table-id (t2/select-one-fn :isolated_table_id :workspace_output :id wo-id))))
-        (testing "workspace_output_external FKs backfilled"
-          (is (= table-id (t2/select-one-fn :global_table_id :workspace_output_external :id woe-id)))
-          (is (= table-id (t2/select-one-fn :isolated_table_id :workspace_output_external :id woe-id))))
-        (testing "workspace_input table_id backfilled"
-          (is (= table-id (t2/select-one-fn :table_id :workspace_input :id wi-id))))
-        (testing "workspace_input_external table_id backfilled"
-          (is (= table-id (t2/select-one-fn :table_id :workspace_input_external :id wie-id))))
-        (testing "Non-matching input stays nil"
-          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))))))
+            (is (= "New Target Table" (:display_name provisional)))))))))

@@ -48,7 +48,6 @@ export type MetabotChatContext = {
   user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
   default_database_id?: number;
-  workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
 };
@@ -313,3 +312,49 @@ export type MetabotSlackSettings =
       "slack-connect-client-secret": null;
       "metabot-slack-signing-secret": null;
     };
+
+/* Metabot v3 - Group Permissions */
+
+export enum AIToolKey {
+  Metabot = "permission/metabot",
+  ChatAndNLQ = "permission/metabot-nlq",
+  SQLGeneration = "permission/metabot-sql-generation",
+  OtherTools = "permission/metabot-other-tools",
+}
+
+export type MetabotGroupPermission = {
+  group_id: number;
+  perm_type: AIToolKey;
+  perm_value: "yes" | "no";
+};
+
+export type MetabotPermissionsResponse = {
+  permissions: MetabotGroupPermission[];
+};
+
+export type UpdateMetabotPermissionsRequest = {
+  permissions: MetabotGroupPermission[];
+};
+
+export type UserMetabotPermissions = {
+  metabot: "yes" | "no";
+  "metabot-sql-generation": "yes" | "no";
+  "metabot-nlq": "yes" | "no";
+  "metabot-other-tools": "yes" | "no";
+};
+
+export type UserMetabotPermissionsResponse = {
+  permissions: UserMetabotPermissions;
+};
+
+export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
+export type MetabotLimitType = "tokens" | "messages";
+
+/* Metabot v3 - Usage Limits */
+
+export type MetabotInstanceLimit = { max_usage: number | null };
+export type MetabotGroupLimit = { group_id: number; max_usage: number };
+export type MetabotTenantLimit = {
+  tenant_id: number;
+  max_usage: number | null;
+};

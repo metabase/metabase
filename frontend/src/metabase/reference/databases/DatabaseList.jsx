@@ -9,7 +9,7 @@ import S from "metabase/common/components/List/List.module.css";
 import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";

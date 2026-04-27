@@ -15,7 +15,6 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
-import * as Urls from "metabase/lib/urls";
 import {
   FieldSection,
   FieldValuesModal,
@@ -36,6 +35,7 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { trackMetadataChange } from "../../analytics";
 import {
@@ -192,7 +192,7 @@ function DataModelContent({ params }: Props) {
       >
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Data structure`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
           }
         />
         <RouterTablePicker

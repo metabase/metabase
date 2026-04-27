@@ -43,10 +43,9 @@
 
 (deftest identity-hash-test
   (testing "Measure hashes are composed of the measure name and table identity-hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
-                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
+    (let [now   #t "2022-09-01T12:34:56Z"
+          table (t2/select-one :model/Table (mt/id :venues))]
+      (mt/with-temp [:model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
                                              :definition (measure-definition (lib/count))}]
         (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
                (serdes/identity-hash measure)))))))

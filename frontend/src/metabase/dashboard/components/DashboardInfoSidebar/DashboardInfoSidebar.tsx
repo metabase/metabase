@@ -17,14 +17,15 @@ import {
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
+import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type {
@@ -36,7 +37,6 @@ import type {
 
 import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
-import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 enum Tab {
   Overview = "overview",

@@ -2,10 +2,10 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatNumber } from "metabase/lib/formatting/numbers";
-import { measureText } from "metabase/lib/measure-text";
-import { uuid } from "metabase/lib/uuid";
-import { isEmpty } from "metabase/lib/validate";
+import { formatNumber } from "metabase/utils/formatting/numbers";
+import { measureText } from "metabase/utils/measure-text";
+import { uuid } from "metabase/utils/uuid";
+import { isEmpty } from "metabase/utils/validate";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DateTimeAbsoluteUnit,

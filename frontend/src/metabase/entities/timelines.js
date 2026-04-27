@@ -12,14 +12,13 @@ import {
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
-import { getDefaultTimeline, getTimelineName } from "metabase/lib/timelines";
+  getDefaultTimeline,
+  getTimelineName,
+} from "metabase/common/utils/timelines";
 import { TimelineSchema } from "metabase/schema";
 
 import { TimelineEvents } from "./timeline-events";
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -30,12 +29,12 @@ export const Timelines = createEntity({
   path: "/api/timeline",
   schema: TimelineSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetTimelineQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: ({ collectionId, ...params } = {}, dispatch) =>

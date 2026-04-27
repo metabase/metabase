@@ -109,7 +109,7 @@
          :table-id    table-id}))))
 
 (mu/defn query-is-native? :- :boolean
-  "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
+  "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
   regardless of whether the Card has a native query or not."
   [query :- [:maybe ::queries.schema/query]]
   (boolean (some-> query not-empty lib/native-only-query?)))

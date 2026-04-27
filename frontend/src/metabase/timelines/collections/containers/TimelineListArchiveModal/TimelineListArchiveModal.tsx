@@ -3,10 +3,10 @@ import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
 import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import * as Urls from "metabase/utils/urls";
 import type { Collection, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineListModal from "../../components/TimelineListModal";

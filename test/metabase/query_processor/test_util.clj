@@ -498,7 +498,7 @@
                                     (mapv #(metadata-fn % card) metadata)))))
 
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
-  "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
+  "Create an Lib metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
    (metadata-provider-with-cards-for-queries

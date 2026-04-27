@@ -9,11 +9,11 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
-import { createMockSettings } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { SetupSsoPage } from "./SetupSsoPage";
 
@@ -105,8 +105,6 @@ describe("SetupSsoPage", () => {
       "https://jwt.example.com/auth",
     );
     await userEvent.click(enableJwtButton);
-
-    expect(await screen.findByText("JWT Signing Key")).toBeVisible();
 
     expect(
       screen.getByRole("listitem", { name: "Set up JWT authentication" }),

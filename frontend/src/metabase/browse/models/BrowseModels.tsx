@@ -8,11 +8,11 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canUserCreateNativeQueries,

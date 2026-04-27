@@ -1,7 +1,7 @@
 import * as Yup from "yup";
 
-import * as Errors from "metabase/lib/errors";
-import { slugify } from "metabase/lib/formatting/url";
+import * as Errors from "metabase/utils/errors";
+import { slugify } from "metabase/utils/formatting/url";
 import type {
   CreateTransformRequest,
   TransformSource,
@@ -17,7 +17,14 @@ import {
 export const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable().defined(),
+  // `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext`; see `LoginForm.tsx`.
+  targetSchema: Yup.string()
+    .nullable()
+    .defined()
+    .when("$supportsSchemas", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+    }),
   collection_id: Yup.number().nullable().defined(),
 }).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA);
 

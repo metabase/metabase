@@ -24,6 +24,7 @@ export type EntityPickerOptions = {
   hasLibrary?: boolean;
   hasRootCollection?: boolean;
   hasPersonalCollections?: boolean; // other users personal collections
+  getItemTooltip?: (item: OmniPickerItem) => string | undefined;
 
   // options to customize the button bar
   hasConfirmButtons?: boolean;
@@ -85,7 +86,6 @@ export type OmniPickerCollectionItem = Pick<
   | "location"
   | "type"
   | "database_id"
-  | "location"
   | "effective_location"
 > & {
   id: CollectionItem["id"] | CollectionId;

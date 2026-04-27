@@ -826,25 +826,31 @@
   #{'metabase.models.resolution})
 
 (defn- model-reference-violations
-  "Return violation types for a single model reference. Pure function — no IO."
+  "Return violation types for a single model reference. Pure function — no IO.
+
+  When `model-imports` is `:bypass`, the using module is exempt from all model boundary checks —
+  it may reference any model regardless of whether it is exported."
   [model defining-mod model-exports model-imports]
-  (cond-> []
-    (nil? defining-mod)
-    (conj :unknown-model)
+  (if (= model-imports :bypass)
+    []
+    (cond-> []
+      (nil? defining-mod)
+      (conj :unknown-model)
 
-    (and defining-mod
-         (not= model-exports :any)
-         (not (contains? model-exports model)))
-    (conj :not-exported)
+      (and defining-mod
+           (not= model-exports :any)
+           (not (contains? model-exports model)))
+      (conj :not-exported)
 
-    (and defining-mod
-         (not= model-imports :any)
-         (not (contains? model-imports model)))
-    (conj :not-imported)))
+      (and defining-mod
+           (not= model-imports :any)
+           (not (contains? model-imports model)))
+      (conj :not-imported))))
 
 (defn model-references-by-module
   "Scan all source files and build a map of `{module => #{:model/X ...}}` — the set of model keywords
-  referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded."
+  referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded.
+  Includes all modules (including bypass modules) — callers filter as needed."
   []
   (reduce
    (fn [acc file]
@@ -871,6 +877,9 @@
   1. The defining module's `:model-exports` allows the model (`:any` or set containing it)
   2. The using module's `:model-imports` allows the model (`:any` or set containing it)
   3. The model's definition exists somewhere (`:unknown-model` is always a violation)
+
+  Modules with `:model-imports :bypass` are exempt from all checks — they may reference any model,
+  even unexported ones.
 
   Returns a sequence of violation maps with `:file`, `:module`, `:model`, `:defining-module`, `:violation-type`."
   ([]

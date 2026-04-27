@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   bump-deps:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Open PRs to Bump Backend Deps
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20

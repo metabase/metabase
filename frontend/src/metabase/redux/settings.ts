@@ -1,7 +1,7 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { sessionApi } from "metabase/api";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { SettingsApi } from "metabase/services";
 import type { Settings, UserSettings } from "metabase-types/api";
 
@@ -58,6 +58,23 @@ export const updateUserSetting = createAsyncThunk(
         await dispatch(refreshSiteSettings());
       }
     }
+  },
+);
+
+export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
+export const updateSetting = createThunkAction(
+  UPDATE_SETTING,
+  function (setting: { key: string; value: unknown }) {
+    return async function (dispatch: any) {
+      try {
+        await SettingsApi.put(setting);
+      } catch (error) {
+        console.error("error updating setting", setting, error);
+        throw error;
+      } finally {
+        await dispatch(refreshSiteSettings());
+      }
+    };
   },
 );
 

@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, type FlexProps } from "metabase/ui";
-import { getColorScale } from "metabase/ui/colors/scales";
+import { getColorScale } from "metabase/visualizations/lib/color-scales";
 
 export interface ColorRangeProps extends Omit<FlexProps, "onSelect"> {
   colors: string[];

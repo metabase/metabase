@@ -308,7 +308,10 @@
                              [:slack :fields 0 :options]
                              (->> (channel.settings/slack-cached-channels-and-usernames)
                                   :channels
-                                  (map :display-name)))
+                                  (m/distinct-by :id)
+                                  (m/distinct-by :display-name)
+                                  (mapv (fn [{:keys [display-name id]}]
+                                          {:displayName display-name :id id}))))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 

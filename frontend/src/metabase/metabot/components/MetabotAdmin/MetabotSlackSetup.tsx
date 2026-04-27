@@ -22,8 +22,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type { SlackAppInfo } from "metabase-types/api/slack";
 
 import {

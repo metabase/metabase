@@ -6,9 +6,9 @@ import {
   EntityListItem,
 } from "metabase/data-studio/common/components/EntityList";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 type TableMeasuresProps = {
@@ -27,7 +27,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
         items={measures}
         title={t`Measures`}
         emptyState={{
-          icon: "sum",
+          icon: "ruler",
           title: t`No measures yet`,
           message: t`Create a measure to define aggregations for this table.`,
         }}
@@ -46,7 +46,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
             key={measure.id}
             name={measure.name}
             description={measure.definition_description}
-            icon="sum"
+            icon="ruler"
             href={Urls.dataStudioPublishedTableMeasure(table.id, measure.id)}
           />
         )}

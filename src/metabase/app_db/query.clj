@@ -147,6 +147,38 @@
                            :uncompiled sql-args-or-honey-sql-map}
                           e)))))))
 
+(defn streaming-reducible
+  "Returns a reducible that, when reduced, opens a transaction (autoCommit=false) with a
+  fetch-size set to enable server-side cursor streaming on PostgreSQL app databases.
+
+  `make-reducible-fn` is a 1-arg function called with the transaction `java.sql.Connection`.
+  Pass it explicitly to `t2/reducible-select` via `:conn` or to `t2/reducible-query` so the
+  query runs on the transaction connection — otherwise PostgreSQL ignores fetch-size.
+
+  Example:
+    (streaming-reducible
+     (fn [conn]
+       (eduction (map t2.realize/realize)
+                 (t2/reducible-select :conn conn :model/Table :active true))))"
+  ([make-reducible-fn]
+   (streaming-reducible make-reducible-fn 500))
+  ([make-reducible-fn fetch-size]
+   (reify clojure.lang.IReduceInit
+     (reduce [_ f init]
+       (t2/with-transaction [conn]
+         (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options*
+                                                    {:fetch-size fetch-size})]
+           (reduce f init (make-reducible-fn conn))))))))
+
+(defn streaming-reducible-query
+  "Like `t2/reducible-query` but uses a transaction (autoCommit=false) and a fetch-size
+  to enable server-side cursor streaming on PostgreSQL. Returns a reducible of raw maps."
+  ([sql-args-or-honey-sql-map]
+   (streaming-reducible-query sql-args-or-honey-sql-map 500))
+  ([sql-args-or-honey-sql-map fetch-size]
+   (let [compiled (compile sql-args-or-honey-sql-map)]
+     (streaming-reducible (fn [conn] (t2/reducible-query conn compiled)) fetch-size))))
+
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.
    May retry for other reasons."

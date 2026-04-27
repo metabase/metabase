@@ -8,6 +8,12 @@
                                                    ;; since it's a top-level dep in `/deps.edn` but adding the
                                                    ;; exclusion here will (hopefully?) prevent code scanning alerts
                                                    ;; from complaining about it as well.
-                                                   io.netty/netty-codec-http]}
+                                                   io.netty/netty-codec-http
+                                                   io.netty/netty-codec-http2]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
-  io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}}}
+  io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
+  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
+  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.84"}
+  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.84"}
+  ;; pinned: snowflake-jdbc-thin 4.1.0 pulls jackson-core 2.18.4.1 which has resource exhaustion vulns
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}}}

@@ -1,0 +1,316 @@
+name: Temporal and Logical Filters
+entity_id: BMx-SlSPsSfGSKaEgOzn0
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - filters:
+    - - time-interval
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - -30
+      - day
+    - - time-interval
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - current
+      - month
+    - - relative-time-interval
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - -30
+      - day
+      - -1
+      - month
+    - - not
+      - {}
+      - - is-null
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - DISCOUNT
+    limit: 20
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - USER_ID
+  - null
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ID
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - USER_ID
+  name: USER_ID
+  position: 1
+  semantic_type: type/FK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: USER_ID
+  lib/desired-column-alias: USER_ID
+  lib/original-display-name: User ID
+  lib/original-name: USER_ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: USER_ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: Product ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - PRODUCT_ID
+  - null
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - PRODUCT_ID
+  name: PRODUCT_ID
+  position: 2
+  semantic_type: type/FK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: PRODUCT_ID
+  lib/desired-column-alias: PRODUCT_ID
+  lib/original-display-name: Product ID
+  lib/original-name: PRODUCT_ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: PRODUCT_ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Tax
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - TAX
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - TAX
+  name: TAX
+  position: 4
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: TAX
+  lib/desired-column-alias: TAX
+  lib/original-display-name: Tax
+  lib/original-name: TAX
+  lib/source: source/table-defaults
+  lib/source-column-alias: TAX
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - TOTAL
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - TOTAL
+  name: TOTAL
+  position: 5
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: TOTAL
+  lib/desired-column-alias: TOTAL
+  lib/original-display-name: Total
+  lib/original-name: TOTAL
+  lib/source: source/table-defaults
+  lib/source-column-alias: TOTAL
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Discount
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - DISCOUNT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - DISCOUNT
+  name: DISCOUNT
+  position: 6
+  semantic_type: type/Discount
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: DISCOUNT
+  lib/desired-column-alias: DISCOUNT
+  lib/original-display-name: Discount
+  lib/original-name: DISCOUNT
+  lib/source: source/table-defaults
+  lib/source-column-alias: DISCOUNT
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: Quantity
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - QUANTITY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - QUANTITY
+  name: QUANTITY
+  position: 8
+  semantic_type: type/Quantity
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: QUANTITY
+  lib/desired-column-alias: QUANTITY
+  lib/original-display-name: Quantity
+  lib/original-name: QUANTITY
+  lib/source: source/table-defaults
+  lib/source-column-alias: QUANTITY
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: BMx-SlSPsSfGSKaEgOzn0
+  label: temporal_and_logical_filters
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

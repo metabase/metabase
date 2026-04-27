@@ -6,7 +6,7 @@ import { Component } from "react";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { Questions } from "metabase/entities/questions";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";

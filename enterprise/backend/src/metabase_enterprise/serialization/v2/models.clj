@@ -33,7 +33,8 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["FieldValues"
+          ["EmbeddingTheme"
+           "FieldValues"
            "Metabot"
            "PythonLibrary"
            "Setting"
@@ -57,7 +58,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["AnalysisFinding"
+  ["AiUsageLog"
+   "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
    "ApplicationPermissionsRevision"
@@ -78,12 +80,16 @@
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
+   "DependencyStatus"
    "DocumentBookmark"
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "MetabotConversation"
+   "MetabotGroupLimit"
+   "MetabotInstanceLimit"
    "MetabotMessage"
+   "MetabotPermissions"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
@@ -120,6 +126,7 @@
    "Sandbox"
    "SearchIndexMetadata"
    "Secret"
+   "SecurityAdvisory"
    "SemanticSearchTokenTracking"
    "Session"
    "SupportAccessGrantLog"
@@ -133,17 +140,4 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"
-   "Workspace"
-   ;; TODO (lbrdnk 2025-12-17) -- I've added rest of the workspace models. I believe some of those will be available for
-   ;; serialization, hence we should revisit this later in the project.
-   "WorkspaceInput"
-   "WorkspaceInputExternal"
-   "WorkspaceInputTransform"
-   "WorkspaceLog"
-   "WorkspaceMerge"
-   "WorkspaceMergeTransform"
-   "WorkspaceGraph"
-   "WorkspaceOutput"
-   "WorkspaceOutputExternal"
-   "WorkspaceTransform"])
+   "ViewLog"])

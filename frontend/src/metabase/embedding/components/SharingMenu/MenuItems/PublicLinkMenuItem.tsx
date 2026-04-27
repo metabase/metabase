@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Menu } from "metabase/ui";
 

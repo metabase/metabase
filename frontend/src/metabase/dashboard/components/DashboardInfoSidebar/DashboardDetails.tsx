@@ -8,9 +8,9 @@ import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
 import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
-import { collection as collectionUrl } from "metabase/lib/urls";
-import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
+import { collection as collectionUrl } from "metabase/utils/urls";
+import { getUserName } from "metabase/utils/user";
 import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";

@@ -89,7 +89,9 @@
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
   '#{analytics
+     analytics-interface
      api
+     api-scope
      api-keys
      appearance
      audit-app
@@ -117,8 +119,10 @@
      internal-stats
      llm
      login-history
+     mcp
      metabot
      notification
+     oauth-server
      permissions
      premium-features
      public-sharing

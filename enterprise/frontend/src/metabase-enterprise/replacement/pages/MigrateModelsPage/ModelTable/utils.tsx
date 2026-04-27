@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { EntityNameCell } from "metabase/ui";
+import { Ellipsified, EntityNameCell } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 export function getColumns(): TreeTableColumnDef<SearchResult>[] {

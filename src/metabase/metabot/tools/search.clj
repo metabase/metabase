@@ -1,11 +1,12 @@
 (ns metabase.metabot.tools.search
   "Search tool wrappers for Metabot v3."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -24,19 +25,6 @@
 (def ^:private metabot-search-models
   #{"table" "dataset" "card" "dashboard" "metric" "database" "transform"})
 
-(def ^:private search-model-mappings
-  "Maps metabot entity types to search engine model types"
-  {"model"    "dataset"
-   "question" "card"})
-
-(defn- entity-type->search-model
-  [entity-type]
-  (get search-model-mappings entity-type entity-type))
-
-(defn- search-model->result-type
-  [search-model]
-  (get (set/map-invert search-model-mappings) search-model search-model))
-
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
   [{:keys [verified moderated_status collection] :as result}]
@@ -44,7 +32,7 @@
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
         common-fields {:id          (:id result)
-                       :type        (search-model->result-type model)
+                       :type        (metabot.search-models/search-model->entity-type model)
                        :name        (:name result)
                        :description (:description result)
                        :updated_at  (:updated_at result)
@@ -182,7 +170,7 @@
               :search-native-query search-native-query
               :weights             weights})
   (let [search-models   (if (seq entity-types)
-                          (set (distinct (keep entity-type->search-model entity-types)))
+                          (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         metabot         (t2/select-one :model/Metabot :entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
@@ -292,12 +280,13 @@
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
 
-(mu/defn ^{:tool-name "search"}
+(mu/defn ^{:tool-name "search"
+           :scope     scope/agent-search}
   search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [args :- search-schema]
@@ -305,14 +294,15 @@
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:database_id :int]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "sql_search.md"}
+           :prompt    "sql_search.md"
+           :scope     scope/agent-search}
   sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [database_id] :as args} :- sql-search-schema]
@@ -320,13 +310,14 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "nql_search.md"}
+           :prompt    "nlq_search.md"
+           :scope     scope/agent-search}
   nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
   [args :- nlq-search-schema]
@@ -334,14 +325,15 @@
 
 (def ^:private transform-search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:search_native_query {:optional true} [:maybe :boolean]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "transform_search"}
+           :prompt    "transform_search"
+           :scope     scope/agent-search}
   transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [search_native_query] :as args} :- transform-search-schema]

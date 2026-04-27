@@ -82,11 +82,9 @@ export function editDashboard() {
 }
 
 export function saveDashboard({
-  buttonLabel = "Save",
-  editBarText = "You're editing this dashboard.",
   waitMs = 1,
   awaitRequest = true,
-} = {}) {
+}: { waitMs?: number; awaitRequest?: boolean } = {}) {
   cy.intercept("PUT", "/api/dashboard/*").as(
     "saveDashboard-saveDashboardCards",
   );
@@ -95,8 +93,8 @@ export function saveDashboard({
     "saveDashboard-getDashboardMetadata",
   );
 
-  cy.findByText(editBarText).should("be.visible");
-  cy.button(buttonLabel).click();
+  cy.findByTestId("edit-bar").should("be.visible");
+  cy.findByTestId("edit-bar").findByTestId("save-edit-button").click();
 
   if (awaitRequest) {
     cy.wait("@saveDashboard-saveDashboardCards");
@@ -104,7 +102,7 @@ export function saveDashboard({
     cy.wait("@saveDashboard-getDashboardMetadata");
   }
 
-  cy.findByText(editBarText).should("not.exist");
+  cy.findByTestId("edit-bar").should("not.exist");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 

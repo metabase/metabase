@@ -7,8 +7,9 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk-bundle/components/private/util/MultiStepPopover";
-import type { PopoverProps } from "metabase/ui";
+import { type PopoverProps, Tooltip } from "metabase/ui";
 
+import { useStageChangeTooltip } from "../../../hooks/use-stage-change-tooltip";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { SummarizeBadgeList } from "../SummarizeBadgeList";
 import {
@@ -36,6 +37,7 @@ export const SummarizeDropdown = ({
   ...popoverProps
 }: SummarizeDropdownProps) => {
   const aggregationItems = useSummarizeData();
+  const showStageChangeTooltip = useStageChangeTooltip();
 
   const label = match(aggregationItems.length)
     .with(0, () => t`Summarize`)
@@ -67,20 +69,26 @@ export const SummarizeDropdown = ({
       {...popoverProps}
     >
       <MultiStepPopover.Target>
-        <ToolbarButton
-          label={label}
-          icon="sum"
-          isHighlighted={aggregationItems.length > 0}
-          onClick={() =>
-            setStep(
-              step === null
-                ? aggregationItems.length === 0
-                  ? "picker"
-                  : "list"
-                : null,
-            )
-          }
-        />
+        <Tooltip
+          label={t`Switched to the previous stage`}
+          opened={showStageChangeTooltip}
+          position="bottom"
+        >
+          <ToolbarButton
+            label={label}
+            icon="sum"
+            isHighlighted={aggregationItems.length > 0}
+            onClick={() =>
+              setStep(
+                step === null
+                  ? aggregationItems.length === 0
+                    ? "picker"
+                    : "list"
+                  : null,
+              )
+            }
+          />
+        </Tooltip>
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">
         <SummarizePicker

@@ -1,0 +1,17 @@
+<verification_triggers>
+**Pattern matching - when you see these in user requests, STOP and verify:**
+
+User says → You must verify
+- "active [items]" → Check status/state field samples
+- "[Department Name] team" → Check department/team field samples
+- "show only [value]" → Check that field's samples (even if checked before)
+- "break down by [dimension]" → Check what values that dimension has
+- "filter to [value]" → Check if [value] exists in samples
+- "for [specific subset]" → Check the field that represents that subset
+
+**When modifying existing queries:**
+- User: "Now filter for 'invalid' status"
+- Even if you queried status earlier, re-check samples before adding new filter
+
+Field existence ≠ Value existence. Always verify the SPECIFIC value.
+</verification_triggers>

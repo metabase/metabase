@@ -13,6 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -1098,8 +1099,8 @@
                 [str str u.date/temporal-str->iso8601-str 2.0 4.0]
                 (qp/process-query query))))))))
 
-(deftest ^:parallel mlv2-references-in-join-conditions-test
-  (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
+(deftest ^:parallel mbql5-references-in-join-conditions-test
+  (testing "Make sure join conditions that contain Lib-generated refs with extra info like `:base-type` work correctly (#33083)"
     (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                       [(mt/mbql-query reviews
                                          {:joins       [{:source-table $$products
@@ -1141,7 +1142,7 @@
 
 ;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
-  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+  (testing "Make sure queries built with Lib that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
                              (mt/metadata-provider)
                              mt/id)]
@@ -1523,6 +1524,56 @@
                  :order-by    [[:asc $id]
                                [:asc &o.orders.id]]
                  :limit       3})))))))
+
+(deftest datetime-diff-with-card-join-test
+  (testing "datetime-diff between a table field and a joined card field should produce correct results (#71551)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :datetime-diff)
+      (mt/with-report-timezone-id! "US/Pacific"
+        (let [mp             (mt/metadata-provider)
+              orders         (lib.metadata/table mp (mt/id :orders))
+              orders-created (lib.metadata/field mp (mt/id :orders :created_at))
+              orders-product (lib.metadata/field mp (mt/id :orders :product_id))
+              build-query    (fn [joined-q join-group-spec]
+                               (let [joined-created (notebook-helpers/find-col-with-spec
+                                                     joined-q
+                                                     (lib/filterable-columns joined-q)
+                                                     join-group-spec
+                                                     {:semantic-type :type/CreationTimestamp})]
+                                 (-> joined-q
+                                     (lib/expression "diff" (lib/expression-clause
+                                                             :datetime-diff
+                                                             [orders-created joined-created :hour]
+                                                             nil))
+                                     (as-> $q (lib/with-fields $q [(lib/expression-ref $q "diff")]))
+                                     (lib/order-by orders-created :asc)
+                                     (lib/limit 5))))
+              tbl-query      (build-query
+                              (-> (lib/query mp orders)
+                                  (lib/join (-> (lib/join-clause
+                                                 (lib.metadata/table mp (mt/id :products))
+                                                 [(lib/= orders-product
+                                                         (lib.metadata/field mp (mt/id :products :id)))])
+                                                (lib/with-join-alias "P"))))
+                              {:name "P"})
+              mp2            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                              [(mt/mbql-query products)])
+              card           (lib.metadata/card mp2 1)
+              card-query     (build-query
+                              (-> (lib/query mp2 orders)
+                                  (as-> $q
+                                        (lib/join $q (-> (lib/join-clause card)
+                                                         (lib/with-join-alias "Card")
+                                                         (lib/with-join-conditions
+                                                          [(let [rhs-cols (lib/join-condition-rhs-columns
+                                                                           $q card (lib/ref orders-product) nil)]
+                                                             (lib/= orders-product
+                                                                    (-> (notebook-helpers/find-col-with-spec
+                                                                         $q rhs-cols "Card 1" "ID")
+                                                                        (lib/with-join-alias "Card"))))])))))
+                              "Card 1")]
+          (mt/with-native-query-testing-context card-query
+            (is (= (mt/rows (qp/process-query tbl-query))
+                   (mt/rows (qp/process-query card-query))))))))))
 
 (deftest ^:parallel self-join-in-source-card-test
   (testing "When query uses a source card with a self-join, query should work (#27521)"

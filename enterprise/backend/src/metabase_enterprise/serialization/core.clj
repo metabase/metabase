@@ -5,6 +5,8 @@
    [metabase-enterprise.serialization.v2.ingest]
    [metabase-enterprise.serialization.v2.load]
    [metabase-enterprise.serialization.v2.storage]
+   [metabase-enterprise.serialization.v2.storage.files]
+   [metabase-enterprise.serialization.v2.storage.util]
    [potemkin :as p]))
 
 (comment
@@ -12,7 +14,9 @@
   metabase-enterprise.serialization.v2.extract/keep-me
   metabase-enterprise.serialization.v2.ingest/keep-me
   metabase-enterprise.serialization.v2.load/keep-me
-  metabase-enterprise.serialization.v2.storage/keep-me)
+  metabase-enterprise.serialization.v2.storage/keep-me
+  metabase-enterprise.serialization.v2.storage.files/keep-me
+  metabase-enterprise.serialization.v2.storage.util/keep-me)
 
 (p/import-vars
  [metabase-enterprise.serialization.dump
@@ -21,6 +25,7 @@
   make-targets-of-type
   extract]
  [metabase-enterprise.serialization.v2.ingest
+  legal-top-level-paths
   strip-labels
   Ingestable
   ingest-yaml
@@ -32,5 +37,9 @@
  [metabase-enterprise.serialization.v2.load
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
-  store!
-  escape-segment])
+  store!]
+ [metabase-enterprise.serialization.v2.storage.files
+  file-writer]
+ [metabase-enterprise.serialization.v2.storage.util
+  resolve-storage-path
+  slugify-name])

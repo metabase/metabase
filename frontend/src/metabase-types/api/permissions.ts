@@ -137,3 +137,8 @@ export type Impersonation = {
   group_id: GroupId;
   attribute: UserAttributeKey;
 };
+
+export type DataSegregationStrategy =
+  | "row-column-level-security"
+  | "connection-impersonation"
+  | "database-routing";

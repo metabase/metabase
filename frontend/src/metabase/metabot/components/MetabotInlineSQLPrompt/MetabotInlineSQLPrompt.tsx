@@ -3,7 +3,10 @@ import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
+import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import { useMetabotName } from "metabase/metabot/hooks";
+import type { MetabotErrorMessage } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
@@ -14,7 +17,7 @@ interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
   onClose: () => void;
   isLoading: boolean;
-  error: string | undefined;
+  error: MetabotErrorMessage | undefined;
   generate: (options: { prompt: string; sourceSql?: string }) => Promise<void>;
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
@@ -36,6 +39,7 @@ export const MetabotInlineSQLPrompt = ({
   onValueChange,
 }: MetabotInlineSQLPromptProps) => {
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
+  const metabotName = useMetabotName();
 
   const isSubmitDisabled = !value.trim() || isLoading;
 
@@ -87,10 +91,14 @@ export const MetabotInlineSQLPrompt = ({
       </Box>
       <Flex justify="space-between" align="center" gap="sm" mt="xs">
         <Box data-testid="metabot-inline-sql-error" w="100%" fz="sm" c="error">
-          {error}
+          {error?.type === "locked" ? (
+            <MetabotManagedProviderLimitHoverCard />
+          ) : (
+            error?.message
+          )}
         </Box>
         <Flex gap="xs" flex="1 0 auto">
-          <Tooltip disabled={isLoading} label={t`Send to Metabot`}>
+          <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
             <Button
               className={S.submitButton}
               data-testid="metabot-inline-sql-generate"

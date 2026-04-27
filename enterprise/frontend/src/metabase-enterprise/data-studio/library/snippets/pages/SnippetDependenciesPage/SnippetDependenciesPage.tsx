@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { skipToken, useGetSnippetQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card, Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { SnippetHeader } from "../../components/SnippetHeader";
 

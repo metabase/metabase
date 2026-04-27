@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { memo } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { Ellipsified } from "metabase/ui";
 
 import {
   LegendItemLabel,

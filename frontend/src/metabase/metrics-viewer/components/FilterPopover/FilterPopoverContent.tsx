@@ -7,19 +7,29 @@ import { SourceColorIndicator } from "metabase/common/components/SourceColorIndi
 import type {
   DimensionListItem,
   DimensionSection,
+  MetricGroup,
 } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/types";
 import { getMetricGroups } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/utils";
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
 import { getDimensionIcon } from "metabase/metrics/utils/dimensions";
-import type { IconName } from "metabase/ui";
-import { Box, Flex, Icon, Text, TextInput, UnstyledButton } from "metabase/ui";
+import {
+  Badge,
+  Box,
+  Flex,
+  Icon,
+  Text,
+  TextInput,
+  UnstyledButton,
+} from "metabase/ui";
 import type {
   DimensionMetadata,
   FilterClause,
   MetricDefinition,
 } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
-import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
+import type { SourceColorMap } from "../../types/viewer-state";
+import type { DefinitionSource } from "../../utils/definition-sources";
 
 import S from "./FilterPopover.module.css";
 import { filterDisplayGroupsBySearch } from "./utils";
@@ -27,53 +37,33 @@ import { filterDisplayGroupsBySearch } from "./utils";
 const LIST_WIDTH = "20rem";
 const FILTER_WIDTH = "24rem";
 
-export type DefinitionSource = {
-  id: MetricSourceId;
-  definition: MetricDefinition;
-};
-
 type NavigationState =
   | { view: "list" }
   | { view: "filter"; definitionIndex: number; dimension: DimensionMetadata };
 
-type DisplayMetricGroup = {
-  id: MetricSourceId;
-  metricName: string;
-  icon: IconName;
-  colors: string[] | undefined;
-  sections: DimensionSection[];
-};
-
 interface FilterPopoverContentProps {
-  definitions: DefinitionSource[];
+  definitionSources: DefinitionSource[];
   metricColors: SourceColorMap;
-  onFilterApplied: (id: MetricSourceId, filter: FilterClause) => void;
+  onSourceDefinitionChange: (
+    source: DefinitionSource,
+    newDefinition: MetricDefinition,
+  ) => void;
+  onFilterApplied: () => void;
 }
 
 export function FilterPopoverContent({
-  definitions,
+  definitionSources,
   metricColors,
+  onSourceDefinitionChange,
   onFilterApplied,
 }: FilterPopoverContentProps) {
   const [navState, setNavState] = useState<NavigationState>({ view: "list" });
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [searchText, setSearchText] = useState("");
 
-  const displayGroups = useMemo((): DisplayMetricGroup[] => {
-    const rawGroups = getMetricGroups(
-      definitions.map((definition) => definition.definition),
-    );
-    return rawGroups.map((group, index) => {
-      const sourceId = definitions[index].id;
-      return {
-        id: sourceId,
-        metricName: group.metricName,
-        icon: group.icon,
-        colors: metricColors[sourceId],
-        sections: group.sections,
-      };
-    });
-  }, [definitions, metricColors]);
+  const displayGroups = useMemo((): MetricGroup[] => {
+    return getMetricGroups(definitionSources, metricColors);
+  }, [definitionSources, metricColors]);
 
   const filteredDisplayGroups = useMemo(
     () => filterDisplayGroupsBySearch(displayGroups, searchText),
@@ -97,17 +87,16 @@ export function FilterPopoverContent({
       if (navState.view !== "filter") {
         return;
       }
-      const selected = definitions[navState.definitionIndex];
-      if (!selected) {
-        return;
-      }
-      onFilterApplied(selected.id, filter);
+      const selected = definitionSources[navState.definitionIndex];
+      const newDefinition = LibMetric.filter(selected.definition, filter);
+      onSourceDefinitionChange(selected, newDefinition);
+      onFilterApplied();
       setNavState({ view: "list" });
     },
-    [navState, definitions, onFilterApplied],
+    [navState, definitionSources, onFilterApplied, onSourceDefinitionChange],
   );
 
-  const toggleExpanded = useCallback((id: string) => {
+  const toggleExpanded = useCallback((id: number) => {
     setExpandedItems((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
@@ -116,10 +105,10 @@ export function FilterPopoverContent({
   const isSearching = filteredDisplayGroups !== null;
   const visibleGroups = isSearching ? filteredDisplayGroups : displayGroups;
   const hasNoResults = isSearching && visibleGroups.length === 0;
-  const showMetricHeaders = definitions.length > 1;
+  const showMetricHeaders = definitionSources.length > 1;
 
   if (navState.view === "filter") {
-    const selected = definitions[navState.definitionIndex];
+    const selected = definitionSources[navState.definitionIndex];
     if (!selected) {
       return null;
     }
@@ -209,10 +198,10 @@ function MetricGroupList({
   onToggleExpanded,
   onDimensionSelect,
 }: {
-  groups: DisplayMetricGroup[];
-  expandedItems: string[];
+  groups: MetricGroup[];
+  expandedItems: number[];
   collapsible: boolean;
-  onToggleExpanded: (id: string) => void;
+  onToggleExpanded: (id: number) => void;
   onDimensionSelect: (item: DimensionListItem) => void;
 }) {
   return (
@@ -240,7 +229,14 @@ function MetricGroupList({
                     fallbackIcon={group.icon}
                     size={16}
                   />
-                  <Box fw={700}>{group.metricName}</Box>
+                  <Flex align="center" gap="xs" fw={700}>
+                    <span>{group.metricName}</span>
+                    {(group.metricCount ?? 0) > 1 && (
+                      <Badge circle c="text-hover">
+                        {group.metricCount}
+                      </Badge>
+                    )}
+                  </Flex>
                   <Icon
                     name={isExpanded ? "chevronup" : "chevrondown"}
                     size={12}

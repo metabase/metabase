@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
@@ -30,7 +30,7 @@ type DropdownView = "options" | "branch";
 export const GitSyncControls = () => {
   const dispatch = useDispatch();
   const conflictVariant = useSelector(getSyncConflictVariant);
-  const { isVisible, currentBranch } = useGitSyncVisible();
+  const { isVisible, currentBranch, isBranchSetByEnv } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -47,6 +47,7 @@ export const GitSyncControls = () => {
   const {
     currentData: hasRemoteChangesData,
     isFetching: isFetchingRemoteChanges,
+    isError: hasRemoteChangesError,
   } = useGetHasRemoteChangesQuery(undefined, {
     refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
     skip: !combobox.dropdownOpened,
@@ -201,8 +202,10 @@ export const GitSyncControls = () => {
         {dropdownView === "options" ? (
           <GitSyncOptionsDropdown
             isPullDisabled={!hasRemoteChanges}
+            isPullError={hasRemoteChangesError}
             isLoadingPull={isFetchingRemoteChanges}
             isPushDisabled={!isDirty || isLoading}
+            isSwitchBranchDisabled={isBranchSetByEnv}
             onPullClick={handlePullClick}
             onPushClick={handlePushClick}
             onSwitchBranchClick={handleSwitchBranchClick}

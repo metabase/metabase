@@ -15,9 +15,13 @@ Two optional config keys per module in
 | `:model-imports` | `#{}`   | Set of `:model/X` keywords **this module** may use from other modules. |
 
 When omitted, no models are exported/imported (closed by default). `:any`
-opens all restrictions. Every module has explicit `:model-exports` and
-`:model-imports` in `config.edn` — the defaults apply only to new modules
-that haven't been configured yet.
+opens all restrictions.
+
+`:model-imports` also supports `:bypass` for cross-cutting modules that
+reference nearly every model (e.g. `cmd`, `enterprise/serialization`). A
+bypassed module can reference any model — even unexported ones. Models that
+are *only* referenced by bypass modules do not need `:model-exports` entries
+(the staleness test will flag them if added).
 
 ## Why it exists
 
@@ -120,6 +124,24 @@ The module can only reference these models from other modules. Any other
 `:model/X` keyword in the module's source files will cause a test failure.
 Unknown models (not defined anywhere) are also violations.
 
+### Bypassing import restrictions
+
+Some modules are inherently cross-cutting and import nearly every model. Use
+`:bypass` instead of an explicit set:
+
+```clojure
+cmd
+{:team "UX West"
+ :model-imports :bypass
+ ...}
+```
+
+A bypassed module can reference any model, even unexported ones. This means
+bypass modules don't drive `:model-exports` — if a model is *only* used
+outside its home module by bypass modules, it doesn't need to be exported.
+
+Use sparingly. Prefer explicit sets where feasible.
+
 ### Verifying changes
 
 ```bash
@@ -143,8 +165,8 @@ externally, imports not referenced in the module's source files).
 Use the dev namespace to see what the config should contain:
 
 ```clojure
-(dev.model-boundary-config/compute-and-print!)  ;; print all exports/imports
 (dev.model-boundary-config/compute-model-boundaries) ;; returns data
+(dev.model-boundary-config/update-config!)           ;; rewrite config.edn
 ```
 
 ## Limitations and future directions

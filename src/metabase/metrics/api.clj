@@ -7,7 +7,9 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.permissions :as metrics.perms]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
@@ -15,6 +17,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (mr/def ::Metric
   "Schema for a Metric in list responses (without hydrated dimensions)."
@@ -84,7 +88,8 @@
 (mu/defn- hydrated-metric [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
-  (t2/select-one :model/Card :id id :type "metric"))
+  (-> (t2/select-one :model/Card :id id :type "metric")
+      metrics.perms/filter-dimensions-for-user))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
@@ -119,6 +124,9 @@
     [:expression  ::lib-metric.schema/metric-math-expression]
     [:filters     {:optional true} [:maybe ::lib-metric.schema/instance-filters]]
     [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
+   [:fn {:error/message "Expression must contain at least one metric or measure"}
+    (fn [{:keys [expression]}]
+      (seq (collect-expression-leaves expression)))]
    [:fn {:error/message "All :lib/uuid values in expression must be unique"}
     (fn [{:keys [expression]}]
       (let [uuids (collect-expression-uuids expression)]
@@ -127,10 +135,10 @@
     (fn [{:keys [expression filters]}]
       (let [expr-uuids (set (collect-expression-uuids expression))]
         (every? #(contains? expr-uuids (:lib/uuid %)) (or filters []))))]
-   [:fn {:error/message "Projection type/id pairs must correspond to expression leaves"}
+   [:fn {:error/message "Projection :lib/uuid values must reference UUIDs from expression"}
     (fn [{:keys [expression projections]}]
-      (let [leaves (set (collect-expression-leaves expression))]
-        (every? #(contains? leaves [(:type %) (:id %)]) (or projections []))))]])
+      (let [expr-uuids (set (collect-expression-uuids expression))]
+        (every? #(contains? expr-uuids (:lib/uuid %)) (or projections []))))]])
 
 (mr/def ::DatasetRequest
   "Schema for POST /dataset request body."
@@ -179,6 +187,29 @@
      :projections       (or projections [])
      :metadata-provider provider}))
 
+(defn- execute-leaf-queries
+  "Execute all leaf queries in parallel, collecting results eagerly.
+   Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
+   Returns {uuid -> qp-result}."
+  [leaves]
+  (let [uuid->future (into {}
+                           (map (fn [[uuid leaf-plan]]
+                                  [uuid (future (qp/process-query (qp/userland-query (:leaf/mbql leaf-plan))))]))
+                           leaves)]
+    (into {}
+          (map (fn [[uuid f]] [uuid @f]))
+          uuid->future)))
+
+(defn- stream-arithmetic-results
+  "Join leaf results and stream the computed output through the QP reduce pipeline.
+   Called INSIDE streaming context with the rff."
+  [{:keys [plan/expression plan/breakout-count]} uuid->result rff]
+  (let [{:keys [cols rows]} (lib-metric/join-and-compute expression uuid->result breakout-count)
+        reducible (reify clojure.lang.IReduceInit
+                    (reduce [_ rf init]
+                      (reduce rf init rows)))]
+    (qp.pipeline/*reduce* rff {:cols cols} reducible)))
+
 (api.macros/defendpoint :post "/dataset"
   :- (server/streaming-response-schema ::DatasetResponse)
   "Execute a metric or measure-based query and stream the results.
@@ -191,11 +222,15 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [query (-> (lib-metric/metadata-provider)
-                  (from-api-definition definition)
-                  (lib-metric/->mbql-query {:limit 10000}))]
-    (qp.streaming/streaming-response [rff :api]
-      (qp/process-query (qp/userland-query query) rff))))
+  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
+        plan       (lib-metric/->query-plan definition {:limit 10000})]
+    (if (= :leaf (:plan/type plan))
+      (qp.streaming/streaming-response [rff :api]
+        (qp/process-query (qp/userland-query (:plan/mbql plan)) rff))
+      ;; Arithmetic: execute leaf queries BEFORE streaming to avoid JSON writer conflicts
+      (let [uuid->result (execute-leaf-queries (:plan/leaves plan))]
+        (qp.streaming/streaming-response [rff :api]
+          (stream-arithmetic-results plan uuid->result rff))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Dimension Value Endpoints                                                |
@@ -213,12 +248,11 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [query   (-> (lib-metric/metadata-provider)
-                    (from-api-definition definition)
-                    (lib-metric/->values-query {:limit 100}))
-        result  (qp/process-query (qp/userland-query query))
-        col     (first (get-in result [:data :cols]))
-        values  (mapv first (get-in result [:data :rows]))]
+  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
+        plan       (lib-metric/->query-plan definition {:limit 100 :values-only true})
+        result     (qp/process-query (qp/userland-query (:plan/mbql plan)))
+        col        (first (get-in result [:data :cols]))
+        values     (mapv first (get-in result [:data :rows]))]
     {:values values
      :col    (or col {})}))
 

@@ -10,10 +10,11 @@ import {
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { Collections } from "metabase/entities/collections/collections";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
+import type { ModalName } from "metabase/redux/store/modal";
 import {
   closeModal,
   setOpenModal,
@@ -27,7 +28,7 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
-import type { ModalName } from "metabase-types/store/modal";
+import * as Urls from "metabase/utils/urls";
 
 import {
   type RegisterShortcutProps,
@@ -49,6 +50,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-user-settings",
   "navigate-trash",
   "navigate-home",
+  "navigate-data-studio",
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
@@ -73,6 +75,7 @@ export const useCommandPaletteBasicActions = ({
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
@@ -259,6 +262,13 @@ export const useCommandPaletteBasicActions = ({
       },
     );
 
+    if (hasDataStudioAccess) {
+      actions.push({
+        id: "navigate-data-studio",
+        perform: () => dispatch(push("/data-studio")),
+      });
+    }
+
     const browseActions: RegisterShortcutProps[] = [
       {
         id: "navigate-browse-model",
@@ -293,6 +303,7 @@ export const useCommandPaletteBasicActions = ({
   }, [
     dispatch,
     hasDataAccess,
+    hasDataStudioAccess,
     hasNativeWrite,
     collectionId,
     openNewModal,

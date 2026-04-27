@@ -20,7 +20,7 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull, isNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/utils/types";
 import type {
   BaseEntityId,
   Card,

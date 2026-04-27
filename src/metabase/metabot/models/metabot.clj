@@ -41,9 +41,13 @@
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])
 
+(defmethod serdes/storage-path "Metabot" [metabot _ctx]
+  [{:label "metabots"} {:label (:name metabot) :key (:entity_id metabot)}])
+
 (defmethod serdes/make-spec "Metabot" [_model-name opts]
   {:copy      [:name :description :entity_id :use_verified_content]
    :transform {:created_at    (serdes/date)
                :updated_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}})
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :created_at)} opts))}
+   :defaults  {:use_verified_content false}})

@@ -23,8 +23,7 @@ export const useTranslateContent = (): ContentTranslationFunction => {
   const dictionary = useListContentTranslations();
 
   const tc = useCallback<ContentTranslationFunction>(
-    <T = string | null | undefined>(msgid: T) =>
-      translateContentString<T>(dictionary || [], locale, msgid),
+    (msgid) => translateContentString(dictionary || [], locale, msgid),
     [locale, dictionary],
   );
 

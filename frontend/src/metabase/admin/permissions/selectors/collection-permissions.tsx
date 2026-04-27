@@ -15,14 +15,19 @@ import {
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+import type {
+  CollectionTreeItem,
+  ExpandedCollection,
+  State,
+} from "metabase/redux/store";
 import {
   getGroupNameLocalized,
   getGroupSortOrder,
   getSpecialGroupType,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
   CollectionId,
@@ -30,11 +35,6 @@ import type {
   CollectionPermissions,
   Group as GroupType,
 } from "metabase-types/api";
-import type {
-  CollectionTreeItem,
-  ExpandedCollection,
-  State,
-} from "metabase-types/store";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";

@@ -66,6 +66,7 @@
                                                       :document_id
                                                       :last_used_at
                                                       :name
+                                                      :query_type
                                                       :type
                                                       :view_count
                                                       :created_at

@@ -4,6 +4,7 @@ import type { CommandSection } from "./types";
 
 export const getAllCommandSections = (
   isMetabotEnabled: boolean,
+  metabotName: string = "Metabot",
 ): CommandSection[] => {
   return [
     {
@@ -12,7 +13,7 @@ export const getAllCommandSections = (
           ? ([
               {
                 icon: "metabot" as const,
-                label: t`Ask Metabot`,
+                label: t`Ask ${metabotName}`,
                 command: "metabot",
                 isAllowedAtPosition: (editor) =>
                   !editor.isActive("supportingText"),

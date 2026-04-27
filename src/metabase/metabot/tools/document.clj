@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.shared :as shared]
@@ -82,7 +83,8 @@
     (catch Exception e
       (ex-message e))))
 
-(mu/defn ^{:tool-name "document_schema_collect"}
+(mu/defn ^{:tool-name "document_schema_collect"
+           :scope     scope/agent-document-read}
   document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
 
@@ -91,7 +93,7 @@
 - Use this tool when an existing model or metric does not answer the user's question.
 - Do NOT use this tool if there is a model or metric that can answer the user's question
   unless the user is requesting SQL."
-  [_args :- [:maybe [:map {:closed true}]]]
+  [_args :- [:map {:closed true}]]
   (try
     (let [refs         (context-references)
           database-ids (referenced-database-ids refs)]
@@ -135,7 +137,8 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_sql_chart"}
+(mu/defn ^{:tool-name "document_construct_sql_chart"
+           :scope     scope/agent-document-create}
   document-construct-sql-chart-tool
   "Construct SQL-backed chart draft payload for document insertion."
   [{:keys [database_id name description analysis approach sql viz_settings]} :- sql-chart-schema]
@@ -180,18 +183,21 @@
   [:map {:closed true}
    [:name :string]
    [:description :string]
-   [:query :map]
+   [:source_entity [:map [:type :string] [:id :int]]]
+   [:program :map]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_model_chart"}
+(mu/defn ^{:tool-name "document_construct_model_chart"
+           :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
-  [{:keys [name description query viz_settings]} :- model-chart-schema]
+  [{:keys [name description source_entity program viz_settings]} :- model-chart-schema]
   (try
     (let [chart-type (get viz_settings :chart_type)
           result     (construct-tools/construct-notebook-query-tool
-                      {:query query
+                      {:source_entity source_entity
+                       :program program
                        :visualization {:chart_type chart-type}})
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)

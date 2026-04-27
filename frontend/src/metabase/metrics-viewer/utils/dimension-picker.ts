@@ -13,17 +13,15 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
-import { getDimensionIcon, getDimensionsByType } from "./tabs";
+import type { MetricSlot } from "./metric-slots";
+import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
 
 export interface AvailableDimension {
-  dimensionId: string;
-  label: string;
   icon: IconName;
-  sourceIds: MetricSourceId[];
-  tabType: MetricsViewerTabType;
   group?: DimensionGroup;
+  tabInfo: TabInfo;
 }
 
 export interface AvailableDimensionsResult {
@@ -44,7 +42,7 @@ interface DimensionEntry {
 function collectAllDimensionEntries(
   sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  existingTabIds: Set<string>,
+  existingTabDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
@@ -55,7 +53,7 @@ function collectAllDimensionEntries(
     }
 
     for (const [id, info] of getDimensionsByType(def)) {
-      if (existingTabIds.has(id)) {
+      if (existingTabDimensionIds.has(id)) {
         continue;
       }
 
@@ -96,7 +94,8 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
-  existingTabIds: Set<string>,
+  metricSlots: MetricSlot[],
+  existingTabDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
@@ -107,12 +106,24 @@ export function getAvailableDimensionsForPicker(
   const entries = collectAllDimensionEntries(
     sourceOrder,
     definitionsBySourceId,
-    existingTabIds,
+    existingTabDimensionIds,
   );
   const groups = groupBySource(entries);
   const loadedSourceCount = new Set(entries.map((entry) => entry.sourceId))
     .size;
   const hasMultipleSources = loadedSourceCount > 1;
+
+  const sourceIdToSlotIndices = metricSlots.reduce(
+    (acc, slot) => {
+      if (acc[slot.sourceId]) {
+        acc[slot.sourceId].push(slot.slotIndex);
+      } else {
+        acc[slot.sourceId] = [slot.slotIndex];
+      }
+      return acc;
+    },
+    {} as Record<MetricSourceId, number[]>,
+  );
 
   for (const group of groups) {
     const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
@@ -120,34 +131,48 @@ export function getAvailableDimensionsForPicker(
 
     if (hasMultipleSources && uniqueSources.length >= 2) {
       result.shared.push({
-        dimensionId: first.id,
-        label: first.label,
         icon: first.icon,
-        tabType: first.tabType,
-        sourceIds: uniqueSources,
         group: first.group,
+        tabInfo: {
+          type: first.tabType,
+          label: first.label,
+          dimensionMapping: Object.fromEntries(
+            group.flatMap((entry) =>
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
+          ),
+        },
       });
     } else {
       for (const entry of group) {
         const arr = (result.bySource[entry.sourceId] ??= []);
         arr.push({
-          dimensionId: entry.id,
-          label: entry.label,
           icon: entry.icon,
-          tabType: entry.tabType,
-          sourceIds: [entry.sourceId],
           group: entry.group,
+          tabInfo: {
+            type: entry.tabType,
+            label: entry.label,
+            dimensionMapping: Object.fromEntries(
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
+          },
         });
       }
     }
   }
 
   result.shared.sort((first, second) =>
-    first.label.localeCompare(second.label),
+    first.tabInfo.label.localeCompare(second.tabInfo.label),
   );
   for (const sourceId of sourceOrder) {
     result.bySource[sourceId]?.sort((first, second) =>
-      first.label.localeCompare(second.label),
+      first.tabInfo.label.localeCompare(second.tabInfo.label),
     );
   }
 
@@ -205,7 +230,7 @@ export function buildDimensionPickerSections({
         name: sectionName,
         items: dimensions.map((dimension) => ({
           ...dimension,
-          name: dimension.label,
+          name: dimension.tabInfo.label,
         })),
       });
       return;
@@ -218,7 +243,7 @@ export function buildDimensionPickerSections({
         name,
         items: groupDimensions.map((dimension) => ({
           ...dimension,
-          name: dimension.label,
+          name: dimension.tabInfo.label,
         })),
       });
     }

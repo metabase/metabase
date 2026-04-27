@@ -18,7 +18,7 @@
    old-source-type :- ::source-swap.schema/source-type
    new-source-type :- ::source-swap.schema/source-type]
   (cond-> []
-    (not= (:effective-type old-column) (:effective-type new-column))
+    (not (lib.types.isa/compatible-type? old-column new-column))
     (conj :column-type-mismatch)
 
     (and (= old-source-type :table)

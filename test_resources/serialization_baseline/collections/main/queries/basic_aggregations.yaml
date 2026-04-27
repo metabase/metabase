@@ -1,0 +1,255 @@
+name: Basic Aggregations
+entity_id: h5F2EjHsRd73Dqqh8sAtd
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - count
+      - lib/uuid: 11111111-1111-1111-1111-111111111111
+    - - sum
+      - lib/uuid: 22222222-2222-2222-2222-222222222222
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - avg
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - min
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - max
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - count
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - PRODUCT_ID
+    - - distinct
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - PRODUCT_ID
+    - - sum
+      - display-name: Total Revenue
+        name: total_revenue
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    breakout:
+    - - field
+      - temporal-unit: month
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    limit: 12
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {}
+        - 11111111-1111-1111-1111-111111111111
+    - - asc
+      - {}
+      - - aggregation
+        - {}
+        - 22222222-2222-2222-2222-222222222222
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - temporal-unit: month
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: month
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  lib/temporal-unit: month
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 1
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+- base_type: type/Float
+  display_name: Average of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 2
+  name: avg
+  source: aggregation
+  lib/deduplicated-name: avg
+  lib/desired-column-alias: avg
+  lib/original-name: avg
+  lib/source: source/aggregations
+  lib/source-column-alias: avg
+- base_type: type/Float
+  display_name: Min of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 3
+  name: min
+  source: aggregation
+  lib/deduplicated-name: min
+  lib/desired-column-alias: min
+  lib/original-name: min
+  lib/source: source/aggregations
+  lib/source-column-alias: min
+- base_type: type/Float
+  display_name: Max of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 4
+  name: max
+  source: aggregation
+  lib/deduplicated-name: max
+  lib/desired-column-alias: max
+  lib/original-name: max
+  lib/source: source/aggregations
+  lib/source-column-alias: max
+- base_type: type/Integer
+  display_name: Count of Product ID
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 5
+  name: count_2
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count_2
+  lib/desired-column-alias: count_2
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+- base_type: type/Integer
+  display_name: Distinct values of Product ID
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 6
+  name: count_3
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count_3
+  lib/desired-column-alias: count_3
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+- base_type: type/Float
+  display_name: Total Revenue
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 7
+  name: total_revenue
+  source: aggregation
+  lib/deduplicated-name: total_revenue
+  lib/desired-column-alias: total_revenue
+  lib/original-name: total_revenue
+  lib/source: source/aggregations
+  lib/source-column-alias: total_revenue
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: h5F2EjHsRd73Dqqh8sAtd
+  label: basic_aggregations
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

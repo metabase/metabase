@@ -6,7 +6,7 @@ import { type MouseEvent, type TouchEvent, forwardRef } from "react";
 // check useClickOutside hook in mantine
 // eslint-disable-next-line react/display-name
 export const MenuItem = forwardRef(
-  <C = "button",>(
+  <C = "button">(
     props: PolymorphicComponentProps<C, MenuItemProps>,
     ref: React.Ref<HTMLButtonElement>,
   ) => {

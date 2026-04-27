@@ -1,0 +1,21 @@
+name: ended_at
+display_name: Ended At
+created_at: '2023-11-13T18:40:43.716586Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_tasks]
+database_type: timestamptz
+base_type: type/DateTimeWithLocalTZ
+effective_type: type/DateTimeWithLocalTZ
+dimensions: []
+position: 5
+custom_position: 0
+database_position: 5
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_tasks, model: Table}
+- {id: ended_at, model: Field}
+database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

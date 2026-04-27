@@ -11,11 +11,15 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
-import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListTransformsQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -81,7 +85,15 @@ export const DatabaseRoutingSection = ({
   const userAttributeOptions =
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
-  const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const transformsQuery = useListTransformsQuery(
+    shouldHideSection ? skipToken : { "database-id": database.id },
+  );
+  const transforms = transformsQuery.data ?? [];
+  const hasTransforms = transforms.length > 0;
+
+  const disabledFeatMsg = getDisabledFeatureMessage(database, {
+    hasTransforms,
+  });
   const errMsg = getSelectErrorMessage({
     userAttribute,
     disabledFeatureMessage: disabledFeatMsg,

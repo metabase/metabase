@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import type { SetStateAction } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
-import { slugify } from "metabase/lib/formatting";
+import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,
@@ -16,7 +16,8 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
+import { slugify } from "metabase/utils/formatting";
+import type { DataSegregationStrategy, FieldId } from "metabase-types/api";
 
 import { useCreateTenantMutation } from "../../../api/tenants";
 
@@ -26,11 +27,15 @@ import { getIsolationFieldConfig } from "./isolation-field-config";
 
 export const CreateTenantsOnboardingStep = ({
   onTenantsCreated,
+  tenants,
+  onTenantsChange,
   selectedFieldIds,
   strategy,
   rlsColumnName,
 }: {
   onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+  tenants: CreatedTenantData[];
+  onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
   selectedFieldIds?: FieldId[];
   strategy?: DataSegregationStrategy | null;
   rlsColumnName?: string | null;
@@ -39,17 +44,16 @@ export const CreateTenantsOnboardingStep = ({
 
   const [createTenant, { isLoading }] = useCreateTenantMutation();
 
-  const [tenants, setTenants] = useState<CreatedTenantData[]>([
-    createEmptyTenant(1),
-  ]);
-
   const addTenantCard = useCallback(() => {
-    setTenants((prev) => [...prev, createEmptyTenant(prev.length + 1)]);
-  }, []);
+    onTenantsChange((prev) => [
+      ...prev,
+      createEmptyTenantDraft(prev.length + 1),
+    ]);
+  }, [onTenantsChange]);
 
   const updateTenantCard = useCallback(
     (index: number, field: keyof CreatedTenantData, value: string) => {
-      setTenants((prev) =>
+      onTenantsChange((prev) =>
         prev.map((tenant, i) => {
           if (i !== index) {
             return tenant;
@@ -66,12 +70,15 @@ export const CreateTenantsOnboardingStep = ({
         }),
       );
     },
-    [],
+    [onTenantsChange],
   );
 
-  const removeTenantCard = useCallback((index: number) => {
-    setTenants((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const removeTenantCard = useCallback(
+    (index: number) => {
+      onTenantsChange((prev) => prev.filter((_, i) => i !== index));
+    },
+    [onTenantsChange],
+  );
 
   const fieldConfig = getIsolationFieldConfig(strategy);
 
@@ -235,9 +242,3 @@ const TenantFormField = ({
     />
   </Stack>
 );
-
-const createEmptyTenant = (index: number): CreatedTenantData => ({
-  name: `Tenant ${index}`,
-  dataIsolationFieldValue: "",
-  slug: `tenant-${index}`,
-});

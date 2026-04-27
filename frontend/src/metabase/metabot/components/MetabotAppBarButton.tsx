@@ -1,13 +1,16 @@
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useMetabotName,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 
 import { trackMetabotChatOpened } from "../analytics";
+
+import { MetabotIcon } from "./MetabotIcon";
 
 interface MetabotAppBarButtonProps extends ActionIconProps {
   className?: string;
@@ -17,10 +20,11 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
+  const metabotName = useMetabotName();
 
-  if (!isMetabotEnabled) {
+  if (!canUseMetabot) {
     return null;
   }
 
@@ -32,7 +36,7 @@ export function MetabotAppBarButton({
     metabot.setVisible(!metabot.visible);
   };
 
-  const label = t`Chat with Metabot (${METAKEY}+E)`;
+  const label = t`Chat with ${metabotName} (${METAKEY}+E)`;
 
   return (
     <Tooltip label={label}>
@@ -48,7 +52,7 @@ export function MetabotAppBarButton({
         onClick={handleClick}
         {...rest}
       >
-        <Icon name="metabot" />
+        <MetabotIcon />
       </ActionIcon>
     </Tooltip>
   );

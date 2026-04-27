@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.transforms.write-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.tools.transforms.write :as transforms-write]))
+   [metabase.lib.core :as lib]
+   [metabase.metabot.tools.transforms.write :as transforms-write]
+   [metabase.test :as mt]))
 
 ;;; Edit Application Tests
 
@@ -9,17 +11,20 @@
   (testing "replace mode replaces entire content"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
-                  {:edit_action {:mode "replace"
+                  {:database_id (mt/id)
+                   :edit_action {:mode "replace"
                                  :new_content "SELECT * FROM users"}
                    :transform_name "Test Transform"
                    :memory-atom memory-atom})]
       (is (= "SELECT * FROM users"
-             (get-in result [:structured-output :transform :source :query])))))
+             (some-> (get-in result [:structured-output :transform :source :query])
+                     lib/raw-native-query)))))
 
   (testing "edit mode with single edit"
-    (let [existing-transform {:id 1
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT id FROM orders"}}
+                              :source {:query (lib/native-query mp "SELECT id FROM orders")}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           result (transforms-write/write-transform-sql
                   {:transform_id 1
@@ -28,12 +33,14 @@
                                           :new_string "customers"}]}
                    :memory-atom memory-atom})]
       (is (= "SELECT id FROM customers"
-             (get-in result [:structured-output :transform :source :query])))))
+             (some-> (get-in result [:structured-output :transform :source :query])
+                     lib/raw-native-query)))))
 
   (testing "edit mode with multiple edits"
-    (let [existing-transform {:id 1
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT col_a, col_b FROM table1"}}
+                              :source {:query (lib/native-query mp "SELECT col_a, col_b FROM table1")}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           result (transforms-write/write-transform-sql
                   {:transform_id 1
@@ -43,12 +50,14 @@
                                          {:old_string "table1" :new_string "table2"}]}
                    :memory-atom memory-atom})]
       (is (= "SELECT col_x, col_y FROM table2"
-             (get-in result [:structured-output :transform :source :query])))))
+             (some-> (get-in result [:structured-output :transform :source :query])
+                     lib/raw-native-query)))))
 
   (testing "edit mode fails when text not found"
-    (let [existing-transform {:id 1
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT * FROM users"}}
+                              :source (lib/native-query mp "SELECT * FROM users")}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -61,9 +70,10 @@
              :memory-atom memory-atom})))))
 
   (testing "edit mode fails for ambiguous matches without replace_all"
-    (let [existing-transform {:id 1
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT foo, foo FROM mytable"}}
+                              :source {:query (lib/native-query mp "SELECT foo, foo FROM mytable")}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -76,9 +86,10 @@
              :memory-atom memory-atom})))))
 
   (testing "edit mode with replace_all replaces all occurrences"
-    (let [existing-transform {:id 1
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT xyz, xyz, xyz FROM mytable"}}
+                              :source {:query (lib/native-query mp "SELECT xyz, xyz, xyz FROM mytable")}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           result (transforms-write/write-transform-sql
                   {:transform_id 1
@@ -88,7 +99,8 @@
                                           :replace_all true}]}
                    :memory-atom memory-atom})]
       (is (= "SELECT abc, abc, abc FROM mytable"
-             (get-in result [:structured-output :transform :source :query]))))))
+             (some-> (get-in result [:structured-output :transform :source :query])
+                     lib/raw-native-query))))))
 
 ;;; Transform Creation Tests
 
@@ -100,10 +112,12 @@
                                  :new_content "SELECT 1"}
                    :transform_name "New Transform"
                    :transform_description "A test transform"
+                   :database_id (mt/id)
                    :memory-atom memory-atom})]
       (is (= "New Transform" (get-in result [:structured-output :transform :name])))
       (is (= "A test transform" (get-in result [:structured-output :transform :description])))
-      (is (= "SELECT 1" (get-in result [:structured-output :transform :source :query]))))))
+      (is (= "SELECT 1" (some-> (get-in result [:structured-output :transform :source :query])
+                                lib/raw-native-query))))))
 
 ;;; Data Parts Tests
 
@@ -112,6 +126,7 @@
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
                   {:edit_action {:mode "replace" :new_content "SELECT 1"}
+                   :database_id (mt/id)
                    :transform_name "Test"
                    :memory-atom memory-atom})]
       (is (contains? result :data-parts))
@@ -125,18 +140,21 @@
 
 (deftest memory-storage-test
   (testing "stores updated transform in memory when transform_id provided"
-    (let [existing-transform {:id 1 :name "Existing" :source {:query "SELECT 1"}}
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "SELECT 1")}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           _ (transforms-write/write-transform-sql
              {:transform_id 1
               :edit_action {:mode "replace" :new_content "SELECT 2"}
               :memory-atom memory-atom})]
-      (is (= "SELECT 2" (get-in @memory-atom [:state :transforms "1" :source :query])))))
+      (is (= "SELECT 2" (some-> (get-in @memory-atom [:state :transforms "1" :source :query])
+                                lib/raw-native-query)))))
 
   (testing "does not store in memory when no transform_id"
     (let [memory-atom (atom {:state {:transforms {}}})
           _ (transforms-write/write-transform-sql
              {:edit_action {:mode "replace" :new_content "SELECT 1"}
+              :database_id (mt/id)
               :transform_name "New"
               :memory-atom memory-atom})]
       (is (empty? (get-in @memory-atom [:state :transforms]))))))
@@ -155,10 +173,13 @@
              :memory-atom memory-atom})))))
 
   (testing "fails when edit_action invalid"
-    (let [memory-atom (atom {:state {}})]
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "select 1")}}
+          memory-atom (atom {:state {:transforms {"1" existing-transform}}})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid edit_action"
            (transforms-write/write-transform-sql
-            {:edit_action {:mode "invalid"}
+            {:transform_id 1
+             :edit_action {:mode "invalid"}
              :memory-atom memory-atom}))))))

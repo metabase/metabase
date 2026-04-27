@@ -2,5 +2,254 @@
  ["src" "resources"]
 
  :deps
- {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.2.0"
-                                        :exclusions [org.apache.commons/commons-lang3]}}}
+ {;; Hive JDBC driver (regular, not standalone uber-jar) so we can control
+  ;; transitive dependency versions for security scanning.
+  ;; The published POM is broken (HIVE-28455) so all sub-modules must be
+  ;; declared explicitly, each with exclusions to avoid pulling in the
+  ;; massive Hadoop/Hive transitive dependency tree.
+  org.apache.hive/hive-jdbc                          {:mvn/version "4.2.0"}
+
+  org.apache.hive/hive-common                        {:mvn/version "4.2.0"
+                                                      :exclusions [com.fasterxml.jackson.core/jackson-databind
+                                                                   com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
+                                                                   com.tdunning/json
+                                                                   commons-cli/commons-cli
+                                                                   io.dropwizard.metrics/metrics-core
+                                                                   io.dropwizard.metrics/metrics-json
+                                                                   io.dropwizard.metrics/metrics-jvm
+                                                                   io.opentelemetry/opentelemetry-api
+                                                                   io.opentelemetry/opentelemetry-exporter-otlp
+                                                                   io.opentelemetry/opentelemetry-sdk
+                                                                   javax.servlet/javax.servlet-api
+                                                                   javolution/javolution
+                                                                   joda-time/joda-time
+                                                                   net.sf.jpam/jpam
+                                                                   org.apache.ant/ant
+                                                                   org.apache.avro/avro
+                                                                   org.apache.commons/commons-compress
+                                                                   org.apache.commons/commons-lang3
+                                                                   org.apache.commons/commons-math3
+                                                                   org.apache.hive/hive-classification
+                                                                   org.apache.hive/hive-shims
+                                                                   org.apache.hive/hive-standalone-metastore-common
+                                                                   org.apache.hive/hive-storage-api
+                                                                   org.apache.logging.log4j/log4j-1.2-api
+                                                                   org.apache.logging.log4j/log4j-slf4j-impl
+                                                                   org.apache.logging.log4j/log4j-web
+                                                                   org.apache.orc/orc-core
+                                                                   org.apache.tez/tez-api
+                                                                   org.eclipse.jetty/jetty-http
+                                                                   org.eclipse.jetty/jetty-rewrite
+                                                                   org.eclipse.jetty/jetty-server
+                                                                   org.eclipse.jetty/jetty-servlet
+                                                                   org.eclipse.jetty/jetty-webapp
+                                                                   org.fusesource.jansi/jansi
+                                                                   org.jline/jline
+                                                                   org.mockito/mockito-core]}
+
+  org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.0"
+                                                      :exclusions [com.google.guava/guava
+                                                                   com.fasterxml.jackson.core/jackson-databind
+                                                                   com.github.ben-manes.caffeine/caffeine
+                                                                   com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
+                                                                   com.google.protobuf/protobuf-java
+                                                                   com.zaxxer/HikariCP
+                                                                   io.dropwizard.metrics/metrics-core
+                                                                   io.dropwizard.metrics/metrics-json
+                                                                   io.dropwizard.metrics/metrics-jvm
+                                                                   io.grpc/grpc-netty-shaded
+                                                                   io.grpc/grpc-protobuf
+                                                                   io.grpc/grpc-stub
+                                                                   javax.annotation/javax.annotation-api
+                                                                   javolution/javolution
+                                                                   org.antlr/ST4
+                                                                   org.apache.commons/commons-jexl3
+                                                                   org.apache.commons/commons-lang3
+                                                                   org.apache.curator/curator-framework
+                                                                   org.apache.curator/curator-recipes
+                                                                   org.apache.derby/derby
+                                                                   org.apache.hive/hive-storage-api
+                                                                   org.apache.orc/orc-core
+                                                                   org.apache.thrift/libfb303
+                                                                   org.apache.thrift/libthrift
+                                                                   org.springframework.ldap/spring-ldap-core]}
+
+  org.apache.hive/hive-service                       {:mvn/version "4.2.0"
+                                                      :exclusions [org.apache.hive/hive-common
+                                                                   org.apache.hive/hive-exec
+                                                                   org.apache.hive/hive-metastore
+                                                                   org.apache.hive/hive-service-rpc
+                                                                   org.apache.hive/hive-llap-server
+                                                                   org.apache.hive/hive-hplsql
+                                                                   com.nimbusds/nimbus-jose-jwt
+                                                                   commons-codec/commons-codec
+                                                                   commons-cli/commons-cli
+                                                                   net.sf.jpam/jpam
+                                                                   org.eclipse.jetty/jetty-server
+                                                                   org.eclipse.jetty/jetty-servlet
+                                                                   org.eclipse.jetty/apache-jsp
+                                                                   javax.servlet/javax.servlet-api
+                                                                   org.apache.thrift/libfb303
+                                                                   org.apache.thrift/libthrift
+                                                                   org.apache.curator/curator-framework
+                                                                   org.apache.curator/curator-client
+                                                                   org.apache.curator/curator-recipes
+                                                                   org.pac4j/pac4j-saml-opensamlv3
+                                                                   org.bouncycastle/bcprov-jdk18on
+                                                                   org.apache.santuario/xmlsec
+                                                                   org.springframework/spring-core
+                                                                   org.springframework.ldap/spring-ldap-core
+                                                                   org.jamon/jamon-runtime
+                                                                   io.opentelemetry/opentelemetry-api
+                                                                   io.opentelemetry/opentelemetry-exporter-logging
+                                                                   io.opentelemetry/opentelemetry-exporter-otlp
+                                                                   org.apache.hadoop/hadoop-common
+                                                                   org.apache.hadoop/hadoop-mapreduce-client-core]}
+
+  org.apache.hive/hive-hplsql                        {:mvn/version "4.2.0"
+                                                      :exclusions [commons-cli/commons-cli
+                                                                   commons-io/commons-io
+                                                                   org.antlr/antlr4-runtime
+                                                                   org.apache.hive/hive-exec]}
+
+  org.apache.hive/hive-llap-client                   {:mvn/version "4.2.0"
+                                                      :exclusions [org.apache.commons/commons-lang3
+                                                                   org.apache.curator/apache-curator
+                                                                   org.apache.curator/curator-framework
+                                                                   org.apache.hive/hive-common
+                                                                   org.apache.hive/hive-llap-common
+                                                                   org.apache.hive/hive-serde]}
+
+  org.apache.hive/hive-serde                         {:mvn/version "4.2.0"
+                                                      :exclusions [com.carrotsearch/hppc
+                                                                   com.esri.geometry/esri-geometry-api
+                                                                   com.google.code.findbugs/jsr305
+                                                                   com.google.flatbuffers/flatbuffers-java
+                                                                   com.opencsv/opencsv
+                                                                   commons-codec/commons-codec
+                                                                   org.apache.avro/avro
+                                                                   org.apache.hive/hive-common
+                                                                   org.apache.hive/hive-service-rpc
+                                                                   org.apache.hive/hive-shims
+                                                                   org.apache.hive/hive-storage-api
+                                                                   org.apache.parquet/parquet-hadoop-bundle
+                                                                   org.apache.thrift/libthrift]}
+
+  org.apache.hive/hive-storage-api                   {:mvn/version "4.2.0"
+                                                      :exclusions [org.slf4j/slf4j-api]}
+
+  org.apache.hive/hive-shims                         {:mvn/version "4.2.0"
+                                                      :exclusions [org.apache.hive.shims/hive-shims-0.23
+                                                                   org.apache.hive.shims/hive-shims-common]}
+
+  org.apache.hive.shims/hive-shims-common            {:mvn/version "4.2.0"
+                                                      :exclusions [org.apache.curator/curator-framework
+                                                                   org.apache.thrift/libthrift]}
+
+  org.apache.hive.shims/hive-shims-0.23              {:mvn/version "4.2.0"
+                                                      :exclusions [org.apache.hadoop/hadoop-yarn-server-resourcemanager
+                                                                   org.apache.hive.shims/hive-shims-common]}
+
+  org.apache.hive/hive-service-rpc                   {:mvn/version "4.2.0"
+                                                      :exclusions [commons-cli/commons-cli
+                                                                   commons-codec/commons-codec
+                                                                   org.apache.hive/hive-classification
+                                                                   org.apache.thrift/libfb303
+                                                                   org.apache.thrift/libthrift]}
+
+  org.apache.hadoop/hadoop-common                    {:mvn/version "3.4.1"
+                                                      :exclusions [org.apache.hadoop/hadoop-annotations
+                                                                   com.google.guava/guava
+                                                                   commons-cli/commons-cli
+                                                                   org.apache.commons/commons-math3
+                                                                   org.apache.httpcomponents/httpclient
+                                                                   commons-codec/commons-codec
+                                                                   commons-io/commons-io
+                                                                   commons-net/commons-net
+                                                                   commons-collections/commons-collections
+                                                                   javax.servlet/javax.servlet-api
+                                                                   jakarta.activation/jakarta.activation-api
+                                                                   org.eclipse.jetty/jetty-server
+                                                                   org.eclipse.jetty/jetty-util
+                                                                   org.eclipse.jetty/jetty-servlet
+                                                                   org.eclipse.jetty/jetty-webapp
+                                                                   javax.servlet.jsp/jsp-api
+                                                                   com.sun.jersey/jersey-core
+                                                                   com.sun.jersey/jersey-servlet
+                                                                   com.sun.jersey/jersey-server
+                                                                   com.github.pjfanning/jersey-json
+                                                                   org.codehaus.jettison/jettison
+                                                                   ch.qos.reload4j/reload4j
+                                                                   commons-beanutils/commons-beanutils
+                                                                   org.apache.commons/commons-configuration2
+                                                                   org.apache.commons/commons-lang3
+                                                                   org.apache.commons/commons-text
+                                                                   org.slf4j/slf4j-api
+                                                                   org.slf4j/slf4j-reload4j
+                                                                   org.apache.avro/avro
+                                                                   com.google.re2j/re2j
+                                                                   com.google.code.gson/gson
+                                                                   org.apache.hadoop/hadoop-auth
+                                                                   com.jcraft/jsch
+                                                                   org.apache.curator/curator-client
+                                                                   org.apache.curator/curator-recipes
+                                                                   com.google.code.findbugs/jsr305
+                                                                   org.apache.zookeeper/zookeeper
+                                                                   io.netty/netty-handler
+                                                                   io.netty/netty-transport-native-epoll
+                                                                   io.dropwizard.metrics/metrics-core
+                                                                   org.apache.commons/commons-compress
+                                                                   org.bouncycastle/bcprov-jdk18on
+                                                                   org.apache.kerby/kerb-core
+                                                                   com.fasterxml.jackson.core/jackson-databind
+                                                                   org.codehaus.woodstox/stax2-api
+                                                                   com.fasterxml.woodstox/woodstox-core
+                                                                   dnsjava/dnsjava
+                                                                   org.xerial.snappy/snappy-java]}
+
+  org.apache.hadoop/hadoop-auth                      {:mvn/version "3.4.1"
+                                                      :exclusions [org.slf4j/slf4j-api
+                                                                   commons-codec/commons-codec
+                                                                   ch.qos.reload4j/reload4j
+                                                                   org.slf4j/slf4j-reload4j
+                                                                   org.apache.httpcomponents/httpclient
+                                                                   com.nimbusds/nimbus-jose-jwt
+                                                                   org.apache.zookeeper/zookeeper
+                                                                   io.dropwizard.metrics/metrics-core
+                                                                   org.apache.curator/curator-framework
+                                                                   org.apache.kerby/kerb-core
+                                                                   org.apache.kerby/kerb-util
+                                                                   org.apache.hadoop.thirdparty/hadoop-shaded-guava]}
+
+  ;; Third-party deps required by hive-jdbc at runtime, pinned at safe versions.
+  org.apache.thrift/libthrift                        {:mvn/version "0.16.0"
+                                                      :exclusions [org.apache.commons/commons-lang3]}
+  org.apache.httpcomponents/httpclient               {:mvn/version "4.5.14"
+                                                      :exclusions [org.apache.commons/commons-lang3]}
+  org.apache.httpcomponents/httpcore                  {:mvn/version "4.4.16"}
+  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.6"
+                                                      :exclusions [ch.qos.logback/logback-classic
+                                                                   ch.qos.logback/logback-core
+                                                                   org.slf4j/slf4j-log4j12]}
+  org.apache.curator/curator-framework               {:mvn/version "5.9.0"
+                                                      :exclusions [org.apache.zookeeper/zookeeper]}
+
+  ;; Commons — pinned to override old transitive versions from httpclient/zookeeper.
+  ;; commons-io 2.11.0 has CVE-2024-47554 (ReDoS).
+  commons-io/commons-io                              {:mvn/version "2.18.0"}
+  commons-codec/commons-codec                        {:mvn/version "1.17.1"}
+  commons-logging/commons-logging                    {:mvn/version "1.3.5"}
+
+  ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
+  com.google.guava/guava                             {:mvn/version "33.5.0-jre"}
+
+  ;; Netty — pinned explicitly at safe versions for security scanning.
+  ;; Driver JARs are scanned individually so these must be declared directly.
+  io.netty/netty-common                              {:mvn/version "4.2.12.Final"}
+  io.netty/netty-handler                             {:mvn/version "4.2.12.Final"}
+  io.netty/netty-transport                           {:mvn/version "4.2.12.Final"}
+  io.netty/netty-buffer                              {:mvn/version "4.2.12.Final"}
+  io.netty/netty-codec                               {:mvn/version "4.2.12.Final"}
+  io.netty/netty-resolver                            {:mvn/version "4.2.12.Final"}
+  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.12.Final"}
+  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.12.Final"}}}

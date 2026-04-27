@@ -3,6 +3,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -146,6 +147,7 @@
                    [:chart_id :string]]]]])
 
 (mu/defn ^{:tool-name    "navigate_user"
+           :scope        scope/agent-viz-navigate
            :capabilities #{:frontend-navigate-user-v1}}
   navigate-user-tool
   "Navigate the user to a specific page or entity in Metabase.

@@ -51,7 +51,7 @@
                  :native   "SELECT * FROM VENUES;"}]}))
 
 (deftest ^:parallel pipeline-joins-test
-  ;; this isn't meant to be 100% correct pMBQL -- `->pipeline` is just supposed to put stuff in the generally correct
+  ;; this isn't meant to be 100% correct MBQL 5 -- `->pipeline` is just supposed to put stuff in the generally correct
   ;; shape, just to make sure we have `:stages` and stuff looking the way they should. [[metabase.lib.convert]] uses
   ;; this as part of what it does
   (is (=? {:lib/type :mbql/query

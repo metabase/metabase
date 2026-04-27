@@ -6,12 +6,10 @@ import {
   useListSubscriptionsQuery,
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
 import { color } from "metabase/ui/colors";
+
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -20,12 +18,12 @@ export const Pulses = createEntity({
   nameOne: "pulse",
   path: "/api/pulse",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListSubscriptionsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

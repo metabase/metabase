@@ -271,7 +271,7 @@ export const ParameterValueWidget = ({
               className={CS.mr1}
               style={
                 isStringParameter(parameter)
-                  ? { maxWidth: "190px" }
+                  ? { maxWidth: "190px", overflow: "hidden" }
                   : {
                       overflow: "hidden",
                       textOverflow: "ellipsis",

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { displayNameForColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/utils/formatting";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail";
 import {
   columnSettings,

@@ -1,12 +1,15 @@
 (ns metabase.metabot.context
   (:require
    [clojure.java.io :as io]
+   [malli.core]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   ^{:clj-kondo/ignore [:discouraged-namespace :metabase/modules]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
@@ -45,8 +48,63 @@
         (.newLine w)
         (.newLine w)))))
 
+(def item-types-qc
+  "Item types types storing query and chart configs."
+  #{"adhoc"
+    "question"
+    "metric"
+    "model"})
+
+(def item-types
+  "Allowed values for the `:type` key of `:user_is_viewing` item."
+  (into item-types-qc
+        #{"document"
+          "dashboard"
+          "transform"
+          "code_editor"}))
+
+(def ^:private item-type-schema
+  "Schema for the `:type` key of `:user_is_viewing` item."
+  (into [:enum] item-types))
+
+(def DefaultItemSchema
+  "Default schema of viewing context item."
+  [:map
+   [:type item-type-schema]
+   [:query
+    {:optional true}
+    [:or
+     ::lib.schema/query
+     ::mbql.s/Query]]])
+
+(def QcItemSchema
+  "Schema viewing context item with query and charts."
+  [:map
+   [:type (into [:enum] item-types-qc)]
+   [:query
+    {:optional true}
+    [:or
+     ::lib.schema/query
+     ::mbql.s/Query]]
+   [:chart_configs
+    {:optional true}
+    [:vector
+     [:map
+      [:query
+       {:optional true}
+       [:or
+        ::lib.schema/query
+        ::mbql.s/Query]]]]]])
+
+(def ViewingItemSchema
+  "Schema of user is viewing item."
+  [:or QcItemSchema DefaultItemSchema])
+
 (mr/def ::context
-  [:map-of :keyword :any])
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
@@ -102,8 +160,8 @@
       [])))
 
 (defn- mbql-source-table-ids
-  "Given a context item with an MBQL query, return [database-id [table-id ...]] if it has
-  source-table references, or nil otherwise. Handles both MLv2/pMBQL and legacy formats."
+  "Given a context item with an MBQL query, return [database-id [table-id ...]] if it has source-table references, or
+  nil otherwise. Handles both MBQL 4 (legacy) and MBQL 5 formats."
   [item]
   (when (= "adhoc" (:type item))
     (let [query       (:query item)

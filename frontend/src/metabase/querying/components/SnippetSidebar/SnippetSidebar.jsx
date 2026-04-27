@@ -11,7 +11,6 @@ import CS from "metabase/css/core/index.css";
 import { Search } from "metabase/entities/search";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
-import { connect } from "metabase/lib/redux";
 import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -19,6 +18,7 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
+import { connect } from "metabase/redux";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "./SnippetRow";

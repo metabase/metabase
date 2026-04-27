@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
-import { useDispatch } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
 
 import NewDatasetModalS from "./NewDatasetModal.module.css";

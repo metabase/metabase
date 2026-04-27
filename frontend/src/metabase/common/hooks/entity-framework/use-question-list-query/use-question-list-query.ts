@@ -13,7 +13,7 @@ import type { ListCardsRequest } from "metabase-types/api";
 export const useQuestionListQuery = (
   props: UseEntityListQueryProps<ListCardsRequest> = {},
 ): UseEntityListQueryResult<Question> => {
-  return useEntityListQuery(props, {
+  return useEntityListQuery<Question, ListCardsRequest>(props, {
     fetchList: Questions.actions.fetchList,
     getList: Questions.selectors.getList,
     getLoading: Questions.selectors.getLoading,

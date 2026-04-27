@@ -96,9 +96,21 @@
 
 ;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
 ;; once rather than every time
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants?])} session-with-id-query
+(defn- oldest-allowed-expr
+  "Build a database-specific expression for `NOW() - interval`."
+  [db-type amount unit]
+  (case db-type
+    :postgres [:- [:raw "current_timestamp"]
+               [:raw (format "INTERVAL '%d %s'" amount (name unit))]]
+    :h2       [:dateadd (h2x/literal (name unit))
+               [:inline (- amount)]
+               :%now]
+    :mysql    [:date_add :%now
+               [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
+
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
   (memoize
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants?]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
@@ -108,27 +120,19 @@
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
                             [:tenant] [:= :tenant.id :user.tenant_id]]
-                :where     [:and
-                            (if enable-tenants?
-                              [:or [:= :tenant.id nil] :tenant.is_active]
-                              [:= :tenant.id nil])
-                            [:= :user.is_active true]
-                            [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
-                            (let [oldest-allowed (case db-type
-                                                   :postgres [:-
-                                                              [:raw "current_timestamp"]
-                                                              [:raw (format "INTERVAL '%d minute'" max-age-minutes)]]
-                                                   :h2       [:dateadd
-                                                              (h2x/literal "minute")
-                                                              [:inline (- max-age-minutes)]
-                                                              :%now]
-                                                   :mysql    [:date_add
-                                                              :%now
-                                                              [:raw (format "INTERVAL -%d minute" max-age-minutes)]])]
-                              [:> :session.created_at oldest-allowed])
-                            [:= :session.anti_csrf_token (case session-type
-                                                           :normal         nil
-                                                           :full-app-embed [:raw "?"])]]
+                :where     (into [:and
+                                  (if enable-tenants?
+                                    [:or [:= :tenant.id nil] :tenant.is_active]
+                                    [:= :tenant.id nil])
+                                  [:= :user.is_active true]
+                                  [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
+                                  [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
+                                  [:= :session.anti_csrf_token (case session-type
+                                                                 :normal         nil
+                                                                 :full-app-embed [:raw "?"])]]
+                                 (when session-timeout-seconds
+                                   [[:> [:coalesce :session.last_active_at :session.created_at]
+                                     (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -179,15 +183,17 @@
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
-    (let [sql    (session-with-id-query (mdb/db-type)
-                                        (config/config-int :max-session-age)
-                                        (if (seq anti-csrf-token) :full-app-embed :normal)
-                                        (premium-features/enable-advanced-permissions?)
-                                        (and (premium-features/enable-tenants?)
-                                             (setting/get :use-tenants)))
-          params (concat [session-key (session/hash-session-key session-key)]
-                         (when (seq anti-csrf-token)
-                           [anti-csrf-token]))]
+    (let [timeout (request/enabled-session-timeout-seconds)
+          sql     (session-with-id-query (mdb/db-type)
+                                         (config/config-int :max-session-age)
+                                         (if (seq anti-csrf-token) :full-app-embed :normal)
+                                         (premium-features/enable-advanced-permissions?)
+                                         (and (premium-features/enable-tenants?)
+                                              (setting/get :use-tenants))
+                                         timeout)
+          params  (concat [session-key (session/hash-session-key session-key)]
+                          (when (seq anti-csrf-token)
+                            [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
@@ -277,6 +283,24 @@
       (handler request respond raise))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         session activity tracking                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- maybe-update-session-activity!
+  "Update the `last_active_at` column for the session identified by `session-key`, throttled to avoid a DB write on
+   every request. Uses raw SQL to bypass the Session model's no-update restriction."
+  [session-key]
+  (when (request/enabled-session-timeout-seconds)
+    (let [hashed (session/hash-session-key session-key)]
+      (when (session/record-session-activity-update! hashed)
+        (try
+          (t2/query-one {:update (t2/table-name :model/Session)
+                         :set    {:last_active_at :%now}
+                         :where  [:= :key_hashed hashed]})
+          (catch Exception e
+            (log/warn e "Failed to update session last_active_at")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -301,5 +325,9 @@
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
+                 ;; Update last_active_at for server-side timeout enforcement
+                 (when-let [session-key (:metabase-session-key request)]
+                   (when (:metabase-user-id request)
+                     (maybe-update-session-activity! session-key)))
                  (respond (reset-session-timeout* request response request-time)))
                raise))))

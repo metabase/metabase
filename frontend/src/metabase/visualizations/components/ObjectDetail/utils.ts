@@ -4,7 +4,7 @@ import {
   isImplicitDeleteAction,
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
-import { formatValue, singularize } from "metabase/lib/formatting";
+import { formatValue, singularize } from "metabase/utils/formatting";
 import type Question from "metabase-lib/v1/Question";
 import { canRunAction } from "metabase-lib/v1/actions/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -121,7 +121,7 @@ export const getIdValue = ({
 };
 
 export function getSingleResultsRow(data: DatasetData) {
-  return data.rows.length === 1 ? data.rows[0] : null;
+  return data.rows.length === 1 ? data.rows[0] : undefined;
 }
 
 export const getSinglePKIndex = (cols: DatasetColumn[]) => {

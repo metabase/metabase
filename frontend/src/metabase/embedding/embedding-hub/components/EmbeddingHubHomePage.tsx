@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { CustomHomePageModal } from "metabase/home/components/CustomHomePageModal";
 import { dismissEmbeddingHomepage } from "metabase/home/components/EmbedHomepage/actions";
 import { MetabotGreeting } from "metabase/home/components/HomeGreeting";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { ActionIcon, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 
 import { EmbeddingHub } from "./EmbeddingHub";

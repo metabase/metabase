@@ -19,6 +19,7 @@ export * from "./dataset";
 export * from "./dependencies";
 export * from "./document";
 export * from "./email";
+export * from "./embedding-theme";
 export * from "./entity-id";
 export * from "./field";
 export * from "./metric";
@@ -44,6 +45,7 @@ export * from "./remote-sync";
 export * from "./revision";
 export * from "./schema";
 export * from "./search";
+export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./settings";
@@ -64,7 +66,6 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
-export * from "./workspace";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

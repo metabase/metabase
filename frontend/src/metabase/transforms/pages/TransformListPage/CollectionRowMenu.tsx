@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { useUpdateCollectionMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { EditTransformCollectionModal } from "metabase/transforms/components/EditTransformCollectionModal";
 import { ActionIcon, Box, Icon, Menu } from "metabase/ui";

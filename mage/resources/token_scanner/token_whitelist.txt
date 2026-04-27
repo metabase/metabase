@@ -18,3 +18,6 @@ eyJkYXRhc2V0X3F1ZXJ5Ijp7ImxpYi90eXBlIjoibWJxbC9xdWVyeSIsInN0YWdlcyI6W3sic291cmNl
 
 # invalid jwt token for tests
 eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIn0.invalid-signature
+
+# Used in storybook SdkError.stories.tsx
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjF9LCJwYXJhbXMiOnt9LCJleHAiOjE3NzQ2MDkyMDksImlhdCI6MTc3NDYwOTE5OX0.-S3eLFi_XZeb9ltaorP7_k52fXW_jhtb1oG-BuOVSWw
