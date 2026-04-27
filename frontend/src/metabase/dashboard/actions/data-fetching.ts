@@ -775,10 +775,40 @@ export const fetchDashboardCardData =
         return;
       }
 
+      // Build the cached "dataset" for an errored card:
+      //   - lift `error_type` / `error_is_curated` to the top level so the
+      //     curated/permission branches in `getDashcardResultsError` fire
+      //   - keep the error message/payload under `.error`, matching the
+      //     per-card path (`fetchDataOrError` returns `{ error }` on 5xx);
+      //     the generic-error branch keys off `dataset.error` being truthy
+      //   - DO NOT spread the raw error map: it carries a `data` field
+      //     (QP error context) that would land in the Dataset's `.data` slot
+      //     and crash visualization code that does `data.cols.map(…)`
+      const buildErrorResult = (
+        error: {
+          error_type?: unknown;
+          error_is_curated?: unknown;
+        } & Record<string, unknown>,
+      ) => {
+        const { error_type, error_is_curated } = error;
+        return {
+          error,
+          ...(error_type != null && { error_type }),
+          ...(error_is_curated != null && { error_is_curated }),
+        } as unknown as Dataset;
+      };
+
       const dispatchBatchCardResult = (
         dashcardId: DashCardId,
         cardId: CardId,
-        payload: { result?: Dataset; error?: unknown },
+        payload:
+          | { result: Dataset }
+          | {
+              error: {
+                error_type?: unknown;
+                error_is_curated?: unknown;
+              } & Record<string, unknown>;
+            },
       ) => {
         const key = `${dashcardId},${cardId}` as const;
         const current = cardDataCancelDeferreds[key];
@@ -794,9 +824,9 @@ export const fetchDashboardCardData =
             dashcard_id: dashcardId,
             card_id: cardId,
             result:
-              payload.error !== undefined
-                ? (payload.error as Dataset)
-                : payload.result!,
+              "error" in payload
+                ? buildErrorResult(payload.error)
+                : payload.result,
           }),
         );
         completedCount++;
@@ -807,11 +837,12 @@ export const fetchDashboardCardData =
         onCardResult: (dashcardId, cardId, result) =>
           dispatchBatchCardResult(dashcardId, cardId, { result }),
         onCardError: (dashcardId, cardId, error) =>
-          // Pass the error payload directly (not wrapped in `{error}`) so
-          // `error_is_curated`, `error_type`, etc. sit at the top level of the
-          // cached dataset for `getDashcardResultsError` to surface a curated
-          // message.
-          dispatchBatchCardResult(dashcardId, cardId, { error }),
+          dispatchBatchCardResult(dashcardId, cardId, {
+            error: error as {
+              error_type?: unknown;
+              error_is_curated?: unknown;
+            } & Record<string, unknown>,
+          }),
         onComplete: () => {
           clearBatchDeferreds();
           batchFetchAbortController = null;
