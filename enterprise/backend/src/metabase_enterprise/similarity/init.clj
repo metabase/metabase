@@ -1,8 +1,14 @@
 (ns metabase-enterprise.similarity.init
-  "Side-effect loads for the polymorphic similarity graph module. Phase 1
-   only registers Toucan2 models and the view-name registry; later phases add
-   scorers, fusion, an API, Quartz tasks, and event hooks."
+  "Side-effect loads for the polymorphic similarity graph module. Registers
+   Toucan2 models and view scorers; Quartz scheduling and event hooks land in
+   Phase 10."
   (:require
    [metabase-enterprise.similarity.models.similar-edge]
    [metabase-enterprise.similarity.models.similar-edge-status]
-   [metabase-enterprise.similarity.views]))
+   [metabase-enterprise.similarity.runner]
+   [metabase-enterprise.similarity.scorer]
+   [metabase-enterprise.similarity.views]
+   ;; View namespaces register themselves on load.
+   [metabase-enterprise.similarity.views.co-dashboard]
+   [metabase-enterprise.similarity.views.direct-dependency]
+   [metabase-enterprise.similarity.views.source-table-jaccard]))
