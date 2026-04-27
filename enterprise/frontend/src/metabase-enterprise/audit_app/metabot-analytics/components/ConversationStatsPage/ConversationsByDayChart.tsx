@@ -3,12 +3,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  Query,
-  TableMetadata,
-} from "metabase-lib";
+import { Skeleton } from "metabase/ui";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -26,6 +22,7 @@ import {
   getMetricSeriesSettings,
   joinGroupMembers,
 } from "./query-utils";
+import type { ChartDataSources, ChartInnerProps, ChartProps } from "./types";
 
 type BucketName = "day" | "hour";
 
@@ -70,14 +67,28 @@ const TITLES: Record<BucketName, Record<UsageStatsMetric, string>> = {
   },
 };
 
-type Props = StatsFilters & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
-  groupMembersTable: TableMetadata | CardMetadata;
-  onDimensionClick?: (value: unknown) => void;
-};
-
 export function ConversationsByDayChart({
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
+  return (
+    <ConversationsByDayChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsByDayChartInner({
   provider,
   table,
   groupMembersTable,
@@ -86,7 +97,8 @@ export function ConversationsByDayChart({
   groupId,
   metric,
   onDimensionClick,
-}: Props) {
+  h,
+}: ChartInnerProps) {
   const bucketName: BucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
 
   const query = useMemo(
@@ -126,19 +138,15 @@ export function ConversationsByDayChart({
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="area"
-      h={350}
+      h={h}
       otherLabel={t`Other`}
       onDimensionClick={onDimensionClick}
     />
   );
 }
 
-type BuildQueryOpts = StatsFilters & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
-  groupMembersTable: TableMetadata | CardMetadata;
-  bucketName: BucketName;
-};
+type BuildQueryOpts = StatsFilters &
+  ChartDataSources & { bucketName: BucketName };
 
 function buildTimeseriesBreakoutQuery({
   provider,

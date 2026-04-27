@@ -1,12 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type {
-  CardMetadata,
-  MetadataProvider,
-  Query,
-  TableMetadata,
-} from "metabase-lib";
+import { Skeleton } from "metabase/ui";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
@@ -14,7 +10,6 @@ import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 import { BreakoutChartCard } from "./BreakoutChartCard";
 import { toBreakoutRawSeries } from "./breakout-raw-series";
 import {
-  type StatsFilters,
   type UsageStatsMetric,
   applyDateFilter,
   applyGroupIdFilter,
@@ -24,6 +19,7 @@ import {
   findColumn,
   joinGroupMembers,
 } from "./query-utils";
+import type { ChartInnerProps, ChartProps } from "./types";
 
 // matches the view's own group_name subquery (WHERE pg.id != 1) so a
 // by-group breakout isn't dominated by an All Users bar
@@ -59,15 +55,28 @@ function breakoutByJoinedGroupName(query: Query): Query {
   return col ? Lib.breakout(query, 0, col) : query;
 }
 
-type Props = StatsFilters & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
-  groupMembersTable: TableMetadata | CardMetadata;
-  onDimensionClick?: (value: unknown) => void;
-  h?: number;
-};
-
 export function ConversationsByGroupChart({
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
+  return (
+    <ConversationsByGroupChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsByGroupChartInner({
   provider,
   table,
   groupMembersTable,
@@ -76,8 +85,8 @@ export function ConversationsByGroupChart({
   groupId,
   metric,
   onDimensionClick,
-  h = 350,
-}: Props) {
+  h,
+}: ChartInnerProps) {
   const query = useMemo(() => {
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
     q = applyDateFilter(q, dateFilter);

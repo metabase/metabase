@@ -2,21 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
+import { Skeleton } from "metabase/ui";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
 import { toBreakoutRawSeries } from "./breakout-raw-series";
-import {
-  type StatsFilters,
-  type UsageStatsMetric,
-  buildSourceBreakoutQuery,
-} from "./query-utils";
+import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
+import type { ChartInnerProps, ChartProps } from "./types";
 
 const TITLES: Record<UsageStatsMetric, string> = {
   get conversations() {
@@ -30,14 +23,28 @@ const TITLES: Record<UsageStatsMetric, string> = {
   },
 };
 
-type Props = StatsFilters & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
-  groupMembersTable: TableMetadata | CardMetadata;
-  onDimensionClick?: (value: unknown) => void;
-};
-
 export function ConversationsByProfileBarChart({
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
+  return (
+    <ConversationsByProfileBarChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsByProfileBarChartInner({
   provider,
   table,
   groupMembersTable,
@@ -46,7 +53,8 @@ export function ConversationsByProfileBarChart({
   groupId,
   metric,
   onDimensionClick,
-}: Props) {
+  h,
+}: ChartInnerProps) {
   const query = useMemo(
     () =>
       buildSourceBreakoutQuery({
@@ -82,7 +90,7 @@ export function ConversationsByProfileBarChart({
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="bar"
-      h={350}
+      h={h}
       otherLabel={t`Other`}
       onDimensionClick={onDimensionClick}
     />

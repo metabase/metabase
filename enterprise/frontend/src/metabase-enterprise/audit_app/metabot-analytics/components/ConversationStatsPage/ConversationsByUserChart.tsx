@@ -1,21 +1,14 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
+import { Skeleton } from "metabase/ui";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
 import { toBreakoutRawSeries } from "./breakout-raw-series";
-import {
-  type StatsFilters,
-  type UsageStatsMetric,
-  buildSourceBreakoutQuery,
-} from "./query-utils";
+import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
+import type { ChartInnerProps, ChartProps } from "./types";
 
 const TITLES: Record<UsageStatsMetric, string> = {
   get conversations() {
@@ -29,15 +22,28 @@ const TITLES: Record<UsageStatsMetric, string> = {
   },
 };
 
-type Props = StatsFilters & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
-  groupMembersTable: TableMetadata | CardMetadata;
-  onDimensionClick?: (value: unknown) => void;
-  h?: number;
-};
-
 export function ConversationsByUserChart({
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
+  return (
+    <ConversationsByUserChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsByUserChartInner({
   provider,
   table,
   groupMembersTable,
@@ -46,8 +52,8 @@ export function ConversationsByUserChart({
   groupId,
   metric,
   onDimensionClick,
-  h = 350,
-}: Props) {
+  h,
+}: ChartInnerProps) {
   const query = useMemo(
     () =>
       buildSourceBreakoutQuery({

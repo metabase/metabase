@@ -8,7 +8,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Flex, SimpleGrid, Skeleton, Tabs, Title } from "metabase/ui";
+import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import type {
   CardMetadata,
@@ -80,8 +80,6 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     return Number.isFinite(parsed) ? parsed : undefined;
   }, [group]);
 
-  // resolve every audit view we might need up front so child charts can take
-  // non-null provider/table props and never have to defensively check
   const conversationsAudit = useAuditTable(VIEW_CONVERSATIONS);
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
@@ -177,30 +175,26 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
           </Tabs.List>
         </Tabs>
 
-        {provider && metricTable && groupMembersTable ? (
-          <ChartGrid
-            provider={provider}
-            metricTable={metricTable}
-            groupMembersTable={groupMembersTable}
-            dateFilter={dateFilter}
-            userId={userId}
-            groupId={groupId}
-            metric={metric}
-            onDayClick={handleDayClick}
-            onUserClick={handleUserClick}
-          />
-        ) : (
-          <ChartGridSkeleton />
-        )}
+        <ChartGrid
+          provider={provider}
+          metricTable={metricTable}
+          groupMembersTable={groupMembersTable}
+          dateFilter={dateFilter}
+          userId={userId}
+          groupId={groupId}
+          metric={metric}
+          onDayClick={handleDayClick}
+          onUserClick={handleUserClick}
+        />
       </SettingsPageWrapper>
     </MetabotAdminLayout>
   );
 }
 
 type ChartGridProps = StatsFilters & {
-  provider: MetadataProvider;
-  metricTable: ChartsTable;
-  groupMembersTable: ChartsTable;
+  provider: MetadataProvider | null;
+  metricTable: ChartsTable | null;
+  groupMembersTable: ChartsTable | null;
   onDayClick: (value: unknown) => void;
   onUserClick: (value: unknown) => void;
 };
@@ -282,23 +276,6 @@ function ChartGrid({
           metric={metric}
           h={500}
         />
-      </SimpleGrid>
-    </>
-  );
-}
-
-function ChartGridSkeleton() {
-  return (
-    <>
-      <Skeleton h={350} />
-      <SimpleGrid cols={2} spacing="lg">
-        <Skeleton h={350} />
-        <Skeleton h={350} />
-      </SimpleGrid>
-      <SimpleGrid cols={3} spacing="lg">
-        <Skeleton h={500} />
-        <Skeleton h={500} />
-        <Skeleton h={500} />
       </SimpleGrid>
     </>
   );
