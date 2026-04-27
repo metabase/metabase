@@ -1,1 +1,1 @@
-export { WorkspacesTableRemappingsPage } from "./WorkspacesTableRemappingsPage";
+export { WorkspacesTableRemappingPage } from "./WorkspacesTableRemappingPage";
