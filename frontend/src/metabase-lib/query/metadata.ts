@@ -1,6 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Field as ApiField,
   CardId,
@@ -10,6 +9,36 @@ import type {
   FieldId,
   TableId,
 } from "metabase-types/api";
+
+export declare const MetadataBrand: unique symbol;
+
+/**
+ * Structural shape consumed by {@link metadataProvider}. The CLJS-side provider
+ * (`metabase.lib.js.metadata/metadata-provider`) only reads these top-level
+ * keys and iterates each entry — it does not call any methods on the value.
+ *
+ * Branded so arbitrary objects do not accidentally satisfy it. Construct a
+ * value either by using v1's `Metadata` class (which declares the brand) or
+ * via the {@link metadataInput} helper.
+ */
+export interface Metadata {
+  readonly [MetadataBrand]: void;
+  databases?: Record<string, unknown>;
+  tables?: Record<string, unknown>;
+  fields?: Record<string, unknown>;
+  metrics?: Record<string, unknown>;
+  measures?: Record<string, unknown>;
+  segments?: Record<string, unknown>;
+  questions?: Record<string, unknown>;
+  snippets?: Record<string, unknown>;
+  settings?: object;
+}
+
+export function metadataInput(
+  input: Omit<Metadata, typeof MetadataBrand>,
+): Metadata {
+  return input as Metadata;
+}
 
 import type {
   AggregationClause,

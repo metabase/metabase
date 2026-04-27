@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { MetadataBrand } from "metabase-lib";
 import type {
   CardId,
   DatabaseId,
@@ -45,6 +46,7 @@ interface MetadataOpts {
  *   Do not rely on data being implicitly loaded in some other place.
  */
 class Metadata {
+  declare readonly [MetadataBrand]: void;
   databases: Record<string, Database> = {};
   schemas: Record<string, Schema> = {};
   tables: Record<string, Table> = {};
