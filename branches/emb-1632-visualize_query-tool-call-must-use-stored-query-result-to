@@ -1,0 +1,6 @@
+{
+  "base": {
+    "name": "emb-1623-store-query-payload-in-sessions-instead-of-in-memory-atoms",
+    "hash": "a7c9c6668559230c240133e41a7c746bdc810e25"
+  }
+}
