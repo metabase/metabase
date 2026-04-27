@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_WORKSPACES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
@@ -51,6 +51,7 @@ export function SettingsNav() {
         {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
       <PLUGIN_REMOTE_SYNC.LibraryNav />
+      <PLUGIN_WORKSPACES.WorkspacesNav />
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />

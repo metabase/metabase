@@ -6,6 +6,7 @@ import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
@@ -68,6 +69,10 @@ export const getSettingsRoutes = () => (
     <Route
       path="remote-sync"
       component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
+    />
+    <Route
+      path="workspaces"
+      component={() => <PLUGIN_WORKSPACES.WorkspacesAdminSettings />}
     />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
