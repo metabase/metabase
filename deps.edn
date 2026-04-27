@@ -5,6 +5,7 @@
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+  aysylu/loom                               {:mvn/version "1.0.2"}              ; Graph library
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   bigml/histogram                           {:mvn/version "5.0.0"               ; Histogram data structure
                                              :exclusions  [junit/junit]}
