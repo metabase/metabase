@@ -372,6 +372,7 @@ export const tokenFeatures = [
   "writable_connection",
   "admin_security_center",
   "ai_controls",
+  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
