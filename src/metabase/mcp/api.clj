@@ -278,11 +278,12 @@
    tool call. The frontend calls this immediately after a drill-through action, before sending
    app.sendMessage, so the tool can retrieve the query without the LLM carrying the payload."
   [_user-id request]
-  (let [session-id    (get-in request [:headers "mcp-session-id"])
-        encoded-query (get (:body request) :encodedQuery)]
+  (let [body          (:body request)
+        session-id    (:mcpSessionId body)
+        encoded-query (:encodedQuery body)]
     (cond
       (str/blank? session-id)
-      (json-response 400 {:error "Missing Mcp-Session-Id header"})
+      (json-response 400 {:error "Missing mcpSessionId"})
 
       (not (and (string? encoded-query) (not (str/blank? encoded-query))))
       (json-response 400 {:error "Missing or invalid encodedQuery"})
