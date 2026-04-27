@@ -72,7 +72,11 @@ export const getSettingsRoutes = () => (
     />
     <Route
       path="workspaces"
-      component={() => <PLUGIN_WORKSPACES.WorkspacesAdminSettings />}
+      component={() => <PLUGIN_WORKSPACES.WorkspacesSetupPage />}
+    />
+    <Route
+      path="workspaces/table-remappings"
+      component={() => <PLUGIN_WORKSPACES.WorkspacesTableRemappingsPage />}
     />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />

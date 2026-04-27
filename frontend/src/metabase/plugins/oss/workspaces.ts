@@ -6,12 +6,14 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 
 type WorkspacesPlugin = {
-  WorkspacesAdminSettings: ComponentType;
+  WorkspacesSetupPage: ComponentType;
+  WorkspacesTableRemappingsPage: ComponentType;
   WorkspacesNav: ComponentType;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
-  WorkspacesAdminSettings: NotFoundPlaceholder,
+  WorkspacesSetupPage: NotFoundPlaceholder,
+  WorkspacesTableRemappingsPage: NotFoundPlaceholder,
   WorkspacesNav: PluginPlaceholder,
 });
 

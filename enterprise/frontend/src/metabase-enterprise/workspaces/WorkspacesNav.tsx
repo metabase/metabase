@@ -4,6 +4,16 @@ import { SettingsNavItem } from "metabase/admin/settings/components/SettingsNav"
 
 export const WorkspacesNav = () => {
   return (
-    <SettingsNavItem path="workspaces" label={t`Workspaces`} icon="folder" />
+    <SettingsNavItem
+      label={t`Workspaces`}
+      icon="folder"
+      folderPattern="workspaces"
+    >
+      <SettingsNavItem path="workspaces" label={t`Setup`} />
+      <SettingsNavItem
+        path="workspaces/table-remappings"
+        label={t`Table remappings`}
+      />
+    </SettingsNavItem>
   );
 };
