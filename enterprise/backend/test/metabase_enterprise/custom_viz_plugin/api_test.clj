@@ -487,9 +487,9 @@
         (testing "authenticated non-admin user can access /bundle"
           (is (= "console.log('hi')"
                  (mt/user-http-request :rasta :get 200 (str "ee/custom-viz-plugin/" id "/bundle")))))
-        #_(testing "unauthenticated user cannot access /bundle"
-            (is (= "Unauthenticated"
-                   (client/client :get 401 (str "ee/custom-viz-plugin/" id "/bundle"))))))
+        (testing "unauthenticated user cannot access /bundle"
+          (is (= "Unauthenticated"
+                 (client/client :get 401 (str "ee/custom-viz-plugin/" id "/bundle"))))))
       (testing "authenticated non-admin user can access /list"
         (is (sequential? (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list"))))
       (testing "unauthenticated user cannot access /list"

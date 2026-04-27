@@ -10,6 +10,7 @@
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.server.streaming-response :as sr]
    [metabase.util.log :as log]
@@ -179,7 +180,6 @@
    Plugins with incompatible Metabase version requirements are excluded.
    Dev-only plugins are excluded when dev mode is disabled."
   []
-  (api/check api/*current-user-id* [401 "Unauthenticated"])
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
         plugins   (mapv api/read-check
                         (t2/select [:model/CustomVizPlugin
@@ -364,4 +364,4 @@
 
 (def routes
   "`/api/ee/custom-viz-plugin` routes."
-  (api.macros/ns-handler *ns*))
+  (api.macros/ns-handler *ns* +auth))
