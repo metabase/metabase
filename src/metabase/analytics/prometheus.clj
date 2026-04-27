@@ -32,7 +32,7 @@
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
 
-(set! *warn-on-reflection* true)
+(clojure.core/set! *warn-on-reflection* true)
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
