@@ -3,11 +3,10 @@ import { type Ref, useCallback, useEffect, useMemo } from "react";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { MenuDropdownProps, MenuProps } from "metabase/ui";
 import { Box, Menu } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
 
 import type { DataPickerValue } from "../../../DataPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
-import { MiniPickerContext } from "../../context";
+import { MiniPickerContext, type MiniPickerSearchParams } from "../../context";
 import type { MiniPickerItem, MiniPickerPickableItem } from "../../types";
 import {
   focusFirstMiniPickerItem,
@@ -29,7 +28,9 @@ export type MiniPickerProps = {
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
   shouldShowLibrary?: boolean;
   forceSearch?: boolean;
-  searchParams?: Partial<SearchRequest>;
+  showSearchInput?: boolean;
+  searchInputPlaceholder?: string;
+  searchParams?: MiniPickerSearchParams;
   onSearchResults?: (results: MiniPickerPickableItem[]) => void;
   children?: React.ReactNode;
   menuProps?: MenuProps;
@@ -51,6 +52,8 @@ export function MiniPicker({
   shouldHide,
   shouldShowLibrary = true,
   forceSearch = false,
+  showSearchInput = false,
+  searchInputPlaceholder,
   searchParams,
   onSearchResults,
   children = <Box />,
@@ -104,6 +107,8 @@ export function MiniPicker({
         libraryCollection,
         shouldShowLibrary,
         forceSearch,
+        showSearchInput,
+        searchInputPlaceholder,
         searchParams,
         onSearchResults,
       }}

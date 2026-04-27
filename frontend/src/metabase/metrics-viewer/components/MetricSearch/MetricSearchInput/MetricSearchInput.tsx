@@ -231,7 +231,7 @@ export function MetricSearchInput({
               <MetricSearchDropdown
                 anchorRect={anchorRect}
                 onSelect={handleSelect}
-                externalSearchText={currentWord}
+                searchQuery={currentWord}
                 onClose={() => setIsOpen(false)}
                 ref={dropdownRef}
                 setSearchMetricNames={setSearchMetricNames}

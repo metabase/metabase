@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -24,10 +24,12 @@ import {
   Ellipsified,
   Flex,
   Icon,
+  Menu,
   Repeat,
   Skeleton,
   Stack,
   Text,
+  TextInput,
 } from "metabase/ui";
 import type {
   CollectionItem,
@@ -36,7 +38,7 @@ import type {
   SearchRequest,
 } from "metabase-types/api";
 
-import { useMiniPickerContext } from "../context";
+import { type MiniPickerSearchParams, useMiniPickerContext } from "../context";
 import type {
   MiniPickerCollectionItem,
   MiniPickerDatabaseItem,
@@ -320,22 +322,40 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   }
 }
 
-function SearchItemList({ query }: { query: string }) {
-  const { onChange, models, isHidden, searchParams, onSearchResults } =
-    useMiniPickerContext();
+function SearchItemList({ query: externalQuery }: { query: string }) {
+  const {
+    onChange,
+    models,
+    isHidden,
+    showSearchInput,
+    searchInputPlaceholder,
+    searchParams,
+    onSearchResults,
+  } = useMiniPickerContext();
+  const [localQuery, setLocalQuery] = useState("");
+  const query = showSearchInput ? localQuery : externalQuery;
+
   const debouncedQuery = useDebouncedValue(query, 500);
 
   const makeQueryArgs = (
     query: string,
     models: MiniPickerPickableItem["model"][],
-    searchParams?: Partial<SearchRequest>,
-  ): SearchRequest => ({
-    q: query,
-    models: models as SearchModel[],
-    limit: 50,
-    // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
-    ...(searchParams || {}),
-  });
+    searchParams?: MiniPickerSearchParams,
+  ): SearchRequest => {
+    const params: SearchRequest = {
+      q: query,
+      models: models as SearchModel[],
+      limit: 50,
+    };
+    const extraParams =
+      typeof searchParams === "function" ? searchParams(params) : searchParams;
+
+    return {
+      ...params,
+      // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
+      ...(extraParams || {}),
+    };
+  };
 
   const rawQueryArgs = useMemo(
     () => makeQueryArgs(query, models, searchParams),
@@ -367,32 +387,52 @@ function SearchItemList({ query }: { query: string }) {
   }, [searchResults, onSearchResults]);
 
   return (
-    <ItemList>
-      {!isSearching && searchResults.length === 0 && (
-        <Box>
-          <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
-        </Box>
+    <>
+      {showSearchInput && (
+        <>
+          <TextInput
+            placeholder={searchInputPlaceholder ?? t`Search…`}
+            value={localQuery}
+            onChange={(e) => setLocalQuery(e.target.value)}
+            autoFocus
+            px="sm"
+            pt="2px"
+            pb="sm"
+          />
+          <Menu.Divider mx="sm" />
+        </>
       )}
-      {isSearching && <MiniPickerListLoader />}
-      {!isSearching &&
-        searchResults.map((item) => {
-          return (
-            <MiniPickerItem
-              key={`${item.model}-${item.id}`}
-              name={item.name}
-              model={item.model}
-              onClick={() => {
-                onChange(item);
-              }}
-              rightSection={<LocationInfo item={item} />}
-              classNames={{
-                itemLabel: styles.leftSection,
-                itemSection: styles.rightSection,
-              }}
-            />
-          );
-        })}
-    </ItemList>
+      <ItemList>
+        {!isSearching && searchResults.length === 0 && (
+          <Box>
+            <Text
+              px="md"
+              py="sm"
+              c="text-secondary"
+            >{t`No search results`}</Text>
+          </Box>
+        )}
+        {isSearching && <MiniPickerListLoader />}
+        {!isSearching &&
+          searchResults.map((item) => {
+            return (
+              <MiniPickerItem
+                key={`${item.model}-${item.id}`}
+                name={item.name}
+                model={item.model}
+                onClick={() => {
+                  onChange(item);
+                }}
+                rightSection={<LocationInfo item={item} />}
+                classNames={{
+                  itemLabel: styles.leftSection,
+                  itemSection: styles.rightSection,
+                }}
+              />
+            );
+          })}
+      </ItemList>
+    </>
   );
 }
 

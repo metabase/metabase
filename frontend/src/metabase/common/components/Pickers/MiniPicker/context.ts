@@ -14,6 +14,10 @@ import type {
   MiniPickerPickableItem,
 } from "./types";
 
+export type MiniPickerSearchParams =
+  | Partial<SearchRequest>
+  | ((params: SearchRequest) => Partial<SearchRequest>);
+
 export interface MiniPickerContextValue {
   path: MiniPickerFolderItem[];
   setPath: Dispatch<SetStateAction<MiniPickerFolderItem[]>>;
@@ -28,7 +32,9 @@ export interface MiniPickerContextValue {
   libraryCollection?: MiniPickerCollectionItem;
   shouldShowLibrary?: boolean;
   forceSearch?: boolean;
-  searchParams?: Partial<SearchRequest>;
+  showSearchInput?: boolean;
+  searchInputPlaceholder?: string;
+  searchParams?: MiniPickerSearchParams;
   onSearchResults?: (results: MiniPickerPickableItem[]) => void;
 }
 

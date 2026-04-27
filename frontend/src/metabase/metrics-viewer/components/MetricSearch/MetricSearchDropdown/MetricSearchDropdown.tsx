@@ -21,6 +21,7 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { MenuProps } from "metabase/ui";
+import type { SearchRequest } from "metabase-types/api";
 
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { createSourceId } from "../../../utils/source-ids";
@@ -36,7 +37,7 @@ type MetricSearchDropdownProps = {
   anchorRect?: { left: number; top: number };
   onSelect: (metric: SelectedMetric) => void;
   onClose: () => void;
-  externalSearchText?: string;
+  searchQuery?: string;
   selectedMetric?: SelectedMetric;
   menuProps?: MenuProps;
   setSearchMetricNames?: Dispatch<SetStateAction<MetricNameMap>>;
@@ -53,7 +54,7 @@ export const MetricSearchDropdown = forwardRef<
     anchorRect,
     onSelect,
     onClose,
-    externalSearchText,
+    searchQuery,
     selectedMetric,
     menuProps,
     setSearchMetricNames,
@@ -66,6 +67,24 @@ export const MetricSearchDropdown = forwardRef<
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
+
+  const getSearchParams = useCallback(
+    (params: SearchRequest): Partial<SearchRequest> => {
+      const scopeMiniPickerToLibraryMetrics =
+        libraryMetricsCollection !== undefined &&
+        (libraryMetricsCollection.here?.includes("metric") ||
+          libraryMetricsCollection.below?.includes("metric")) &&
+        !params.q;
+
+      return {
+        limit: 5,
+        ...(scopeMiniPickerToLibraryMetrics
+          ? { collection: libraryMetricsCollection.id }
+          : {}),
+      };
+    },
+    [libraryMetricsCollection],
+  );
 
   const miniPickerRef = useRef<HTMLDivElement>(null);
 
@@ -161,15 +180,15 @@ export const MetricSearchDropdown = forwardRef<
     <>
       <MiniPicker
         opened={!isBrowsing}
-        searchQuery={externalSearchText}
+        searchQuery={searchQuery}
         onChange={handleSelectResult}
         onClose={onClose}
         models={MINI_PICKER_MODELS}
         onBrowseAll={() => setIsBrowsing(true)}
         forceSearch={true}
-        searchParams={{
-          limit: 5,
-        }}
+        showSearchInput={searchQuery === undefined}
+        searchInputPlaceholder={t`Search metrics and measures…`}
+        searchParams={getSearchParams}
         onSearchResults={handleSearchResults}
         shouldHide={shouldHide}
         menuProps={menuProps}
