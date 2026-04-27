@@ -41,15 +41,15 @@ jest.mock("metabase/documents/utils/editorNodeUtils", () => ({
   isTopLevel: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock("metabase/lib/dom", () => ({
+jest.mock("metabase/utils/iframe", () => ({
   isWithinIframe: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock("metabase/lib/redux", () => ({
+jest.mock("metabase/redux", () => ({
   useSelector: (selector: () => unknown) => selector(),
 }));
 
-jest.mock("metabase/lib/urls", () => ({
+jest.mock("metabase/utils/urls", () => ({
   documentWithAnchor: jest.fn().mockReturnValue("/document/1/anchor/test-id"),
 }));
 
