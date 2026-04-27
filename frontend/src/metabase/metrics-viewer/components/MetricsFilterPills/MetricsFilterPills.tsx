@@ -1,9 +1,7 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
-import { trackMetricsViewerFilterRemoved } from "metabase/metrics-viewer/analytics";
 import type { IconName } from "metabase/ui";
-import { Flex, Group, Text } from "metabase/ui";
+import { Group } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -15,8 +13,8 @@ import {
   getDefinitionSourceName,
 } from "../../utils/definition-sources";
 
-import { MetricsFilterPill } from "./MetricsFilterPill";
 import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
+import { MetricsSegmentFilterPillPopover } from "./MetricsSegmentFilterPillPopover";
 
 interface MetricsFilterPillsProps {
   definitionSources: DefinitionSource[];
@@ -81,28 +79,18 @@ export function MetricsFilterPills({
     <Group gap="sm">
       {flatFilters.map((item) =>
         item.isSegment ? (
-          <MetricsFilterPill
+          <MetricsSegmentFilterPillPopover
             key={item.key}
+            definitionSource={item.source}
+            oldFilter={item.filter}
             colors={item.colors}
-            fallbackIcon="star"
-            onRemoveClick={() => {
-              handleRemove(item.source, item.filter);
-              trackMetricsViewerFilterRemoved("metric_filter");
-            }}
-            aria-label={t`Segment filter: ${item.segmentName ?? ""}`}
-          >
-            <Flex align="center" gap="xs">
-              {item.metricName && (
-                <Text component="span" fw={700} c="inherit" fz="inherit">
-                  {item.metricName}
-                  {", "}
-                </Text>
-              )}
-              <Text component="span" fw={700} c="inherit" fz="inherit">
-                {item.segmentName}
-              </Text>
-            </Flex>
-          </MetricsFilterPill>
+            metricColors={sourceColors}
+            metricName={item.metricName}
+            metricCount={item.metricCount}
+            segmentName={item.segmentName}
+            onSourceDefinitionChange={onSourceDefinitionChange}
+            onRemove={() => handleRemove(item.source, item.filter)}
+          />
         ) : (
           <MetricsFilterPillPopover
             key={item.key}

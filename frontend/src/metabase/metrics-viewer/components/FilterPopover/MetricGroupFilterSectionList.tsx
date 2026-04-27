@@ -35,7 +35,7 @@ export function MetricGroupFilterSectionList({
 
   const renderItemIcon = useCallback((item: FilterItem) => {
     if (isSegmentListItem(item)) {
-      return <Icon name="star" size={16} />;
+      return <Icon name="segment" size={16} />;
     }
     return <Icon name={getDimensionIcon(item.dimension)} size={16} />;
   }, []);

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { trackMetricsViewerFilterRemoved } from "metabase/metrics-viewer/analytics";
 import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 import type * as LibMetric from "metabase-lib/metric";
 import * as LibMetricModule from "metabase-lib/metric";
@@ -51,10 +50,28 @@ jest.mock("./MetricsFilterPillPopover", () => ({
   ),
 }));
 
+// Same: avoid pulling FilterPopoverContent into the unit test —
+// behavior of the segment popover is covered by its own spec.
+jest.mock("./MetricsSegmentFilterPillPopover", () => ({
+  __esModule: true,
+  MetricsSegmentFilterPillPopover: ({
+    segmentName,
+    onRemove,
+  }: {
+    segmentName?: string;
+    onRemove: () => void;
+  }) => (
+    <button
+      data-testid="segment-pill"
+      aria-label={`Segment filter: ${segmentName ?? ""}`}
+      onClick={onRemove}
+    >
+      {segmentName}
+    </button>
+  ),
+}));
+
 const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
-const mockTrack = trackMetricsViewerFilterRemoved as jest.MockedFunction<
-  typeof trackMetricsViewerFilterRemoved
->;
 
 function makeDefinitionSource(
   index: number,
@@ -79,7 +96,7 @@ beforeEach(() => {
 });
 
 describe("MetricsFilterPills", () => {
-  it("renders a star-iconed pill for a segment filter with its display name", () => {
+  it("renders a segment-iconed pill for a segment filter with its display name", () => {
     const source = makeDefinitionSource(0);
     const segmentClause = {
       __clause: "segment",
@@ -107,11 +124,12 @@ describe("MetricsFilterPills", () => {
     expect(
       screen.getByLabelText("Segment filter: Active customers"),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("segment-pill")).toBeInTheDocument();
     // Non-segment popover pill should NOT render for a segment filter.
     expect(screen.queryByTestId("non-segment-pill")).not.toBeInTheDocument();
   });
 
-  it("calls removeClause and analytics when segment pill remove is clicked", async () => {
+  it("calls removeClause when segment pill remove is invoked", async () => {
     const source = makeDefinitionSource(0);
     const segmentClause = {
       __clause: "segment",
@@ -140,14 +158,13 @@ describe("MetricsFilterPills", () => {
       />,
     );
 
-    await userEvent.click(screen.getByLabelText("Remove"));
+    await userEvent.click(screen.getByTestId("segment-pill"));
 
     expect(mockLibMetric.removeClause).toHaveBeenCalledWith(
       source.definition,
       segmentClause,
     );
     expect(handleChange).toHaveBeenCalledWith(source, newDefinition);
-    expect(mockTrack).toHaveBeenCalledWith("metric_filter");
   });
 
   it("uses the popover pill for regular (non-segment) filter clauses", () => {
