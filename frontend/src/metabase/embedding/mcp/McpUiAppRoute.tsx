@@ -10,6 +10,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
+import { McpExploreButton } from "./McpExploreButton";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
@@ -124,9 +125,18 @@ export function McpUiAppRoute() {
           withChartTypeSelector={false}
           onDrillThrough={handleDrillThrough}
         >
-          <Box mb="xs">
+          {/* Title row: question title (left) + explore button (right) */}
+          <Flex
+            justify="space-between"
+            align="center"
+            pr="md"
+            mb="xs"
+            style={{ flexShrink: 0 }}
+          >
             <McpQuestionTitle />
-          </Box>
+
+            <McpExploreButton app={app} instanceUrl={instanceUrl} />
+          </Flex>
 
           {/* Visualization fills the remaining space */}
           <Flex flex={1} mih={0} style={{ overflow: "hidden" }}>
