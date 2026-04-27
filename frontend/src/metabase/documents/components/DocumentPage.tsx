@@ -111,7 +111,9 @@ export const DocumentPage = ({
     null,
   );
   const editorContainerRef = useRef<HTMLDivElement>(null);
-  const mainContentRef = useRef<HTMLDivElement>(null);
+  const [mainContentEl, setMainContentEl] = useState<HTMLDivElement | null>(
+    null,
+  );
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
@@ -476,8 +478,8 @@ export const DocumentPage = ({
     <Box className={styles.documentPage}>
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
-        <Box className={styles.mainContent} ref={mainContentRef}>
-          <ScrollContainerProvider value={mainContentRef}>
+        <Box className={styles.mainContent} ref={setMainContentEl}>
+          <ScrollContainerProvider value={mainContentEl}>
             <Box className={styles.documentContainer}>
               <DocumentHeader
                 document={documentData}
