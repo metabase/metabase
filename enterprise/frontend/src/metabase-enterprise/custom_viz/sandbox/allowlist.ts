@@ -1,56 +1,17 @@
-function ownFunctionsOf(
-  obj: object,
-  pick: (descriptor: PropertyDescriptor) => unknown,
-): object[] {
-  return Object.getOwnPropertyNames(obj).flatMap((key) => {
-    const descriptor = Object.getOwnPropertyDescriptor(obj, key);
-    const fn = descriptor && pick(descriptor);
-    return typeof fn === "function" ? [fn] : [];
-  });
-}
+import {
+  allClassMethodsOf,
+  allGettersAndMethodsOf,
+  allGettersOf,
+  allMembersOf,
+  allMethodsOf,
+  entireClassOf,
+  getterOf,
+} from "./helpers";
 
-export function getterOf(key: string): object | undefined {
-  return (
-    Object.getOwnPropertyDescriptor(window, key)?.get ??
-    Object.getOwnPropertyDescriptor(Window.prototype, key)?.get
-  );
-}
-
-export function allGettersOf(proto: object): object[] {
-  return ownFunctionsOf(proto, (descriptor) => descriptor.get);
-}
-
-export function allMethodsOf(obj: object): object[] {
-  return ownFunctionsOf(obj, (descriptor) => descriptor.value);
-}
-
-export function allSettersOf(proto: object): object[] {
-  return ownFunctionsOf(proto, (descriptor) => descriptor.set);
-}
-
-export function allGettersAndMethodsOf(proto: object): object[] {
-  return [...allGettersOf(proto), ...allMethodsOf(proto)];
-}
-
-export function allMembersOf(proto: object): object[] {
-  return [...allGettersAndMethodsOf(proto), ...allSettersOf(proto)];
-}
-
-export function allClassMethodsOf(
-  ctor: object & { prototype: object },
-): object[] {
-  return [...allMethodsOf(ctor), ...allMethodsOf(ctor.prototype)];
-}
-
-export function allClassMembersOf(
-  ctor: object & { prototype: object },
-): object[] {
-  return [...allMembersOf(ctor), ...allMembersOf(ctor.prototype)];
-}
-
-export function entireClassOf(ctor: object & { prototype: object }): object[] {
-  return [ctor, ...allClassMembersOf(ctor)];
-}
+// Native references shared with distortions.ts so identity comparisons match.
+export const CREATE_ELEMENT = Document.prototype.createElement;
+export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
+export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
 
 // %TypedArray%.prototype is not directly referenceable — it's the shared hidden prototype
 // that all typed array classes (Int8Array, Float64Array, etc.) inherit from.
@@ -156,8 +117,8 @@ const CANVAS_AND_GEOMETRY_FUNCTIONS = [
 // they are injected directly and never pass through distortionCallback.
 export const ALLOWED_FUNCTIONS = new Set<object>(
   [
-    document.createElement,
-    document.createElementNS,
+    CREATE_ELEMENT,
+    CREATE_ELEMENT_NS,
     document.createTextNode,
     document.createDocumentFragment,
     document.getElementById,

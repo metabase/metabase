@@ -1,5 +1,58 @@
-import { ALLOWED_FUNCTIONS } from "./allowlist";
+import {
+  ALLOWED_FUNCTIONS,
+  CREATE_ELEMENT,
+  CREATE_ELEMENT_NS,
+  INSERT_ADJACENT_HTML,
+} from "./allowlist";
 import { getFunctionName } from "./debugging";
+
+export function makeDistortionCallback(pluginId: string) {
+  return function distortionCallback(v: object): object {
+    if (typeof v !== "function") {
+      return v;
+    }
+    try {
+      if (!Function.prototype.toString.call(v).includes("[native code]")) {
+        return v;
+      }
+    } catch {
+      return v;
+    }
+    // Symbol-keyed methods (e.g. [Symbol.toPrimitive], [Symbol.iterator]) are
+    // ECMAScript built-ins called implicitly by the engine — not browser APIs.
+    // Bound functions (name starts with "bound ") also report [native code] but
+    // are user-space wrappers (e.g. React's bound dispatchSetState) — must pass through.
+    const fname = (v as { name?: string }).name ?? "";
+    if (fname.startsWith("[Symbol.") || fname.startsWith("bound ")) {
+      return v;
+    }
+    if (v === CANVAS_WIDTH_SETTER) {
+      return canvasWidthSetterDistortion;
+    }
+    if (v === CANVAS_HEIGHT_SETTER) {
+      return canvasHeightSetterDistortion;
+    }
+    if (SANITIZED_SETTERS.has(v)) {
+      return SANITIZED_SETTERS.get(v) as object;
+    }
+    if (v === CREATE_ELEMENT) {
+      return createElementDistortion(pluginId);
+    }
+    if (v === CREATE_ELEMENT_NS) {
+      return createElementNSDistortion(pluginId);
+    }
+    if (v === INSERT_ADJACENT_HTML) {
+      return insertAdjacentHTMLDistortion();
+    }
+    if (ALLOWED_FUNCTIONS.has(v)) {
+      return v;
+    }
+    const name = getFunctionName(v);
+    return function blocked() {
+      throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
+    };
+  };
+}
 
 // Wraps innerHTML/outerHTML through DOMPurify before they reach the DOM.
 const SANITIZED_SETTERS = new Map<
@@ -44,9 +97,6 @@ const BLOCKED_TAGS = new Set([
   "meta",
   "base",
 ]);
-const CREATE_ELEMENT = Document.prototype.createElement;
-const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
-const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
 
 function canvasWidthSetterDistortion(this: HTMLCanvasElement, value: number) {
   CANVAS_WIDTH_SETTER!.call(this, value);
@@ -58,99 +108,58 @@ function canvasHeightSetterDistortion(this: HTMLCanvasElement, value: number) {
   this.style.height = `${value / window.devicePixelRatio}px`;
 }
 
-export function makeDistortionCallback(pluginId: string) {
-  return function distortionCallback(v: object): object {
-    if (typeof v !== "function") {
-      return v;
+function createElementDistortion(pluginId: string) {
+  return function createElement(
+    this: Document,
+    tag: string,
+    options?: ElementCreationOptions,
+  ) {
+    if (BLOCKED_TAGS.has(tag.toLowerCase())) {
+      throw new Error(`[plugin ${pluginId}] blocked createElement: ${tag}`);
     }
-    try {
-      if (!Function.prototype.toString.call(v).includes("[native code]")) {
-        return v;
-      }
-    } catch {
-      return v;
-    }
-    // Symbol-keyed methods (e.g. [Symbol.toPrimitive], [Symbol.iterator]) are
-    // ECMAScript built-ins called implicitly by the engine — not browser APIs.
-    // Bound functions (name starts with "bound ") also report [native code] but
-    // are user-space wrappers (e.g. React's bound dispatchSetState) — must pass through.
-    const fname = (v as { name?: string }).name ?? "";
-    if (fname.startsWith("[Symbol.") || fname.startsWith("bound ")) {
-      return v;
-    }
-    if (v === CANVAS_WIDTH_SETTER) {
-      return canvasWidthSetterDistortion;
-    }
-    if (v === CANVAS_HEIGHT_SETTER) {
-      return canvasHeightSetterDistortion;
-    }
-    if (SANITIZED_SETTERS.has(v)) {
-      return SANITIZED_SETTERS.get(v) as object;
-    }
-    if (v === CREATE_ELEMENT) {
-      return function createElement(
-        this: Document,
-        tag: string,
-        options?: ElementCreationOptions,
-      ) {
-        if (BLOCKED_TAGS.has(tag.toLowerCase())) {
-          throw new Error(`[plugin ${pluginId}] blocked createElement: ${tag}`);
-        }
-        return CREATE_ELEMENT.call(
-          this,
-          tag,
-          options as ElementCreationOptions,
-        );
-      };
-    }
-    if (v === CREATE_ELEMENT_NS) {
-      return function createElementNS(
-        this: Document,
-        ns: string | null,
-        qualifiedName: string,
-        options?: ElementCreationOptions | string,
-      ) {
-        const localName = (
-          qualifiedName.split(":").pop() ?? qualifiedName
-        ).toLowerCase();
-        if (localName === "script") {
-          throw new Error(
-            `[plugin ${pluginId}] blocked createElementNS: ${qualifiedName}`,
-          );
-        }
-        return CREATE_ELEMENT_NS.call(
-          this,
-          ns,
-          qualifiedName,
-          options as ElementCreationOptions,
-        );
-      };
-    }
+    return CREATE_ELEMENT.call(this, tag, options as ElementCreationOptions);
+  };
+}
 
-    if (v === INSERT_ADJACENT_HTML) {
-      return function insertAdjacentHTML(
-        this: Element,
-        position: InsertPosition,
-        html: string,
-      ) {
-        const purify = (
-          window as unknown as {
-            DOMPurify?: { sanitize: (v: string) => string };
-          }
-        ).DOMPurify;
-        INSERT_ADJACENT_HTML.call(
-          this,
-          position,
-          purify ? purify.sanitize(html) : html,
-        );
-      };
+function createElementNSDistortion(pluginId: string) {
+  return function createElementNS(
+    this: Document,
+    ns: string | null,
+    qualifiedName: string,
+    options?: ElementCreationOptions | string,
+  ) {
+    const localName = (
+      qualifiedName.split(":").pop() ?? qualifiedName
+    ).toLowerCase();
+    if (localName === "script") {
+      throw new Error(
+        `[plugin ${pluginId}] blocked createElementNS: ${qualifiedName}`,
+      );
     }
-    if (ALLOWED_FUNCTIONS.has(v)) {
-      return v;
-    }
-    const name = getFunctionName(v);
-    return function blocked() {
-      throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
-    };
+    return CREATE_ELEMENT_NS.call(
+      this,
+      ns,
+      qualifiedName,
+      options as ElementCreationOptions,
+    );
+  };
+}
+
+function insertAdjacentHTMLDistortion() {
+  return function insertAdjacentHTML(
+    this: Element,
+    position: InsertPosition,
+    html: string,
+  ) {
+    const purify = (
+      window as unknown as {
+        DOMPurify?: { sanitize: (v: string) => string };
+      }
+    ).DOMPurify;
+    INSERT_ADJACENT_HTML.call(
+      this,
+      position,
+      purify ? purify.sanitize(html) : html,
+    );
   };
 }
