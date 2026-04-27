@@ -29,9 +29,9 @@ import {
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Icon } from "metabase/ui";
 import type { IconModel, ObjectWithModel } from "metabase/utils/icon";
-import { useDispatch } from "metabase/utils/redux";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import { extractEntityId } from "metabase/utils/urls/utils";
 import type {

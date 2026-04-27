@@ -7,8 +7,8 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { Search } from "metabase/entities/search";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { useSelector } from "metabase/redux";
 import { getUrlTarget } from "metabase/utils/dom";
-import { useSelector } from "metabase/utils/redux";
 import { modelToUrl } from "metabase/utils/urls";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {

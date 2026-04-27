@@ -17,8 +17,8 @@ import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { connect } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
 

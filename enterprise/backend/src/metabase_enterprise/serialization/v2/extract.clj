@@ -37,6 +37,9 @@
     (not (:no-transforms opts))
     (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")
 
+    (not (:no-embedding-themes opts))
+    (conj "EmbeddingTheme")
+
     (not (:no-custom-viz-plugins opts))
     (conj "CustomVizPlugin")))
 

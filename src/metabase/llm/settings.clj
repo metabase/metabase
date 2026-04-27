@@ -38,7 +38,7 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(boolean (some? (llm-anthropic-api-key)))
+  :getter     #(some? (llm-anthropic-api-key))
   :doc        false)
 
 (defsetting llm-anthropic-model
@@ -149,7 +149,7 @@
   :visibility       :settings-manager
   :export?          false
   :setter           :none
-  :getter           #(boolean (some? (llm-proxy-base-url)))
+  :getter           #(some? (llm-proxy-base-url))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------
