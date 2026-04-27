@@ -32,9 +32,11 @@
 
 (deftest validate-bundle-captures-version-test
   (testing "metabase.version from the manifest is echoed as :version-str"
-    (let [bytes (cvp.tu/valid-bundle-bytes "ver-viz" {:metabase-version ">=1.60"})
-          res   (cache/validate-bundle! bytes)]
-      (is (= ">=1.60" (:version-str res))))))
+    (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                  config/is-dev?         false]
+      (let [bytes (cvp.tu/valid-bundle-bytes "ver-viz" {:metabase-version ">=1.60"})
+            res   (cache/validate-bundle! bytes)]
+        (is (= ">=1.60" (:version-str res)))))))
 
 (deftest validate-bundle-rejects-empty-test
   (testing "empty bytes"

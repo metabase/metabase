@@ -394,7 +394,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (select-one-plugin :id id))]
     (api/check-400 (dev-only-plugin? plugin)
-                   "Refresh is only supported for dev-only plugins")
+                   "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
     (let [dev-url      (or (cache/resolve-dev-bundle id)
                            (throw (ex-info "No dev server URL configured" {:status-code 404})))
           manifest     (or (cache/fetch-dev-manifest dev-url)

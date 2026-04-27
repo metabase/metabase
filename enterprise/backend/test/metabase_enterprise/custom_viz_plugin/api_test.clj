@@ -246,22 +246,24 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "successful registration creates plugin and persists manifest fields"
-        (let [zip  (cvp.tu/make-tgz-bytes
-                    [["metabase-plugin.json" (json/encode
-                                              {:name     "new-register-viz"
-                                               :icon     "icon.svg"
-                                               :metabase {:version ">=1.59.0"}})]
-                     ["dist/index.js" "console.log('hi')"]])
-              resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
-              row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
-          (is (= "new-register-viz" (:identifier resp)))
-          (is (false? (:dev_only resp))
-              "upload-registered plugins are not dev-only")
-          (is (= "new-register-viz" (:display_name row)))
-          (is (= "icon.svg" (:icon row)))
-          (is (= ">=1.59.0" (:metabase_version row)))
-          (is (= :active (:status row)))
-          (is (some? (:bundle_hash row)) "bundle_hash is populated"))))))
+        (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                      config/is-dev?         false]
+          (let [zip  (cvp.tu/make-tgz-bytes
+                      [["metabase-plugin.json" (json/encode
+                                                {:name     "new-register-viz"
+                                                 :icon     "icon.svg"
+                                                 :metabase {:version ">=1.59.0"}})]
+                       ["dist/index.js" "console.log('hi')"]])
+                resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
+                row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
+            (is (= "new-register-viz" (:identifier resp)))
+            (is (false? (:dev_only resp))
+                "upload-registered plugins are not dev-only")
+            (is (= "new-register-viz" (:display_name row)))
+            (is (= "icon.svg" (:icon row)))
+            (is (= ">=1.59.0" (:metabase_version row)))
+            (is (= :active (:status row)))
+            (is (some? (:bundle_hash row)) "bundle_hash is populated")))))))
 
 (deftest register-plugin-missing-manifest-test
   (mt/with-premium-features #{:custom-viz}
