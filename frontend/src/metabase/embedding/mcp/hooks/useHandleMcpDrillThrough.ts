@@ -1,10 +1,10 @@
-/* eslint-disable metabase/no-literal-metabase-strings */
-
 import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useCallback } from "react";
 
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
+
+import { storeDrillQuery } from "../api";
 
 interface McpGlobalConfig {
   instanceUrl?: string;
@@ -45,10 +45,22 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
             JSON.stringify(nextCard.dataset_query),
           );
 
-          // Store the card server-side in the MCP session.
-          // Works in all MCP clients (Claude Desktop, Cursor, VS Code).
+          const { instanceUrl, sessionToken, mcpSessionId } =
+            (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+
+          if (!instanceUrl || !sessionToken || !mcpSessionId) {
+            return;
+          }
+
+          // Store the card server-side in the MCP session. This is universal —
+          // works in all MCP clients (Claude Desktop, Cursor, VS Code).
           // The render_drill_through tool will consume it with no LLM-visible payload.
-          await storePendingCard(encodedQuery);
+          await storeDrillQuery({
+            instanceUrl,
+            sessionToken,
+            mcpSessionId,
+            encodedQuery,
+          });
 
           // Uses the same term as the tool description ("show a drill-through result")
           // so the LLM always calls render_drill_through.
@@ -68,32 +80,4 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
     },
     [app],
   );
-}
-
-/**
- * Store a base64-encoded query via POST /api/mcp/ui/drills.
- * The render_drill_through tool will consume it when the LLM calls it.
- * This is universal — works in all MCP clients (Claude Desktop, Cursor, VS Code).
- */
-async function storePendingCard(encodedQuery: string): Promise<void> {
-  const { instanceUrl, sessionToken, mcpSessionId } =
-    (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
-
-  const response = await fetch(`${instanceUrl}/api/mcp/ui/drills`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Metabase-Session": sessionToken ?? "",
-      "Mcp-Session-Id": mcpSessionId ?? "",
-    },
-    body: JSON.stringify({
-      encodedQuery,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `storePendingCard failed: ${response.status} ${response.statusText}`,
-    );
-  }
 }
