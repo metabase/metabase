@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { moveDashCardToTab } from "metabase/dashboard/actions";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Divider, Menu } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { DashCardId } from "metabase-types/api";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";

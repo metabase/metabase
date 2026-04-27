@@ -52,17 +52,21 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     );
   }
 
-  const regularTests = new Array(regularChunks).fill(1).map((files, index) => ({
-    name: `e2e-group-${index + 1}`,
-    // works when specs less than 5, otherwise seems all chunks will contain
-    // same specs
-    ...(!isDefaultSpecPattern && {
-      specs: inputSpecs
-        .split(",")
-        .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
-        .join(","),
-    }),
-  }));
+  const regularTests = Array.from({ length: regularChunks }, (_, index) => {
+    const paddedIndex = String(index + 1).padStart(2, "0");
+
+    return {
+      name: `e2e-group-${paddedIndex}`,
+      // works when specs less than 5, otherwise seems all chunks will contain
+      // same specs
+      ...(!isDefaultSpecPattern && {
+        specs: inputSpecs
+          .split(",")
+          .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
+          .join(","),
+      }),
+    };
+  });
 
   const testSets = isDefaultSpecPattern
     ? regularTests.concat(specialTestConfigs)

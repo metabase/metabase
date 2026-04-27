@@ -1540,6 +1540,10 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.assertVizType("Line");
       cy.findByTestId("chart-layout-picker").should("be.visible");
       cy.findByLabelText("Stack layout").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "stack_series_enabled",
+        triggered_from: "metrics_viewer",
+      });
 
       cy.log("should split the chart into separate panels");
       H.splitPanelAxisLines().should("have.length", 2);

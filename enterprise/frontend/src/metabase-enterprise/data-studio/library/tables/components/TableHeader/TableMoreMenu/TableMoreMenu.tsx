@@ -6,8 +6,8 @@ import { useUpdateTableMutation } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 

@@ -61,13 +61,19 @@ export function MetricSearchInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
 
-  const { metricNames, metricNamesRef, ...metricHandlers } =
-    useMetricNameTracking({
-      definitions,
-      onAddMetric,
-      onRemoveMetric,
-      onSwapMetric,
-    });
+  const {
+    metricNames,
+    metricNamesRef,
+    handleAddMetric,
+    handleRemoveMetric,
+    handleSwapMetric,
+    setSearchMetricNames,
+  } = useMetricNameTracking({
+    definitions,
+    onAddMetric,
+    onRemoveMetric,
+    onSwapMetric,
+  });
 
   const {
     editText,
@@ -99,8 +105,8 @@ export function MetricSearchInput({
     selectedMetrics,
     definitions,
     metricNamesRef,
-    handleAddMetric: metricHandlers.handleAddMetric,
-    handleRemoveMetric: metricHandlers.handleRemoveMetric,
+    handleAddMetric,
+    handleRemoveMetric,
     editorRef,
     containerRef,
   });
@@ -156,7 +162,7 @@ export function MetricSearchInput({
                       metric={metric}
                       colors={metricColors[entryIndex]}
                       definitionEntry={definition}
-                      onSwap={metricHandlers.handleSwapMetric}
+                      onSwap={handleSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }
@@ -252,6 +258,7 @@ export function MetricSearchInput({
                     externalSearchText={currentWord}
                     onHasSelectionChange={handleDropdownHasSelectionChange}
                     onClose={() => setIsOpen(false)}
+                    setSearchMetricNames={setSearchMetricNames}
                   />
                 )}
               </Popover.Dropdown>

@@ -18,6 +18,7 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -31,7 +32,6 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type {
   CacheStrategy,
   CacheStrategyType,

@@ -3,7 +3,8 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
@@ -190,13 +191,13 @@
                                                             (str/join ", " skipped-files))})))
       (slackbot.streaming/send-response client event extra-history))))
 
-(defmethod analytics/known-labels :metabase-slackbot/responses-generated [_]
+(defmethod analytics.core/known-labels :metabase-slackbot/responses-generated [_]
   [{:source "dm"      :result "success"}
    {:source "dm"      :result "error"}
    {:source "channel" :result "success"}
    {:source "channel" :result "error"}])
 
-(defmethod analytics/known-labels :metabase-slackbot/file-uploads [_]
+(defmethod analytics.core/known-labels :metabase-slackbot/file-uploads [_]
   [{:result "success"} {:result "error"}])
 
 (defn- event-source

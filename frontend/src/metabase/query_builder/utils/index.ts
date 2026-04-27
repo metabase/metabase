@@ -3,8 +3,8 @@ import querystring from "querystring";
 import type { Location } from "history";
 import _ from "underscore";
 
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { serializeCardForUrl } from "metabase/utils/card";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
