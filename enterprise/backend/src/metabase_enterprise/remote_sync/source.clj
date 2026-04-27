@@ -30,10 +30,6 @@
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
       (source.p/read-file original-snapshot path)))
 
-  (read-file-bytes [_ path]
-    (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
-      (source.p/read-file-bytes original-snapshot path)))
-
   (write-files! [_ message files]
     (source.p/write-files! original-snapshot message
                            (filter (fn [file-spec]

@@ -58,13 +58,6 @@
 
     Returns the version of the written files.")
 
-  (read-file-bytes [snapshot path]
-    "Reads the contents of a file from the snapshot as a byte array.
-
-    Takes a SourceSnapshot instance implementing this protocol and a path (the relative path to the file to read).
-
-    Returns the file contents as a byte array, or nil if the file doesn't exist.")
-
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.
 

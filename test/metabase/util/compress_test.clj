@@ -55,6 +55,51 @@
         (.closeArchiveEntry tar)))
     archive))
 
+(defn- create-multi-entry-tgz
+  "Create a tar.gz archive with `n` entries each holding `content`."
+  ^File [n ^bytes content]
+  (let [archive (File/createTempFile "archive" ".tar.gz")]
+    (with-open [tar (-> (io/output-stream archive)
+                        (GzipCompressorOutputStream.)
+                        (TarArchiveOutputStream. 512 "UTF-8"))]
+      (dotimes [i n]
+        (let [entry (doto (TarArchiveEntry. (format "file-%d" i))
+                      (.setSize (alength content)))]
+          (.putArchiveEntry tar entry)
+          (.write tar content)
+          (.closeArchiveEntry tar))))
+    archive))
+
+(deftest untgz-max-uncompressed-bytes-test
+  (testing "untgz aborts when total uncompressed bytes exceed :max-uncompressed-bytes"
+    (let [content (.getBytes (apply str (repeat 1024 \a)) "UTF-8")
+          archive (create-multi-entry-tgz 10 content) ;; 10 KiB total uncompressed
+          out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
+                    .mkdirs)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"max uncompressed bytes"
+                              (u.compress/untgz archive out {:max-uncompressed-bytes 4096})))
+        (testing "no limit means no error"
+          (is (= 10 (u.compress/untgz archive out))))
+        (finally
+          (io/delete-file archive true)
+          (run! #(io/delete-file % true) (reverse (file-seq out))))))))
+
+(deftest untgz-max-entries-test
+  (testing "untgz aborts when entry count exceeds :max-entries"
+    (let [content (.getBytes "x" "UTF-8")
+          archive (create-multi-entry-tgz 10 content)
+          out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
+                    .mkdirs)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"max entries"
+                              (u.compress/untgz archive out {:max-entries 5})))
+        (finally
+          (io/delete-file archive true)
+          (run! #(io/delete-file % true) (reverse (file-seq out))))))))
+
 (deftest untgz-path-traversal-test
   (testing "untgz rejects tar entries with path traversal"
     (let [content (.getBytes "content" "UTF-8")

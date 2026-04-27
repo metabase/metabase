@@ -404,7 +404,11 @@
    can resolve `getAssetUrl` calls without HTTP."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (let [{:keys [manifest] :as plugin} (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+    (let [{:keys [manifest] :as plugin}
+          ;; do not load the (potentially multi-MB) :bundle blob just to read the manifest;
+          ;; resolve-bundle / resolve-asset re-fetch bytes from the cache as needed.
+          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :manifest :bundle_hash :dev_bundle_url]
+                         :identifier identifier :enabled true)]
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]
