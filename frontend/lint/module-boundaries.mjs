@@ -40,6 +40,11 @@ const elements = [
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/**",
   }),
+  createElement({
+    type: "basic",
+    name: "mlv1",
+    pattern: "frontend/src/metabase-lib/v1/**",
+  }),
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api" }),
   // shared
