@@ -46,6 +46,6 @@ const FUNCTION_NAMES: WeakMap<object, string> = (() => {
   return map;
 })();
 
-export function getFunctionName(fn: object): string {
-  return FUNCTION_NAMES.get(fn) || (fn as { name?: string }).name || "unknown";
+export function getFunctionName(fn: object & { name?: string }): string {
+  return FUNCTION_NAMES.get(fn) || fn?.name || "unknown";
 }
