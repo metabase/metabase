@@ -8,7 +8,10 @@ import { useScrollContainer } from "metabase/documents/contexts/ScrollContainerC
  * Uses IntersectionObserver with a 50% rootMargin buffer on all sides.
  *
  * entry === null (initial state before first observation) is treated as
- * in-viewport to avoid a placeholder flash on mount.
+ * out-of-viewport so callers can defer expensive work (e.g. card queries)
+ * until IntersectionObserver confirms visibility. Visible nodes briefly
+ * show a placeholder for ~1 frame before IO fires its first callback,
+ * which is preferable to firing N redundant queries on mount.
  */
 export function useNodeInViewport() {
   const scrollContainer = useScrollContainer();
@@ -24,8 +27,7 @@ export function useNodeInViewport() {
 
   const { ref, entry } = useIntersection(options);
 
-  // null entry means not yet observed — treat as in-viewport to avoid flash
-  const isInViewport = entry === null || entry.isIntersecting;
+  const isInViewport = entry?.isIntersecting ?? false;
 
   return { ref, isInViewport };
 }

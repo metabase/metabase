@@ -208,10 +208,11 @@ export const CardEmbedComponent = memo(
 
     // Use public hook when viewing a public document, otherwise use regular hook
     const isPublicDocument = Boolean(publicDocumentUuid);
-    const regularCardData = useCardData({ id });
+    const regularCardData = useCardData({ id, skip: !isInViewport });
     const publicCardData = usePublicDocumentCardData({
       cardId: id,
       documentUuid: publicDocumentUuid || "",
+      skip: !isInViewport,
     });
 
     const { card, dataset, isLoading, series, error } = isPublicDocument

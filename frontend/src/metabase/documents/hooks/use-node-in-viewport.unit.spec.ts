@@ -17,7 +17,7 @@ describe("useNodeInViewport", () => {
     jest.clearAllMocks();
   });
 
-  it("treats null entry (initial state) as in-viewport", () => {
+  it("treats null entry (initial state) as out-of-viewport so queries are deferred", () => {
     mockUseIntersection.mockReturnValue({
       ref: jest.fn(),
       entry: null,
@@ -25,7 +25,7 @@ describe("useNodeInViewport", () => {
 
     const { result } = renderHook(() => useNodeInViewport());
 
-    expect(result.current.isInViewport).toBe(true);
+    expect(result.current.isInViewport).toBe(false);
   });
 
   it("returns true when entry is intersecting", () => {

@@ -11,6 +11,7 @@ import type { Card, Dataset, RawSeries } from "metabase-types/api";
 interface UsePublicDocumentCardDataProps {
   cardId: number;
   documentUuid: string;
+  skip?: boolean;
 }
 
 interface UsePublicDocumentCardDataResult {
@@ -35,6 +36,7 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
 export function usePublicDocumentCardData({
   cardId,
   documentUuid,
+  skip = false,
 }: UsePublicDocumentCardDataProps): UsePublicDocumentCardDataResult {
   const { publicDocumentCards } = usePublicDocumentContext();
   const metadata = useSelector(getMetadata);
@@ -48,7 +50,7 @@ export function usePublicDocumentCardData({
     loading: isLoadingDataset,
     error: datasetError,
   } = useAsync(async () => {
-    if (!cardId || !documentUuid || !card) {
+    if (!cardId || !documentUuid || !card || skip) {
       return undefined;
     }
 
@@ -62,7 +64,7 @@ export function usePublicDocumentCardData({
       console.error("Failed to load public document card data:", error);
       throw error;
     }
-  }, [cardId, documentUuid, card]);
+  }, [cardId, documentUuid, card, skip]);
 
   const isLoading = !card || isLoadingDataset;
 
