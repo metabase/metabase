@@ -80,7 +80,7 @@ describe("admin > custom visualizations", () => {
           .findByRole("heading", { name: "Add a new visualization" })
           .should("not.exist");
         H.main()
-          .findByRole("heading", { name: "Build custom visualizations" })
+          .findByRole("heading", { name: "Enable custom visualizations" })
           .should("be.visible");
       });
 
