@@ -5,7 +5,7 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion"
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
@@ -129,9 +129,9 @@ export function McpUiAppRoute() {
             py="lg"
             gap="sm"
           >
-            <Box px="lg" style={{ flexShrink: 0 }}>
+            <div>
               <McpQuestionTitle />
-            </Box>
+            </div>
 
             <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
               <SdkQuestion.QuestionVisualization height={visualizationHeight} />
