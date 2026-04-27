@@ -161,18 +161,14 @@
  {:name        "visualize_query"
   :description "Visualize a previously constructed query as an interactive chart or table."
   :inputSchema {:type       "object"
-                :properties {:query        {:type "string" :minLength 1}
-                             :query_handle {:type "string" :minLength 1}}
-                :anyOf      [{"required" ["query"]} {"required" ["query_handle"]}]}
+                :properties {:query {:type "string" :minLength 1}}
+                :required   ["query"]}
   :response-fn (fn [arguments]
-                 (let [encoded (or (:query arguments)
-                                   (when-let [h (:query_handle arguments)]
-                                     (mcp.session/resolve-query-handle h)))]
-                   (if encoded
-                     {:content          [{:type "text" :text "Visualizing query..."}]
-                      :structuredContent {:query encoded}}
-                     {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
-                      :isError true})))})
+                 (if-let [encoded (:query arguments)]
+                   {:content          [{:type "text" :text "Visualizing query..."}]
+                    :structuredContent {:query encoded}}
+                   {:content [{:type "text" :text "Missing query argument."}]
+                    :isError true}))})
 
 (register-ui-tool!
  :visualize-query
