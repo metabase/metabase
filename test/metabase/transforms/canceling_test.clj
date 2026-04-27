@@ -12,6 +12,8 @@
   (:import
    (java.time OffsetDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private run-defaults
   {:transform_name "test"
    :transform_entity_id "eid"
