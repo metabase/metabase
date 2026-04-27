@@ -437,17 +437,17 @@ const getLocationDetails = (item: MiniPickerPickableItem) => {
       itemText: `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`,
       iconProps: null,
     };
-  } else if (isMeasure(item)) {
+  }
+  if (isMeasure(item)) {
     return {
       itemText: item.table_display_name ?? item.table_name,
       iconProps: { name: "table" as const },
     };
-  } else {
-    return {
-      itemText: item?.collection?.name ?? t`Our analytics`,
-      iconProps: getIcon({ ...item.collection, model: "collection" }),
-    };
   }
+  return {
+    itemText: item?.collection?.name ?? t`Our analytics`,
+    iconProps: getIcon({ ...item.collection, model: "collection" }),
+  };
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {

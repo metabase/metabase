@@ -4,7 +4,6 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -42,6 +41,9 @@ type MetricSearchDropdownProps = {
   menuProps?: MenuProps;
   setSearchMetricNames?: Dispatch<SetStateAction<MetricNameMap>>;
 };
+
+// needs to be stable, otherwise onSearchResults calling setSearchMetricNames creates an infinite loop
+const MINI_PICKER_MODELS = ["metric" as const, "measure" as const];
 
 export const MetricSearchDropdown = forwardRef<
   MetricSearchDropdownRef,
@@ -155,9 +157,6 @@ export const MetricSearchDropdown = forwardRef<
     [selectedMetric],
   );
 
-  // needs to be stable, otherwise onSearchResults calling setSearchMetricNames creates an infinite loop
-  const models = useMemo(() => ["metric" as const, "measure" as const], []);
-
   return (
     <>
       <MiniPicker
@@ -165,7 +164,7 @@ export const MetricSearchDropdown = forwardRef<
         searchQuery={externalSearchText}
         onChange={handleSelectResult}
         onClose={onClose}
-        models={models}
+        models={MINI_PICKER_MODELS}
         onBrowseAll={() => setIsBrowsing(true)}
         forceSearch={true}
         searchParams={{

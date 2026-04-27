@@ -172,7 +172,7 @@ const getLocationIcon = (item: OmniPickerItem) => {
     return null;
   }
 
-  if (item.model === "measure") {
+  if (isMeasure(item)) {
     return { name: "table" as const };
   }
 
