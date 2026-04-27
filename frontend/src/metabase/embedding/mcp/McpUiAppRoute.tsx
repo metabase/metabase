@@ -10,6 +10,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
+import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
@@ -135,9 +136,8 @@ export function McpUiAppRoute() {
               <SdkQuestion.QuestionVisualization height={visualizationHeight} />
             </Flex>
 
-            {/* TODO(EMB-1620): add query explorer bar */}
             <Flex px="lg">
-              <Box h="3.3rem" />
+              <McpQueryBar />
             </Flex>
           </Flex>
         </SdkQuestion>
