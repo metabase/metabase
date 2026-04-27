@@ -6,13 +6,15 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 
 type WorkspacesPlugin = {
-  WorkspacesAdminSettings: ComponentType;
+  WorkspacesSetupPage: ComponentType;
+  WorkspacesTableRemappingsPage: ComponentType;
   WorkspacesNav: ComponentType;
   getWorkspaceAdminRoutes: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
-  WorkspacesAdminSettings: NotFoundPlaceholder,
+  WorkspacesSetupPage: NotFoundPlaceholder,
+  WorkspacesTableRemappingsPage: NotFoundPlaceholder,
   WorkspacesNav: PluginPlaceholder,
   getWorkspaceAdminRoutes: () => null,
 });
