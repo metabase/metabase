@@ -300,8 +300,9 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     permissions:
-      id-token: write
-      contents: read
+      id-token: write # OIDC handshake for npm trusted publishing
+      actions: read # actions/download-artifact reads the Actions API via GITHUB_TOKEN
+      pull-requests: write # gh pr review --approve step uses GITHUB_TOKEN
     env:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
