@@ -229,8 +229,8 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
-(defn- library-root-collection?
-  "Is this one of the three system-created Library collections (root, data, or metrics)?
+(defn library-root-collection?
+  "Is this one of the immutable system-created Library collections (root, data, or metrics)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
   (library-entity-id? (:entity_id collection)))
@@ -1583,7 +1583,14 @@
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived true})))
+                    {:archived true}))
+      (let [library-data-ids (t2/select-pks-set :model/Collection
+                                                :id   [:in affected-collection-ids]
+                                                :type library-data-collection-type)]
+        (when (seq library-data-ids)
+          (t2/update! :model/Table {:collection_id [:in library-data-ids]}
+                      {:collection_id nil
+                       :is_published  false}))))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))

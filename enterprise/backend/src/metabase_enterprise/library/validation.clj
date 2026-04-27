@@ -50,9 +50,7 @@
   metabase-enterprise.library.validation
   :feature :library
   [collection]
-  (when (and (contains? #{collection/library-collection-type
-                          collection/library-data-collection-type
-                          collection/library-metrics-collection-type} (:type collection))
+  (when (and (collection/library-root-collection? collection)
              (seq (set/intersection (set (keys (t2/changes collection)))
                                     #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
     (throw (ex-info "Cannot update properties on a Library collection" {})))
