@@ -1895,3 +1895,5 @@ export const MBQL_CLAUSES = {
   ...EXPRESSION_FUNCTIONS,
   ...EXPRESSION_OPERATORS,
 } as const;
+
+export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
