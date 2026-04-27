@@ -111,7 +111,12 @@
         (let [exported-files   (yaml-files-relative tmp-dir)
               checked-in-files (yaml-files-relative checked-in)
               exported-paths   (set (keys exported-files))
-              checked-in-paths (set (keys checked-in-files))
+              checked-in-paths (set
+                                 ; We have some hand-authored __fieldvalues.yaml files that don't yet fit into the
+                                 ; auto-export story. Let's ignore them for now until we figure out whether they should
+                                 ; be included in the auto-export.
+                                (remove #(re-find #"__fieldvalues\.yaml$" %)
+                                        (keys checked-in-files)))
               only-exported    (sort (set/difference exported-paths checked-in-paths))
               only-checked-in  (sort (set/difference checked-in-paths exported-paths))
               shared-paths     (sort (set/intersection exported-paths checked-in-paths))]
