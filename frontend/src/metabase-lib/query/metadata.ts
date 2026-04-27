@@ -1,4 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Field as ApiField,
   CardId,
@@ -8,9 +10,6 @@ import type {
   FieldId,
   TableId,
 } from "metabase-types/api";
-
-import type Field from "../v1/metadata/Field";
-import type Metadata from "../v1/metadata/Metadata";
 
 import type {
   AggregationClause,
