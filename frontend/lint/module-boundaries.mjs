@@ -34,12 +34,12 @@ const elements = [
     mode: "full",
     enforceOutgoing: true,
   }),
-  // basic
   createElement({
-    type: "basic",
+    type: "lib",
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/**",
   }),
+  // basic
   createElement({
     type: "basic",
     name: "mlv1",
