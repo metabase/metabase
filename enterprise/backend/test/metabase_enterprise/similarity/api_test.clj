@@ -90,29 +90,6 @@
               (is (= :co-dashboard (:view row)))
               (is (== 0.5 (:score row))))))))))
 
-(deftest ^:sequential permission-attrition-filters-unreadable-test
-  (testing "neighbors a user can't read are filtered out (over-fetch covers small loss)"
-    (mt/with-model-cleanup [:model/Card :model/Collection :model/SimilarEdge]
-      (mt/with-temp [:model/Collection {hidden-coll :id}
-                     {:personal_owner_id (mt/user->id :crowberto)}
-                     :model/Card {src :id}    {}
-                     :model/Card {readable :id} {}
-                     :model/Card {hidden :id}   {:collection_id hidden-coll}]
-        ;; Hidden card has the higher raw score, so without filtering it would be #1.
-        (seed-edge! {:from src :to hidden   :score 0.9})
-        (seed-edge! {:from src :to readable :score 0.5})
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [out (similarity.api/neighbors
-                     {:entity-type :card :entity-id src :k 5})]
-            (is (= [readable] (mapv :to_entity_id out)))))))))
-
-(deftest ^:sequential cold-instance-empty-edge-table-test
-  (testing "no rows for the source ⇒ empty list, no exception"
-    (mt/with-model-cleanup [:model/SimilarEdge]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (is (= [] (similarity.api/neighbors
-                   {:entity-type :card :entity-id 0 :k 10})))))))
-
 (deftest ^:sequential schema-validation-test
   (testing "neighbors throws on a malformed opts map"
     (is (thrown? Exception

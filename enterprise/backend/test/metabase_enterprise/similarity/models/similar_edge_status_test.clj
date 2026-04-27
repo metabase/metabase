@@ -49,3 +49,38 @@
         (is (= :error status))
         (is (<= (count last_error) 4000))
         (is (re-find #"clojure\.lang\.ExceptionInfo" last_error))))))
+
+(deftest ^:sequential mark-skipped!-records-reason-and-leaves-last-full-run-at-nil-test
+  (mt/with-model-cleanup [:model/SimilarEdgeStatus]
+    (let [view (unique-view)]
+      (similar-edge-status/mark-skipped! view "data sparse")
+      (let [row (t2/select-one :model/SimilarEdgeStatus :view view)]
+        (is (= :skipped (:status row)))
+        (is (= "data sparse" (:last_error row)))
+        (is (nil? (:last_full_run_at row)))))))
+
+(deftest ^:sequential mark-skipped!-preserves-last-full-run-at-from-prior-ok-test
+  (testing "after a prior :ok run, mark-skipped! preserves last_full_run_at"
+    (mt/with-model-cleanup [:model/SimilarEdgeStatus]
+      (let [view (unique-view)]
+        (similar-edge-status/mark-running! view)
+        (similar-edge-status/mark-ok! view)
+        (let [stamped (:last_full_run_at
+                       (t2/select-one :model/SimilarEdgeStatus :view view))]
+          (is (some? stamped))
+          (similar-edge-status/mark-skipped! view "went sparse")
+          (let [row (t2/select-one :model/SimilarEdgeStatus :view view)]
+            (is (= :skipped (:status row)))
+            (is (= "went sparse" (:last_error row)))
+            (is (= stamped (:last_full_run_at row)))))))))
+
+(deftest ^:sequential mark-skipped!-truncates-long-reasons-test
+  (mt/with-model-cleanup [:model/SimilarEdgeStatus]
+    (let [view (unique-view)
+          long-reason (apply str (repeat 5000 "y"))]
+      (similar-edge-status/mark-skipped! view long-reason)
+      (let [{:keys [status last_error]}
+            (t2/select-one [:model/SimilarEdgeStatus :status :last_error]
+                           :view view)]
+        (is (= :skipped status))
+        (is (<= (count last_error) 4000))))))

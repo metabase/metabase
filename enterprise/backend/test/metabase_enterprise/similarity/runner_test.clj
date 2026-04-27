@@ -84,7 +84,7 @@
   "Register a view that pushes its name into `order-atom` when `compute!`
    fires. Returns the view name."
   [order-atom phase]
-  (let [view (keyword (str "runner-test-order-" (name phase) "-" (random-uuid)))]
+  (let [view (keyword (str "runner-test-" (name phase) "-" (random-uuid)))]
     (scorer/register-view! view
                            {:phase       phase
                             :typed-pairs #{[:card :card]}
@@ -102,3 +102,93 @@
             _      (runner/run-all-views!)
             picked (filter #{base fusion} @order)]
         (is (= [base fusion] picked))))))
+
+(defn- register-gated-view!
+  "Register a view with a configurable density check. Returns
+   `[view-name compute-counter check-result-atom seen-opts]` so tests can flip
+   the gate result, observe whether compute! ran, and inspect the opts that
+   reached compute!."
+  []
+  (let [view            (keyword (str "runner-test-gated-" (random-uuid)))
+        compute-counter (atom 0)
+        check-result    (atom {:passed? true})
+        seen-opts       (atom nil)]
+    (scorer/register-view! view
+                           {:phase         :base
+                            :typed-pairs   #{[:card :card]}
+                            :density-check (fn [_] @check-result)
+                            :compute!      (fn [opts]
+                                             (reset! seen-opts opts)
+                                             (swap! compute-counter inc))})
+    [view compute-counter check-result seen-opts]))
+
+(deftest ^:sequential density-gate-pass-runs-compute-test
+  (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+    (let [[view counter result-atom _opts] (register-gated-view!)]
+      (reset! result-atom {:passed? true})
+      (let [result (runner/run-view! view)]
+        (is (= :ok (:status result)))
+        (is (not (:skipped? result)))
+        (is (= 1 @counter))
+        (is (= :ok (:status (t2/select-one :model/SimilarEdgeStatus :view view))))))))
+
+(deftest ^:sequential density-gate-skip-short-circuits-test
+  (testing "failing density check skips compute! and writes :skipped status"
+    (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+      (let [[view counter result-atom _opts] (register-gated-view!)]
+        (reset! result-atom {:passed? false
+                             :reason  "synthetic skip"
+                             :metrics {:k 0}})
+        (let [result (runner/run-view! view)]
+          (is (= :ok (:status result)))
+          (is (true? (:skipped? result)))
+          (is (= "synthetic skip" (:skip-reason result)))
+          (is (= {:k 0} (:metrics result)))
+          (is (= 0 @counter) "compute! must NOT fire on skip")
+          (let [row (t2/select-one :model/SimilarEdgeStatus :view view)]
+            (is (= :skipped (:status row)))
+            (is (= "synthetic skip" (:last_error row)))))))))
+
+(deftest ^:sequential density-gate-skip-preserves-prior-edges-test
+  (testing "a prior healthy run leaves edges; later skip leaves them in place"
+    (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+      (let [[view _counter result-atom _opts] (register-gated-view!)]
+        (reset! result-atom {:passed? true})
+        (t2/insert! :model/SimilarEdge
+                    {:from_entity_type :card :from_entity_id 9001
+                     :to_entity_type   :card :to_entity_id   9002
+                     :view             view :score 0.5
+                     :last_computed_at (java.time.OffsetDateTime/now)})
+        (reset! result-atom {:passed? false :reason "skip" :metrics {}})
+        (runner/run-view! view)
+        (is (t2/exists? :model/SimilarEdge
+                        :from_entity_id 9001 :to_entity_id 9002 :view view))))))
+
+(deftest ^:sequential density-gate-skip-never-marks-running-test
+  (testing "a skipped view's status goes straight to :skipped, never :running"
+    (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+      (let [[view _counter result-atom _opts] (register-gated-view!)]
+        (reset! result-atom {:passed? false :reason "skip" :metrics {}})
+        (runner/run-view! view)
+        (let [row (t2/select-one :model/SimilarEdgeStatus :view view)]
+          (is (= :skipped (:status row)))
+          (is (nil? (:last_full_run_at row))))))))
+
+(deftest ^:sequential density-gate-compute-opts-pipe-through-test
+  (testing ":compute-opts from the density check merge into compute! opts"
+    (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+      (let [[view _counter result-atom seen-opts] (register-gated-view!)]
+        (reset! result-atom {:passed? true :compute-opts {:source :alt}})
+        (runner/run-view! view)
+        (is (= :alt (:source @seen-opts)))
+        (is (= 500 (:batch-size @seen-opts))
+            "runner-default :batch-size survives when probe doesn't override it")))))
+
+(deftest ^:sequential views-without-density-check-still-pass-test
+  (testing "views registered without :density-check default to passing"
+    (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
+      (let [[view counter] (register-counting-view!)
+            result         (runner/run-view! view)]
+        (is (= :ok (:status result)))
+        (is (not (:skipped? result)))
+        (is (= 1 @counter))))))

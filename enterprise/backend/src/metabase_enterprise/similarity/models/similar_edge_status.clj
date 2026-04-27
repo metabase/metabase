@@ -21,9 +21,12 @@
    bound prevents pathological stack traces from blowing up the row."
   4000)
 
+(defn- truncate [s]
+  (let [s (str s)]
+    (subs s 0 (min (count s) last-error-max-chars))))
+
 (defn- truncate-error [^Throwable t]
-  (let [msg (str (.getName (class t)) ": " (.getMessage t))]
-    (subs msg 0 (min (count msg) last-error-max-chars))))
+  (truncate (str (.getName (class t)) ": " (.getMessage t))))
 
 (defn mark-running!
   "Atomically upsert this view's status row to `:running`, clearing any prior
@@ -56,3 +59,17 @@
    (fn [_existing]
      {:status     :error
       :last_error (truncate-error ex)})))
+
+(defn mark-skipped!
+  "Mark this view's status as `:skipped` with the human-readable reason in
+   `:last_error`. Unlike `:error`, this is the documented cold-start outcome —
+   not a build failure. `:last_full_run_at` is intentionally not touched so a
+   prior healthy run's timestamp survives, letting debug queries distinguish
+   'sparse from day one' from 'was healthy, just went sparse'."
+  [view reason]
+  (app-db/update-or-insert!
+   :model/SimilarEdgeStatus
+   {:view view}
+   (fn [_existing]
+     {:status     :skipped
+      :last_error (truncate reason)})))

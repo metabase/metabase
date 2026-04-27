@@ -21,26 +21,50 @@
 
 (defn run-view!
   "Full-rebuild a single view: delete its rows, recompute, and update status.
-   Returns `{:view ..., :inserted N, :duration-ms M, :status :ok|:error}`.
+   Returns `{:view ..., :inserted N, :duration-ms M, :status :ok|:error
+   [:skipped? true :skip-reason ... :metrics ...]}`.
 
-   `mark-running!` runs outside the transaction so a failed compute leaves the
-   status row showing `:error` rather than rolling back to its prior state.
-   `delete!` + `compute!` together inside the transaction form the atomic swap
-   — if `compute!` throws, the prior view edges are preserved."
+   When the view registers a `:density-check`, it runs *before* the rebuild
+   transaction. A failing gate short-circuits to `:skipped` — no transient
+   `:running` state, no `delete!` of prior rows, last-good edges survive.
+   Result map carries `:status :ok :skipped? true` so callers branching on
+   success-vs-error don't need to special-case skips.
+
+   On the pass path, `mark-running!` runs outside the transaction so a failed
+   compute leaves the status row showing `:error` rather than rolling back to
+   its prior state. `delete!` + `compute!` together inside the transaction
+   form the atomic swap — if `compute!` throws, the prior view edges are
+   preserved."
   [view-name & {:keys [batch-size] :or {batch-size 500}}]
   (assert-registered! view-name)
-  (let [view-def (scorer/lookup view-name)
-        timer    (u/start-timer)]
+  (let [view-def      (scorer/lookup view-name)
+        density-check (or (:density-check view-def) (constantly {:passed? true}))
+        timer         (u/start-timer)]
     (try
-      (similar-edge-status/mark-running! view-name)
-      (let [inserted (t2/with-transaction [_]
-                       (t2/delete! :model/SimilarEdge :view view-name)
-                       ((:compute! view-def) {:batch-size batch-size}))]
-        (similar-edge-status/mark-ok! view-name)
-        (let [dur (u/since-ms timer)]
-          (log/infof "Similarity view %s: rebuilt %d edges in %.0f ms"
-                     view-name inserted dur)
-          {:view view-name :inserted inserted :duration-ms dur :status :ok}))
+      (let [probe (density-check {})]
+        (if (:passed? probe)
+          (let [compute-opts (merge {:batch-size batch-size} (:compute-opts probe))]
+            (similar-edge-status/mark-running! view-name)
+            (let [inserted (t2/with-transaction [_]
+                             (t2/delete! :model/SimilarEdge :view view-name)
+                             ((:compute! view-def) compute-opts))]
+              (similar-edge-status/mark-ok! view-name)
+              (let [dur (u/since-ms timer)]
+                (log/infof "Similarity view %s: rebuilt %d edges in %.0f ms"
+                           view-name inserted dur)
+                {:view view-name :inserted inserted :duration-ms dur :status :ok})))
+          (let [reason  (:reason probe "density gate failed")
+                metrics (:metrics probe {})]
+            (similar-edge-status/mark-skipped! view-name reason)
+            (log/infof "Similarity view %s: density gate failed, skipping. reason=%s metrics=%s"
+                       view-name reason metrics)
+            {:view        view-name
+             :inserted    0
+             :duration-ms (u/since-ms timer)
+             :status      :ok
+             :skipped?    true
+             :skip-reason reason
+             :metrics     metrics})))
       (catch Throwable t
         (similar-edge-status/record-error! view-name t)
         (log/errorf t "Similarity view %s failed" view-name)
