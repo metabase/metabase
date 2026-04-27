@@ -108,14 +108,14 @@
                                 (format "ee/transforms/%d/inspect" transform-id))
           (mt/user-http-request :rasta :get 403
                                 (format "ee/transforms/%d/inspect/generic-summary" transform-id))
-          (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-discovery
-                                                          {:status "ok"})))
-          (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-discovery
-                                                          {:status "error"})))
-          (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-lens
-                                                          {:lens-type  "generic-summary"
-                                                           :complexity "fast"
-                                                           :status     "ok"}))))
+          (is (== 0 (mt/metric-value system :metabase-transforms/inspector-discovery
+                                     {:status "ok"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/inspector-discovery
+                                     {:status "error"})))
+          (is (== 0 (mt/metric-value system :metabase-transforms/inspector-lens
+                                     {:lens-type  "generic-summary"
+                                      :complexity "fast"
+                                      :status     "ok"}))))
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (testing "GET /api/ee/transforms/:id/inspect bumps inspector-discovery{status=ok}"
