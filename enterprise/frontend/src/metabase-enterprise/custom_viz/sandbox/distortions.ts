@@ -11,10 +11,7 @@ export function makeDistortionCallback(pluginId: string) {
       return fun;
     }
 
-    // Bound functions (name starts with "bound ") report [native code] but
-    // are user-space wrappers (e.g. React's bound dispatchSetState) — must pass through.
-    const fname = (fun as { name?: string }).name ?? "";
-    if (fname.startsWith("bound ")) {
+    if (isUserDefinedFunction(fun)) {
       return fun;
     }
 
@@ -42,15 +39,30 @@ export function makeDistortionCallback(pluginId: string) {
       return fun;
     }
 
-    if (!Function.prototype.toString.call(fun).startsWith("[native code]")) {
-      return fun;
-    }
-
     const name = getFunctionName(fun);
     return function blocked() {
       throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
     };
   };
+}
+
+// User-space JS functions stringify to their actual source; native built-ins
+// (`fetch`, `XMLHttpRequest`, `document.createElement`, …) stringify with the
+// `[native code]` marker. Anything outside that marker can't do I/O on its
+// own — to be dangerous it must eventually call a native, which crosses the
+// membrane again and gets gated then. So user-defined functions can pass
+// through here without consulting the allowlist.
+//
+// Bound functions (`Function.prototype.bind`) also stringify with
+// `[native code]` even though they wrap user code (e.g. React's bound
+// dispatchSetState), but their `.name` is prefixed with `bound ` — we treat
+// those as user-defined too.
+function isUserDefinedFunction(fun: object): boolean {
+  if (!Function.prototype.toString.call(fun).includes("[native code]")) {
+    return true;
+  }
+  const fname = (fun as { name?: string }).name ?? "";
+  return fname.startsWith("bound ");
 }
 
 // Wraps innerHTML/outerHTML through DOMPurify before they reach the DOM.
