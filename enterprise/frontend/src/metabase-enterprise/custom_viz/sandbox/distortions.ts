@@ -7,47 +7,45 @@ import {
 import { getFunctionName } from "./debugging";
 
 export function makeDistortionCallback(pluginId: string) {
-  return function distortionCallback(v: object): object {
-    if (typeof v !== "function") {
-      return v;
+  return function distortionCallback(fun: object): object {
+    if (typeof fun !== "function") {
+      return fun;
     }
     try {
-      if (!Function.prototype.toString.call(v).includes("[native code]")) {
-        return v;
+      if (!Function.prototype.toString.call(fun).includes("[native code]")) {
+        return fun;
       }
     } catch {
-      return v;
+      return fun;
     }
-    // Symbol-keyed methods (e.g. [Symbol.toPrimitive], [Symbol.iterator]) are
-    // ECMAScript built-ins called implicitly by the engine — not browser APIs.
-    // Bound functions (name starts with "bound ") also report [native code] but
+    // Bound functions (name starts with "bound ") report [native code] but
     // are user-space wrappers (e.g. React's bound dispatchSetState) — must pass through.
-    const fname = (v as { name?: string }).name ?? "";
-    if (fname.startsWith("[Symbol.") || fname.startsWith("bound ")) {
-      return v;
+    const fname = (fun as { name?: string }).name ?? "";
+    if (fname.startsWith("bound ")) {
+      return fun;
     }
-    if (v === CANVAS_WIDTH_SETTER) {
+    if (fun === CANVAS_WIDTH_SETTER) {
       return canvasWidthSetterDistortion;
     }
-    if (v === CANVAS_HEIGHT_SETTER) {
+    if (fun === CANVAS_HEIGHT_SETTER) {
       return canvasHeightSetterDistortion;
     }
-    if (SANITIZED_SETTERS.has(v)) {
-      return SANITIZED_SETTERS.get(v) as object;
+    if (SANITIZED_SETTERS.has(fun)) {
+      return SANITIZED_SETTERS.get(fun) as object;
     }
-    if (v === CREATE_ELEMENT) {
+    if (fun === CREATE_ELEMENT) {
       return createElementDistortion(pluginId);
     }
-    if (v === CREATE_ELEMENT_NS) {
+    if (fun === CREATE_ELEMENT_NS) {
       return createElementNSDistortion(pluginId);
     }
-    if (v === INSERT_ADJACENT_HTML) {
+    if (fun === INSERT_ADJACENT_HTML) {
       return insertAdjacentHTMLDistortion();
     }
-    if (ALLOWED_FUNCTIONS.has(v)) {
-      return v;
+    if (ALLOWED_FUNCTIONS.has(fun)) {
+      return fun;
     }
-    const name = getFunctionName(v);
+    const name = getFunctionName(fun);
     return function blocked() {
       throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
     };
@@ -87,6 +85,16 @@ const CANVAS_HEIGHT_SETTER = Object.getOwnPropertyDescriptor(
   "height",
 )?.set;
 
+function canvasWidthSetterDistortion(this: HTMLCanvasElement, value: number) {
+  CANVAS_WIDTH_SETTER!.call(this, value);
+  this.style.width = `${value / window.devicePixelRatio}px`;
+}
+
+function canvasHeightSetterDistortion(this: HTMLCanvasElement, value: number) {
+  CANVAS_HEIGHT_SETTER!.call(this, value);
+  this.style.height = `${value / window.devicePixelRatio}px`;
+}
+
 // Tags that must never be created — they can load or execute arbitrary code.
 const BLOCKED_TAGS = new Set([
   "script",
@@ -97,16 +105,6 @@ const BLOCKED_TAGS = new Set([
   "meta",
   "base",
 ]);
-
-function canvasWidthSetterDistortion(this: HTMLCanvasElement, value: number) {
-  CANVAS_WIDTH_SETTER!.call(this, value);
-  this.style.width = `${value / window.devicePixelRatio}px`;
-}
-
-function canvasHeightSetterDistortion(this: HTMLCanvasElement, value: number) {
-  CANVAS_HEIGHT_SETTER!.call(this, value);
-  this.style.height = `${value / window.devicePixelRatio}px`;
-}
 
 function createElementDistortion(pluginId: string) {
   return function createElement(
@@ -131,7 +129,7 @@ function createElementNSDistortion(pluginId: string) {
     const localName = (
       qualifiedName.split(":").pop() ?? qualifiedName
     ).toLowerCase();
-    if (localName === "script") {
+    if (BLOCKED_TAGS.has(localName)) {
       throw new Error(
         `[plugin ${pluginId}] blocked createElementNS: ${qualifiedName}`,
       );
