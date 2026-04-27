@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { IndexRedirect, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
@@ -26,76 +27,91 @@ import { UpdatesSettingsPage } from "./settings/components/SettingsPages/Updates
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
 
+type SettingsLayoutWrapperProps = {
+  children: ReactNode;
+};
+
+const SettingsLayoutWrapper = ({ children }: SettingsLayoutWrapperProps) => (
+  <AdminSettingsLayout sidebar={<SettingsNav />}>{children}</AdminSettingsLayout>
+);
+
+const FullWidthSettingsLayoutWrapper = ({
+  children,
+}: SettingsLayoutWrapperProps) => (
+  <AdminSettingsLayout sidebar={<SettingsNav />} fullWidth>
+    {children}
+  </AdminSettingsLayout>
+);
+
 export const getSettingsRoutes = () => (
-  <Route
-    component={({ children }) => (
-      <AdminSettingsLayout sidebar={<SettingsNav />}>
-        {children}
-      </AdminSettingsLayout>
-    )}
-  >
-    <IndexRedirect to="general" />
-    <Route path="general" component={GeneralSettingsPage} />
-    <Route path="updates" component={UpdatesSettingsPage} />
-    <Route path="email" component={EmailSettingsPage} />
-    <Route path="slack" component={SlackSettingsPage} />
-    <Route path="webhooks" component={WebhooksSettingsPage} />
-    <Route
-      path="authentication"
-      component={() => <AuthenticationSettingsPage tab="authentication" />}
-    />
-    <Route
-      path="authentication/user-provisioning"
-      component={() => <AuthenticationSettingsPage tab="user-provisioning" />}
-    />
-    <Route
-      path="authentication/api-keys"
-      component={() => <AuthenticationSettingsPage tab="api-keys" />}
-    />
-    <Route path="authentication/google" component={GoogleAuthForm} />
-    <Route path="authentication/ldap" component={SettingsLdapForm} />
-    <Route
-      path="authentication/saml"
-      component={() => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
-    />
-    <Route
-      path="authentication/jwt"
-      component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
-    />
-    <Route
-      path="authentication/oidc"
-      component={() => <PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
-    />
-    <Route
-      path="remote-sync"
-      component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
-    />
-    <Route path="workspaces">
-      {PLUGIN_WORKSPACES.getWorkspaceAdminRoutes()}
+  <>
+    <Route component={FullWidthSettingsLayoutWrapper}>
+      {PLUGIN_WORKSPACES.getWorkspaceAdminFullWidthRoutes()}
     </Route>
-    <Route path="maps" component={MapsSettingsPage} />
-    <Route path="localization" component={LocalizationSettingsPage} />
-    <Route path="uploads" component={UploadSettingsPage} />
-    <Route
-      path="python-runner"
-      component={PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage}
-    />
-    <Route path="public-sharing" component={PublicSharingSettingsPage} />
-    <Route path="license" component={LicenseSettingsPage} />
-    <Route path="appearance" component={() => <AppearanceSettingsPage />} />
-    <Route
-      path="whitelabel"
-      component={() => <AppearanceSettingsPage tab="branding" />}
-    />
-    <Route
-      path="whitelabel/branding"
-      component={() => <AppearanceSettingsPage tab="branding" />}
-    />
-    <Route
-      path="whitelabel/conceal-metabase"
-      component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
-    />
-    <Route path="cloud" component={CloudSettingsPage} />
-    <Route path="*" component={NotFound} />
-  </Route>
+    <Route component={SettingsLayoutWrapper}>
+      <IndexRedirect to="general" />
+      <Route path="general" component={GeneralSettingsPage} />
+      <Route path="updates" component={UpdatesSettingsPage} />
+      <Route path="email" component={EmailSettingsPage} />
+      <Route path="slack" component={SlackSettingsPage} />
+      <Route path="webhooks" component={WebhooksSettingsPage} />
+      <Route
+        path="authentication"
+        component={() => <AuthenticationSettingsPage tab="authentication" />}
+      />
+      <Route
+        path="authentication/user-provisioning"
+        component={() => <AuthenticationSettingsPage tab="user-provisioning" />}
+      />
+      <Route
+        path="authentication/api-keys"
+        component={() => <AuthenticationSettingsPage tab="api-keys" />}
+      />
+      <Route path="authentication/google" component={GoogleAuthForm} />
+      <Route path="authentication/ldap" component={SettingsLdapForm} />
+      <Route
+        path="authentication/saml"
+        component={() => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
+      />
+      <Route
+        path="authentication/jwt"
+        component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+      />
+      <Route
+        path="authentication/oidc"
+        component={() => <PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
+      />
+      <Route
+        path="remote-sync"
+        component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
+      />
+      <Route path="workspaces">
+        {PLUGIN_WORKSPACES.getWorkspaceAdminRoutes()}
+      </Route>
+      <Route path="maps" component={MapsSettingsPage} />
+      <Route path="localization" component={LocalizationSettingsPage} />
+      <Route path="uploads" component={UploadSettingsPage} />
+      <Route
+        path="python-runner"
+        component={PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage}
+      />
+      <Route path="public-sharing" component={PublicSharingSettingsPage} />
+      <Route path="license" component={LicenseSettingsPage} />
+      <Route path="appearance" component={() => <AppearanceSettingsPage />} />
+      <Route
+        path="whitelabel"
+        component={() => <AppearanceSettingsPage tab="branding" />}
+      />
+      <Route
+        path="whitelabel/branding"
+        component={() => <AppearanceSettingsPage tab="branding" />}
+      />
+      <Route
+        path="whitelabel/conceal-metabase"
+        component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
+      />
+      <Route path="cloud" component={CloudSettingsPage} />
+      <Route path="*" component={NotFound} />
+    </Route>
+  </>
 );

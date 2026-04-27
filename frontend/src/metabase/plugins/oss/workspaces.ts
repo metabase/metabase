@@ -5,11 +5,13 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 type WorkspacesPlugin = {
   WorkspacesNav: ComponentType;
   getWorkspaceAdminRoutes: () => ReactNode;
+  getWorkspaceAdminFullWidthRoutes: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
   WorkspacesNav: PluginPlaceholder,
   getWorkspaceAdminRoutes: () => null,
+  getWorkspaceAdminFullWidthRoutes: () => null,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultPlugin();

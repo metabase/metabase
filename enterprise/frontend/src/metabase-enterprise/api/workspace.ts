@@ -3,6 +3,7 @@ import type {
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
+  WorkspaceRemapping,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -118,6 +119,67 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         }
       },
     }),
+    listWorkspaceRemappings: builder.query<WorkspaceRemapping[], void>({
+      // query: () => ({
+      //   method: "GET",
+      //   url: "/api/ee/workspace/remappings",
+      // }),
+      queryFn: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const sourceSchemas = ["public", "raw", "staging", "ingest", "ext"];
+        const targetSchemas = [
+          "isolated",
+          "analytics",
+          "marts",
+          "warehouse",
+          "sandbox",
+        ];
+        const tableNames = [
+          "orders",
+          "people",
+          "products",
+          "events",
+          "sessions",
+          "invoices",
+          "subscriptions",
+          "payments",
+          "reviews",
+          "shipments",
+          "inventory",
+          "categories",
+          "vendors",
+          "tickets",
+          "campaigns",
+          "leads",
+          "accounts",
+          "transactions",
+          "refunds",
+          "discounts",
+        ];
+        const remappings: WorkspaceRemapping[] = Array.from(
+          { length: 40 },
+          (_, index) => {
+            const tableName = tableNames[index % tableNames.length];
+            const sourceSchema = sourceSchemas[index % sourceSchemas.length];
+            const targetSchema = targetSchemas[index % targetSchemas.length];
+            const databaseId = (index % 3) + 1;
+            const createdAtDay = String((index % 28) + 1).padStart(2, "0");
+            return {
+              id: index + 1,
+              database_id: databaseId,
+              from_schema: sourceSchema,
+              from_table_name: tableName,
+              from_table_id: null,
+              to_schema: targetSchema,
+              to_table_name: `${tableName}_v${Math.floor(index / tableNames.length) + 1}`,
+              to_table_id: null,
+              created_at: `2026-04-${createdAtDay}T12:00:00Z`,
+            };
+          },
+        );
+        return { data: remappings };
+      },
+    }),
   }),
 });
 
@@ -129,4 +191,5 @@ export const {
   useDeleteWorkspaceMutation,
   useProvisionWorkspaceMutation,
   useUnprovisionWorkspaceMutation,
+  useListWorkspaceRemappingsQuery,
 } = workspaceApi;
