@@ -11,6 +11,7 @@ on:
         default: "master"
         options:
           - master
+          - emb-1643-add-provenance-to-release-embedding-sdk-workflow
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because

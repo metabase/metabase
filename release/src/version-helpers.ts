@@ -525,7 +525,7 @@ export const getNextSdkVersion = (
   const versionParts = currentVersionBase.split(".");
   const majorVersion = versionParts[1] ?? "";
 
-  if (branch === "master") {
+  if (!isReleaseBranch(branch)) {
     if (!suffix) {
       throw new Error(
         `Expected pre-release suffix on master branch, got: ${currentVersion}`,
