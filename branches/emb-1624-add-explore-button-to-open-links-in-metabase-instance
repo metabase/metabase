@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1586-prototype-interactivity-improvements-for-mcp-apps",
-    "hash": "a37c1ec3334bda0669dcc1212ee2a683f4b8fe98"
+    "hash": "62bd03f86e1bc97c5a1692da747afbcf5ec1aa65"
   },
   "upstream": {
     "branch": "emb-1624-add-explore-button-to-open-links-in-metabase-instance"
