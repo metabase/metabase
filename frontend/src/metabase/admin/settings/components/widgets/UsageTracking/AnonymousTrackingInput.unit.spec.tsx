@@ -13,11 +13,14 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import * as analytics from "../../analytics";
+import * as analytics from "../../../analytics";
 
 import { AnonymousTrackingInput } from "./AnonymousTrackingInput";
 
 const trackingFN = jest.spyOn(analytics, "trackTrackingPermissionChanged");
+
+const SETTING_NAME = "anon-tracking-enabled";
+const SETTING_ENV_VAR_NAME = "MB_ANON_TRACKING_ENABLED";
 
 const setup = ({
   value,
@@ -27,18 +30,18 @@ const setup = ({
   isEnvSetting?: boolean;
 }) => {
   const settings = createMockSettings({
-    "anon-tracking-enabled": value,
+    [SETTING_NAME]: value,
   });
 
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([
     createMockSettingDefinition({
-      key: "anon-tracking-enabled",
+      key: SETTING_NAME,
       description: "Enable the collection of anonymous usage data",
       value: false,
       is_env_setting: isEnvSetting,
-      env_name: isEnvSetting ? "MB_ANON_TRACKING_ENABLED" : undefined,
+      env_name: isEnvSetting ? SETTING_ENV_VAR_NAME : undefined,
     }),
   ]);
 
@@ -53,7 +56,9 @@ const setup = ({
 describe("AnonymousTrackingInput", () => {
   it("should show an anonymous tracking toggle", async () => {
     setup({ value: true });
-    expect(await screen.findByText("Anonymous tracking")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Send anonymous tracking data to Metabase"),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(/Enable the collection of anonymous usage data/),
     ).toBeInTheDocument();
@@ -66,7 +71,7 @@ describe("AnonymousTrackingInput", () => {
     expect(trackingFN).toHaveBeenCalledWith(false);
 
     const [{ url, body }] = await findRequests("PUT");
-    expect(url).toMatch(/\/api\/setting\/anon-tracking-enabled/);
+    expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
     expect(body).toEqual({ value: false });
 
     expect(await screen.findByRole("switch")).not.toBeChecked();
@@ -77,7 +82,7 @@ describe("AnonymousTrackingInput", () => {
     await userEvent.click(screen.getByRole("switch"));
 
     const [{ url, body }] = await findRequests("PUT");
-    expect(url).toMatch(/\/api\/setting\/anon-tracking-enabled/);
+    expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
     expect(body).toEqual({ value: true });
     expect(trackingFN).toHaveBeenCalledWith(true);
 
@@ -89,9 +94,7 @@ describe("AnonymousTrackingInput", () => {
     expect(
       await screen.findByText(/This has been set by the/),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText("MB_ANON_TRACKING_ENABLED"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(SETTING_ENV_VAR_NAME)).toBeInTheDocument();
   });
 
   it("should not show the switch when anonymous tracking is set via env var", async () => {

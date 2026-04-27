@@ -3,10 +3,10 @@ import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
+import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
-import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";

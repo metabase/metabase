@@ -6,6 +6,7 @@
    [metabase.request.current]
    [metabase.request.session]
    [metabase.request.settings]
+   [metabase.request.user-agent]
    [metabase.request.util]
    [potemkin :as p]))
 
@@ -14,6 +15,7 @@
   metabase.request.current/keep-me
   metabase.request.session/keep-me
   metabase.request.settings/keep-me
+  metabase.request.user-agent/keep-me
   metabase.request.util/keep-me)
 
 ;; TODO -- move stuff in [[metabase.server.middleware.session]]
@@ -32,6 +34,7 @@
   set-session-timeout-cookie]
  [metabase.request.current
   current-request
+  ip-address
   limit
   offset
   paged?
@@ -45,18 +48,18 @@
  [metabase.request.settings
   session-timeout
   session-timeout!]
+ [metabase.request.user-agent
+  describe-user-agent]
  [metabase.request.util
   DeviceInfo
   api-call?
   auth-call?
   cacheable?
-  describe-user-agent
   device-info
   embed?
   embedded?
   geocode-ip-addresses
   https?
-  ip-address
   public?])
 
 (defn enabled-session-timeout-seconds

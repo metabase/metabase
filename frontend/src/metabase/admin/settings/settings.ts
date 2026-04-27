@@ -4,6 +4,7 @@ import { createThunkAction } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import type { State } from "metabase/redux/store";
 import { SettingsApi } from "metabase/services";
+import type { SettingDefinition, SettingKey } from "metabase-types/api";
 
 // ACTION TYPES AND ACTION CREATORS
 
@@ -42,3 +43,10 @@ export const updateSettings = createThunkAction(
     };
   },
 );
+
+export const isSettingSetFromEnvVar = <SettingName extends SettingKey>(
+  settingDetails: SettingDefinition<SettingName> | undefined,
+): settingDetails is SettingDefinition<SettingName> &
+  Required<
+    Pick<SettingDefinition<SettingName>, "is_env_setting" | "env_name">
+  > => !!settingDetails?.is_env_setting && !!settingDetails?.env_name;
