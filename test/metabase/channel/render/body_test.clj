@@ -1221,4 +1221,3 @@
                    "ID"
                    "Product ID [external remap]"]
                   (map (comp :title second) (-> table :content second (nth 2) second last)))))))))
-
