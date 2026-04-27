@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus-test :as prometheus-test]
+   [metabase.channel.settings :as channel.settings]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.server.settings :as server.settings]
@@ -1117,6 +1118,100 @@
         (is (nil? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id lucky-id))
             "no feedback row is written for a lurker")
         (finally (tear-down-slackbot-feedback! conv-id))))))
+
+(deftest handle-feedback-modal-submission-resolves-via-channel-and-ts-fallback-test
+  (testing "buttons predating :message_external_id still resolve via (channel_id, message_ts)"
+    (let [rasta-id           (mt/user->id :rasta)
+          conv-id            (str (random-uuid))
+          external-id        (str (random-uuid))
+          channel-id         "C-FALLBACK"
+          message-ts         "1700000000.123456"
+          harbormaster-calls (atom [])]
+      (try
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id rasta-id})
+        (let [message-id (first (t2/insert-returning-pks!
+                                 :model/MetabotMessage
+                                 {:conversation_id conv-id
+                                  :role            "assistant"
+                                  :profile_id      "slackbot"
+                                  :external_id     external-id
+                                  :channel_id      channel-id
+                                  :slack_msg_id    message-ts
+                                  :total_tokens    5
+                                  :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))]
+          (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                   (swap! harbormaster-calls conj feedback)
+                                                                   true)]
+            (let [;; external-id intentionally omitted from the button payload — only channel + ts are present
+                  payload (modal-submission-payload {:conv-id     conv-id
+                                                     :external-id nil
+                                                     :user-id     rasta-id
+                                                     :positive    true
+                                                     :freeform    "from a legacy button"
+                                                     :channel-id  channel-id
+                                                     :message-ts  message-ts})
+                  result  (#'slackbot/handle-feedback-modal-submission payload)]
+              @result
+              (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+                (is (some? row) "fallback resolved the message and persisted feedback")
+                (is (true? (:positive row)))
+                (is (= "from a legacy button" (:freeform_feedback row))))
+              (is (= 1 (count @harbormaster-calls)))
+              (is (=? {:feedback {:message_id external-id :positive true}}
+                      (first @harbormaster-calls))
+                  "harbormaster receives the resolved external_id, not the channel/ts pair"))))
+        (finally (tear-down-slackbot-feedback! conv-id))))))
+
+;; -------------------------------- conversation-permalink ---------------------------------------
+
+(deftest conversation-permalink-returns-nil-when-slack-not-configured-test
+  (testing "conversation-permalink does not call Slack when slack-configured? is false"
+    (let [client-calls (atom 0)]
+      (with-redefs [channel.settings/slack-configured?     (constantly false)
+                    slackbot.client/get-permalink          (fn [& _]
+                                                             (swap! client-calls inc)
+                                                             {:ok true :permalink "should-not-be-returned"})]
+        (is (nil? (slackbot/conversation-permalink "C123" "1.0")))
+        (is (zero? @client-calls)
+            "no slack client call when not configured")))))
+
+(deftest conversation-permalink-returns-nil-when-channel-or-ts-missing-test
+  (testing "conversation-permalink short-circuits to nil when channel or ts is missing — no client call"
+    (let [client-calls (atom 0)]
+      (with-redefs [channel.settings/slack-configured?     (constantly true)
+                    channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                    slackbot.client/get-permalink          (fn [& _]
+                                                             (swap! client-calls inc)
+                                                             {:ok true})]
+        (is (nil? (slackbot/conversation-permalink nil "1.0")))
+        (is (nil? (slackbot/conversation-permalink "C123" nil)))
+        (is (zero? @client-calls))))))
+
+(deftest conversation-permalink-happy-path-test
+  (testing "conversation-permalink returns the Slack permalink string when ok is true"
+    (with-redefs [channel.settings/slack-configured?     (constantly true)
+                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                  slackbot.client/get-permalink (fn [_client {:keys [channel ts]}]
+                                                  {:ok        true
+                                                   :permalink (format "https://slack.example/%s/%s" channel ts)})]
+      (is (= "https://slack.example/C123/1.0"
+             (slackbot/conversation-permalink "C123" "1.0"))))))
+
+(deftest conversation-permalink-returns-nil-when-slack-says-not-ok-test
+  (testing "conversation-permalink returns nil when Slack responds with {:ok false}"
+    (with-redefs [channel.settings/slack-configured?     (constantly true)
+                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                  slackbot.client/get-permalink          (fn [& _]
+                                                           {:ok false :error "channel_not_found"})]
+      (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
+
+(deftest conversation-permalink-swallows-client-exception-test
+  (testing "exceptions from the Slack client are caught — function returns nil rather than propagating"
+    (with-redefs [channel.settings/slack-configured?     (constantly true)
+                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                  slackbot.client/get-permalink          (fn [& _]
+                                                           (throw (ex-info "slack down" {})))]
+      (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------
 
