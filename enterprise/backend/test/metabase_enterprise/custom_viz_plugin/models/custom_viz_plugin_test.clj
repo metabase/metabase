@@ -28,7 +28,7 @@
                                                     :display_name "perm-test"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (binding [api/*current-user-id* 1]
+        (binding [api/*current-user-id* (mt/user->id :rasta)]
           (is (true? (mi/can-read? plugin))))
         (binding [api/*current-user-id* nil]
           (is (false? (mi/can-read? plugin)))))))
