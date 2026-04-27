@@ -207,33 +207,40 @@
               ;; Cleanup
                 (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
 
-(deftest invalidate-pool-clears-both-connection-types-test
+(deftest invalidate-pool-clears-all-connection-types-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (mt/with-premium-features #{:writable-connection}
-        (testing "invalidate-pool-for-db! clears both default and write pools"
+      (mt/with-premium-features #{:writable-connection :admin-connection}
+        (testing "invalidate-pool-for-db! clears default, write, and admin pools"
           (let [read-details  {:db "mem:invalidate_test"}
-                write-details {:db "mem:invalidate_write_test"}]
-          ;; Use snake_case for column name since deftransforms uses snake_case keys
+                write-details {:db "mem:invalidate_write_test"}
+                admin-details {:db "mem:invalidate_admin_test"}]
+          ;; Use snake_case for column names since deftransforms uses snake_case keys
             (mt/with-temp [:model/Database database {:engine             :h2
                                                      :details            read-details
-                                                     :write_data_details write-details}]
+                                                     :write_data_details write-details
+                                                     :admin_details      admin-details}]
               (let [db-id             (u/the-id database)
                     default-cache-key [db-id :default]
-                    write-cache-key   [db-id :write-data]]
-              ;; Create both pools
+                    write-cache-key   [db-id :write-data]
+                    admin-cache-key   [db-id :admin]]
+              ;; Create all three pools
                 (sql-jdbc.conn/db->pooled-connection-spec database)
                 (driver.conn/with-write-connection
                   (sql-jdbc.conn/db->pooled-connection-spec database))
+                (driver.conn/with-admin-connection
+                  (sql-jdbc.conn/db->pooled-connection-spec database))
 
-                (testing "both pools exist before invalidation"
+                (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
-                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key)))
 
-                (testing "invalidate-pool-for-db! removes both pools"
+                (testing "invalidate-pool-for-db! removes all pools"
                   (sql-jdbc.conn/invalidate-pool-for-db! database)
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
-                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))))))))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key))))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})

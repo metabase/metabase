@@ -86,6 +86,173 @@
       (driver.conn/with-write-connection
         (is (true? (driver.conn/write-connection-requested?)))))))
 
+(deftest effective-details-default-with-admin-details-test
+  (testing "effective-details returns :details when *connection-type* is :default, even when :admin-details present"
+    (let [details       {:host "read-host" :port 5432}
+          admin-details {:host "admin-host" :port 5432 :user "root"}
+          database      {:lib/type      :metadata/database
+                         :details       details
+                         :admin-details admin-details}]
+      (is (=? details
+              (driver.conn/effective-details database))))))
+
+(deftest effective-details-admin-with-admin-details-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:admin-connection}
+     (let [details       {:host "read-host" :port 5432}
+           admin-details {:host "admin-host" :port 5432 :user "root"}]
+       (testing "effective-details returns admin_details when :admin and details exist"
+         (testing "with kebab-case key (Lib metadata style)"
+           (let [database {:lib/type      :metadata/database
+                           :details       details
+                           :admin-details admin-details}]
+             (driver.conn/with-admin-connection
+               (is (=? admin-details
+                       (driver.conn/effective-details database))))))
+         (testing "with snake_case key (Toucan2 instance style)"
+           (let [database (t2/instance :model/Database
+                                       {:id            1
+                                        :details       details
+                                        :admin_details admin-details})]
+             (driver.conn/with-admin-connection
+               (is (=? admin-details
+                       (driver.conn/effective-details database)))))))))))
+
+(deftest effective-details-admin-fallback-test
+  (mt/with-premium-features #{:admin-connection}
+    (let [details {:host "read-host" :port 5432}]
+      (testing "effective-details falls back to :details when :admin but no admin details"
+        (let [database {:lib/type      :metadata/database
+                        :details       details
+                        :admin-details nil}]
+          (driver.conn/with-admin-connection
+            (is (=? details
+                    (driver.conn/effective-details database)))))
+        (testing "also when :admin_details key is missing entirely"
+          (let [database {:lib/type :metadata/database
+                          :details  details}]
+            (driver.conn/with-admin-connection
+              (is (=? details
+                      (driver.conn/effective-details database))))))))))
+
+(deftest effective-details-admin-without-feature-test
+  (testing "without :admin-connection feature, with-admin-connection falls back to main connection details"
+    (mt/with-premium-features #{}
+      (let [details       {:host "read-host" :port 5432}
+            admin-details {:host "admin-host" :port 5432 :user "root"}
+            database      {:lib/type      :metadata/database
+                           :details       details
+                           :admin-details admin-details}]
+        (driver.conn/with-admin-connection
+          (is (=? details
+                  (driver.conn/effective-details database))))))))
+
+(deftest admin-connection-requested?-test
+  (testing "admin-connection-requested? returns false by default"
+    (is (false? (driver.conn/admin-connection-requested?))))
+  (testing "admin-connection-requested? returns true inside with-admin-connection"
+    (mt/with-premium-features #{:admin-connection}
+      (driver.conn/with-admin-connection
+        (is (true? (driver.conn/admin-connection-requested?))))))
+  (testing "admin-connection-requested? does not leak across to write-connection"
+    (mt/with-premium-features #{:writable-connection}
+      (driver.conn/with-write-connection
+        (is (false? (driver.conn/admin-connection-requested?))))))
+  (testing "write-connection-requested? does not leak across to admin-connection"
+    (mt/with-premium-features #{:admin-connection}
+      (driver.conn/with-admin-connection
+        (is (false? (driver.conn/write-connection-requested?)))))))
+
+(deftest effective-connection-type-admin-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:admin-connection}
+     (let [details       {:host "read-host"}
+           admin-details {:host "admin-host"}
+           configured    {:lib/type :metadata/database :id 1
+                          :details details :admin-details admin-details}
+           unconfigured  {:lib/type :metadata/database :id 1 :details details}]
+       (testing "returns :admin when both requested and configured"
+         (driver.conn/with-admin-connection
+           (is (= :admin (driver.conn/effective-connection-type configured)))))
+       (testing "returns :default when requested but not configured (avoids duplicate pool)"
+         (driver.conn/with-admin-connection
+           (is (= :default (driver.conn/effective-connection-type unconfigured)))))
+       (testing "returns :default when not requested even if configured"
+         (is (= :default (driver.conn/effective-connection-type configured))))))))
+
+(deftest details-for-exact-type-admin-test
+  (mt/with-premium-features #{:admin-connection}
+    (let [details       {:host "read-host"}
+          admin-details {:host "admin-host"}
+          database      {:lib/type      :metadata/database
+                         :details       details
+                         :admin-details admin-details}]
+      (testing "details-for-exact-type :admin returns admin-details with no fallback"
+        (is (=? admin-details
+                (driver.conn/details-for-exact-type database :admin))))
+      (testing "details-for-exact-type :admin returns nil when not configured"
+        (is (nil? (driver.conn/details-for-exact-type
+                   {:lib/type :metadata/database :details details} :admin)))))))
+
+(deftest effective-details-admin-with-workspace-swap-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:admin-connection}
+     (testing "effective-details applies workspace swap AFTER admin-details merge"
+       (let [database {:lib/type      :metadata/database
+                       :id            1
+                       :details       {:host "host" :user "reader" :port 5432}
+                       :admin-details {:user "root" :password "admin-pass" :admin true}}]
+         (driver.w/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
+           (driver.conn/with-admin-connection
+             (is (=? {:host "host" :user "ws-user" :password "ws-pass" :port 5432 :admin true}
+                     (driver.conn/effective-details database))))))))))
+
+(deftest type-resolved-metric-admin-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:admin-connection}
+     (testing "type-resolved counter increments when admin-details are genuinely used"
+       (mt/with-prometheus-system! [_ system]
+         (let [database {:lib/type      :metadata/database
+                         :id            1
+                         :details       {:host "read-host" :port 5432}
+                         :admin-details {:host "admin-host"}}]
+           (driver.conn/with-admin-connection
+             (driver.conn/effective-details database))
+           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-db-connection/type-resolved
+                                                           {:connection-type "admin"}))))))
+     (testing "type-resolved counter does NOT increment on fallback (no admin-details)"
+       (mt/with-prometheus-system! [_ system]
+         (let [database {:lib/type :metadata/database
+                         :id       1
+                         :details  {:host "read-host" :port 5432}}]
+           (driver.conn/with-admin-connection
+             (driver.conn/effective-details database))
+           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
+                                                           {:connection-type "admin"}))))))
+     (testing "type-resolved counter does NOT increment when workspace swap is active"
+       (mt/with-prometheus-system! [_ system]
+         (let [database {:lib/type      :metadata/database
+                         :id            1
+                         :details       {:host "read-host" :port 5432}
+                         :admin-details {:host "admin-host"}}]
+           (driver.w/with-swapped-connection-details 1 {:user "ws-user"}
+             (driver.conn/with-admin-connection
+               (driver.conn/effective-details database)))
+           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
+                                                           {:connection-type "admin"}))))))
+     (testing "type-resolved counter does NOT increment inside without-resolution-telemetry"
+       (mt/with-prometheus-system! [_ system]
+         (let [database {:lib/type      :metadata/database
+                         :id            1
+                         :details       {:host "read-host" :port 5432}
+                         :admin-details {:host "admin-host"}}]
+           (driver.conn/without-resolution-telemetry
+            (driver.conn/with-admin-connection
+              (is (=? {:host "admin-host" :port 5432}
+                      (driver.conn/effective-details database)))))
+           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
+                                                           {:connection-type "admin"})))))))))
+
 (deftest effective-details-with-workspace-swap-test
   (testing "effective-details applies workspace swap in :default connection type"
     (let [database {:lib/type :metadata/database

@@ -3408,6 +3408,11 @@
   enterprise/writable-connection
   {:team "Graphy"
    :api  #{}
+   :uses #{premium-features}}
+
+  enterprise/admin-connection
+  {:team "Graphy"
+   :api  #{}
    :uses #{premium-features}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

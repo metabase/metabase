@@ -87,6 +87,7 @@
   enable-upload-management?
   enable-whitelabeling?
   enable-writable-connection?
+  enable-admin-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?

@@ -1301,44 +1301,45 @@
   [driver database test-table]
   (let [test-workspace {:id   perm-check-workspace-id
                         :name "_mb_perm_check_"}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     {:write? true}
-     (fn [^Connection _conn]
-       (let [result (try
-                      (let [init-result (try
-                                          (driver/init-workspace-isolation! driver database test-workspace)
-                                          (catch Exception e
-                                            (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
-                                                                 (ex-message e))
-                                                            {:step :init} e))))
-                            workspace-with-details (merge test-workspace init-result)]
-                        (when test-table
+    (driver.conn/with-admin-connection
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       {:write? true}
+       (fn [^Connection _conn]
+         (let [result (try
+                        (let [init-result (try
+                                            (driver/init-workspace-isolation! driver database test-workspace)
+                                            (catch Exception e
+                                              (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
+                                                                   (ex-message e))
+                                                              {:step :init} e))))
+                              workspace-with-details (merge test-workspace init-result)]
+                          (when test-table
+                            (try
+                              (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+                              (catch Exception e
+                                (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
+                                                     (:schema test-table) (:name test-table) (ex-message e))
+                                                {:step :grant :table test-table} e)))))
                           (try
-                            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+                            (driver/destroy-workspace-isolation! driver database workspace-with-details)
                             (catch Exception e
-                              (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                                   (:schema test-table) (:name test-table) (ex-message e))
-                                              {:step :grant :table test-table} e)))))
-                        (try
-                          (driver/destroy-workspace-isolation! driver database workspace-with-details)
-                          (catch Exception e
-                            (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
-                                                 (ex-message e))
-                                            {:step :destroy} e))))
-                        nil)
-                      (catch Exception e
-                        ;; On failure, attempt cleanup
-                        (try
-                          (driver/destroy-workspace-isolation! driver database
-                                                               (merge test-workspace
-                                                                      {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
-                                                                       :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
-                          (catch Exception _cleanup-error
-                            nil))
-                        (ex-message e)))]
-         result)))))
+                              (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
+                                                   (ex-message e))
+                                              {:step :destroy} e))))
+                          nil)
+                        (catch Exception e
+                          ;; On failure, attempt cleanup
+                          (try
+                            (driver/destroy-workspace-isolation! driver database
+                                                                 (merge test-workspace
+                                                                        {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
+                                                                         :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
+                            (catch Exception _cleanup-error
+                              nil))
+                          (ex-message e)))]
+           result))))))
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

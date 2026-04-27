@@ -325,6 +325,10 @@
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
 
+(define-premium-feature enable-admin-connection?
+  "Should we allow admins to configure separate admin connection credentials with elevated privileges?"
+  :admin-connection)
+
 (define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
@@ -381,6 +385,7 @@
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
+   :admin_connection               (enable-admin-connection?)
    :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features

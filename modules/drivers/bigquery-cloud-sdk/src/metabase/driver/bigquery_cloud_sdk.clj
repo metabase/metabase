@@ -895,9 +895,9 @@
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
 ;; NOTE: This normalize is a legacy migration (OAuth -> service-account, dataset-id -> filters).
-;; write-data-details is a new feature and will never contain these legacy fields, so we only
-;; normalize the primary details here. The convert-dataset-id-to-filters! function has DB write
-;; side effects that are specific to the primary details.
+;; write-data-details and admin-details are newer features and will never contain these legacy
+;; fields, so we only normalize the primary details here. The convert-dataset-id-to-filters!
+;; function has DB write side effects that are specific to the primary details.
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_driver database]
   (let [details (driver.conn/default-details database)]
@@ -1453,32 +1453,33 @@
   ;; We run the actual init/grant/destroy operations and clean up immediately.
   (let [test-workspace {:id   perm-check-workspace-id
                         :name "_mb_perm_check_"}]
-    (try
-      (let [init-result (try
-                          (driver/init-workspace-isolation! driver database test-workspace)
-                          (catch Exception e
-                            (throw (ex-info (tru "Failed to initialize workspace isolation: {0}" (ex-message e))
-                                            {:step :init} e))))
-            workspace-with-details (merge test-workspace init-result)]
-        (when test-table
+    (driver.conn/with-admin-connection
+      (try
+        (let [init-result (try
+                            (driver/init-workspace-isolation! driver database test-workspace)
+                            (catch Exception e
+                              (throw (ex-info (tru "Failed to initialize workspace isolation: {0}" (ex-message e))
+                                              {:step :init} e))))
+              workspace-with-details (merge test-workspace init-result)]
+          (when test-table
+            (try
+              (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+              (catch Exception e
+                (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
+                                     (:schema test-table) (:name test-table) (ex-message e))
+                                {:step :grant :table test-table} e)))))
           (try
-            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+            (driver/destroy-workspace-isolation! driver database workspace-with-details)
             (catch Exception e
-              (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                   (:schema test-table) (:name test-table) (ex-message e))
-                              {:step :grant :table test-table} e)))))
-        (try
-          (driver/destroy-workspace-isolation! driver database workspace-with-details)
-          (catch Exception e
-            (throw (ex-info (tru "Failed to destroy workspace isolation: {0}" (ex-message e))
-                            {:step :destroy} e)))))
-      nil
-      (catch Exception e
-        (ex-message e))
-      (finally
-        (try
-          (driver/destroy-workspace-isolation! driver database test-workspace)
-          (catch Exception _ nil))))))
+              (throw (ex-info (tru "Failed to destroy workspace isolation: {0}" (ex-message e))
+                              {:step :destroy} e)))))
+        nil
+        (catch Exception e
+          (ex-message e))
+        (finally
+          (try
+            (driver/destroy-workspace-isolation! driver database test-workspace)
+            (catch Exception _ nil)))))))
 
 (defmethod driver/destroy-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]

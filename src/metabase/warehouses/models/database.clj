@@ -52,6 +52,7 @@
 (t2/deftransforms :model/Database
   {:details                        mi/transform-encrypted-json
    :write_data_details             mi/transform-encrypted-json
+   :admin_details                  mi/transform-encrypted-json
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
@@ -271,6 +272,7 @@
   "Checks database health off-thread.
    - checks connectivity for the default connection
    - checks connectivity for the write connection (if configured)
+   - checks connectivity for the admin connection (if configured)
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
@@ -281,7 +283,8 @@
              database    (assoc database :details details)
              engine-str  (name engine)
              driver      (keyword engine-str)
-             details-map (assoc details :engine engine-str)]
+             details-map (assoc details :engine engine-str)
+             lib-db      (driver.u/ensure-lib-database database)]
          (when (check-connection! database driver engine-str details-map "default")
            (let [provider (provider-detection/detect-provider-from-database database)]
              (when (not= provider (:provider_name database))
@@ -292,11 +295,16 @@
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
-         (when (driver.conn/database-write-data-details (driver.u/ensure-lib-database database))
+         (when (driver.conn/database-write-data-details lib-db)
            (let [write-details (driver.conn/without-resolution-telemetry
                                 (driver.conn/with-write-connection
                                   (driver.conn/effective-details database)))]
-             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
+         (when (driver.conn/database-admin-details lib-db)
+           (let [admin-details (driver.conn/without-resolution-telemetry
+                                (driver.conn/with-admin-connection
+                                  (driver.conn/effective-details database)))]
+             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool."
@@ -350,7 +358,8 @@
                driver
                (-> db
                    (m/update-existing-in [:details :auth-provider] keyword)
-                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)
+                   (m/update-existing-in [:admin_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
@@ -456,7 +465,8 @@
                  infer-db-schedules
 
                  (or (some? (:details changes))
-                     (some? (:write_data_details changes)))
+                     (some? (:write_data_details changes))
+                     (some? (:admin_details changes)))
                  secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
@@ -551,9 +561,9 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details` and `write_data_details` for any User without write perms
-  for the DB. Users with write perms can see the details but remove anything resembling a password. No one gets to
-  see this in an API response!
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, and `admin_details` for any User
+  without write perms for the DB. Users with write perms can see the details but remove anything resembling a
+  password. No one gets to see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
@@ -565,12 +575,13 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details))
+                    (dissoc db :details :write_data_details :admin_details))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
                         (update :details redact-sensitive-fields)
-                        (m/update-existing :write_data_details redact-sensitive-fields))))]
+                        (m/update-existing :write_data_details redact-sensitive-fields)
+                        (m/update-existing :admin_details redact-sensitive-fields))))]
        (update db :settings
                (fn [settings]
                  (when (map? settings)
@@ -613,6 +624,13 @@
                                          ::serdes/skip))
                                      :import identity}
                :write_data_details {:export-with-context
+                                    (fn [current _ details]
+                                      (if (and include-database-secrets
+                                               (not (:is_attached_dwh current)))
+                                        details
+                                        ::serdes/skip))
+                                    :import identity}
+               :admin_details      {:export-with-context
                                     (fn [current _ details]
                                       (if (and include-database-secrets
                                                (not (:is_attached_dwh current)))
@@ -665,7 +683,8 @@
   (assert-not-h2! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
-                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
+                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
+                              (:admin_details ingested)      (update :admin_details driver/sanitize-db-details))
                             maybe-local))
 
 (def ^{:arglists '([table-id])} table-id->database-id

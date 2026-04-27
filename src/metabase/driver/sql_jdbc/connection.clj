@@ -290,7 +290,8 @@
   them and removing from cache."
   [database]
   (let [db-id           (u/the-id database)
-        canonical-keys  [[db-id :default] [db-id :write-data]]
+        canonical-keys  (mapv (fn [conn-type] [db-id conn-type])
+                              driver.conn/connection-types)
         pool-map        @pool-cache-key->connection-pool
         canonical-count (count (filter pool-map canonical-keys))
         ;; Find all swapped pool keys for this database (keys are [db-id, details-hash] tuples)
@@ -412,7 +413,7 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details :write_data_details] :id database-id)
+      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id)
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
