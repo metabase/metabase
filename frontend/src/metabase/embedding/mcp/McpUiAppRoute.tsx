@@ -10,7 +10,6 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
-import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
@@ -133,9 +132,9 @@ export function McpUiAppRoute() {
             <SdkQuestion.QuestionVisualization height="calc(500px - 8rem)" />
           </Flex>
 
-          {/* Metric-viewer-style query bar: chart type + time granularity */}
+          {/* Query bar placeholder — implemented in McpQueryBar (next PR) */}
           <Flex justify="center" py="xs" style={{ flexShrink: 0 }}>
-            <McpQueryBar />
+            <Box h="3.3rem" />
           </Flex>
         </SdkQuestion>
       </div>
