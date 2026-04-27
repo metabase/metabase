@@ -562,7 +562,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.location("pathname").should("eq", "/dashboard/13-new-dashboard");
       });
 
       it("when selecting a collection with no child dashboards (metabase#47000)", () => {
@@ -593,7 +593,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.location("pathname").should("eq", "/dashboard/13-new-dashboard");
       });
 
       it("when a dashboard is currently selected", () => {
@@ -618,7 +618,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.location("pathname").should("eq", "/dashboard/13-new-dashboard");
       });
     });
   });

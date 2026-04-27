@@ -12,6 +12,7 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canUserCreateNativeQueries,
@@ -29,7 +30,6 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import S from "../components/BrowseContainer.module.css";
 

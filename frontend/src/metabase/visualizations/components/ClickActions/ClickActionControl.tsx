@@ -1,5 +1,5 @@
+import { useDispatch } from "metabase/redux";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import {
   type ClickAction,
   isCustomClickAction,

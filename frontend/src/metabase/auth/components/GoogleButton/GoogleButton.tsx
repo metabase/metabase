@@ -6,9 +6,9 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import { getCspNonce } from "metabase/utils/csp";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 import { loginGoogle } from "../../actions";
