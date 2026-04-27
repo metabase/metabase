@@ -11,6 +11,10 @@ export const WorkspacesNav = () => {
     >
       <SettingsNavItem path="workspaces/mode" label={t`Mode`} />
       <SettingsNavItem path="workspaces/provisioning" label={t`Provisioning`} />
+      <SettingsNavItem
+        path="workspaces/table-remappings"
+        label={t`Table remappings`}
+      />
     </SettingsNavItem>
   );
 };
