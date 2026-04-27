@@ -23,24 +23,17 @@ export type Workspace = {
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
-  output_schema: string;
-  status: WorkspaceDatabaseStatus;
-};
-
-export type WorkspaceDatabaseDraft = {
-  database_id: DatabaseId;
-  input_schemas: string[];
   output_schema?: string;
-  status?: WorkspaceDatabaseStatus;
+  status: WorkspaceDatabaseStatus;
 };
 
 export type CreateWorkspaceRequest = {
   name: string;
-  databases: WorkspaceDatabaseDraft[];
+  databases?: WorkspaceDatabase[];
 };
 
 export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
-  databases?: WorkspaceDatabaseDraft[];
+  databases?: WorkspaceDatabase[];
 };

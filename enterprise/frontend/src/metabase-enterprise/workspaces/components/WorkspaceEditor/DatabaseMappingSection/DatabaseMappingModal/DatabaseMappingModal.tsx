@@ -16,7 +16,7 @@ import * as Errors from "metabase/utils/errors";
 import type {
   Database,
   DatabaseId,
-  WorkspaceDatabaseDraft,
+  WorkspaceDatabase,
 } from "metabase-types/api";
 
 type DatabaseMappingFormValues = {
@@ -33,13 +33,13 @@ const VALIDATION_SCHEMA = Yup.object({
 });
 
 type DatabaseMappingModalProps = {
-  mapping?: WorkspaceDatabaseDraft;
+  mapping?: WorkspaceDatabase;
   databases: Database[];
   opened: boolean;
   canDelete?: boolean;
   isReadOnly?: boolean;
-  onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
-  onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
+  onSubmit: (mapping: WorkspaceDatabase) => void;
+  onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
 };
 
@@ -76,12 +76,12 @@ export function DatabaseMappingModal({
 }
 
 type DatabaseMappingFormProps = {
-  mapping?: WorkspaceDatabaseDraft;
+  mapping?: WorkspaceDatabase;
   databases: Database[];
   canDelete: boolean;
   isReadOnly: boolean;
-  onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
-  onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
+  onSubmit: (mapping: WorkspaceDatabase) => void;
+  onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
 };
 
@@ -246,7 +246,7 @@ function getDatabaseOptions(databases: Database[]) {
 }
 
 function getInitialValues(
-  mapping?: WorkspaceDatabaseDraft,
+  mapping?: WorkspaceDatabase,
 ): DatabaseMappingFormValues {
   return {
     database_id:
@@ -257,9 +257,10 @@ function getInitialValues(
 
 function getDatabaseMapping(
   values: DatabaseMappingFormValues,
-): WorkspaceDatabaseDraft {
+): WorkspaceDatabase {
   return {
     database_id: getDatabaseId(values.database_id),
     input_schemas: values.input_schemas,
+    status: "unprovisioned",
   };
 }

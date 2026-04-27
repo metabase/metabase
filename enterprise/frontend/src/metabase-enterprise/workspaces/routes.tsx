@@ -1,20 +1,20 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRedirect, Route } from "react-router";
 
-import { WorkspacesTableRemappingsPage } from "./components/WorkspacesTableRemappingsPage";
+import { WorkspacesTableRemappingPage } from "./components/WorkspacesTableRemappingPage";
 import { NewWorkspacePage } from "./pages/NewWorkspacePage";
 import { WorkspaceListPage } from "./pages/WorkspaceListPage";
+import { WorkspaceModePage } from "./pages/WorkspaceModePage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 
 export function getWorkspaceAdminRoutes() {
   return (
     <>
-      <IndexRoute component={WorkspaceListPage} />
-      <Route path="new" component={NewWorkspacePage} />
-      <Route
-        path="table-remappings"
-        component={WorkspacesTableRemappingsPage}
-      />
-      <Route path=":workspaceId" component={WorkspacePage} />
+      <IndexRedirect to="mode" />
+      <Route path="mode" component={WorkspaceModePage} />
+      <Route path="provisioning" component={WorkspaceListPage} />
+      <Route path="provisioning/new" component={NewWorkspacePage} />
+      <Route path="provisioning/:workspaceId" component={WorkspacePage} />
+      <Route path="table-remapping" component={WorkspacesTableRemappingPage} />
     </>
   );
 }

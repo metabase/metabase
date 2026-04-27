@@ -182,14 +182,18 @@ export function adminToolsGrantAccess() {
   return "/admin/tools/help/grant-access";
 }
 
+export function workspaceMode() {
+  return "/admin/settings/workspaces/mode";
+}
+
 export function workspaceList() {
-  return "/admin/settings/workspaces";
+  return "/admin/settings/workspaces/provisioning";
 }
 
 export function newWorkspace() {
-  return "/admin/settings/workspaces/new";
+  return "/admin/settings/workspaces/provisioning/new";
 }
 
 export function workspace(workspaceId: WorkspaceId) {
-  return `/admin/settings/workspaces/${workspaceId}`;
+  return `/admin/settings/workspaces/provisioning/${workspaceId}`;
 }

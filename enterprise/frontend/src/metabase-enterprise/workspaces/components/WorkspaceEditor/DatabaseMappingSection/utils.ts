@@ -3,14 +3,14 @@ import { t } from "ttag";
 import type {
   Database,
   DatabaseId,
-  WorkspaceDatabaseDraft,
+  WorkspaceDatabase,
 } from "metabase-types/api";
 
 import { isSupportedDatabase } from "../../../utils";
 
 export function getAvailableDatabases(
   databases: Database[],
-  mappings: WorkspaceDatabaseDraft[],
+  mappings: WorkspaceDatabase[],
   databaseId?: DatabaseId,
 ): Database[] {
   const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));

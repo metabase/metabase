@@ -1,55 +1,36 @@
 import { useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
-import type {
-  WorkspaceDatabase,
-  WorkspaceDatabaseDraft,
-} from "metabase-types/api";
+import type { WorkspaceDatabase } from "metabase-types/api";
 
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import type { WorkspaceInfo } from "../../types";
 
-import {
-  getInitialWorkspace,
-  getSaveErrorMessage,
-  isValidWorkspace,
-} from "./utils";
-
-type NewWorkspacePageProps = {
-  route: Route;
+const INITIAL_WORKSPACE: WorkspaceInfo = {
+  name: "",
+  databases: [],
 };
 
-export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
+export function NewWorkspacePage() {
+  const dispatch = useDispatch();
   const [createWorkspace, { isLoading: isSaving }] =
     useCreateWorkspaceMutation();
-  const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const initialWorkspace = getInitialWorkspace();
-  const [workspace, setWorkspace] = useState<WorkspaceInfo>(initialWorkspace);
-  const isValid = isValidWorkspace(workspace);
-  const isDirty = !_.isEqual(workspace, initialWorkspace);
+  const [workspace, setWorkspace] = useState<WorkspaceInfo>(INITIAL_WORKSPACE);
+  const isValid =
+    workspace.name.trim().length > 0 && workspace.databases.length > 0;
 
-  const handleNameChange = (name: string) => {
+  const handleNameChange = (name: string) =>
     setWorkspace({ ...workspace, name });
-  };
-
-  const handleDatabasesChange = (databases: WorkspaceDatabaseDraft[]) => {
-    setWorkspace({ ...workspace, databases: databases as WorkspaceDatabase[] });
-  };
-
-  const handleCancel = () => {
-    dispatch(push(Urls.workspaceList()));
-  };
+  const handleDatabasesChange = (databases: WorkspaceDatabase[]) =>
+    setWorkspace({ ...workspace, databases });
 
   const handleSave = async () => {
     const { data, error } = await createWorkspace({
@@ -60,29 +41,20 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
       sendErrorToast(t`Failed to create workspace`);
       return;
     }
-
     sendSuccessToast(t`Workspace created`);
     dispatch(push(Urls.workspace(data.id)));
   };
 
   return (
-    <>
+    <SettingsPageWrapper title={t`New workspace`}>
       <WorkspaceEditor
         workspace={workspace}
-        actions={
-          <PaneHeaderActions
-            isValid={isValid}
-            isSaving={isSaving}
-            isDirty
-            errorMessage={getSaveErrorMessage(workspace)}
-            onSave={handleSave}
-            onCancel={handleCancel}
-          />
-        }
+        isSaving={isSaving}
+        isValid={isValid}
         onNameChange={handleNameChange}
         onDatabasesChange={handleDatabasesChange}
+        onSave={handleSave}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
-    </>
+    </SettingsPageWrapper>
   );
 }

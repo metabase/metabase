@@ -1,22 +1,21 @@
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Center } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace, WorkspaceDatabaseDraft } from "metabase-types/api";
+import type {
+  UpdateWorkspaceRequest,
+  Workspace,
+  WorkspaceDatabase,
+} from "metabase-types/api";
 
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
-import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
 import { useGetWorkspaceQueryWithPolling } from "../../hooks/use-get-workspace-query-with-polling";
 
-type WorkspacePageParams = {
-  workspaceId: string;
-};
-
 type WorkspacePageProps = {
-  params: WorkspacePageParams;
+  params: { workspaceId: string };
 };
 
 export function WorkspacePage({ params }: WorkspacePageProps) {
@@ -26,9 +25,9 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
 
   if (isLoading || error != null || workspace == null) {
     return (
-      <Center h="100%">
+      <SettingsPageWrapper title={t`Workspace settings`}>
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Center>
+      </SettingsPageWrapper>
     );
   }
 
@@ -41,43 +40,24 @@ type WorkspacePageBodyProps = {
 
 function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
   const [updateWorkspace] = useUpdateWorkspaceMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
 
-  const handleNameChange = async (name: string) => {
-    if (name === workspace.name) {
-      return;
-    }
-    const { error } = await updateWorkspace({
-      id: workspace.id,
-      name,
-      databases: workspace.databases,
-    });
-    if (error) {
-      sendErrorToast(t`Failed to update workspace name`);
-    } else {
-      sendSuccessToast(t`Workspace name updated`);
-    }
-  };
-
-  const handleDatabasesChange = async (databases: WorkspaceDatabaseDraft[]) => {
-    const { error } = await updateWorkspace({
-      id: workspace.id,
-      name: workspace.name,
-      databases,
-    });
+  const handleSave = async (patch: Omit<UpdateWorkspaceRequest, "id">) => {
+    const { error } = await updateWorkspace({ id: workspace.id, ...patch });
     if (error) {
       sendErrorToast(t`Failed to update workspace`);
-    } else {
-      sendSuccessToast(t`Workspace updated`);
     }
   };
 
   return (
-    <WorkspaceEditor
-      workspace={workspace}
-      menu={<WorkspaceMoreMenu workspace={workspace} />}
-      onNameChange={handleNameChange}
-      onDatabasesChange={handleDatabasesChange}
-    />
+    <SettingsPageWrapper title={t`Workspace settings`}>
+      <WorkspaceEditor
+        workspace={workspace}
+        onNameChange={(name) => handleSave({ name })}
+        onDatabasesChange={(databases: WorkspaceDatabase[]) =>
+          handleSave({ databases })
+        }
+      />
+    </SettingsPageWrapper>
   );
 }

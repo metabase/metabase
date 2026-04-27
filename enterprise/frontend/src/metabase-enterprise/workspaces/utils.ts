@@ -2,7 +2,7 @@ import { hasFeature } from "metabase/admin/databases/utils";
 import type {
   Database,
   DatabaseId,
-  WorkspaceDatabaseDraft,
+  WorkspaceDatabase,
 } from "metabase-types/api";
 
 export function isSupportedDatabase(database: Database): boolean {
@@ -19,26 +19,18 @@ export function toDatabasesById(
   return map;
 }
 
-export function isDatabaseProvisioned(
-  database: WorkspaceDatabaseDraft,
-): boolean {
+export function isDatabaseProvisioned(database: WorkspaceDatabase): boolean {
   return database.status === "provisioned";
 }
 
-export function isDatabaseProvisioning(
-  database: WorkspaceDatabaseDraft,
-): boolean {
+export function isDatabaseProvisioning(database: WorkspaceDatabase): boolean {
   return database.status === "provisioning";
 }
 
-export function isDatabaseUnprovisioning(
-  database: WorkspaceDatabaseDraft,
-): boolean {
+export function isDatabaseUnprovisioning(database: WorkspaceDatabase): boolean {
   return database.status === "unprovisioning";
 }
 
-export function isDatabaseUnprovisioned(
-  database: WorkspaceDatabaseDraft,
-): boolean {
+export function isDatabaseUnprovisioned(database: WorkspaceDatabase): boolean {
   return database.status === "unprovisioned";
 }
