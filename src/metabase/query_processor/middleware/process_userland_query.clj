@@ -185,11 +185,16 @@
       destination-db-id (assoc :database_id destination-db-id))))
 
 (def ^:dynamic ^:private *execution-context-ref*
-  "Bound to a volatile by [[process-userland-query-middleware]]. The execute-time middleware
+  "Bound to a volatile by [[process-userland-query-middleware]] for each userland query.
   [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the
-  EE postprocessing `binding` blocks are still on the stack. The around middleware then reads the volatile in both
-  the success-path rff and the error-path catch — the latter is the whole point, since by the time control reaches
-  that catch the EE bindings have already been popped during exception unwind."
+  EE postprocessing `binding` blocks are still on the stack. The around middleware reads it in both the
+  success-path rff and the error-path catch — the latter is the whole point, since by the time control reaches
+  that catch the EE bindings have already been popped during exception unwind.
+
+  Why a volatile and not just `set!` on the dynamic var: the QP can run on a thread spawned by the streaming
+  response (via `bound-fn` / `binding-conveyor-fn`), and conveyed bindings on that thread are a snapshot —
+  `set!` would mutate only the spawned thread's frame, not the caller's. A volatile is a shared mutable cell
+  that any thread holding a reference can read/write, so the value flows back to the caller correctly."
   nil)
 
 (defn capture-execution-context-middleware
@@ -209,11 +214,10 @@
   includes `:is_impersonated` and `:is_db_routed` (defaulting to `false`) so the QueryExecution row has a stable
   shape even when the snapshot didn't run (e.g. tests that bypass [[capture-execution-context-middleware]])."
   [execution-info]
-  (let [snapshot (some-> *execution-context-ref* deref)]
-    (merge {:is_impersonated false
-            :is_db_routed    false}
-           execution-info
-           snapshot)))
+  (merge {:is_impersonated false
+          :is_db_routed    false}
+         execution-info
+         (some-> *execution-context-ref* deref)))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
@@ -237,8 +241,8 @@
       (qp query rff)
       ;; The volatile is written from inside [[capture-execution-context-middleware]] (positioned in the execute
       ;; chain inside the EE postprocessing bindings) and read in both the success-path rff and the error-path
-      ;; catch below. Reading the dynamic vars directly from the catch block does NOT work — Clojure pops the EE
-      ;; `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
+      ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
+      ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
       (binding [*execution-context-ref* (volatile! nil)]
         (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
               execution-info (query-execution-info query)]
