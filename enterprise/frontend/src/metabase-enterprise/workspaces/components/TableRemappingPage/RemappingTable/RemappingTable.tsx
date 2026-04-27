@@ -8,33 +8,33 @@ import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
-  WorkspaceRemapping,
-  WorkspaceRemappingId,
+  TableRemapping,
+  TableRemappingId,
 } from "metabase-types/api";
 
 import { getColumns } from "./utils";
 
-type WorkspaceRemappingsTableProps = {
-  remappings: WorkspaceRemapping[];
+type RemappingTableProps = {
+  remappings: TableRemapping[];
   databasesById: Map<DatabaseId, Database>;
-  selectedRemappingId: WorkspaceRemappingId | undefined;
-  onRemappingSelect: (remapping: WorkspaceRemapping) => void;
+  selectedRemappingId: TableRemappingId | undefined;
+  onRemappingSelect: (remapping: TableRemapping) => void;
 };
 
-export function WorkspaceRemappingsTable({
+export function RemappingTable({
   remappings,
   databasesById,
   selectedRemappingId,
   onRemappingSelect,
-}: WorkspaceRemappingsTableProps) {
+}: RemappingTableProps) {
   const columns = useMemo(() => getColumns({ databasesById }), [databasesById]);
 
   const handleRowClick = useCallback(
-    (row: Row<WorkspaceRemapping>) => onRemappingSelect(row.original),
+    (row: Row<TableRemapping>) => onRemappingSelect(row.original),
     [onRemappingSelect],
   );
 
-  const treeTableInstance = useTreeTableInstance<WorkspaceRemapping>({
+  const treeTableInstance = useTreeTableInstance<TableRemapping>({
     data: remappings,
     columns,
     getNodeId: (remapping) => String(remapping.id),
@@ -51,7 +51,7 @@ export function WorkspaceRemappingsTable({
       mih={0}
       shadow="none"
       withBorder
-      data-testid="workspace-remappings-table"
+      data-testid="remapping-table"
     >
       <TreeTable
         instance={treeTableInstance}
@@ -60,7 +60,7 @@ export function WorkspaceRemappingsTable({
             label={t`Transforms create tables in the isolation schema on their first run. Those remappings will show up here.`}
           />
         }
-        ariaLabel={t`Workspace remappings`}
+        ariaLabel={t`Table remappings`}
         onRowClick={handleRowClick}
       />
     </Card>

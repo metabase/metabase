@@ -1,6 +1,6 @@
 import { IndexRedirect, Route } from "react-router";
 
-import { WorkspacesTableRemappingsPage } from "./components/WorkspacesTableRemappingsPage";
+import { TableRemappingPage } from "./components/TableRemappingPage";
 import { NewWorkspacePage } from "./pages/NewWorkspacePage";
 import { WorkspaceListPage } from "./pages/WorkspaceListPage";
 import { WorkspaceModePage } from "./pages/WorkspaceModePage";
@@ -19,10 +19,5 @@ export function getWorkspaceAdminRoutes() {
 }
 
 export function getWorkspaceAdminFullWidthRoutes() {
-  return (
-    <Route
-      path="workspaces/table-remappings"
-      component={WorkspacesTableRemappingsPage}
-    />
-  );
+  return <Route path="table-remapping" component={TableRemappingPage} />;
 }

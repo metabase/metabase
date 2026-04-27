@@ -52,6 +52,7 @@ export function SettingsNav() {
       </SettingsNavItem>
       <PLUGIN_REMOTE_SYNC.LibraryNav />
       <PLUGIN_WORKSPACES.WorkspacesNav />
+      <PLUGIN_WORKSPACES.TableRemappingNav />
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />

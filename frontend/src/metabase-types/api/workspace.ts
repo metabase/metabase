@@ -39,10 +39,10 @@ export type UpdateWorkspaceRequest = {
   databases?: WorkspaceDatabase[];
 };
 
-export type WorkspaceRemappingId = number;
+export type TableRemappingId = number;
 
-export type WorkspaceRemapping = {
-  id: WorkspaceRemappingId;
+export type TableRemapping = {
+  id: TableRemappingId;
   database_id: DatabaseId;
   from_schema: string;
   from_table_name: string;

@@ -8,28 +8,28 @@ import { FieldsSection } from "metabase-enterprise/dependencies/components/Depen
 import { InfoSection } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/InfoSection";
 import { LocationSection } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/LocationSection";
 import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";
-import type { ConcreteTableId, WorkspaceRemapping } from "metabase-types/api";
+import type { ConcreteTableId, TableRemapping } from "metabase-types/api";
 
 import { MappedToSection } from "./MappedToSection";
+import S from "./RemappingSidebar.module.css";
 import { SidebarHeader } from "./SidebarHeader";
-import S from "./WorkspaceRemappingSidebar.module.css";
 import { toTableDependencyNode } from "./utils";
 
-type WorkspaceRemappingSidebarProps = {
-  remapping: WorkspaceRemapping;
+type RemappingSidebarProps = {
+  remapping: TableRemapping;
   containerWidth: number;
   onResizeStart: () => void;
   onResizeStop: () => void;
   onClose: () => void;
 };
 
-export function WorkspaceRemappingSidebar({
+export function RemappingSidebar({
   remapping,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
-}: WorkspaceRemappingSidebarProps) {
+}: RemappingSidebarProps) {
   const tableId = remapping.from_table_id;
 
   const {
@@ -54,7 +54,7 @@ export function WorkspaceRemappingSidebar({
         p="lg"
         gap="xl"
         bg="background-primary"
-        data-testid="workspace-remapping-sidebar"
+        data-testid="remapping-sidebar"
       >
         <Stack gap="lg">
           <SidebarHeader

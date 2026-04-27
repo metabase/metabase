@@ -2,12 +2,12 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
-import type { WorkspaceRemapping } from "metabase-types/api";
+import type { TableRemapping } from "metabase-types/api";
 
 import S from "./MappedToSection.module.css";
 
 type MappedToSectionProps = {
-  remapping: WorkspaceRemapping;
+  remapping: TableRemapping;
 };
 
 export function MappedToSection({ remapping }: MappedToSectionProps) {

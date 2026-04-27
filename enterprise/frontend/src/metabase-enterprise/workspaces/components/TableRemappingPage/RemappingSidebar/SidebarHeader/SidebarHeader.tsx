@@ -39,7 +39,7 @@ export function SidebarHeader({
       wrap="nowrap"
       align="start"
       justify="space-between"
-      data-testid="workspace-remapping-sidebar-header"
+      data-testid="remapping-sidebar-header"
     >
       {link != null ? (
         <Anchor

@@ -2,11 +2,7 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import type { TreeTableColumnDef } from "metabase/ui";
-import type {
-  Database,
-  DatabaseId,
-  WorkspaceRemapping,
-} from "metabase-types/api";
+import type { Database, DatabaseId, TableRemapping } from "metabase-types/api";
 
 import { DatabaseCell } from "./DatabaseCell";
 import { SchemaTableCell } from "./SchemaTableCell";
@@ -17,7 +13,7 @@ type GetColumnsParams = {
 
 export function getColumns({
   databasesById,
-}: GetColumnsParams): TreeTableColumnDef<WorkspaceRemapping>[] {
+}: GetColumnsParams): TreeTableColumnDef<TableRemapping>[] {
   return [
     getSchemaTableColumn("from", t`Table`),
     getSchemaTableColumn("to", t`Mapped to`),
@@ -44,7 +40,7 @@ export function getColumns({
 function getSchemaTableColumn(
   id: "from" | "to",
   header: string,
-): TreeTableColumnDef<WorkspaceRemapping> {
+): TreeTableColumnDef<TableRemapping> {
   const schemaField = `${id}_schema` as const;
   const tableNameField = `${id}_table_name` as const;
 

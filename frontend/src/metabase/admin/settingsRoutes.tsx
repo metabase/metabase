@@ -32,7 +32,9 @@ type SettingsLayoutWrapperProps = {
 };
 
 const SettingsLayoutWrapper = ({ children }: SettingsLayoutWrapperProps) => (
-  <AdminSettingsLayout sidebar={<SettingsNav />}>{children}</AdminSettingsLayout>
+  <AdminSettingsLayout sidebar={<SettingsNav />}>
+    {children}
+  </AdminSettingsLayout>
 );
 
 const FullWidthSettingsLayoutWrapper = ({

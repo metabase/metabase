@@ -1,1 +1,0 @@
-export { WorkspaceRemappingsTable } from "./WorkspaceRemappingsTable";

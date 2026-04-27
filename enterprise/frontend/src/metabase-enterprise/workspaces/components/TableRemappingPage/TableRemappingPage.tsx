@@ -7,29 +7,29 @@ import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Center, Flex, Stack, Title } from "metabase/ui";
-import { useListWorkspaceRemappingsQuery } from "metabase-enterprise/api";
-import type { WorkspaceRemappingId } from "metabase-types/api";
+import { useListTableRemappingsQuery } from "metabase-enterprise/api";
+import type { TableRemappingId } from "metabase-types/api";
 
 import { toDatabasesById } from "../../utils";
 
-import { WorkspaceRemappingSidebar } from "./WorkspaceRemappingSidebar";
-import { WorkspaceRemappingsTable } from "./WorkspaceRemappingsTable";
-import S from "./WorkspacesTableRemappingsPage.module.css";
+import { RemappingSidebar } from "./RemappingSidebar";
+import { RemappingTable } from "./RemappingTable";
+import S from "./TableRemappingPage.module.css";
 
-export function WorkspacesTableRemappingsPage() {
-  usePageTitle(t`Table remappings`);
+export function TableRemappingPage() {
+  usePageTitle(t`Table remapping`);
 
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
   const [selectedRemappingId, setSelectedRemappingId] =
-    useState<WorkspaceRemappingId>();
+    useState<TableRemappingId>();
 
   const {
     data: remappings = [],
     isLoading: isLoadingRemappings,
     error: remappingsError,
-  } = useListWorkspaceRemappingsQuery();
+  } = useListTableRemappingsQuery();
 
   const {
     data: databasesResponse,
@@ -58,7 +58,7 @@ export function WorkspacesTableRemappingsPage() {
       h="100%"
       w="100%"
       wrap="nowrap"
-      data-testid="workspaces-table-remappings"
+      data-testid="table-remapping-page"
     >
       <Stack
         className={S.main}
@@ -71,13 +71,13 @@ export function WorkspacesTableRemappingsPage() {
         pr={selectedRemapping == null ? "2rem" : "lg"}
         gap="lg"
       >
-        <Title order={1}>{t`Table remappings`}</Title>
+        <Title order={1}>{t`Table remapping`}</Title>
         {isLoading || error != null ? (
           <Center flex={1}>
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <WorkspaceRemappingsTable
+          <RemappingTable
             remappings={remappings}
             databasesById={databasesById}
             selectedRemappingId={selectedRemapping?.id}
@@ -88,7 +88,7 @@ export function WorkspacesTableRemappingsPage() {
         )}
       </Stack>
       {selectedRemapping != null && (
-        <WorkspaceRemappingSidebar
+        <RemappingSidebar
           remapping={selectedRemapping}
           containerWidth={containerWidth}
           onResizeStart={startResizing}

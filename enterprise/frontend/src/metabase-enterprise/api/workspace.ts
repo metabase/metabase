@@ -1,9 +1,9 @@
 import type {
   CreateWorkspaceRequest,
+  TableRemapping,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
-  WorkspaceRemapping,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -119,10 +119,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         }
       },
     }),
-    listWorkspaceRemappings: builder.query<WorkspaceRemapping[], void>({
+    listTableRemappings: builder.query<TableRemapping[], void>({
       // query: () => ({
       //   method: "GET",
-      //   url: "/api/ee/workspace/remappings",
+      //   url: "/api/ee/table-remapping",
       // }),
       queryFn: async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
@@ -156,7 +156,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           "refunds",
           "discounts",
         ];
-        const remappings: WorkspaceRemapping[] = Array.from(
+        const remappings: TableRemapping[] = Array.from(
           { length: 40 },
           (_, index) => {
             const tableName = tableNames[index % tableNames.length];
@@ -191,5 +191,5 @@ export const {
   useDeleteWorkspaceMutation,
   useProvisionWorkspaceMutation,
   useUnprovisionWorkspaceMutation,
-  useListWorkspaceRemappingsQuery,
+  useListTableRemappingsQuery,
 } = workspaceApi;
