@@ -1,3 +1,5 @@
+import type { PaginationResponse } from "metabase-types/api/pagination";
+
 import type { Collection, CollectionId } from "./collection";
 import type { DatasetColumn, RowValue } from "./dataset";
 import type { FieldValue } from "./field";
@@ -22,6 +24,18 @@ export type Metric = {
   collection: Collection | null;
   result_column_name?: string;
 };
+
+export type MetricBaseData = {
+  id: MetricId;
+  name: string;
+  description: string | null;
+  collection_id: CollectionId | null;
+  collection: Collection | null;
+};
+
+export type GetMetricListResponse = {
+  data: MetricBaseData[];
+} & PaginationResponse;
 
 export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
 export type MathOperator = (typeof MATH_OPERATORS)[number];

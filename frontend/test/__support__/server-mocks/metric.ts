@@ -7,6 +7,11 @@ export function setupMetricEndpoint(metric: Metric) {
 }
 
 export function setupMetricsEndpoints(metrics: Metric[]) {
-  fetchMock.get("path:/api/metric", metrics);
+  fetchMock.get("path:/api/metric", {
+    data: metrics,
+    total: metrics.length,
+    limit: null,
+    offset: null,
+  });
   metrics.forEach((metric) => setupMetricEndpoint(metric));
 }

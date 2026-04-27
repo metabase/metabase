@@ -5,6 +5,7 @@ import type {
   FieldValue,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
+  GetMetricListResponse,
   GetRemappedMetricDimensionValueRequest,
   Metric,
   MetricBreakoutValuesRequest,
@@ -24,15 +25,15 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const metricApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listMetrics: builder.query<Metric[], void>({
+    listMetrics: builder.query<GetMetricListResponse, void>({
       query: () => ({
         method: "GET",
         url: "/api/metric",
       }),
-      providesTags: (metrics = []) => provideMetricListTags(metrics),
+      providesTags: (response) => provideMetricListTags(response?.data ?? []),
       onQueryStarted: (_, { queryFulfilled, dispatch }) =>
         handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [MetricSchema])),
+          dispatch(updateMetadata(data.data, [MetricSchema])),
         ),
     }),
     getMetric: builder.query<Metric, MetricId>({
