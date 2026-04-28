@@ -8,7 +8,7 @@ import { DataComplexityHeader } from "./ConversationStatsPage";
 
 describe("DataComplexityHeader", () => {
   it("recomputes data complexity scores when the recompute button is clicked", async () => {
-    fetchMock.post("path:/api/ee/data-complexity-score/complexity/refresh", {});
+    fetchMock.get("path:/api/ee/data-complexity-score/complexity", {});
 
     renderWithProviders(<DataComplexityHeader />);
 
@@ -17,8 +17,11 @@ describe("DataComplexityHeader", () => {
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
-          "path:/api/ee/data-complexity-score/complexity/refresh",
-          { method: "POST" },
+          "path:/api/ee/data-complexity-score/complexity",
+          {
+            method: "GET",
+            query: { "force-recalculation": "true" },
+          },
         ),
       ).toBe(true);
     });
@@ -30,8 +33,8 @@ describe("DataComplexityHeader", () => {
       resolveRequest = resolve;
     });
 
-    fetchMock.post(
-      "path:/api/ee/data-complexity-score/complexity/refresh",
+    fetchMock.get(
+      "path:/api/ee/data-complexity-score/complexity",
       pendingResponse,
     );
 
@@ -54,10 +57,7 @@ describe("DataComplexityHeader", () => {
   });
 
   it("shows a toast when recomputation fails", async () => {
-    fetchMock.post(
-      "path:/api/ee/data-complexity-score/complexity/refresh",
-      500,
-    );
+    fetchMock.get("path:/api/ee/data-complexity-score/complexity", 500);
 
     renderWithProviders(
       <>

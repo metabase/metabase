@@ -9,8 +9,8 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
+import { useDispatch } from "metabase/redux";
 import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import { useRefreshDataComplexityScoresMutation } from "../../api";
 import {
@@ -28,6 +28,7 @@ import {
 import { BreakoutChart } from "./BreakoutChart";
 import S from "./ConversationStatsPage.module.css";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
+import { DataComplexityCards } from "./DataComplexityCards";
 import {
   type StatsFilters,
   type UsageStatsMetric,
@@ -35,7 +36,6 @@ import {
   buildSourceBreakoutQuery,
   buildTenantBreakoutQuery,
 } from "./query-utils";
-import { DataComplexityCards } from "./DataComplexityCards";
 import type { ChartDataSources, ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
 

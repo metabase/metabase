@@ -10,7 +10,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util :as m.util]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,23 +71,13 @@
 (defonce ^:private ^java.util.concurrent.atomic.AtomicBoolean api-scoring-running?
   (java.util.concurrent.atomic.AtomicBoolean. false))
 
-(api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
-  "Return the most recently stored Data Complexity Score for this instance.
-  Superuser-only."
-  [_route _query _body]
-  (api/check-superuser)
-  (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint))
-                         m.util/deep-snake-keys)
-                 (tru "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot.")))
-
-(api.macros/defendpoint :post "/complexity/refresh" :- ComplexityScoresResponse
+(defn- force-recalculate-score!
   "Run the Data Complexity Score job now, persist the fresh snapshot, and return it.
-  Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent
-  requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db
-  catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered
+  This is expensive and emits Snowplow events for benchmark consumers. Concurrent requests
+  on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db catalog
+  and one in-flight run per node is enough. The guard is per-JVM, so in a clustered
   deployment each node can still run one pass concurrently."
-  [_route _query _body]
-  (api/check-superuser)
+  []
   (when-not (.compareAndSet api-scoring-running? false true)
     (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
   (try
@@ -95,13 +86,28 @@
           stored      (data-complexity-score/record-score! fingerprint result)]
       ;; Advance the last-published fingerprint iff Snowplow actually accepted the event — mirrors
       ;; the scheduled path's gate in `task.complexity-score/run-scoring!`. Without this, a
-      ;; superuser-triggered refresh leaves the setting stale and the next boot would redundantly
-      ;; re-score even though a valid snapshot was just persisted.
+      ;; superuser-triggered recalculation leaves the setting stale and the next boot would
+      ;; redundantly re-score even though a valid snapshot was just persisted.
       (when (::complexity/snowplow-published? (meta result))
         (settings/data-complexity-scoring-last-fingerprint! fingerprint))
       (m.util/deep-snake-keys (or stored result)))
     (finally
       (.set api-scoring-running? false))))
+
+(api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
+  "Return the most recently stored Data Complexity Score for this instance.
+  Pass `force-recalculation=true` to recompute, persist, and return a fresh score.
+  Superuser-only."
+  [_route
+   {force-recalculation? :force-recalculation} :- [:map
+                                                   [:force-recalculation {:default false} ms/BooleanValue]]
+   _body]
+  (api/check-superuser)
+  (if force-recalculation?
+    (force-recalculate-score!)
+    (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint))
+                           m.util/deep-snake-keys)
+                   (tru "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-complexity-score` routes."

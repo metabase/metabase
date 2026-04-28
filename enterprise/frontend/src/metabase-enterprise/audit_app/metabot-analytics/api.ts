@@ -38,8 +38,9 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
       void
     >({
       query: () => ({
-        method: "POST",
-        url: "/api/ee/data-complexity-score/complexity/refresh",
+        method: "GET",
+        url: "/api/ee/data-complexity-score/complexity",
+        params: { "force-recalculation": true },
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("data-complexity-scores")]),
