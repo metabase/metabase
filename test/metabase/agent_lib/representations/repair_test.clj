@@ -259,6 +259,82 @@
     (is (= "ASC" (repair/repair trivial-mp "ASC")))))
 
 ;;; ============================================================
+;;; Pass 1.87 - swap out-of-order between bounds (literal scalars only)
+;;; ============================================================
+
+(deftest swap-between-bounds-numeric-test
+  (testing "numeric lower > upper is swapped"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+          input ["between" {} field 100 10]]
+      (is (= ["between" {} field 10 100]
+             (repair/repair trivial-mp input)))))
+  (testing "numeric lower < upper is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+          input ["between" {} field 10 100]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "numeric lower == upper is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+          input ["between" {} field 42 42]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "swap is idempotent"
+    (let [field   ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+          input   ["between" {} field 100 10]
+          once    (repair/repair trivial-mp input)
+          twice   (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+(deftest swap-between-bounds-iso-string-test
+  (testing "ISO-8601 date strings ordered chronologically: out-of-order is swapped"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-12-31" "2024-01-01"]]
+      (is (= ["between" {} field "2024-01-01" "2024-12-31"]
+             (repair/repair trivial-mp input)))))
+  (testing "ISO-8601 datetime strings: out-of-order is swapped"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-06-15T18:00:00" "2024-06-15T09:00:00"]]
+      (is (= ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]
+             (repair/repair trivial-mp input)))))
+  (testing "in-order ISO strings are left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-01-01" "2024-12-31"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest swap-between-bounds-absolute-datetime-test
+  (testing "out-of-order absolute-datetime clauses: swap by inner ISO string"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          hi    ["absolute-datetime" {} "2024-12-31" "day"]
+          lo    ["absolute-datetime" {} "2024-01-01" "day"]
+          input ["between" {} field hi lo]]
+      (is (= ["between" {} field lo hi]
+             (repair/repair trivial-mp input)))))
+  (testing "in-order absolute-datetime clauses are left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          lo    ["absolute-datetime" {} "2024-01-01" "day"]
+          hi    ["absolute-datetime" {} "2024-12-31" "day"]
+          input ["between" {} field lo hi]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest swap-between-bounds-non-literal-untouched-test
+  (testing "non-literal bound (a relative-datetime clause) is left alone - we can't
+           compare without execution"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          rel   ["relative-datetime" {} -7 "day"]
+          abs   ["absolute-datetime" {} "2024-01-01" "day"]
+          input ["between" {} field rel abs]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "a `field` ref bound is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          other ["field" {} ["Sample" "PUBLIC" "ORDERS" "OTHER"]]
+          input ["between" {} field other 100]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest swap-between-bounds-mixed-types-untouched-test
+  (testing "mixed-kind bounds (number vs string) are left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "X"]]
+          input ["between" {} field 10 "hello"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+;;; ============================================================
 ;;; Pass 2 - fill in missing `lib/type`
 ;;; ============================================================
 

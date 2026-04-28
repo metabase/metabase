@@ -262,6 +262,72 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
+;;;
+;;; The lib schema for `:between` does not enforce `min <= max` (there's an explicit TODO
+;;; comment in `metabase.lib.schema.filter` flagging this). LLMs occasionally swap the two
+;;; bounds, especially for date ranges (e.g. `between(date, "2024-12-31", "2024-01-01")`).
+;;; The query then runs but returns no rows, which is silently misleading. We swap the two
+;;; bounds here when they're directly comparable literals.
+;;;
+;;; Cases handled:
+;;;   * both bounds are numbers,
+;;;   * both bounds are ISO-8601 date / date-time strings (string lex order = chronological
+;;;     for ISO-8601),
+;;;   * both bounds are `[absolute-datetime, {}, <iso-str>, <unit>]` clauses (the iso-str
+;;;     drives the comparison).
+;;;
+;;; If either bound is non-literal (a `field` ref, an expression, a `relative-datetime`
+;;; clause, etc.) we don't touch the clause - we can't compare without execution. See
+;;; `repr-deletion-followups.md` § 1.5 (the scalar-wrap sub-case is intentionally not
+;;; ported - the prompt is explicit about between's three-arg shape).
+;;; ============================================================
+
+(defn- absolute-datetime-clause? [v]
+  (and (vector? v)
+       (>= (count v) 3)
+       (= "absolute-datetime" (nth v 0))
+       (map? (nth v 1))
+       (string? (nth v 2))))
+
+(defn- between-bound-comparable
+  "Extract a comparable value from `bound` if it's a literal we can order. Returns the
+  value (a Number or String) or `nil` if the bound is not directly comparable."
+  [bound]
+  (cond
+    (number? bound)                    bound
+    (string? bound)                    bound
+    (absolute-datetime-clause? bound)  (nth bound 2)
+    :else                              nil))
+
+(defn- bounds-comparable-and-swappable?
+  "True when both bounds are extractable comparables of the same kind (both numbers, both
+  strings) and the lower bound compares strictly greater than the upper."
+  [lower upper]
+  (let [lo (between-bound-comparable lower)
+        hi (between-bound-comparable upper)]
+    (cond
+      (and (number? lo) (number? hi)) (> lo hi)
+      (and (string? lo) (string? hi)) (pos? (compare lo hi))
+      :else                            false)))
+
+(defn- between-clause? [v]
+  (and (vector? v)
+       (= 5 (count v))
+       (= "between" (nth v 0))
+       (map? (nth v 1))))
+
+(defn- swap-between-bounds*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (between-clause? node)
+              (bounds-comparable-and-swappable? (nth node 3) (nth node 4)))
+       (-> node (assoc 3 (nth node 4)) (assoc 4 (nth node 3)))
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -1095,6 +1161,7 @@
       unwrap-nested-field-clauses*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
+      swap-between-bounds*
       normalize-expressions-shape*
       ensure-lib-types*))
 
