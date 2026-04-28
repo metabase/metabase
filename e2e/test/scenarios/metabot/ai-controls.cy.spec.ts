@@ -254,11 +254,11 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.visit("/admin/metabot/1/system-prompts/metabot-chat");
 
       cy.findByRole("heading", {
-        name: "Metabot chat prompt instructions",
+        name: "AI chat prompt instructions",
         level: 1,
       }).should("be.visible");
 
-      cy.findByRole("textbox", { name: /Metabot chat prompt instructions/ })
+      cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
         .should("be.visible")
         .click()
         .type("Be concise and helpful.");
@@ -268,7 +268,7 @@ describe("AI Controls > Metabot access and customization", () => {
       // Reload and verify persistence
       cy.reload();
       cy.findByRole("textbox", {
-        name: /Metabot chat prompt instructions/,
+        name: /AI chat prompt instructions/,
       }).should("contain.value", "Be concise and helpful.");
     });
 

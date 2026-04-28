@@ -43,7 +43,7 @@ export function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`Metabot chat`}
+          label={t`AI chat`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
           disabled={!isConfigured}
         />
