@@ -9,12 +9,8 @@
   "change": {
     "github": {
       "pr": {
-        "number": 72840,
-        "gqlID": "PR_kwDOAczgH87TwFyx"
-      },
-      "comment": {
-        "gqlID": "IC_kwDOAczgH88AAAABAkLm2Q",
-        "url": "https://github.com/metabase/metabase/pull/72840#issuecomment-4332906201"
+        "number": 73277,
+        "gqlID": "PR_kwDOAczgH87WPoId"
       }
     }
   }
