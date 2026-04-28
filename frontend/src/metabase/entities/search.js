@@ -151,13 +151,6 @@ export const Search = createEntity({
         : warnEntityAndReturnObject(object);
     },
 
-    getName: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
-        : warnEntityAndReturnObject(object);
-    },
-
     getColor: (object) => {
       const entity = entityForObject(object);
       return entity

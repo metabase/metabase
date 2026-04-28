@@ -110,7 +110,6 @@ export const Documents = createEntity({
   },
 
   objectSelectors: {
-    getName: (document: Document) => document && document.name,
     getColor: () => color("brand"),
   },
 });

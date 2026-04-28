@@ -45,7 +45,6 @@ export const Metrics = createEntity({
   },
 
   objectSelectors: {
-    getName: (metric) => metric && metric.name,
     getColor: () => color("summarize"),
   },
 });

@@ -109,7 +109,6 @@ export const Databases = createEntity({
   },
 
   objectSelectors: {
-    getName: (db) => db && db.name,
     getColor: (db) => color("database"),
   },
 

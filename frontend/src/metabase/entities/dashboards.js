@@ -175,7 +175,6 @@ export const Dashboards = createEntity({
   },
 
   objectSelectors: {
-    getName: (dashboard) => dashboard && dashboard.name,
     getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
     getColor: () => color("dashboard"),

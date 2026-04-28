@@ -57,7 +57,6 @@ export const Measures = createEntity({
   },
 
   objectSelectors: {
-    getName: (measure) => measure && measure.name,
     getColor: () => color("summarize"),
   },
 });

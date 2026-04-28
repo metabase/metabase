@@ -68,7 +68,6 @@ export const Segments = createEntity({
   },
 
   objectSelectors: {
-    getName: (segment) => segment && segment.name,
     getColor: (segment) => color("filter"),
   },
 });

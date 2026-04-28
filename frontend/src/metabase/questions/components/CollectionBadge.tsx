@@ -59,7 +59,7 @@ const CollectionBadgeInner = ({
       isSingleLine={isSingleLine}
       {...clickActionProps}
     >
-      {tc(collection.getName())}
+      {tc(collection.name)}
     </Badge>
   );
 };

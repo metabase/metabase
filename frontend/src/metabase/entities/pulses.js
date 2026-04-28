@@ -66,7 +66,6 @@ export const Pulses = createEntity({
   },
 
   objectSelectors: {
-    getName: (pulse) => pulse && pulse.name,
     getColor: (pulse) => color("pulse"),
   },
 
