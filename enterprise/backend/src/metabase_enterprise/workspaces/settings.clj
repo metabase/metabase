@@ -1,22 +1,18 @@
 (ns metabase-enterprise.workspaces.settings
   (:require
+   [metabase-enterprise.workspaces.models.table-remapping]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [toucan2.core :as t2]))
 
-(defsetting workspace-mode
-  (deferred-tru "Workspace mode for this instance - :main or :development. The main instance manages workspaces; development instances iterate on transforms in isolation.")
-  :type       :keyword
-  :visibility :admin
-  :export?    false
-  :encryption :no
-  :default    :main)
+(comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
 (defsetting has-remappings-enabled
-  (deferred-tru "Whether the table remapping feature is available on this instance. True on development (child) instances, false on main (parent) instances.")
+  (deferred-tru "Whether the table remapping feature is available on this instance. True when at least one TableRemapping row exists.")
   :type       :boolean
   :visibility :authenticated
   :export?    false
   :setter     :none
-  :getter     (fn [] (= (workspace-mode) :development))
+  :getter     (fn [] (t2/exists? :model/TableRemapping))
   :audit      :never
   :doc        false)
