@@ -15,6 +15,7 @@
     :co-dashboard
     :source-table-jaccard
     :co-execution
+    :field-jaccard-idf
     :ensemble})
 
 (mr/def ::view-name

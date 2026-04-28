@@ -14,7 +14,8 @@
   "Per-typed-pair ensemble configuration. Add typed pairs as later phases earn
    them through eval lift. Phase 3 ships only [:card :card]."
   {[:card :card]
-   {:views            [:direct-dependency :co-dashboard :source-table-jaccard :co-execution]
+   {:views            [:direct-dependency :co-dashboard :source-table-jaccard
+                       :co-execution :field-jaccard-idf]
     :weights          {:direct-dependency 1.5
                        :co-dashboard      1.2}
     :k                60

@@ -167,3 +167,22 @@
      (println (if (empty? edges)
                 "(no neighbors)"
                 (format-neighbors edges opts))))))
+
+(defn print-random-card-neighbors
+  "Pick a random card from the top `pool` most-viewed (non-archived) cards
+   and pretty-print its similarity neighbors via [[print-neighbors]]. REPL
+   convenience for sampling the ensemble.
+
+   Options:
+     :pool  size of the most-viewed pool to sample from (default 2000)
+     :k     number of neighbors to fetch (default 20)"
+  ([] (print-random-card-neighbors {}))
+  ([{:keys [pool k] :or {pool 2000, k 20}}]
+   (let [ids (map :id (t2/select [:model/Card :id]
+                                 :archived false
+                                 {:order-by [[:view_count :desc]]
+                                  :limit    pool}))]
+     (when (seq ids)
+       (print-neighbors {:entity-type :card
+                         :entity-id   (rand-nth ids)
+                         :k           k})))))
