@@ -7,7 +7,7 @@ import type { WorkspaceDatabase } from "metabase-types/api";
 import type { WorkspaceInfo } from "../../types";
 import { isDatabaseProvisioned } from "../../utils";
 
-import { DatabaseMappingSection } from "./DatabaseMappingSection";
+import { DatabaseConfigSection } from "./DatabaseConfigSection";
 import { SetupSection } from "./SetupSection";
 import { StatusSection } from "./StatusSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
@@ -41,7 +41,7 @@ export function WorkspaceEditor({
       />
       <Stack gap="3.25rem">
         <StatusSection workspace={workspace} />
-        <DatabaseMappingSection
+        <DatabaseConfigSection
           workspace={workspace}
           onChange={onDatabasesChange}
         />

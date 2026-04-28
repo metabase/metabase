@@ -21,7 +21,7 @@ import type {
   WorkspaceDatabase,
 } from "metabase-types/api";
 
-type DatabaseMappingFormValues = {
+type DatabaseConfigFormValues = {
   database_id: string | null;
   input_schemas: string[];
 };
@@ -45,19 +45,19 @@ function getValidationSchema(databases: Database[]) {
   });
 }
 
-type DatabaseMappingModalProps = {
-  mapping?: WorkspaceDatabase;
+type DatabaseConfigModalProps = {
+  config?: WorkspaceDatabase;
   databases: Database[];
   opened: boolean;
   readOnly?: boolean;
   canRemove?: boolean;
-  onSubmit: (mapping: WorkspaceDatabase) => void;
-  onDelete?: (mapping: WorkspaceDatabase) => void;
+  onSubmit: (config: WorkspaceDatabase) => void;
+  onDelete?: (config: WorkspaceDatabase) => void;
   onClose: () => void;
 };
 
-export function DatabaseMappingModal({
-  mapping,
+export function DatabaseConfigModal({
+  config,
   databases,
   opened,
   readOnly = false,
@@ -65,18 +65,18 @@ export function DatabaseMappingModal({
   onSubmit,
   onDelete,
   onClose,
-}: DatabaseMappingModalProps) {
-  const isNew = mapping == null;
+}: DatabaseConfigModalProps) {
+  const isNew = config == null;
 
   return (
     <Modal
-      title={isNew ? t`Add database` : t`Edit database mapping`}
+      title={isNew ? t`Add database` : t`Edit database configuration`}
       opened={opened}
       padding="xl"
       onClose={onClose}
     >
-      <DatabaseMappingForm
-        mapping={mapping}
+      <DatabaseConfigForm
+        config={config}
         databases={databases}
         readOnly={readOnly}
         canRemove={canRemove}
@@ -88,40 +88,40 @@ export function DatabaseMappingModal({
   );
 }
 
-type DatabaseMappingFormProps = {
-  mapping?: WorkspaceDatabase;
+type DatabaseConfigFormProps = {
+  config?: WorkspaceDatabase;
   databases: Database[];
   readOnly: boolean;
   canRemove: boolean;
-  onSubmit: (mapping: WorkspaceDatabase) => void;
-  onDelete?: (mapping: WorkspaceDatabase) => void;
+  onSubmit: (config: WorkspaceDatabase) => void;
+  onDelete?: (config: WorkspaceDatabase) => void;
   onClose: () => void;
 };
 
-function DatabaseMappingForm({
-  mapping,
+function DatabaseConfigForm({
+  config,
   databases,
   readOnly,
   canRemove,
   onSubmit,
   onDelete,
   onClose,
-}: DatabaseMappingFormProps) {
-  const isNew = mapping == null;
-  const initialValues = useMemo(() => getInitialValues(mapping), [mapping]);
+}: DatabaseConfigFormProps) {
+  const isNew = config == null;
+  const initialValues = useMemo(() => getInitialValues(config), [config]);
   const validationSchema = useMemo(
     () => getValidationSchema(databases),
     [databases],
   );
 
-  const handleSubmit = (values: DatabaseMappingFormValues) => {
-    onSubmit(getDatabaseMapping(values));
+  const handleSubmit = (values: DatabaseConfigFormValues) => {
+    onSubmit(getDatabaseConfig(values));
     onClose();
   };
 
   const handleDelete = () => {
-    if (mapping != null) {
-      onDelete?.(mapping);
+    if (config != null) {
+      onDelete?.(config);
       onClose();
     }
   };
@@ -258,9 +258,9 @@ function getDatabaseOptions(databases: Database[]) {
 }
 
 function getInitialValues(
-  mapping?: WorkspaceDatabase,
-): DatabaseMappingFormValues {
-  if (mapping == null) {
+  config?: WorkspaceDatabase,
+): DatabaseConfigFormValues {
+  if (config == null) {
     return {
       database_id: null,
       input_schemas: [],
@@ -268,13 +268,13 @@ function getInitialValues(
   }
 
   return {
-    database_id: getDatabaseValue(mapping.database_id),
-    input_schemas: mapping.input_schemas,
+    database_id: getDatabaseValue(config.database_id),
+    input_schemas: config.input_schemas,
   };
 }
 
-function getDatabaseMapping(
-  values: DatabaseMappingFormValues,
+function getDatabaseConfig(
+  values: DatabaseConfigFormValues,
 ): WorkspaceDatabase {
   if (values.database_id == null) {
     throw new Error("Database ID is required");

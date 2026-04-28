@@ -13,14 +13,14 @@ export function isSupportedDatabase(database: Database): boolean {
 
 export function getAvailableDatabases(
   databases: Database[],
-  mappings: WorkspaceDatabase[],
+  configs: WorkspaceDatabase[],
   databaseId?: DatabaseId,
 ): Database[] {
-  const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));
+  const configuredIds = new Set(configs.map((config) => config.database_id));
   return databases.filter(
     (database) =>
       isSupportedDatabase(database) &&
-      (!mappedIds.has(database.id) || database.id === databaseId),
+      (!configuredIds.has(database.id) || database.id === databaseId),
   );
 }
 

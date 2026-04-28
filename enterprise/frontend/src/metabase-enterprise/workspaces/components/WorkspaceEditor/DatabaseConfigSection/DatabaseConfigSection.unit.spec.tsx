@@ -11,7 +11,7 @@ import {
 
 import type { WorkspaceInfo } from "../../../types";
 
-import { DatabaseMappingSection } from "./DatabaseMappingSection";
+import { DatabaseConfigSection } from "./DatabaseConfigSection";
 
 type SetupOpts = {
   workspace: WorkspaceInfo;
@@ -22,13 +22,13 @@ function setup({ workspace, databases }: SetupOpts) {
   setupDatabaseListEndpoint(databases);
   const onChange = jest.fn<void, [WorkspaceDatabase[]]>();
   renderWithProviders(
-    <DatabaseMappingSection workspace={workspace} onChange={onChange} />,
+    <DatabaseConfigSection workspace={workspace} onChange={onChange} />,
   );
   return { onChange };
 }
 
-describe("DatabaseMappingSection", () => {
-  it("should disable deleting the last database mapping", async () => {
+describe("DatabaseConfigSection", () => {
+  it("should disable deleting the last database configuration", async () => {
     const database = createMockDatabase({
       name: "Postgres",
       features: ["workspace", "schemas"],

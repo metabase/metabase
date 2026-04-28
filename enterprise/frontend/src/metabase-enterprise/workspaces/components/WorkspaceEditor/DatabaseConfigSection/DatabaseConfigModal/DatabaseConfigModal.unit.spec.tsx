@@ -7,22 +7,22 @@ import {
   createMockWorkspaceDatabase,
 } from "metabase-types/api/mocks";
 
-import { DatabaseMappingModal } from "./DatabaseMappingModal";
+import { DatabaseConfigModal } from "./DatabaseConfigModal";
 
 type SetupOpts = {
-  mapping?: WorkspaceDatabase;
+  config?: WorkspaceDatabase;
   databases: Database[];
   canRemove?: boolean;
 };
 
-function setup({ mapping, databases, canRemove = true }: SetupOpts) {
+function setup({ config, databases, canRemove = true }: SetupOpts) {
   const onSubmit = jest.fn<void, [WorkspaceDatabase]>();
   const onDelete = jest.fn<void, [WorkspaceDatabase]>();
   const onClose = jest.fn<void, []>();
   renderWithProviders(
-    <DatabaseMappingModal
+    <DatabaseConfigModal
       opened
-      mapping={mapping}
+      config={config}
       databases={databases}
       canRemove={canRemove}
       onSubmit={onSubmit}
@@ -33,11 +33,11 @@ function setup({ mapping, databases, canRemove = true }: SetupOpts) {
   return { onSubmit, onDelete, onClose };
 }
 
-describe("DatabaseMappingModal", () => {
-  it("should remove an existing mapping", async () => {
-    const mapping = createMockWorkspaceDatabase();
+describe("DatabaseConfigModal", () => {
+  it("should remove an existing config", async () => {
+    const config = createMockWorkspaceDatabase();
     const { onDelete } = setup({
-      mapping,
+      config,
       databases: [
         createMockDatabase({ name: "Postgres", features: ["workspace"] }),
       ],
@@ -45,12 +45,12 @@ describe("DatabaseMappingModal", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
-    expect(onDelete).toHaveBeenCalledWith(mapping);
+    expect(onDelete).toHaveBeenCalledWith(config);
   });
 
-  it("should not allow removing the last mapping", () => {
+  it("should not allow removing the last config", () => {
     setup({
-      mapping: createMockWorkspaceDatabase(),
+      config: createMockWorkspaceDatabase(),
       databases: [
         createMockDatabase({ name: "Postgres", features: ["workspace"] }),
       ],

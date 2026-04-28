@@ -11,48 +11,48 @@ import type { WorkspaceInfo } from "../../../types";
 import { isDatabaseProvisioned } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
-import { DatabaseMappingModal } from "./DatabaseMappingModal";
-import { DatabaseMappingTable } from "./DatabaseMappingTable";
+import { DatabaseConfigModal } from "./DatabaseConfigModal";
+import { DatabaseConfigTable } from "./DatabaseConfigTable";
 import {
   getAddTooltipLabel,
   getAvailableDatabases,
   isSupportedDatabase,
 } from "./utils";
 
-type DatabaseMappingSectionProps = {
+type DatabaseConfigSectionProps = {
   workspace: WorkspaceInfo;
   onChange: (databases: WorkspaceDatabase[]) => void;
 };
 
-export function DatabaseMappingSection({
+export function DatabaseConfigSection({
   workspace,
   onChange,
-}: DatabaseMappingSectionProps) {
-  const mappings = workspace.databases;
+}: DatabaseConfigSectionProps) {
+  const configs = workspace.databases;
   const isNew = workspace.id == null;
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure(false);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
   const { data: databasesResponse } = useListDatabasesQuery();
 
-  const isReadOnly = mappings.some(isDatabaseProvisioned);
+  const isReadOnly = configs.some(isDatabaseProvisioned);
   const databases = databasesResponse?.data ?? [];
   const databasesById = new Map(databases.map((db) => [db.id, db]));
 
-  const selectedMapping = mappings.find(
-    (mapping) => mapping.database_id === selectedDatabaseId,
+  const selectedConfig = configs.find(
+    (config) => config.database_id === selectedDatabaseId,
   );
   const supportedDatabases = databases.filter(isSupportedDatabase);
-  const availableDatabases = getAvailableDatabases(databases, mappings);
-  const canAddMapping = availableDatabases.length > 0 && !isReadOnly;
+  const availableDatabases = getAvailableDatabases(databases, configs);
+  const canAddConfig = availableDatabases.length > 0 && !isReadOnly;
 
   const handleOpenCreate = () => {
     setSelectedDatabaseId(undefined);
     openModal();
   };
 
-  const handleOpenEdit = (mapping: WorkspaceDatabase) => {
-    setSelectedDatabaseId(mapping.database_id);
+  const handleOpenEdit = (config: WorkspaceDatabase) => {
+    setSelectedDatabaseId(config.database_id);
     openModal();
   };
 
@@ -61,30 +61,30 @@ export function DatabaseMappingSection({
     setSelectedDatabaseId(undefined);
   };
 
-  const handleAdd = (mapping: WorkspaceDatabase) => {
-    onChange([...mappings, mapping]);
+  const handleAdd = (config: WorkspaceDatabase) => {
+    onChange([...configs, config]);
   };
 
-  const handleUpdate = (mapping: WorkspaceDatabase) => {
+  const handleUpdate = (config: WorkspaceDatabase) => {
     onChange(
-      mappings.map((current) =>
-        current.database_id === selectedDatabaseId ? mapping : current,
+      configs.map((current) =>
+        current.database_id === selectedDatabaseId ? config : current,
       ),
     );
   };
 
-  const handleRemove = (mapping: WorkspaceDatabase) => {
+  const handleRemove = (config: WorkspaceDatabase) => {
     onChange(
-      mappings.filter((current) => current.database_id !== mapping.database_id),
+      configs.filter((current) => current.database_id !== config.database_id),
     );
   };
 
-  const canRemoveMapping = selectedMapping != null && mappings.length > 1;
+  const canRemoveConfig = selectedConfig != null && configs.length > 1;
 
   return (
     <>
       <TitleSection
-        label={t`Database mapping`}
+        label={t`Database configuration`}
         description={t`Configure which databases are accessible from this workspace.`}
         rightSection={
           <Tooltip
@@ -93,12 +93,12 @@ export function DatabaseMappingSection({
               hasSupportedDatabases: supportedDatabases.length > 0,
               hasAvailableDatabases: availableDatabases.length > 0,
             })}
-            disabled={canAddMapping}
+            disabled={canAddConfig}
             openDelay={TOOLTIP_OPEN_DELAY}
           >
             <Button
-              variant={mappings.length === 0 ? "filled" : "default"}
-              disabled={!canAddMapping}
+              variant={configs.length === 0 ? "filled" : "default"}
+              disabled={!canAddConfig}
               onClick={handleOpenCreate}
             >
               {t`Add database`}
@@ -106,30 +106,30 @@ export function DatabaseMappingSection({
           </Tooltip>
         }
       >
-        {mappings.length === 0 ? (
+        {configs.length === 0 ? (
           <Box p="md">
-            <Text c="text-secondary">{t`No databases mapped yet.`}</Text>
+            <Text c="text-secondary">{t`No databases configured yet.`}</Text>
           </Box>
         ) : (
-          <DatabaseMappingTable
-            mappings={mappings}
+          <DatabaseConfigTable
+            configs={configs}
             databasesById={databasesById}
             withStatus={!isNew}
             onRowClick={handleOpenEdit}
           />
         )}
       </TitleSection>
-      <DatabaseMappingModal
+      <DatabaseConfigModal
         opened={isModalOpened}
-        mapping={selectedMapping}
+        config={selectedConfig}
         databases={getAvailableDatabases(
           databases,
-          mappings,
+          configs,
           selectedDatabaseId,
         )}
         readOnly={isReadOnly}
-        canRemove={canRemoveMapping}
-        onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
+        canRemove={canRemoveConfig}
+        onSubmit={selectedConfig != null ? handleUpdate : handleAdd}
         onDelete={handleRemove}
         onClose={handleClose}
       />

@@ -7,19 +7,19 @@ import {
   createMockWorkspaceDatabase,
 } from "metabase-types/api/mocks";
 
-import { DatabaseMappingTable } from "./DatabaseMappingTable";
+import { DatabaseConfigTable } from "./DatabaseConfigTable";
 
 type SetupOpts = {
-  mappings: WorkspaceDatabase[];
+  configs: WorkspaceDatabase[];
   databases: Database[];
   withStatus?: boolean;
 };
 
-function setup({ mappings, databases, withStatus = false }: SetupOpts) {
+function setup({ configs, databases, withStatus = false }: SetupOpts) {
   const onRowClick = jest.fn<void, [WorkspaceDatabase]>();
   renderWithProviders(
-    <DatabaseMappingTable
-      mappings={mappings}
+    <DatabaseConfigTable
+      configs={configs}
       databasesById={
         new Map(databases.map((database) => [database.id, database]))
       }
@@ -30,17 +30,17 @@ function setup({ mappings, databases, withStatus = false }: SetupOpts) {
   return { onRowClick };
 }
 
-describe("DatabaseMappingTable", () => {
+describe("DatabaseConfigTable", () => {
   it("should call onRowClick when a row is clicked", async () => {
     const database = createMockDatabase({ name: "Postgres" });
-    const mapping = createMockWorkspaceDatabase({ database_id: database.id });
+    const config = createMockWorkspaceDatabase({ database_id: database.id });
     const { onRowClick } = setup({
-      mappings: [mapping],
+      configs: [config],
       databases: [database],
     });
 
     await userEvent.click(screen.getByText("Postgres"));
 
-    expect(onRowClick).toHaveBeenCalledWith(mapping);
+    expect(onRowClick).toHaveBeenCalledWith(config);
   });
 });

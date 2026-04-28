@@ -4,33 +4,33 @@ import { useMemo } from "react";
 import { TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { Database, WorkspaceDatabase } from "metabase-types/api";
 
-import type { DatabaseMappingRow } from "./types";
+import type { DatabaseConfigRow } from "./types";
 import { getColumns, getRows } from "./utils";
 
-type DatabaseMappingTableProps = {
-  mappings: WorkspaceDatabase[];
+type DatabaseConfigTableProps = {
+  configs: WorkspaceDatabase[];
   databasesById: Map<number, Database>;
   withStatus: boolean;
-  onRowClick: (mapping: WorkspaceDatabase) => void;
+  onRowClick: (config: WorkspaceDatabase) => void;
 };
 
-export function DatabaseMappingTable({
-  mappings,
+export function DatabaseConfigTable({
+  configs,
   databasesById,
   withStatus,
   onRowClick,
-}: DatabaseMappingTableProps) {
+}: DatabaseConfigTableProps) {
   const rows = useMemo(
-    () => getRows(mappings, databasesById),
-    [mappings, databasesById],
+    () => getRows(configs, databasesById),
+    [configs, databasesById],
   );
   const columns = useMemo(() => getColumns({ withStatus }), [withStatus]);
 
-  const handleRowActivate = (row: Row<DatabaseMappingRow>) => {
-    onRowClick(row.original.mapping);
+  const handleRowActivate = (row: Row<DatabaseConfigRow>) => {
+    onRowClick(row.original.config);
   };
 
-  const treeTableInstance = useTreeTableInstance<DatabaseMappingRow>({
+  const treeTableInstance = useTreeTableInstance<DatabaseConfigRow>({
     data: rows,
     columns,
     getNodeId: (row) => String(row.id),
