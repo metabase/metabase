@@ -1,11 +1,22 @@
 import { t } from "ttag";
 
-import { Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import {
+  Badge,
+  Box,
+  Combobox,
+  Group,
+  Icon,
+  Loader,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 export interface GitSyncOptionsDropdownProps {
   isPullDisabled: boolean;
+  isPullError: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
+  isSwitchBranchDisabled?: boolean;
   onPullClick: VoidFunction;
   onPushClick: VoidFunction;
   onSwitchBranchClick: VoidFunction;
@@ -13,12 +24,26 @@ export interface GitSyncOptionsDropdownProps {
 
 export const GitSyncOptionsDropdown = ({
   isPullDisabled,
+  isPullError,
   isLoadingPull,
   isPushDisabled,
+  isSwitchBranchDisabled,
   onPullClick,
   onPushClick,
   onSwitchBranchClick,
 }: GitSyncOptionsDropdownProps) => {
+  if (isPullError) {
+    return (
+      <Combobox.Dropdown p={0}>
+        <Box p="md">
+          <Text size="sm" c="error" ta="center">
+            {t`Failed to check for changes — check your authentication token`}
+          </Text>
+        </Box>
+      </Combobox.Dropdown>
+    );
+  }
+
   return (
     <Combobox.Dropdown p={0}>
       <Combobox.Options>
@@ -58,16 +83,29 @@ export const GitSyncOptionsDropdown = ({
           </Combobox.Option>
         </Tooltip>
 
-        <Combobox.Option
-          onClick={onSwitchBranchClick}
-          py="sm"
-          value="switch-branch"
-        >
-          <Group gap="md" wrap="nowrap">
-            <Icon name="git_branch" size={12} />
-            <Text>{t`Switch branch`}</Text>
-          </Group>
-        </Combobox.Option>
+        {isSwitchBranchDisabled ? (
+          <Badge
+            color="text-primary"
+            bg="background-secondary"
+            size="md"
+            fz="12px"
+            py="md"
+            my="xs"
+            style={{ textTransform: "none" }}
+            bdrs="sm"
+          >{t`Branch set by an environment variable`}</Badge>
+        ) : (
+          <Combobox.Option
+            onClick={onSwitchBranchClick}
+            py="sm"
+            value="switch-branch"
+          >
+            <Group gap="md" wrap="nowrap">
+              <Icon name="git_branch" size={12} />
+              <Text>{t`Switch branch`}</Text>
+            </Group>
+          </Combobox.Option>
+        )}
       </Combobox.Options>
     </Combobox.Dropdown>
   );

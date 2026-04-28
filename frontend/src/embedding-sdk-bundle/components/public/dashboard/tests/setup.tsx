@@ -26,6 +26,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {
@@ -48,7 +49,6 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { EditableDashboardProps } from "../EditableDashboard";
 import type { SdkDashboardProps } from "../SdkDashboard";

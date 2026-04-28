@@ -1,6 +1,6 @@
 import { assoc } from "icepick";
 
-import { createAction, handleActions } from "metabase/lib/redux";
+import { createAction, handleActions } from "metabase/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 

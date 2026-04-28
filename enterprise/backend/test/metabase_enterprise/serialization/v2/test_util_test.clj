@@ -19,13 +19,15 @@
               :type     "query"
               :query    {:source-table crm-id
                          :aggregation  [["cum-count"]]
-                         :breakout     [["datetime-field" [:field created-id] "week"]]
-                         :filter       ["<" [:field nps-id] 9]}}
-             (#'serdes/mbql-fully-qualified-names->ids
+                         :breakout     [[:field created-id {"temporal-unit" "week"}]]
+                         :filter       ["<" [:field nps-id nil] 9]}}
+             (#'serdes/import-mbql
               {:database "Metabase Store",
                :type     "query",
                :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],
                           :aggregation  [["cum-count"]],
-                          :breakout     [["datetime-field" ["field-id" ["Metabase Store" "public"
-                                                                        "crm_survey_response" "created_at"]] "week"]],
-                          :filter       ["<" ["field-id" ["Metabase Store" "public" "crm_survey_response" "nps"]] 9]}}))))))
+                          :breakout     [["field"
+                                          ["Metabase Store" "public"
+                                           "crm_survey_response" "created_at"]
+                                          {"temporal-unit" "week"}]]
+                          :filter       ["<" ["field" ["Metabase Store" "public" "crm_survey_response" "nps"] nil] 9]}}))))))

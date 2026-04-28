@@ -6,11 +6,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -562,7 +562,7 @@
                                   (qp/process-query query))))))))
 
 (deftest ^:parallel fk-remapped-should-remap-test
-  (testing (format "Check that we return the title when it's remapped")
+  (testing "Check that we return the title when it's remapped"
     (let [mp (-> (mt/metadata-provider)
                  (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                  (mt/id :products :title)))

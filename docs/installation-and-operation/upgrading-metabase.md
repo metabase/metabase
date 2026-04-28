@@ -35,7 +35,7 @@ See our [upgrade guide for the modular embedding SDK](../embedding/sdk/upgrade.m
 
 Here are the steps for upgrading to a new Metabase version (major or minor):
 
-### 1. Back up of your application database
+### 1. Back up your application database
 
 The application database keeps track of every single thing (but the data of your connected database) of your Metabase instance. While it's unlikely you'll need to roll back to your current version, a backup will do wonders for your peace of mind in case something goes wrong.
 
@@ -185,4 +185,4 @@ If you're running Metabase in a cluster:
 2. Perform the upgrade as normal (as outlined above).
 3. Raise the number of nodes to the same number you had before.
 
-Make sure you container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, otherwise you'll may end up with a corrupted application database and you'll need to restore from a backup.
+Make sure your container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, otherwise you may end up with a corrupted application database and you'll need to restore from a backup.

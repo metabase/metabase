@@ -2,8 +2,13 @@ import type { ComponentType } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Dashboard, Database as DatabaseType } from "metabase-types/api";
+import type {
+  Card,
+  Dashboard,
+  Database as DatabaseType,
+} from "metabase-types/api";
 
 export type InsightsLinkProps = (
   | {
@@ -17,9 +22,17 @@ export type InsightsLinkProps = (
 ) &
   Omit<LinkProps, "to">;
 
+export interface InsightsMenuItemProps {
+  card: Pick<Card, "id" | "collection">;
+  label?: string;
+  iconName?: IconName;
+}
+
 const getDefaultPluginAudit = () => ({
+  isEnabled: false,
   isAuditDb: (_db: DatabaseType) => false,
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
+  InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
 });
 
 export const PLUGIN_AUDIT = getDefaultPluginAudit();

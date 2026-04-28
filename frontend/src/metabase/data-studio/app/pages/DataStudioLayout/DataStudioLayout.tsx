@@ -7,17 +7,13 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { isMac } from "metabase/lib/browser";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   canAccessTransforms as canAccessTransformsSelector,
   getTransformsFeatureAvailable,
@@ -35,6 +31,8 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
+import * as Urls from "metabase/utils/urls";
 
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
@@ -88,7 +86,6 @@ type DataStudioNavProps = {
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
-  const isAdmin = useSelector(getUserIsAdmin);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
@@ -136,7 +133,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
           {canAccessDataModel && (
             <DataStudioTab
-              label={t`Data structure`}
+              label={t`Tables`}
               icon="open_folder"
               to={Urls.dataStudioData()}
               isSelected={currentTab === "data"}
@@ -181,9 +178,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
                 ) : null
               }
             />
-          )}
-          {(canAccessTransforms || isAdmin) && (
-            <PLUGIN_WORKSPACES.WorkspacesSection showLabel={isNavbarOpened} />
           )}
         </Stack>
         <Stack gap="0.75rem">
@@ -261,13 +255,15 @@ function DataStudioTab({
       openDelay={TOOLTIP_OPEN_DELAY}
       disabled={showLabel}
     >
-      <Box
+      <Flex
         className={cx(S.tab, { [S.selected]: isSelected })}
         component={ForwardRefLink}
         to={to}
-        p="0.5rem"
+        p="sm"
+        gap="sm"
         bdrs="md"
         aria-label={label}
+        justify={showLabel ? "start" : "center"}
       >
         <FixedSizeIcon name={icon} display="block" className={S.icon} />
         {showLabel && <Text lh="sm">{label}</Text>}
@@ -279,7 +275,7 @@ function DataStudioTab({
             {effectiveRightSection}
           </Box>
         )}
-      </Box>
+      </Flex>
     </Tooltip>
   );
 }
@@ -302,10 +298,9 @@ function DataStudioNavbarToggle({
   return (
     <Flex
       align="center"
-      justify="space-between"
+      justify={isNavbarOpened ? "space-between" : "center"}
       mb="0.75rem"
       mt="sm"
-      mr="0.125rem"
     >
       <Group gap="sm">
         <Box

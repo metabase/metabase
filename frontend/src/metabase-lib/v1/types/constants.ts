@@ -28,46 +28,71 @@ const DIMENSION = "DIMENSION";
 
 export const UNKNOWN = "UNKNOWN";
 
+export type FieldTypeKey =
+  | typeof TEMPORAL
+  | typeof NUMBER
+  | typeof INTEGER
+  | typeof STRING
+  | typeof STRING_LIKE
+  | typeof BOOLEAN
+  | typeof COORDINATE
+  | typeof LOCATION
+  | typeof ENTITY
+  | typeof FOREIGN_KEY
+  | typeof PRIMARY_KEY
+  | typeof SUMMABLE
+  | typeof SCOPE
+  | typeof CATEGORY
+  | typeof DIMENSION;
+
+export type Hierarchy = {
+  base_type?: string[];
+  effective_type?: string[];
+  semantic_type?: string[];
+  include?: FieldTypeKey[];
+  exclude?: FieldTypeKey[];
+};
+
 // NOTE: be sure not to create cycles using the "other" types
-export const TYPE_HIERARCHIES = {
+export const TYPE_HIERARCHIES: Record<FieldTypeKey, Hierarchy> = {
   [TEMPORAL]: {
-    base: [TYPE.Temporal],
-    effective: [TYPE.Temporal],
+    base_type: [TYPE.Temporal],
+    effective_type: [TYPE.Temporal],
   },
   [NUMBER]: {
-    base: [TYPE.Number],
-    effective: [TYPE.Number],
+    base_type: [TYPE.Number],
+    effective_type: [TYPE.Number],
   },
   [INTEGER]: {
-    base: [TYPE.Integer],
-    effective: [TYPE.Integer],
+    base_type: [TYPE.Integer],
+    effective_type: [TYPE.Integer],
   },
   [STRING]: {
-    base: [TYPE.Text],
-    effective: [TYPE.Text],
+    base_type: [TYPE.Text],
+    effective_type: [TYPE.Text],
   },
   [STRING_LIKE]: {
-    base: [TYPE.TextLike],
-    effective: [TYPE.TextLike],
+    base_type: [TYPE.TextLike],
+    effective_type: [TYPE.TextLike],
   },
   [BOOLEAN]: {
-    base: [TYPE.Boolean],
-    effective: [TYPE.Boolean],
+    base_type: [TYPE.Boolean],
+    effective_type: [TYPE.Boolean],
   },
   [COORDINATE]: {
-    semantic: [TYPE.Coordinate],
+    semantic_type: [TYPE.Coordinate],
   },
   [LOCATION]: {
-    semantic: [TYPE.Address],
+    semantic_type: [TYPE.Address],
   },
   [ENTITY]: {
-    semantic: [TYPE.FK, TYPE.PK, TYPE.Name],
+    semantic_type: [TYPE.FK, TYPE.PK, TYPE.Name],
   },
   [FOREIGN_KEY]: {
-    semantic: [TYPE.FK],
+    semantic_type: [TYPE.FK],
   },
   [PRIMARY_KEY]: {
-    semantic: [TYPE.PK],
+    semantic_type: [TYPE.PK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -78,7 +103,7 @@ export const TYPE_HIERARCHIES = {
     exclude: [LOCATION],
   },
   [CATEGORY]: {
-    semantic: [TYPE.Category],
+    semantic_type: [TYPE.Category],
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
   [DIMENSION]: {

@@ -58,10 +58,11 @@
       (mt/user-http-request :rasta :put 403 "slack/settings"
                             {:slack-app-token "fake-token"}))))
 
-(deftest ^:parallel manifest-test
+(deftest manifest-test
   (testing "GET /api/slack/manifest"
     (testing "The Slack manifest can be fetched via an API call"
-      (is (map? (mt/user-http-request :crowberto :get 200 "slack/manifest"))))))
+      (mt/with-temporary-setting-values [site-url "https://example.com"]
+        (is (map? (mt/user-http-request :crowberto :get 200 "slack/manifest")))))))
 
 (deftest ^:parallel manifest-test-2
   (testing "GET /api/slack/manifest"

@@ -128,13 +128,8 @@
                 ex-message-fn     #(exceptional-run-message message-log %)
                 result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                     (transforms.u/run-cancelable-transform! run-id transform driver transform-details run-fn :ex-message-fn ex-message-fn))]
-            ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
-            (transforms-base.u/complete-execution! transform
-                                                   {:run-id               run-id
-                                                    :source-range-params  (:source-range-params result)
-                                                    :with-stage-timing-fn (fn [rid stage thunk]
-                                                                            (transforms.instrumentation/with-stage-timing [rid stage]
-                                                                              (thunk)))})
+            ;; Post-processing: sync, transform_id, events
+            (transforms-base.u/complete-execution! transform {})
             {:run_id run-id :result result}))))
     (catch Throwable t
       (log/error t "Error executing Python transform")

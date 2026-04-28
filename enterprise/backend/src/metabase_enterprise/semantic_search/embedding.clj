@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -219,10 +220,10 @@
                       {:provider provider :model model-name}
                       total-tokens)
       (when snowplow?
-        (analytics/track-token-usage!
+        (analytics.core/track-token-usage!
          {:snowplow            true
           :prometheus          false    ; already tracked via inc! above
-          :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
+          :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
           :model-id            model-name
           :total-tokens        total-tokens
           :prompt-tokens       prompt-tokens
@@ -279,7 +280,7 @@
   []
   (let [api-key (semantic-settings/openai-api-key)]
     (when-not api-key
-      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+      (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
     [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
 
 (defmethod get-embedding "openai" [embedding-model text & {:as opts}]

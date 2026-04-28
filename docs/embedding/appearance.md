@@ -11,20 +11,20 @@ You can style your embedded [Metabase components](./components.md) with a **them
 
 ![Embed share button](./images/embed-share-button.png)
 
-Guest embeds on OSS/Starter plans come with two theme presets - light and dark. On Metabase Pro/Enterprise plans, you can customize individual colors, fonts, etc.
+Guest embeds on OSS and Starter plans come with two theme presets - light and dark. On Metabase Pro and Enterprise plans, you can also customize individual colors, backgrounds, fonts and more. See [Advanced theming](#advanced-theming).
 
-## Basic theming
 
-You can choose light or dark theme for your embeds. On Pro/Enterprise plans, you can also configure granular appearance settings like background, fonts etc, see [Advanced theming](#advanced-theming).
+## Dark mode and light mode
 
-To add a light or dark theme, pass a `theme` parameter with `preset` to the `defineMetabaseConfig()` function in your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app). For example, to specify a dark theme:
+By default, components that you embed using the SDK will use a light mode theme.
+
+To use dark mode, set `theme.preset` to `"dark"` in the `defineMetabaseConfig()` function of your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app):
 
 ```js
 defineMetabaseConfig({
   theme: {
-    preset: "dark",
+    preset: "dark", // or "light"
   },
-  instanceUrl: "http://localhost:3000",
 });
 ```
 
@@ -38,7 +38,7 @@ On Pro/Enterprise plan, you can configure granular appearance options, like back
 
 ![Behavior and appearance](./images/behavior-and-appearance.png)
 
-Some appearance options like brand, text, and background color are configurable in in the [embed wizard](./modular-embedding.md#create-a-new-embed).
+Some appearance options like brand, text, and background color are configurable in the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
 For other appearance settings, use the `theme` parameter with `preset` in the `defineMetabaseConfig()` function in your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app). For example:
 
@@ -265,10 +265,42 @@ For advanced theme configuration options, you can configure the `theme` object i
 
     // Popover are used in components such as click actions in interactive questions.
     "popover": {
-      // z-index of the popover. Useful for embedding components in a modal. defaults to 4.
-      "zIndex": 4
+      // z-index of the popover. Defaults to 200.
+      "zIndex": 200
     }
   }
+}
+```
+
+## Can't see a modal? Bump the z-index
+
+If your app renders its own modal, drawer, or backdrop at a high z-index, SDK-internal overlays (like a save dialog) may be hidden behind your overlay.
+
+The SDK defaults popovers to `zIndex: 200`, which may be lower than your app's overlay settings. All you need to do in this case is raise the SDK popover z-index above your overlay via `defineMetabaseTheme`:
+
+```tsx
+import {
+  MetabaseProvider,
+  defineMetabaseTheme,
+} from "@metabase/embedding-sdk-react";
+
+const theme = defineMetabaseTheme({
+  components: {
+    //... Other theme settings
+    popover: {
+      // Set above your overlay's z-index.
+      // For example, if your modal is at 1000, use 1001.
+      zIndex: 1001,
+    },
+  },
+});
+
+export function App() {
+  return (
+    <MetabaseProvider authConfig={authConfig} theme={theme}>
+      {/* your app */}
+    </MetabaseProvider>
+  );
 }
 ```
 

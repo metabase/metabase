@@ -296,12 +296,50 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Reset ${normalUserName}'s password?`);
-      clickButton("Reset password");
+
+      H.modal().within(() => {
+        cy.findByText("Are you sure you want to do this?");
+        cy.button("Cancel").should("exist");
+        cy.button("Get reset link").should("exist");
+        cy.button("Reset password").click();
+      });
+
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${normalUserName}'s password has been reset`);
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
+    });
+
+    it("should generate a password reset link without SMTP set up", () => {
+      cy.intercept("POST", "/api/user/*/password-reset-url").as("getResetUrl");
+
+      cy.visit("/admin/people");
+      showUserOptions(normalUserName);
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Reset password").click();
+
+      H.modal().within(() => {
+        cy.findByText(`Reset ${normalUserName}'s password?`);
+        cy.button("Get reset link").click();
+      });
+
+      cy.wait("@getResetUrl");
+
+      H.modal().within(() => {
+        cy.findByText(`Password reset link for ${normalUserName}`);
+        cy.findByText(
+          "Share this link with the user. It will expire in 48 hours.",
+        );
+        cy.findByRole("textbox")
+          .invoke("val")
+          .should("contain", "reset_password");
+        cy.button("Done").click();
+      });
+
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
       );
@@ -335,7 +373,11 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Reset password").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
-        clickButton("Reset password");
+
+        H.modal().within(() => {
+          cy.button("Get reset link").should("exist");
+          cy.button("Reset password").click();
+        });
 
         H.undoToast().within(() => {
           cy.findByText(
@@ -507,41 +549,50 @@ describe("scenarios > admin > people", () => {
       beforeEach(() => {
         generateUsers(NEW_USERS);
 
-        cy.intercept("GET", "/api/user*").as("users");
+        cy.intercept("GET", "/api/user?query*").as("users");
         cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 
       it("should allow paginating people forward and backward", () => {
         const PAGE_SIZE = 25;
 
+        const footer = () =>
+          cy
+            .findByTestId("people-list-footer")
+            .scrollIntoView()
+            .should("be.visible");
+
         cy.visit("/admin/people");
-
-        // Total
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`${NEW_TOTAL_USERS} people found`);
-
-        // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
-        assertTableRowsCount(PAGE_SIZE);
-        cy.findByLabelText("Previous page").should("be.disabled");
-
-        cy.findByTestId("next-page-btn").click();
+        cy.findByTestId("admin-panel")
+          .findByText("Loading...")
+          .should("not.exist");
         cy.wait("@users");
 
-        // Page 2
-        cy.findByTestId("people-list-footer")
-          .findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`)
-          .should("be.visible");
-        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
-        cy.findByLabelText("Next page").should("be.disabled");
-
-        cy.findByLabelText("Previous page").click();
-
-        // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
+        cy.log("Page 1");
         assertTableRowsCount(PAGE_SIZE);
+        footer()
+          .should("contain", `${NEW_TOTAL_USERS} people found`)
+          .and("contain", `1 - ${PAGE_SIZE}`);
+
+        footer().within(() => {
+          cy.findByLabelText("Previous page").should("be.disabled");
+
+          cy.findByLabelText("Next page").click();
+          cy.wait("@users");
+        });
+
+        cy.log("Page 2");
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
+        footer().should("contain", `${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+
+        cy.log("Back to the Page 1");
+        footer().within(() => {
+          cy.findByLabelText("Next page").should("be.disabled");
+          cy.findByLabelText("Previous page").click();
+        });
+
+        assertTableRowsCount(PAGE_SIZE);
+        footer().should("contain", `1 - ${PAGE_SIZE}`);
       });
 
       it("should allow paginating group members forward and backward", () => {
@@ -681,7 +732,7 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

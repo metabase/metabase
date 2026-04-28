@@ -21,7 +21,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -860,42 +859,6 @@
     :by-path {}}
    seen-paths))
 
-;;; --------------------------------------------- Export Path Construction ---------------------------------------------
-
-(defn- transform-entity-for-serdes
-  "Transforms entity fields to serdes format for path generation.
-   - Converts integer table_id to [db-name schema table-name] format
-   - Converts integer collection_id to entity_id string for collection path lookup"
-  [entity]
-  (cond-> entity
-    ;; Transform table_id for Segment (and other table-based entities)
-    (and (:table_id entity) (integer? (:table_id entity)))
-    (assoc :table_id (serdes/*export-table-fk* (:table_id entity)))
-    ;; Transform collection_id for snippet and other collection-based entities
-    (and (:collection_id entity) (integer? (:collection_id entity)))
-    (assoc :collection_id (t2/select-one-fn :entity_id :model/Collection :id (:collection_id entity)))))
-
-(defn- entity->serdes-path
-  "Builds the file path for an entity using serdes/storage-path.
-   For Collections, returns the directory path (for recursive deletion).
-   For other entities, returns the full file path.
-   Returns the path as a string (without extension), or nil if path cannot be built."
-  [model-type entity ctx]
-  (try
-    (when-let [serdes-meta (serdes/generate-path model-type entity)]
-      (let [;; Transform entity fields to serdes format (e.g., table_id -> [db schema table])
-            transformed-entity (transform-entity-for-serdes entity)
-            entity-with-meta (assoc transformed-entity :serdes/meta serdes-meta)
-            storage-path (serdes/storage-path entity-with-meta ctx)]
-        ;; For Collections, drop the last segment (filename) to get directory path
-        (if (= model-type "Collection")
-          (str/join "/" (butlast storage-path))
-          (str/join "/" storage-path))))
-    (catch Exception e
-      (log/warnf "Failed to build storage path for %s %s: %s"
-                 model-type (:id entity) (ex-message e))
-      nil)))
-
 ;;; -------------------------------------------- Event Helper Functions ------------------------------------------------
 
 (defn determine-status
@@ -935,86 +898,6 @@
     (or (get-in spec [:tracking :select-fields])
         [:id :name :collection_id])
     [:id :name :collection_id]))
-
-;;; -------------------------------------------- Removal Path Building --------------------------------------------------
-
-(defn- query-removed-ids
-  "Queries RemoteSyncObject for model IDs marked for removal."
-  [model-type statuses]
-  (t2/select-fn-set :model_id :model/RemoteSyncObject
-                    :model_type model-type
-                    :status [:in (vec statuses)]))
-
-(defn- query-removed-entities
-  "Queries entities marked for removal with all fields needed for serdes path generation.
-   serdes/generate-path needs: entity_id, name (for label)
-   serdes/storage-path needs: collection_id (for collection context), table_id (for segment paths)"
-  [{:keys [model-type model-key removal]}]
-  (let [{:keys [statuses]} removal
-        removed-ids (query-removed-ids model-type statuses)]
-    (when (seq removed-ids)
-      ;; Select all columns since different models need different fields for serdes paths
-      (t2/select model-key :id [:in removed-ids]))))
-
-(defn- setting-sentinel-delete?
-  "Returns true if the setting's sentinel RSO exists with 'delete' status.
-   Used to detect when a setting (like :remote-sync-transforms) has been disabled
-   and all entities of the controlled types should be removed."
-  [setting-key]
-  (when (= setting-key :remote-sync-transforms)
-    (t2/exists? :model/RemoteSyncObject
-                :model_type "Collection"
-                :model_id rs-settings/transforms-root-id
-                :status "delete")))
-
-(defn- build-bulk-removal-paths
-  "Builds removal paths for ALL entities of a spec's model type.
-   Used when the controlling setting is disabled (sentinel RSO has 'delete' status).
-   Respects :removal-conditions (or :conditions) from the spec to exclude ineligible entities."
-  [spec ctx]
-  (let [{:keys [model-type model-key]} spec
-        conditions (removal-conditions spec)]
-    (for [entity (if conditions
-                   (apply t2/select model-key (into [] cat conditions))
-                   (t2/select model-key))
-          :let [path (entity->serdes-path model-type entity ctx)]
-          :when path]
-      path)))
-
-(defn build-all-removal-paths
-  "Builds full file paths for all entities marked for removal in RemoteSyncObject.
-   Uses serdes/storage-path to generate paths that exactly match the file structure.
-
-   Does bulk queries per model type for efficiency:
-   1. Query RemoteSyncObject for model_ids with removal statuses
-   2. Query actual entities by those IDs
-   3. Use serdes/storage-path to build the exact file path
-
-   Also handles bulk removal for specs with :all-on-setting-disable when the
-   controlling setting's sentinel RSO has 'delete' status.
-
-   Returns paths without file extensions - the git source adds .yaml as needed."
-  []
-  (let [ctx (serdes/storage-base-context)
-        ;; Standard removal paths from enabled specs
-        standard-paths (into []
-                             (for [[_model-key spec] (enabled-specs)
-                                   :when (spec-enabled? spec)
-                                   :let [{:keys [statuses]} (:removal spec)
-                                         model-type (:model-type spec)]
-                                   :when (seq statuses)
-                                   entity (query-removed-entities spec)
-                                   :let [path (entity->serdes-path model-type entity ctx)]
-                                   :when path]
-                               path))
-        ;; Bulk removal paths for specs with :all-on-setting-disable
-        bulk-paths (into []
-                         (for [[_model-key spec] remote-sync-specs
-                               :let [setting-key (get-in spec [:removal :all-on-setting-disable])]
-                               :when (and setting-key (setting-sentinel-delete? setting-key))
-                               path (build-bulk-removal-paths spec ctx)]
-                           path))]
-    (into standard-paths bulk-paths)))
 
 ;;; ----------------------------------------- Sync Object Query Functions --------------------------------------------
 

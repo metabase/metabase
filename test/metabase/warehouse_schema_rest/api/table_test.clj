@@ -53,7 +53,6 @@
     :settings                    {}
     :cache_ttl                   nil
     :provider_name               nil
-    :workspace_permissions_status nil
     :is_audit                    false}))
 
 (defn- table-defaults
@@ -743,7 +742,7 @@
                                        :database_id   (mt/id)
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+                                                       :native   {:query "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES"}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -859,7 +858,7 @@
                                        :database_id   (mt/id)
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+                                                       :native   {:query "SELECT NAME, LAST_LOGIN FROM USERS"}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -1315,9 +1314,6 @@
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
                                      {:visibility_type  "hidden"
                                       :data_layer "hidden"})))))))
-
-;; NOTE: unused-only-filter-test moved to enterprise/backend/test/metabase_enterprise/dependencies/api_test.clj
-;; because it depends on EE event handlers to populate the dependency table
 
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan-only=true"

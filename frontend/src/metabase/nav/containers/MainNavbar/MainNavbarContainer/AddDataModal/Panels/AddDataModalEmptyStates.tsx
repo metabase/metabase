@@ -3,8 +3,7 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,
@@ -17,6 +16,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 
 import IconCSV from "./illustrations/csv.svg?component";
 

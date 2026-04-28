@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import {
   DEPENDENCY_GROUP_TYPES,
   DEPENDENCY_SORT_COLUMNS,

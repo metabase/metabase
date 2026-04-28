@@ -1,7 +1,7 @@
 import dayjs, { type Dayjs } from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Metadata } from "metabase-lib";
 import type {
   ConcreteTableId,
   JsMetricDefinition,
@@ -365,14 +365,17 @@ export function filterParts(
 export function projections(definition: MetricDefinition): ProjectionClause[];
 export function projections(
   definition: MetricDefinition,
-  sourceMeta: MetricMetadata | MeasureMetadata,
+  sourceInstance: SourceInstance,
 ): ProjectionClause[];
 export function projections(
   definition: MetricDefinition,
-  sourceMeta?: MetricMetadata | MeasureMetadata,
+  sourceInstance?: SourceInstance,
 ): ProjectionClause[] {
-  if (sourceMeta !== undefined) {
-    return LibMetric.projections(definition, sourceMeta) as ProjectionClause[];
+  if (sourceInstance !== undefined) {
+    return LibMetric.projections(
+      definition,
+      sourceInstance,
+    ) as ProjectionClause[];
   }
   return LibMetric.projections(definition) as ProjectionClause[];
 }
@@ -388,16 +391,16 @@ export function projectionableDimensions(
 ): DimensionMetadata[];
 export function projectionableDimensions(
   definition: MetricDefinition,
-  sourceMeta: MetricMetadata | MeasureMetadata,
+  sourceInstance: SourceInstance,
 ): DimensionMetadata[];
 export function projectionableDimensions(
   definition: MetricDefinition,
-  sourceMeta?: MetricMetadata | MeasureMetadata,
+  sourceInstance?: SourceInstance,
 ): DimensionMetadata[] {
-  if (sourceMeta !== undefined) {
+  if (sourceInstance !== undefined) {
     return LibMetric.projectionableDimensions(
       definition,
-      sourceMeta,
+      sourceInstance,
     ) as DimensionMetadata[];
   }
   return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
@@ -416,18 +419,18 @@ export function project(
 export function project(
   definition: MetricDefinition,
   dimensionRef: ProjectionClause,
-  sourceMeta: MetricMetadata | MeasureMetadata,
+  sourceInstance: SourceInstance,
 ): MetricDefinition;
 export function project(
   definition: MetricDefinition,
   dimensionRef: ProjectionClause,
-  sourceMeta?: MetricMetadata | MeasureMetadata,
+  sourceInstance?: SourceInstance,
 ): MetricDefinition {
-  if (sourceMeta !== undefined) {
+  if (sourceInstance !== undefined) {
     return LibMetric.project(
       definition,
       dimensionRef,
-      sourceMeta,
+      sourceInstance,
     ) as MetricDefinition;
   }
   return LibMetric.project(definition, dimensionRef) as MetricDefinition;
@@ -709,4 +712,11 @@ export function isSameSource(
   dimension2: DimensionMetadata,
 ): boolean {
   return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}
+
+export function isCompatibleType(
+  dimension1: DimensionMetadata,
+  dimension2: DimensionMetadata,
+): boolean {
+  return LibMetric.isCompatibleType(dimension1, dimension2) as boolean;
 }

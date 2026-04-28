@@ -6,13 +6,20 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
-import * as Urls from "metabase/lib/urls";
-import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Ellipsified,
+  Flex,
+  Icon,
+  Text,
+} from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import {
   useDeleteUploadTableMutation,
   useListUploadTablesQuery,

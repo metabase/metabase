@@ -8,7 +8,6 @@
    [metabase-enterprise.sso.integrations.jwt :as jwt]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.integrations.saml]
-   [metabase-enterprise.sso.integrations.slack-connect :as slack-connect-integration]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
@@ -125,7 +124,7 @@
    _query-params
    {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
    request]
-  (when-not (sso-settings/jwt-enabled)
+  (when-not (sso-settings/jwt-enabled-and-configured)
     (throw (ex-info "JWT authentication is not enabled"
                     {:status-code 400})))
   {:session_token (jwt/jwt->session jwt request)})
@@ -150,30 +149,6 @@
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
-
-;; GET /auth/sso/slack-connect
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/slack-connect"
-  "Initiate Slack Connect SSO flow."
-  [_route-params _query-params _body request]
-  (try
-    (slack-connect-integration/sso-initiate request)
-    (catch Throwable e
-      (log/error e "Error initiating Slack Connect SSO")
-      (throw e))))
-
-;; GET /auth/sso/slack-connect/callback
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/slack-connect/callback"
-  "Slack Connect OIDC callback."
-  [_route-params _query-params _body request]
-  (try
-    (slack-connect-integration/sso-callback request)
-    (catch Throwable e
-      (log/error e "Error handling Slack Connect callback")
-      (throw e))))
 
 ;; Key schema that excludes `/` so /:key does not greedily match /:key/callback
 (def ^:private ProviderKey

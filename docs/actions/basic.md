@@ -4,7 +4,7 @@ title: Basic actions
 
 # Basic actions
 
-Basic actions are "implicit" [actions](./introduction.md) that do things that people typically want to do when interacting with a database: Create, Update, Delete. Basic actions auto-track the schema of the source table backing the model. By auto-track the schema, we mean that Metabase will create action forms for people to fill out that include all of the fields from the primary source table that underlies that model.
+Basic actions are "implicit" [actions](./introduction.md) that do things that people typically want to do when interacting with a database: Create, Update, Delete. Basic actions auto-track the schema of the source table backing the model. By auto-tracking the schema, we mean that Metabase will create action forms for people to fill out that include all of the fields from the primary source table that underlies that model.
 
 If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](./custom.md).
 
@@ -62,7 +62,7 @@ Because basic actions are made of magic, you cannot archive them. You can just t
 
 ## Basic actions from object detail view
 
-If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail model, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
+If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail modal, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
 
 ![Update record from object detail view](./images/update-record.png)
 

@@ -4,7 +4,7 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
 const getResource = ({

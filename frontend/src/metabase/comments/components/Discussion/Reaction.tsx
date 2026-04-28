@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Flex, Text, Tooltip } from "metabase/ui";
 import type { CommentReaction } from "metabase-types/api";

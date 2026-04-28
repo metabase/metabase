@@ -16,32 +16,22 @@ import {
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
-  type ExternalTransform,
   type MeasureDependencyNode,
   type PythonLibrary,
-  type ReplaceSourceRun,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
   type SnippetDependencyNode,
+  type SourceReplacementRun,
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
-  type Workspace,
-  type WorkspaceAllowedDatabase,
-  type WorkspaceItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
   "scim",
-  "metabot",
-  "metabot-entities-list",
-  "metabot-prompt-suggestions",
   "gsheets-status",
   "sandbox",
-  "workspace-transforms",
-  "workspace-transform",
-  "workspace-tables",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -49,12 +39,15 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
-  "replace-source-run",
+  "source-replacement-run",
   "python-transform-library",
-  "workspace",
   "support-access-grant",
   "support-access-grant-current",
   "library-collection",
+  "ai-controls-permissions",
+  "ai-controls-usage-instance-limit",
+  "ai-controls-usage-group-limits",
+  "ai-controls-usage-tenant-limits",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -83,33 +76,6 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
-}
-
-export function provideWorkspacesTags(
-  workspaces: Workspace[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
-}
-
-export function provideWorkspaceTags(
-  workspace: Workspace | WorkspaceItem,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("workspace", workspace.id)];
-}
-
-export function provideExternalTransformTags(
-  transform: ExternalTransform,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("external-transform", transform.id)];
-}
-
-export function provideExternalTransformListTags(
-  transforms: ExternalTransform[],
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("external-transform"),
-    ...transforms.flatMap(provideExternalTransformTags),
-  ];
 }
 
 export function providePythonLibraryTags(
@@ -239,8 +205,6 @@ export function provideDependencyNodeTags(
       return provideSegmentDependencyNodeTags(node);
     case "measure":
       return provideMeasureDependencyNodeTags(node);
-    case "workspace-transform":
-      return [idTag("workspace-transform", node.id)];
   }
 }
 
@@ -272,17 +236,17 @@ export function provideSupportAccessGrantListTags(
   ];
 }
 
-export function provideWorkspaceAllowedDatabaseTags(
-  databases: WorkspaceAllowedDatabase[],
-) {
-  return [
-    listTag("database"),
-    ...databases.map((db) => idTag("database", db.id)),
-  ];
+export function provideSourceReplacementRunTags(
+  run: SourceReplacementRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("source-replacement-run", run.id)];
 }
 
-export function provideReplaceSourceRunTags(
-  run: ReplaceSourceRun,
+export function provideSourceReplacementRunListTags(
+  runs: SourceReplacementRun[],
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("replace-source-run", run.id)];
+  return [
+    listTag("source-replacement-run"),
+    ...runs.flatMap(provideSourceReplacementRunTags),
+  ];
 }

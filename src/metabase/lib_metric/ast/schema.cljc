@@ -3,6 +3,7 @@
    The AST provides an intermediate representation for metric definitions
    that can be walked, transformed, and compiled to MBQL queries."
   (:require
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.util.malli.registry :as mr]))
 
@@ -19,9 +20,10 @@
   "Reference to a database column/field."
   [:map
    [:node/type [:= :ast/column]]
-   [:id pos-int?]
+   [:id [:or pos-int? string?]]
    [:name {:optional true} [:maybe string?]]
-   [:table-id {:optional true} [:maybe pos-int?]]])
+   [:table-id {:optional true} [:maybe pos-int?]]
+   [:base-type {:optional true} [:maybe keyword?]]])
 
 ;;; -------------------- Dimension Nodes --------------------
 
@@ -213,7 +215,7 @@
 ;;; -------------------- Join Nodes --------------------
 
 (mr/def ::join-node
-  "A join from the source metric's query, preserved as raw pMBQL."
+  "A join from the source metric's query, preserved as raw MBQL 5."
   [:map
    [:node/type [:= :ast/join]]
    [:mbql-join :any]])
@@ -229,6 +231,7 @@
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
+   [:source-card-id {:optional true} [:maybe pos-int?]]
    [:metadata {:optional true} [:maybe :map]]
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
@@ -245,15 +248,49 @@
   "Union of source node types."
   [:or ::source-metric ::source-measure])
 
-;;; -------------------- Root Node --------------------
+;;; -------------------- Expression Nodes --------------------
 
-(mr/def ::ast
-  "Root AST node - the complete metric exploration."
+(mr/def ::source-query
+  "A single-source query node with source, dimensions, mappings, filters, and group-by.
+   Used inside expression leaves as the compilable sub-query."
   [:map
-   [:node/type [:= :ast/root]]
+   [:node/type [:= :ast/source-query]]
    [:source ::source-node]
    [:dimensions [:sequential ::dimension-node]]
    [:mappings [:sequential ::dimension-mapping-node]]
    [:filter {:optional true} [:maybe ::filter-node]]
-   [:group-by {:optional true} [:maybe [:sequential ::dimension-ref-node]]]
+   [:group-by {:optional true} [:maybe [:sequential ::dimension-ref-node]]]])
+
+(mr/def ::expression-leaf
+  "A leaf in an expression tree — wraps a source-query."
+  [:map
+   [:node/type [:= :expression/leaf]]
+   [:uuid string?]
+   [:ast ::source-query]])
+
+(mr/def ::expression-constant
+  "A numeric constant in an expression tree."
+  [:map
+   [:node/type [:= :expression/constant]]
+   [:value number?]])
+
+(mr/def ::expression-arithmetic
+  "An arithmetic operation over expression children."
+  [:map
+   [:node/type [:= :expression/arithmetic]]
+   [:operator (into [:enum] (operators/arithmetic-operator-keywords))]
+   [:children [:sequential [:or [:ref ::expression-leaf] [:ref ::expression-arithmetic] [:ref ::expression-constant]]]]])
+
+(mr/def ::expression-node
+  "Union of expression node types."
+  [:or ::expression-leaf ::expression-arithmetic ::expression-constant])
+
+;;; -------------------- Root Node --------------------
+
+(mr/def ::ast
+  "Root AST node - the complete metric exploration.
+   Always has an :expression tree (single leaf or arithmetic)."
+  [:map
+   [:node/type [:= :ast/root]]
+   [:expression ::expression-node]
    [:metadata-provider {:optional true} [:maybe :some]]])

@@ -73,7 +73,6 @@ const runFetchRequestToken = async (
         });
       }
       throw MetabaseError.DEFAULT_ENDPOINT_ERROR({
-        expected: "{ jwt: string }",
         actual: actualResponse,
       });
     }

@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { DependencyNode } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";

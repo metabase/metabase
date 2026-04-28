@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -62,18 +62,44 @@ export function formatRunMethod(trigger: TransformRunMethod) {
   }
 }
 
+export type DatabaseValidationResult = {
+  isValid: boolean;
+  message?: string;
+};
+
+export function validateDatabase(database: Database): DatabaseValidationResult {
+  if (database.is_sample) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on the Sample Database.`,
+    };
+  }
+  if (database.is_audit) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on the Usage Analytics database.`,
+    };
+  }
+  if (database.router_user_attribute || database.router_database_id) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled when database routing is enabled.`,
+    };
+  }
+  if (!hasFeature(database, "transforms/table")) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on this database.`,
+    };
+  }
+  return { isValid: true };
+}
+
 export function doesDatabaseSupportTransforms(database?: Database): boolean {
   if (!database) {
     return false;
   }
-
-  return (
-    !database.is_sample &&
-    !database.is_audit &&
-    !database.router_user_attribute &&
-    !database.router_database_id &&
-    hasFeature(database, "transforms/table")
-  );
+  return validateDatabase(database).isValid;
 }
 
 export function sourceDatabaseId(source: TransformSource): DatabaseId | null {

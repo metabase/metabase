@@ -13,11 +13,120 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.json-schema :as mjs]
+   [malli.util :as mut]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+(defn- inline-malli-refs
+  "Walk a malli schema, replacing all registered-schema refs with their dereferenced content.
+   This ensures `mjs/transform` never sees refs and thus never generates `$ref` or `$defs`.
+   Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas —
+   when a cycle is detected, the walker receives the raw ref name (a string) instead of a
+   walked schema, and we fall back to `:any`."
+  [schema]
+  (mc/walk
+   schema
+   (fn [node _path children _options]
+     (if (mc/-ref-schema? node)
+       (let [child (first children)]
+         (if (mc/schema? child)
+           child
+           (mc/schema :any)))
+       (mc/into-schema (mc/type node) (mc/properties node) children (mc/options node))))
+   {::mc/walk-refs true ::mc/walk-schema-refs true}))
+
+(defn- collect-root-maps
+  "Walk the root of a malli schema tree using a worklist, collecting leaf `:map` schemas.
+   Composite nodes (`:and`, `:or`, `:multi`) are expanded and their children enqueued.
+   Other non-map nodes (e.g. `:schema` wrappers) are deref'd and re-enqueued.
+
+   Returns a vector of `{:schema <map-schema> :optional? <bool>}` where `:optional?` is true
+   when the schema was reached through an `:or` or `:multi` branch (meaning all its keys
+   should become optional in the merged result).
+
+   Tracks already-deref'd schemas to detect cycles — composite types (`:and`, `:or`, `:multi`)
+   and `:map` always terminate, so only the deref fallback path needs cycle detection.
+
+   Only the outermost composite schemas are consumed — nested `anyOf`/`allOf` within `:map`
+   properties are preserved since LLM clients handle them fine."
+  [schema]
+  (loop [worklist [{:schema schema :optional? false}]
+         results  []
+         seen     #{}]
+    (if (empty? worklist)
+      results
+      (let [{:keys [schema optional?]} (first worklist)
+            remaining                   (subvec worklist 1)]
+        (case (mc/type schema)
+          :map
+          (recur remaining (conj results {:schema schema :optional? optional?}) seen)
+
+          :and
+          (recur (into remaining
+                       (mapv (fn [child] {:schema child :optional? optional?})
+                             (mc/children schema)))
+                 results seen)
+
+          :or
+          (recur (into remaining
+                       (mapv (fn [child] {:schema child :optional? true})
+                             (mc/children schema)))
+                 results seen)
+
+          :multi
+          (recur (into remaining
+                       (mapv (fn [[_k _props child]] {:schema child :optional? true})
+                             (mc/children schema)))
+                 results seen)
+
+          ;; For other types (e.g. :schema wrapper), try deref and re-enqueue.
+          ;; Track by identity to detect cycles (e.g. recursive schema refs).
+          (let [derefed (mc/deref schema)]
+            (cond
+              ;; Cycle detected: emit an empty :map as a safe fallback (-> {"type":"object"}).
+              ;; In practice inline-malli-refs already breaks cycles via :any, so this is a safety net.
+              (contains? seen schema)
+              (recur remaining
+                     (conj results {:schema (mc/schema [:map]) :optional? optional?})
+                     seen)
+
+              ;; Deref made progress: re-enqueue the dereferenced schema.
+              (not (identical? derefed schema))
+              (recur (conj remaining {:schema derefed :optional? optional?})
+                     results (conj seen schema))
+
+              ;; Can't simplify (non-map leaf like :enum): keep as-is.
+              :else
+              (recur remaining (conj results {:schema schema :optional? optional?}) seen))))))))
+
+(defn- flatten-root-schema
+  "Flatten the root of a malli schema into a single `:map` for MCP inputSchema compatibility.
+   Only the outermost composite schemas (`:and`, `:or`, `:multi`) are consumed — nested
+   `anyOf`/`allOf` within `:map` properties are preserved.
+
+   Collects all leaf `:map` schemas from the root composite tree, marks keys as optional
+   when reached through `:or`/`:multi` branches, then merges everything into one `:map`.
+
+   Returns the schema unchanged if it is already a `:map` or cannot be simplified."
+  [schema]
+  (let [leaves (collect-root-maps schema)]
+    (case (count leaves)
+      0 schema
+      1 (let [{:keys [schema optional?]} (first leaves)]
+          (cond-> schema
+            (and optional? (mc/-entry-schema? (mc/deref-all schema))) mut/optional-keys))
+      ;; Multiple leaves: merge via :union with optional-keys where needed
+      (mc/deref
+       (mc/into-schema :union nil
+                       (mapv (fn [{:keys [schema optional?]}]
+                               (cond-> schema
+                                 (and optional? (mc/-entry-schema? (mc/deref-all schema)))
+                                 mut/optional-keys))
+                             leaves)
+                       (mc/options schema))))))
 
 (defn- prefer-tool-descriptions
   "Pre-process a malli schema so that `:tool/description` takes precedence over `:description`
@@ -35,56 +144,14 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
-(def ^:private sanitize-replacements
-  {"~1" "_SLASH_"
-   "!"  "_BANG_"
-   "="  "_EQ_"
-   "<"  "_LT_"
-   ">"  "_GT_"
-   "*"  "_STAR_"
-   "+"  "_PLUS_"
-   "/"  "_SLASH_"})
-
-(def ^:private sanitize-pattern
-  (re-pattern (str/join "|" (map #(java.util.regex.Pattern/quote %) (keys sanitize-replacements)))))
-
-(defn- sanitize-def-name
-  "Sanitize a definition name for use in JSON Schema `$defs`."
-  [s]
-  (str/replace s sanitize-pattern sanitize-replacements))
-
-(defn- sanitize-ref [ref-str]
-  (str/replace ref-str #"#/\$defs/(.+)"
-               (fn [[_ def-name]]
-                 (str "#/$defs/" (sanitize-def-name def-name)))))
-
-(defn- walk-sanitize-refs
-  "Recursively walk a JSON Schema structure (maps and vectors) and apply [[sanitize-ref]]
-  to every `:$ref` value. This ensures nested `$ref`s inside `oneOf`, `anyOf`, definitions, etc.
-  are properly sanitized."
-  [schema]
-  (cond
-    (map? schema)    (into {} (map (fn [[k v]]
-                                     (if (= k :$ref)
-                                       [k (sanitize-ref v)]
-                                       [k (walk-sanitize-refs v)])))
-                           schema)
-    (vector? schema) (mapv walk-sanitize-refs schema)
-    :else            schema))
-
 (defn malli->json-schema
-  "Transform a malli schema to JSON Schema, collecting any `$defs` into `definitions-acc`.
-  Returns the JSON Schema with `$ref` values sanitized and `:definitions` stripped."
-  [definitions-acc malli-schema]
-  (let [jss  (mjs/transform (prefer-tool-descriptions malli-schema)
-                            {::mjs/definitions-path "#/$defs/"})
-        defs (:definitions jss)]
-    (when (seq defs)
-      (swap! definitions-acc
-             into
-             (map (fn [[k v]] [(sanitize-def-name k) (walk-sanitize-refs v)]))
-             defs))
-    (walk-sanitize-refs (dissoc jss :definitions))))
+  "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
+   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
+   `:multi`) into a single `:map`, applies tool-description preferences, then transforms
+   to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
+  [malli-schema]
+  (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
+    (mjs/transform prepared)))
 
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
@@ -118,9 +185,9 @@
 (defn- schema->properties-and-required
   "Extract `:properties` and `:required` from a malli schema's JSON Schema.
   Returns nil if the schema is nil or doesn't have `:properties` (e.g., `:or`/`:oneOf`)."
-  [defs malli-schema]
+  [malli-schema]
   (when malli-schema
-    (let [jss (malli->json-schema defs malli-schema)]
+    (let [jss (malli->json-schema malli-schema)]
       (when (:properties jss)
         (select-keys jss [:properties :required])))))
 
@@ -129,14 +196,14 @@
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
   the full JSON Schema is used directly. If route/query/body share a property name,
   later sources (body > query > route) take precedence."
-  [defs form]
-  (let [route-parts (schema->properties-and-required defs (get-in form [:params :route :schema]))
-        query-parts (schema->properties-and-required defs (get-in form [:params :query :schema]))
+  [form]
+  (let [route-parts (schema->properties-and-required (get-in form [:params :route :schema]))
+        query-parts (schema->properties-and-required (get-in form [:params :query :schema]))
         body-schema (get-in form [:params :body :schema])
-        body-parts  (schema->properties-and-required defs body-schema)
+        body-parts  (schema->properties-and-required body-schema)
         ;; If the body schema doesn't yield properties (e.g. :or), use its full JSON Schema
         body-full   (when (and body-schema (nil? body-parts))
-                      (malli->json-schema defs body-schema))
+                      (malli->json-schema body-schema))
         all-props   (merge (:properties route-parts)
                            (:properties query-parts)
                            (:properties body-parts))
@@ -151,12 +218,12 @@
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
-  [defs response-schema]
+  [response-schema]
   (when response-schema
     (let [resolved (mr/resolve-schema response-schema)
           content  (or (-> resolved mc/properties :openapi/response-schema)
                        response-schema)]
-      (malli->json-schema defs content))))
+      (malli->json-schema content))))
 
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
@@ -165,7 +232,7 @@
 
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
-  [defs prefix {:keys [form]}]
+  [prefix {:keys [form]}]
   (let [method       (:method form)
         route-path   (get-in form [:route :path])
         tool-md      (get-in form [:metadata :tool])
@@ -174,10 +241,11 @@
         description  (or (:description tool-md)
                          (:docstr form))
         full-path    (str prefix (route-path->endpoint-path route-path))
-        input-schema (merge-input-schemas defs form)
-        resp-schema  (response-schema->json-schema defs (:response-schema form))
+        input-schema (merge-input-schemas form)
+        resp-schema  (response-schema->json-schema (:response-schema form))
         annotations  (infer-annotations method (:annotations tool-md))
-        task-support (:task-support tool-md)]
+        task-support (:task-support tool-md)
+        scope        (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
@@ -185,7 +253,8 @@
       input-schema      (assoc :inputSchema input-schema)
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)
-      task-support      (assoc :execution {:taskSupport (name task-support)}))))
+      task-support      (assoc :execution {:taskSupport (name task-support)})
+      (string? scope)   (assoc :scope scope))))
 
 (defn check-tool-uniqueness
   "Throws if `tools` contains duplicate `:name` values. The exception message lists each
@@ -206,17 +275,19 @@
   "Generate a tools manifest from all `:tool`-annotated endpoints.
 
   `namespace-prefixes` is a map of `{ns-symbol \"/api/agent\"}` — each namespace symbol maps
-  to the URL prefix its endpoints are served under."
+  to the URL prefix its endpoints are served under.
+
+  All malli registered-schema refs are inlined before JSON Schema generation, so tool schemas
+  never contain `$ref` or `$defs`. Root-level `anyOf` (from malli `:or` body schemas) is
+  flattened into a single merged object for LLM client compatibility."
   [namespace-prefixes]
-  (let [defs  (atom (sorted-map))
-        tools (into []
+  (let [tools (into []
                     (mapcat (fn [[ns-sym prefix]]
                               (for [[_k endpoint] (api.macros/ns-routes ns-sym)
                                     :when (get-in endpoint [:form :metadata :tool])]
-                                (endpoint->tool-definition defs prefix endpoint))))
+                                (endpoint->tool-definition prefix endpoint))))
                     namespace-prefixes)]
     (check-tool-uniqueness tools)
-    (cond-> {:$schema "https://json-schema.org/draft/2020-12/schema"
-             :version "1.0.0"
-             :tools   (sort-by :name tools)}
-      (seq @defs) (assoc :$defs @defs))))
+    {:$schema "https://json-schema.org/draft/2020-12/schema"
+     :version "1.0.0"
+     :tools   (sort-by :name tools)}))

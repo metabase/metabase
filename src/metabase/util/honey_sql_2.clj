@@ -295,6 +295,13 @@
   [honeysql-form]
   (some-> honeysql-form type-info type-info->db-type))
 
+(defn effective-type
+  "Returns the Metabase effective type from the type-info of `honeysql-form` if present,
+   falling back to `:base-type`. Returns `nil` if neither is set."
+  [honeysql-form]
+  (let [info (type-info honeysql-form)]
+    (or (:effective-type info) (:base-type info))))
+
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `db-type`?
   Where `db-type` could be a string or a regex.
@@ -351,15 +358,25 @@
 (defn cast-unless-type-in
   "Cast `expr` to `desired-type` unless `expr` is of one of the `acceptable-types`. Returns a typed HoneySQL form.
 
+   When `database-type` is not available on `expr` but `effective-type` is, and `effective-type` is a descendant of
+   `effective-type-supertype`, the cast is also skipped. This handles card-sourced fields that lack `database-type`
+   metadata but have Metabase type information.
+
     ;; cast to TIMESTAMP unless form is already a TIMESTAMP, TIMESTAMPTZ, or DATE
-    (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
+    (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)
+
+    ;; same, but also skip the cast if effective-type isa? :type/Temporal
+    (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} :type/Temporal form)"
   {:added "0.42.0"}
-  [desired-type acceptable-types expr]
-  {:pre [(string? desired-type) (set? acceptable-types)]}
-  (if (some (partial is-of-type? expr)
-            acceptable-types)
-    expr
-    (cast desired-type expr)))
+  ([desired-type acceptable-types expr]
+   (cast-unless-type-in desired-type acceptable-types nil expr))
+  ([desired-type acceptable-types effective-type-supertype expr]
+   {:pre [(string? desired-type) (set? acceptable-types)]}
+   (if (or (some (partial is-of-type? expr) acceptable-types)
+           (when (and effective-type-supertype (not (database-type expr)))
+             (isa? (effective-type expr) effective-type-supertype)))
+     expr
+     (cast desired-type expr))))
 
 (defn- math-operator [operator]
   (fn [& args]
@@ -444,7 +461,7 @@
 (defn ->pg-timestamp
   "Cast to timestamp, preserving timestamptz if present."
   [honeysql-form]
-  (cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
+  (cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} :type/HasDate honeysql-form))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.

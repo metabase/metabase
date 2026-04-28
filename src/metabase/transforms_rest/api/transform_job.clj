@@ -79,7 +79,6 @@
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
-   [:dependency_analysis_version :int]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse

@@ -6,48 +6,45 @@ import { buildDimensionPickerSections } from "./dimension-picker";
 import { resolveCommonTabLabel } from "./tabs";
 
 describe("resolveCommonTabLabel", () => {
-  it("returns fallback for empty array", () => {
-    expect(resolveCommonTabLabel([], "Time")).toBe("Time");
+  it("returns null for empty array", () => {
+    expect(resolveCommonTabLabel([])).toBeNull();
   });
 
   it("returns the name when only one is provided", () => {
-    expect(resolveCommonTabLabel(["Created At"], "Time")).toBe("Created At");
+    expect(resolveCommonTabLabel(["Created At"])).toBe("Created At");
   });
 
   it("returns the name when all names are identical", () => {
-    expect(resolveCommonTabLabel(["Created At", "Created At"], "Time")).toBe(
+    expect(resolveCommonTabLabel(["Created At", "Created At"])).toBe(
       "Created At",
     );
   });
 
   it("returns the most frequent name", () => {
     expect(
-      resolveCommonTabLabel(["Created At", "Order Date", "Created At"], "Time"),
+      resolveCommonTabLabel(["Created At", "Order Date", "Created At"]),
     ).toBe("Created At");
   });
 
   it("returns the first name when tied", () => {
-    expect(resolveCommonTabLabel(["State", "Category"], "Location")).toBe(
-      "State",
-    );
+    expect(resolveCommonTabLabel(["State", "Category"])).toBe("State");
   });
 
   it("returns the first name when two different names are tied", () => {
-    expect(resolveCommonTabLabel(["Created At", "Order Date"], "Time")).toBe(
+    expect(resolveCommonTabLabel(["Created At", "Order Date"])).toBe(
       "Created At",
     );
   });
 });
 
-function createMockAvailableDimension(
-  overrides: Partial<AvailableDimension> & { dimensionId: string },
-): AvailableDimension {
+function createMockAvailableDimension(label: string): AvailableDimension {
   return {
-    label: overrides.dimensionId,
     icon: "string",
-    sourceIds: [],
-    tabType: "category",
-    ...overrides,
+    tabInfo: {
+      type: "category",
+      label,
+      dimensionMapping: {},
+    },
   };
 }
 
@@ -57,14 +54,8 @@ describe("buildDimensionPickerSections", () => {
       shared: [],
       bySource: {
         "metric:1": [
-          createMockAvailableDimension({
-            dimensionId: "category",
-            label: "Category",
-          }),
-          createMockAvailableDimension({
-            dimensionId: "state",
-            label: "State",
-          }),
+          createMockAvailableDimension("Category"),
+          createMockAvailableDimension("State"),
         ],
       },
     };
@@ -82,38 +73,21 @@ describe("buildDimensionPickerSections", () => {
       {
         name: undefined,
         items: [
-          expect.objectContaining({
-            name: "Category",
-            dimensionId: "category",
-          }),
-          expect.objectContaining({ name: "State", dimensionId: "state" }),
+          expect.objectContaining({ name: "Category" }),
+          expect.objectContaining({ name: "State" }),
         ],
       },
     ]);
   });
 
   it("splits by source and includes shared section for multiple sources", () => {
-    const sharedDimension = createMockAvailableDimension({
-      dimensionId: "created_at",
-      label: "Created At",
-      sourceIds: ["metric:1", "metric:2"],
-    });
+    const sharedDimension = createMockAvailableDimension("Created At");
 
     const dimensions: AvailableDimensionsResult = {
       shared: [sharedDimension],
       bySource: {
-        "metric:1": [
-          createMockAvailableDimension({
-            dimensionId: "category",
-            label: "Category",
-          }),
-        ],
-        "metric:2": [
-          createMockAvailableDimension({
-            dimensionId: "status",
-            label: "Status",
-          }),
-        ],
+        "metric:1": [createMockAvailableDimension("Category")],
+        "metric:2": [createMockAvailableDimension("Status")],
       },
     };
 
@@ -130,27 +104,15 @@ describe("buildDimensionPickerSections", () => {
     expect(sections).toEqual([
       {
         name: "Shared",
-        items: [
-          expect.objectContaining({
-            name: "Created At",
-            dimensionId: "created_at",
-          }),
-        ],
+        items: [expect.objectContaining({ name: "Created At" })],
       },
       {
         name: "Revenue",
-        items: [
-          expect.objectContaining({
-            name: "Category",
-            dimensionId: "category",
-          }),
-        ],
+        items: [expect.objectContaining({ name: "Category" })],
       },
       {
         name: "Orders",
-        items: [
-          expect.objectContaining({ name: "Status", dimensionId: "status" }),
-        ],
+        items: [expect.objectContaining({ name: "Status" })],
       },
     ]);
   });

@@ -10,14 +10,29 @@
 # Usage:
 #   bin/test-agent :only '[metabase.foo-test]'
 #   bin/test-agent :only '[metabase.foo-test/some-test]'
+#   bin/test-agent --oss :only '[metabase.foo-test]'   # run without EE extensions
 #   bin/test-agent                          # runs all tests (rarely what you want)
 #
-# Any extra arguments are forwarded directly to `clojure -X:dev:ee:ee-dev:test`.
+# Options:
+#   --oss    Run without enterprise extensions (uses :oss:oss-dev instead of :ee:ee-dev)
+#
+# Any extra arguments are forwarded directly to the clojure test command.
 # The :test alias uses port 0 (OS-assigned random port) so parallel runs never collide.
 
 set -euo pipefail
 
 export HAWK_MODE=cli/ci
+
+# Check for --oss flag
+ALIASES=":dev:ee:ee-dev:test"
+args=()
+for arg in "$@"; do
+  if [[ "$arg" == "--oss" ]]; then
+    ALIASES=":dev:ci:test:oss:oss-dev"
+  else
+    args+=("$arg")
+  fi
+done
 
 # Filter noise and strip ANSI escape sequences
 clean_output() {
@@ -28,4 +43,4 @@ clean_output() {
   | sed $'s/\033[\[(][0-9;]*[A-Za-z]//g; s/\033[^[]*//g'
 }
 
-exec clojure -X:dev:ee:ee-dev:test "$@" 2>&1 | clean_output
+exec clojure -X"${ALIASES}" "${args[@]}" 2>&1 | clean_output

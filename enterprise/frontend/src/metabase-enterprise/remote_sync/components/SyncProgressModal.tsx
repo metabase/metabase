@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";

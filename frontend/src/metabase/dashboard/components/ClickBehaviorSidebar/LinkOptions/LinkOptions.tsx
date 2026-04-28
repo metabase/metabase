@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isTableDisplay } from "metabase/lib/click-behavior";
+import { isTableDisplay } from "metabase/dashboard/utils";
 import type { IconName } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {

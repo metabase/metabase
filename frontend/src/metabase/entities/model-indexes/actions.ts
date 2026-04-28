@@ -6,10 +6,10 @@ import {
   deleteModelIndex,
   listModelIndexes,
 } from "metabase/api";
+import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
-import type { Field, FieldReference } from "metabase-types/api";
+import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
-import type { Dispatch } from "metabase-types/store";
 
 import { getPkRef } from "./utils";
 
@@ -125,14 +125,16 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags(fields: Field[] = []) {
+export function cleanIndexFlags<T extends DatasetColumn | Field>(
+  fields: T[] = [],
+): T[] {
   const indexesToClean = fields.reduce(
     (
       indexesToClean: number[],
-      field: FieldWithMaybeIndex,
+      field: FieldWithMaybeIndex | DatasetColumn,
       thisIndex: number,
     ) => {
-      if (field.should_index !== undefined) {
+      if ("should_index" in field && field.should_index !== undefined) {
         indexesToClean.push(thisIndex);
       }
       return indexesToClean;

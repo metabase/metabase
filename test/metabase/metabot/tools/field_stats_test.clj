@@ -1,0 +1,126 @@
+(ns metabase.metabot.tools.field-stats-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [toucan2.core :as t2]))
+
+(defn- ensure-fresh-field-values!
+  [field-id]
+  (t2/delete! :model/FieldValues :field_id field-id :type :full)
+  (is (= :full (-> (t2/select-one :model/Field :id field-id)
+                   field-values/get-or-create-full-field-values!
+                   :type)))
+  (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :full))))
+
+(deftest field-values-table-test
+  (ensure-fresh-field-values! (mt/id :people :state))
+  (ensure-fresh-field-values! (mt/id :products :category))
+  (let [birth-date-id (mt/id :people :birth_date)
+        state-id      (mt/id :people :state)
+        people-id     (mt/id :people)
+        products-id   (mt/id :products)
+        category-id   (mt/id :products :category)]
+    (testing "No read permission results in an error."
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot.tools.field-stats/field-values
+                             {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
+    (testing "Getting statistics and values for table fields works."
+      (mt/as-admin
+        (are [table-id field-id value-metadata]
+             (= {:structured-output {:result-type    :field-metadata
+                                     :field_id       field-id
+                                     :value_metadata value-metadata}}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
+          people-id   birth-date-id {:statistics
+                                     {:distinct-count 2308
+                                      :percent-null   0.0
+                                      :earliest       "1958-04-26"
+                                      :latest         "2000-04-03"}}
+          people-id   state-id      {:statistics   {:distinct-count 49
+                                                    :percent-null   0.0
+                                                    :percent-json   0.0
+                                                    :percent-url    0.0
+                                                    :percent-email  0.0
+                                                    :percent-state  1.0
+                                                    :average-length 2.0}
+                                     :field_values ["AK" "AL" "AR" "AZ" "CA"]}
+          products-id category-id   {:statistics   {:distinct-count 4
+                                                    :percent-null   0.0
+                                                    :percent-json   0.0
+                                                    :percent-url    0.0
+                                                    :percent-email  0.0
+                                                    :percent-state  0.0
+                                                    :average-length 6.375}
+                                     :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
+
+(deftest field-values-model-test
+  (ensure-fresh-field-values! (mt/id :orders :quantity))
+  (ensure-fresh-field-values! (mt/id :people :state))
+  (ensure-fresh-field-values! (mt/id :products :category))
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders)
+                                             :type :model}]
+    (let [quantity-id (mt/id :orders :quantity)
+          state-id    (mt/id :people :state)
+          category-id (mt/id :products :category)]
+      (testing "No read permission results in an error."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot.tools.field-stats/field-values
+                               {:entity-type "model", :entity-id model-id, :field-id state-id, :limit 5}))))
+      (testing "Getting statistics and values for model fields works."
+        (mt/as-admin
+          (are [field-id value-metadata]
+               (=? {:structured-output {:field_id field-id
+                                        :value_metadata value-metadata}}
+                   (metabot.tools.field-stats/field-values
+                    {:entity-type "model", :entity-id model-id, :field-id field-id, :limit 5}))
+            quantity-id {:statistics {:distinct-count 62
+                                      :percent-null   0.0}
+                         :field_values [0 1 2 3 4]}
+            state-id    {:statistics {:distinct-count 49
+                                      :percent-null   0.0
+                                      :percent-json   0.0
+                                      :percent-url    0.0
+                                      :percent-email  0.0
+                                      :percent-state  1.0
+                                      :average-length 2.0}
+                         :field_values ["AK" "AL" "AR" "AZ" "CA"]}
+            category-id {:statistics {:distinct-count 4
+                                      :percent-null   0.0
+                                      :percent-json   0.0
+                                      :percent-url    0.0
+                                      :percent-email  0.0
+                                      :percent-state  0.0
+                                      :average-length 6.375}
+                         :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]}))))))
+
+(deftest field-values-metric-test
+  (ensure-fresh-field-values! (mt/id :orders :quantity))
+  (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query orders
+                                                               {:aggregation [[:count]]
+                                                                :breakout    [$quantity
+                                                                              !year.user_id->people.birth_date]})
+                                              :type :metric}]
+    (let [quantity-id   (mt/id :orders :quantity)
+          birth-date-id (mt/id :people :birth_date)]
+      (testing "No read permission results in an error."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot.tools.field-stats/field-values
+                               {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))
+      (testing "Getting statistics and values for metric fields works."
+        (mt/as-admin
+          (are [field-id value-metadata]
+               (=? {:structured-output {:field_id field-id
+                                        :value_metadata value-metadata}}
+                   (metabot.tools.field-stats/field-values
+                    {:entity-type "metric", :entity-id metric-id, :field-id field-id, :limit 5}))
+            quantity-id   {:statistics {:distinct-count 62
+                                        :percent-null   0.0}
+                           :field_values [0 1 2 3 4]}
+            birth-date-id {:statistics
+                           {:distinct-count 2308
+                            :percent-null   0.0
+                            :earliest       "1958-04-26"
+                            :latest         "2000-04-03"}}))))))

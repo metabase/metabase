@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import {
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,

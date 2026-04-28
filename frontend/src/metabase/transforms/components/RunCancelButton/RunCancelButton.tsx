@@ -6,9 +6,9 @@ import {
   useLazyGetTransformQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { Transform, TransformRunStatus } from "metabase-types/api";
 
 export function RunCancelButton({

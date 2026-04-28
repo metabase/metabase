@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
-   [metabase-enterprise.llm.settings :as llm-settings]
+   [metabase.llm.settings :as llm-settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -45,12 +45,12 @@
 (defn openai-api-base-url
   "Get the OpenAI API base url from the existing LLM settings."
   []
-  (llm-settings/ee-openai-api-base-url))
+  (llm-settings/llm-openai-api-base-url))
 
 (defn openai-api-key
   "Get the OpenAI API key from the existing LLM settings."
   []
-  (llm-settings/ee-openai-api-key))
+  (llm-settings/llm-openai-api-key))
 
 (defsetting ee-embedding-service-base-url
   (deferred-tru "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy).")

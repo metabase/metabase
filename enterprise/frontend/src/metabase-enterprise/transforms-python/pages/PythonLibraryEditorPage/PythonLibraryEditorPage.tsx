@@ -5,11 +5,11 @@ import { t } from "ttag";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { isResourceNotFoundError } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
-import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
 import { Alert, Box, Card, Stack } from "metabase/ui";
+import { isResourceNotFoundError } from "metabase/utils/errors";
+import type * as Urls from "metabase/utils/urls";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,

@@ -67,8 +67,10 @@
   Obfuscates the client-secret and ensures keys are strings."
   [provider]
   (cond-> provider
-    (:client-secret provider)  (update :client-secret setting/obfuscate-value)
-    (:attribute-map provider)  (update :attribute-map walk/stringify-keys)))
+    (:client-secret provider)            (update :client-secret setting/obfuscate-value)
+    (:attribute-map provider)            (update :attribute-map walk/stringify-keys)
+    (get-in provider [:group-sync :group-mappings])
+    (update-in [:group-sync :group-mappings] walk/stringify-keys)))
 
 (defn- check-oidc-connection!
   "Run OIDC configuration check and throw a 400 if it fails. Returns the check result on success."

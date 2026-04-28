@@ -27,11 +27,11 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -1767,7 +1767,7 @@
           (is (= 7 (count (mt/rows processed))))
           (is (= 7 (count (mt/rows mbql-processed))))
           (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
-                 (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+                 (get-in (qp/process-query (lib.convert/->mbql5 mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
 
 (deftest ^:parallel filter-by-expression-relative-time-interval-test
@@ -1791,7 +1791,7 @@
           (is (= 7 (count (mt/rows processed))))
           (is (= 7 (count (mt/rows mbql-processed))))
           (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
-                 (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+                 (get-in (qp/process-query (lib.convert/->mbql5 mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!

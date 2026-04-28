@@ -15,7 +15,6 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
-import * as Urls from "metabase/lib/urls";
 import {
   FieldSection,
   FieldValuesModal,
@@ -36,6 +35,7 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { trackMetadataChange } from "../../analytics";
 import {
@@ -43,6 +43,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "../../components";
+import type { TreePath } from "../../components/TablePicker/types";
 import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
@@ -126,9 +127,9 @@ function DataModelContent({ params }: Props) {
   const hasLibrary = hasLibraryCollection(libraryCollection);
   const canPublish = hasLibraryFeature;
 
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
+  const [onUpdateCallback, setOnUpdateCallback] = useState<
+    ((path?: TreePath) => void) | null
+  >(null);
 
   useWindowEvent(
     "keydown",
@@ -191,7 +192,7 @@ function DataModelContent({ params }: Props) {
       >
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Data structure`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
           }
         />
         <RouterTablePicker
@@ -287,6 +288,13 @@ function DataModelContent({ params }: Props) {
                     canPublish={canPublish}
                     hasLibrary={hasLibrary}
                     onSyncOptionsClick={openSyncModal}
+                    onUpdate={() =>
+                      onUpdateCallback?.({
+                        databaseId: table.db_id,
+                        schemaName: table.schema,
+                        tableId: table.id,
+                      })
+                    }
                   />
                 )}
               </LoadingAndErrorWrapper>

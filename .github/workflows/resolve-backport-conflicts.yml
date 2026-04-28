@@ -1,0 +1,321 @@
+name: Auto-resolve backport conflicts
+run-name: Auto-resolve conflicts on PR #${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number of the backport PR with conflicts"
+        required: true
+        type: string
+      max_turns:
+        description: "Maximum number of Claude turns"
+        required: false
+        type: number
+        default: 75
+
+jobs:
+  resolve-conflicts:
+    if: |
+      (github.event_name == 'pull_request' && github.event.label.name == 'auto-resolve-conflicts') ||
+      (github.event_name == 'workflow_dispatch')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    env:
+      GIT_EDITOR: "true"
+
+    steps:
+      - name: Get PR data
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            let pr;
+            if (context.eventName === 'workflow_dispatch') {
+              const { data } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: Number('${{ github.event.inputs.pr_number }}'),
+              });
+              pr = data;
+            } else {
+              pr = context.payload.pull_request;
+            }
+            core.setOutput('number', pr.number);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('base_ref', pr.base.ref);
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Detect package manager
+        id: pkg
+        run: |
+          if [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
+            echo "mgr=bun" >> $GITHUB_OUTPUT
+          else
+            echo "mgr=yarn" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate backport PR
+        id: validate
+        run: |
+          if [ ! -f "./backport.sh" ]; then
+            echo "::error::No backport.sh found on this branch. This workflow only works on backport PRs with conflicts."
+            exit 1
+          fi
+          echo "backport.sh found, proceeding with conflict resolution"
+          cat ./backport.sh
+
+      - name: Set up git configuration
+        run: |
+          git config --global user.name "Metabase bot"
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global core.editor "true"
+
+      - name: Run backport script to create cherry-pick conflicts
+        id: backport
+        run: |
+          bash ./backport.sh 2>&1 || true
+
+          # Check if we're in a cherry-pick state with conflicts
+          CONFLICTED=$(git diff --name-only --diff-filter=U || true)
+          if [ -n "$CONFLICTED" ]; then
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            echo "conflicted_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CONFLICTED" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "::notice::Found conflicts in: $CONFLICTED"
+          else
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "::notice::Cherry-pick applied cleanly, no conflicts to resolve"
+          fi
+
+      - name: Push clean cherry-pick (no conflicts)
+        if: steps.backport.outputs.has_conflicts == 'false'
+        run: git push --force
+
+      - name: Prepare back-end environment
+        if: steps.backport.outputs.has_conflicts == 'true'
+        uses: ./.github/actions/prepare-backend
+
+      - name: Prepare front-end environment
+        if: steps.backport.outputs.has_conflicts == 'true'
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Build CLJS for type checking
+        if: steps.backport.outputs.has_conflicts == 'true'
+        run: ${{ steps.pkg.outputs.mgr }} run build-pure:cljs
+
+      - name: Generate GitHub App Token for Claude
+        if: steps.backport.outputs.has_conflicts == 'true'
+        uses: actions/create-github-app-token@v1
+        id: claude-app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Resolve conflicts with Claude
+        if: steps.backport.outputs.has_conflicts == 'true'
+        id: claude
+        uses: anthropics/claude-code-base-action@beta
+        env:
+          NODE_VERSION: "22"
+        with:
+          # TODO: get a dedicated API key, sharing repro bot's key for now
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
+          model: "claude-sonnet-4-20250514"
+          max_turns: "${{ github.event.inputs.max_turns || '75' }}"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
+          prompt: |
+            You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
+
+            ## Context
+            A commit from the `master` branch is being cherry-picked onto the `${{ steps.pr.outputs.base_ref }}` release branch.
+            The cherry-pick has failed with conflicts in these files:
+
+            ${{ steps.backport.outputs.conflicted_files }}
+
+            ## How to read conflict markers
+            ```
+            <<<<<<< HEAD
+            (code from the release branch - the current state)
+            =======
+            (code from master - the change being backported)
+            >>>>>>> <commit-sha>
+            ```
+
+            ## Common conflict patterns in Metabase backports
+            - **Module/namespace renames**: A Clojure namespace was renamed or moved between versions. Check what the correct namespace is on the release branch.
+            - **Test file divergence**: Tests may have been added or reordered differently. Keep the backported test changes while preserving existing release-branch tests.
+            - **Import path changes**: Frontend imports may reference different paths. Check actual file locations on this branch.
+            - **Translation files (.po)**: For translation conflicts, prefer the release branch version of existing translations and add new translations from the backported change.
+            - **Minor context differences**: Surrounding code changed slightly. Adapt the backported change to fit the release branch context.
+
+            ## Instructions
+            1. Read each conflicted file to understand the conflict
+            2. For context, you may search the codebase to understand the current state of the release branch (e.g., check if a module exists at a certain path)
+            3. Resolve each conflict by editing the file to remove ALL conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) and leave only the correct resolved code
+            4. The goal is to apply the INTENT of the backported change while adapting it to the release branch's code structure
+            5. Verify no conflict markers remain by searching for them
+            6. Auto-format resolved files:
+               - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run cljfmt to fix formatting:
+                 ```
+                 ./bin/mage cljfmt-files <file1> <file2> ...
+                 ```
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run eslint with auto-fix:
+                 ```
+                 ${{ steps.pkg.outputs.mgr }} run lint-eslint --fix
+                 ```
+            7. Validate resolved files before committing:
+               - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:
+                 ```
+                 clojure -M:kondo --lint <file1> <file2> ...
+                 ```
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run the type checker:
+                 ```
+                 ${{ steps.pkg.outputs.mgr }} run type-check-pure
+                 ```
+               If either tool reports errors or warnings, fix them before proceeding. CI treats kondo warnings as errors.
+               Repeat steps 6-7 until all errors are resolved.
+            7. Once all files are clean, stage and complete the cherry-pick:
+               ```
+               git add -A
+               git cherry-pick --continue
+               ```
+            8. Push the result:
+               ```
+               git push --force
+               ```
+
+            IMPORTANT: Do not skip any conflicted files. Every conflict marker must be resolved.
+
+      - name: Check for max turns exceeded
+        if: always() && steps.claude.outcome != 'skipped'
+        id: check-failure
+        run: |
+          if [ -f "${{ steps.claude.outputs.execution_file }}" ]; then
+            SUBTYPE=$(jq -r '.[] | select(.type == "result") | .subtype' "${{ steps.claude.outputs.execution_file }}" | tail -1)
+            if [ "$SUBTYPE" = "error_max_turns" ]; then
+              echo "max_turns_exceeded=true" >> $GITHUB_OUTPUT
+            else
+              echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get commit details
+        if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
+        id: commit-info
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          FILES=$(git diff --name-only HEAD~1)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR (success)
+        if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const sha = '${{ steps.commit-info.outputs.sha }}';
+            const changedFiles = `${{ steps.commit-info.outputs.changed_files }}`.trim().split('\n').map(f => `- \`${f}\``).join('\n');
+            await github.rest.issues.createComment({
+              issue_number: ${{ steps.pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: [
+                '🤖 Backport conflicts have been automatically resolved and force-pushed.',
+                '',
+                `**Commit:** [\`${sha.substring(0, 10)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`,
+                '',
+                '<details>',
+                '<summary>Changed files</summary>',
+                '',
+                changedFiles,
+                '',
+                '</details>',
+                '',
+                'Please review the changes to make sure the resolution is correct before merging.',
+              ].join('\n')
+            });
+
+      - name: Comment on PR (max turns exceeded)
+        if: always() && steps.check-failure.outputs.max_turns_exceeded == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: ${{ steps.pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: [
+                '🤖 Auto-resolution of backport conflicts stopped because Claude reached the maximum number of turns (${{ github.event.inputs.max_turns || '75' }}).',
+                '',
+                'The conflicts may be too complex for automatic resolution, or Claude needed more turns to finish.',
+                '',
+                'You can try again with more turns by manually running the [resolve-backport-conflicts workflow](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/workflows/resolve-backport-conflicts.yml) with a higher `max_turns` value, or resolve the conflicts manually by checking out the branch and running `./backport.sh`.',
+              ].join('\n')
+            });
+
+      - name: Comment on PR (failure)
+        if: always() && steps.claude.outcome == 'failure' && steps.check-failure.outputs.max_turns_exceeded != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: ${{ steps.pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: [
+                '🤖 Auto-resolution of backport conflicts failed.',
+                '',
+                'Manual resolution is still required. Check out the branch and run `./backport.sh` to resolve conflicts manually.',
+              ].join('\n')
+            });
+
+      - name: Comment on PR (clean cherry-pick)
+        if: always() && steps.backport.outputs.has_conflicts == 'false'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: ${{ steps.pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 Cherry-pick applied cleanly with no conflicts. Force-pushed the resolved branch.'
+            });
+
+      - name: Remove label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                issue_number: ${{ steps.pr.outputs.number }},
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'auto-resolve-conflicts'
+              });
+            } catch (e) {
+              console.log('Label already removed or not found:', e.message);
+            }

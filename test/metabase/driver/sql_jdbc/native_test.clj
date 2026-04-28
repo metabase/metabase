@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]))
 

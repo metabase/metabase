@@ -7,9 +7,9 @@ import {
   useGetMeasureQuery,
   useUpdateMeasureMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch } from "metabase/redux";
+import * as Urls from "metabase/utils/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";

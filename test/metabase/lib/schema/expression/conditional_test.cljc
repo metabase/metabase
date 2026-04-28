@@ -52,7 +52,7 @@
 
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
-    ;; In QP and MLv2: `expression/type-of-method :case`
+    ;; In QP and Lib: `expression/type-of-method :case`
     (are [expr expected] (= expected
                             (expression/type-of expr))
 
@@ -133,7 +133,7 @@
 
 (deftest ^:parallel coalesce-type-of-test
   (testing "type-of logic for :coalesce expressions"
-    ;; In QP and MLv2: `expression/type-of-method :case`
+    ;; In QP and Lib: `expression/type-of-method :case`
     (are [expr expected] (= expected
                             (expression/type-of expr))
 

@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.string :as u.str]))
 
 (def ^:private default-allowed-iframe-hosts
   "youtube.com,
@@ -88,3 +89,26 @@ x.com")
 (def ^:dynamic ^Long *thread-interrupt-escalation-timeout-ms*
   "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption."
   (thread-interrupt-escalation-timeout-ms))
+
+(defsetting metabot-slack-signing-secret
+  (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
+  :type       :string
+  :visibility :admin
+  :encryption :when-encryption-key-set
+  :export?    false
+  :audit      :no-value
+  :getter     (fn []
+                (-> (setting/get-value-of-type :string :metabot-slack-signing-secret)
+                    (u.str/mask 4))))
+
+(defn unobfuscated-metabot-slack-signing-secret
+  "Get the unobfuscated value of [[metabot-slack-signing-secret]]."
+  []
+  (setting/get-value-of-type :string :metabot-slack-signing-secret))
+
+(defsetting slack-connect-signing-secret-version
+  (deferred-tru "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.")
+  :type       :integer
+  :visibility :internal
+  :default    0
+  :export?    false)

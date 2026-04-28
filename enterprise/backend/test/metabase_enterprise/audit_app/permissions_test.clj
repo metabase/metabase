@@ -12,7 +12,7 @@
    [metabase.permissions.models.collection.graph :refer [update-graph!]]
    [metabase.permissions.models.collection.graph-test :refer [graph]]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -46,7 +46,9 @@
                    :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
 
         (testing "A non-native query can be run on views in the audit DB"
-          (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})]
+          (let [audit-view (t2/select-one :model/Table
+                                          :db_id audit/audit-db-id
+                                          {:where [:in [:lower :name] audit-app.permissions/audit-db-view-names]})]
             (when-not (some-> audit-view :name u/lower-case-en (str/starts-with? "v_"))
               (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
             (is (partial=

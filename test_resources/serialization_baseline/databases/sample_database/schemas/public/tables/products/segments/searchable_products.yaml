@@ -1,0 +1,67 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+definition:
+  database: Sample Database
+  stages:
+  - filters:
+    - - not-empty
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+    - - contains
+      - case-sensitive: false
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+      - awesome
+    - - starts-with
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - VENDOR
+      - A
+    - - does-not-contain
+      - case-sensitive: false
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+      - discontinued
+    - - ends-with
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - EAN
+      - '0'
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+description: Products with non-empty title containing "awesome", vendor starting with "A"
+entity_id: yZptbJRR3S8L9S9r0ZF8M
+name: Searchable Products
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+serdes/meta:
+- id: yZptbJRR3S8L9S9r0ZF8M
+  label: searchable_products
+  model: Segment

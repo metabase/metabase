@@ -56,7 +56,7 @@ To restore an item:
 
 > Restoring a collection will also restore all the items from that collection.
 
-If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move the it from Trash to a different collection.
+If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move it from Trash to a different collection.
 
 ### Cleaning up collections
 
@@ -136,7 +136,7 @@ Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#ed
 
 ## Deleting measures
 
-See [Delete measures](../data-studio/data-structure.md#delete-a-measure). Deleting measures is permanent.
+See [Delete measures](../data-studio/measures.md#delete-measures). Deleting measures is permanent.
 
 ## Deleting subscriptions and alerts
 

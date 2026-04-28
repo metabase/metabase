@@ -18,10 +18,10 @@ import { getDashboard } from "metabase/dashboard/selectors";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
-import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,

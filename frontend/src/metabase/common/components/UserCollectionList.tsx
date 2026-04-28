@@ -4,8 +4,8 @@ import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
-import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 export const UserCollectionList = () => {
   const { data, isLoading } = useListUsersQuery({});

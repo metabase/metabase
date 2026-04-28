@@ -13,11 +13,13 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.settings :as qp.settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -632,7 +634,7 @@
 
 (deftest ^:parallel mbql-5-query-test
   (testing "Should be able to run a pivot query for an MBQL 5 query (#39024)"
-    ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in MLv2, so it should return
+    ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in Lib, so it should return
     ;; the same exact results.
     (let [metadata-provider  (mt/metadata-provider)
           reviews            (lib.metadata/table metadata-provider (mt/id :reviews))
@@ -827,3 +829,64 @@
                 (mt/formatted-rows
                  [str str int int int]
                  (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel pivot-query-uses-custom-limit-test
+  (testing "Pivot queries use a custom higher limit instead of the caller's constraints, so data stays consistent"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      ;; The pivot-query has 2 aggregations (count, sum-of-quantity), so the pivot limit is 200k/2 = 100k.
+      ;; Even though we pass max-results=50, the pivot limit overrides it, so all rows come through.
+      (let [query   (qp.pivot.test-util/pivot-query)
+            query   (assoc query :constraints {:max-results 50})
+            results (qp.pivot/run-pivot-query query)
+            rows    (mt/formatted-rows [str str str int int int] results)
+            ;; pivot-grouping is column index 3 (state, source, category, pivot-grouping, count, sum)
+            ;; Group 0 = all breakouts (detail rows)
+            ;; Group 7 = grand total (no breakouts)
+            detail-rows       (filter #(zero? (nth % 3)) rows)
+            grand-total-row   (first (filter #(= 7 (nth % 3)) rows))
+            detail-count-sum  (reduce + (map #(nth % 4) detail-rows))
+            grand-total-count (nth grand-total-row 4)]
+        (testing "All detail rows are returned (not truncated to caller's max-results)"
+          (is (> (count detail-rows) 50)
+              "Detail rows should exceed the caller's max-results=50 because the pivot limit overrides it"))
+        (testing "The grand total row exists"
+          (is (some? grand-total-row)))
+        (testing "Detail rows sum to the grand total — data is consistent"
+          (is (= detail-count-sum grand-total-count)
+              (str "Detail count sum (" detail-count-sum ") should equal grand total ("
+                   grand-total-count ") because pivot uses its own higher limit")))))))
+
+(deftest ^:parallel pivot-query-short-circuits-when-master-hits-limit-test
+  (testing "When the master pivot query hits the row limit, remaining sub-queries are skipped and truncation is signaled"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      ;; Use the standard pivot-query but override the pivot limit to be very small.
+      ;; The master query (state × source × category) produces ~200+ rows.
+      ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
+      (binding [qp.pivot/*pivot-max-result-rows* 20]
+        (let [query   (qp.pivot.test-util/pivot-query)
+              results (qp.pivot/run-pivot-query query)
+              rows    (mt/rows results)]
+          (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
+            ;; All rows should be pivot-grouping=0 (the master query's group)
+            (is (every? #(zero? (nth % 3)) rows)
+                "All rows should be from the master query (pivot-grouping=0)"))
+          (testing "The result includes pivot_rows_truncated flag"
+            (is (= 10 (get-in results [:data :pivot_rows_truncated]))
+                "Should signal truncation with the row count")))))))
+
+(deftest pivot-query-with-high-unaggregated-row-limit-test
+  (testing "Pivot queries don't fail when MB_UNAGGREGATED_QUERY_ROW_LIMIT exceeds the pivot row limit (#72157)"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
+      ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
+      ;; which violates the constraint schema without the fix.
+      ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
+      (binding [qp.pivot/*pivot-max-result-rows* 20]
+        (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
+          (let [query   (-> (qp.pivot.test-util/pivot-query)
+                            (assoc :constraints (qp.constraints/default-query-constraints)))
+                results (qp.pivot/run-pivot-query query)]
+            (is (<= 2 (count (get-in query [:query :aggregation])))
+                "Sanity check: pivot-query should have at least 2 aggregations")
+            (is (not= :failed (:status results))
+                "Pivot query should not fail with a constraint violation")))))))

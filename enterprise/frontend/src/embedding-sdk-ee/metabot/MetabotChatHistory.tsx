@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
+import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useMetabotAgent } from "metabase/metabot/hooks";
+import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import { Stack } from "metabase/ui";
-import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
-import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import S from "./MetabotQuestion.module.css";
 
@@ -13,6 +13,11 @@ export function MetabotChatHistory() {
   const { messages, errorMessages } = metabot;
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const visibleMessages = useMemo(
+    () => messages.filter((message) => message.type !== "chart"),
+    [messages],
+  );
 
   const hasMessages = messages.length > 0 || errorMessages.length > 0;
 
@@ -35,11 +40,10 @@ export function MetabotChatHistory() {
     >
       {hasMessages ? (
         <Messages
-          messages={messages}
+          messages={visibleMessages}
           errorMessages={errorMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
-          showFeedbackButtons={false}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}

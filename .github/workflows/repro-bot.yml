@@ -33,13 +33,15 @@ jobs:
         id: issue
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ISSUE_NUMBER="${{ github.event.inputs.issue_number }}"
+            ISSUE_NUMBER="${DISPATCH_ISSUE_NUMBER}"
           else
             ISSUE_NUMBER="${{ github.event.issue.number }}"
           fi
           echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
           echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
+        env:
+          DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend
@@ -128,7 +130,7 @@ jobs:
       - name: Run repro-bot with Claude Code
         id: claude
         continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@3ac52d0da9f8ec9ca7b4dc23bb477e36ef9c77a9 # v1
         env:
           CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
           CLAUDE_WORKING_DIR: ${{ github.workspace }}/repro-bot
@@ -139,6 +141,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
+          allowed_bots: linear
           prompt: |
             IMPORTANT: Your working directory is the repo root, but repro-bot lives in the `repro-bot/` subdirectory.
             First, run `cd ${{ github.workspace }}/repro-bot` to change into the repro-bot directory before doing anything else.

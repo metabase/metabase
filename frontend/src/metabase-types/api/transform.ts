@@ -61,6 +61,20 @@ export type Transform = {
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
+export type TaggedTransform = Transform & { type: "transform" };
+
+export type UnsavedTransform = {
+  type: "unsaved-transform";
+  id: TransformId;
+  name: string;
+  source: DraftTransformSource;
+  target: {
+    name: string;
+    schema: string | null;
+    type: TransformTargetType;
+  };
+};
+
 export type PythonTransformTableEntry = {
   alias: string;
   table_id: ConcreteTableId;
@@ -253,6 +267,7 @@ export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];
   "tag-ids"?: TransformTagId[];
+  "database-id"?: DatabaseId;
 };
 
 export type ListTransformJobsRequest = {

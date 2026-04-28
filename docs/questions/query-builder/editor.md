@@ -31,7 +31,7 @@ To the right of each step in the query builder is a **Preview** button (looks li
 
 ## Pick data
 
-To start building a question with the query builder, you need to select the data you want to work with. You can pick pick a a table from a database, a[model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
+To start building a question with the query builder, you need to select the data you want to work with. You can pick a table from a database, a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
 
 ![data picker](../images/data-picker.png)
 
@@ -75,7 +75,7 @@ You can add filters to restrict the data you retrieve. For example, you can tell
 
 ![Summary](../images/summarize.png)
 
-Once you pick the data to query and hhe filters to apply, you can choose to summarize your data - for example, compute the count of rows or average of a column. You can also break out and group summaries by dimensions.
+Once you pick the data to query and the filters to apply, you can choose to summarize your data - for example, compute the count of rows or average of a column. You can also break out and group summaries by dimensions.
 
 See [Summarizing and grouping](./summarizing-and-grouping.md).
 
@@ -89,7 +89,7 @@ For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor(
 
 The sorting step lets you pick one or more columns to sort your results by. For each column you pick, you can also choose whether to sort ascending or descending; just click the arrow to change from ascending (up arrow) to descending (down arrow).
 
-If you're using cumulative aggregation functions in you **Summarize** block, the sort order might affect how the aggregation is computed (as opposed to just how the results are displayed ). See [Cumulative functions](../query-builder/expressions/cumulative.md).
+If you're using cumulative aggregation functions in your **Summarize** block, the sort order might affect how the aggregation is computed (as opposed to just how the results are displayed ). See [Cumulative functions](../query-builder/expressions/cumulative.md).
 
 ## Setting a row limit
 
@@ -130,7 +130,7 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-through-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ### Column heading drill-through
 

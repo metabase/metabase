@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell } from "../NotebookCell";

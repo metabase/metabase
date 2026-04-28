@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Children, Component, createRef } from "react";
 
+import { Box } from "metabase/ui";
 import {
   RENDERED_POPOVERS,
   removePopoverData,
   shouldClosePopover,
-} from "metabase/common/hooks/use-sequenced-content-close-handler";
-import { Box } from "metabase/ui";
+} from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
 interface OnClickOutsideWrapperProps {
   children: ReactNode;

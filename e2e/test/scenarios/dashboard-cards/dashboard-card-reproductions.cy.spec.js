@@ -1073,7 +1073,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
 
@@ -1129,7 +1129,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
         cy.findByTestId("legend-caption-title")
@@ -1587,7 +1587,7 @@ describe("issue 63416", () => {
           },
         ],
       ],
-      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2024-01-01"],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2027-01-01"],
     },
   };
 
@@ -1636,20 +1636,20 @@ describe("issue 63416", () => {
         ],
       });
 
+      cy.wrap(dashboard.id).as("dashboardId");
+
       H.visitDashboard(dashboard.id);
     });
   });
 
-  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", function () {
     H.editDashboard();
 
     H.showDashcardVisualizerModalSettings(0, {
       isVisualizerCard: false,
     });
-    H.modal()
-      .findByLabelText("Description")
-      .type("Make this a visualizer card");
 
+    cy.log("Make this a visualizer card");
     H.saveDashcardVisualizerModal();
 
     H.saveDashboard();
@@ -1660,7 +1660,7 @@ describe("issue 63416", () => {
       fileType: "csv",
       isDashboard: true,
       downloadMethod: "POST",
-      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      downloadUrl: `/api/dashboard/${this.dashboardId}/dashcard/*/card/*/query/csv`,
       assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
     });
   });

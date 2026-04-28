@@ -99,6 +99,7 @@ export interface DatasetData {
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
+  pivot_rows_truncated?: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
@@ -207,8 +208,13 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   };
 };
 
+export type TransformedCard = Card & {
+  _seriesKey: string;
+  _transformed: true;
+};
+
 export type RawSeries = SingleSeries[];
-export type TransformedSeries = RawSeries & { _raw: Series };
+export type TransformedSeries = RawSeries & { _raw?: Series };
 export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 

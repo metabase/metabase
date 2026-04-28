@@ -6,13 +6,12 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
 import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
 import {
   CONTENT_MAX_WIDTH,
   ContactAdminAlert,
   INNER_WIDTH,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -26,6 +25,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import {
   DriveConnectionDisplay,

@@ -3,8 +3,8 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.task.core :as task]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util.log :as log]))
 

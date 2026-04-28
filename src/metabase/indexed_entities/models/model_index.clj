@@ -8,7 +8,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]

@@ -13,8 +13,8 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
-import { delay } from "metabase/lib/delay";
-import resizeObserver from "metabase/lib/resize-observer";
+import { delay } from "metabase/utils/delay";
+import resizeObserver from "metabase/utils/resize-observer";
 
 const WAIT_TIME = delay(300);
 

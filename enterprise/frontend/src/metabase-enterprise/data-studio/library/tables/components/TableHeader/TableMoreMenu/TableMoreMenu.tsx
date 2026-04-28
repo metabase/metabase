@@ -3,10 +3,10 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 type TableModalType = "unpublish";

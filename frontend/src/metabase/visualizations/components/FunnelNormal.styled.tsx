@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { isWebkit } from "metabase/lib/browser";
+import { isWebkit } from "metabase/utils/browser";
 
 interface SharedProps {
   isNarrow: boolean;

@@ -65,7 +65,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Align`,
     widget: "select",
-    default: "left",
+    getDefault: () => "left",
     getProps: () => ({
       options: [
         {
@@ -89,7 +89,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Show edge labels`,
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
   },
   "sankey.label_value_formatting": {
@@ -108,7 +108,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     getHidden: (_series, vizSettings) => {
       return !vizSettings["sankey.show_edge_labels"];
     },
-    default: "auto",
+    getDefault: () => "auto",
   },
   "sankey.edge_color": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -116,7 +116,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Edge color`,
     widget: "segmentedControl",
-    default: "source",
+    getDefault: () => "source",
     getProps: () => ({
       options: [
         { name: t`Gray`, value: "gray" },

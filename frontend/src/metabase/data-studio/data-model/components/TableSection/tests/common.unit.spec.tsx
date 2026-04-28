@@ -1,5 +1,9 @@
 import { screen } from "__support__/ui";
-import { createMockSegment, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockSegment,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
 
@@ -14,6 +18,14 @@ describe("TableSection", () => {
       "href",
       `/question#?db=${table.db_id}&table=${table.id}`,
     );
+  });
+
+  it("should not render sync settings button when the database is datawarehouse attached", () => {
+    setup({
+      database: createMockDatabase({ is_attached_dwh: true }),
+    });
+
+    expect(screen.queryByText("Sync settings")).not.toBeInTheDocument();
   });
 
   describe("tabs", () => {

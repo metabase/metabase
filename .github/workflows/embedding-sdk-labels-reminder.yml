@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+      - uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401 # v1.4.0
         id: verify-release-notes-labels
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'

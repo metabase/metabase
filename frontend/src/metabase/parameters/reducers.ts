@@ -4,13 +4,13 @@ import {
   INITIALIZE,
   RESET,
   UPDATE_DASHBOARD_AND_CARDS,
-} from "metabase/dashboard/actions";
+} from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,
   INITIALIZE_QB,
   RESET_QB,
-} from "metabase/query_builder/actions";
-import type { ParameterValuesCache } from "metabase-types/store/parameters";
+} from "metabase/redux/query-builder";
+import type { ParameterValuesCache } from "metabase/redux/store/parameters";
 
 import type { FetchParameterValuesPayload } from "./actions";
 import { FETCH_PARAMETER_VALUES } from "./actions";

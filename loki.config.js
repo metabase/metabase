@@ -19,6 +19,7 @@ module.exports = {
     "^App/Palette",
     "^EmbeddingSDK/SdkQuestion/ChartTypeDropdownInner",
     "^viz/GridMapPdfExport",
+    "ParameterValueWidget",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

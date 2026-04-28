@@ -8,7 +8,7 @@ describe("scenarios > data studio > library > tables", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   describe("header", () => {
@@ -160,7 +160,7 @@ describe("scenarios > data studio > library > tables", () => {
         name: "Test question",
         query: { "source-table": ORDERS_ID },
       });
-
+      H.waitForBackfillComplete();
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.DataStudio.Tables.dependenciesTab().click();
       H.DependencyGraph.graph().within(() => {

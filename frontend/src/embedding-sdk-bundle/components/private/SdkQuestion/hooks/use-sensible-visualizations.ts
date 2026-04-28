@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector";
 
@@ -9,9 +9,11 @@ export const useSensibleVisualizations = () => {
 
   const result = queryResults?.[0];
 
+  const initialResultRef = useRef(result);
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
-    () => getSensibleVisualizations({ result }),
-    [result],
+    () => getSensibleVisualizations({ result: initialResultRef.current }),
+
+    [],
   );
 
   return {

@@ -2,8 +2,8 @@
   "Tests for how the query processor as a whole handles failures."
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.settings :as qp.settings]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]))
 

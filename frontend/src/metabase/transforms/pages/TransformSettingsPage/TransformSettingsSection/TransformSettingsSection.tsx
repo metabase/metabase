@@ -9,11 +9,10 @@ import {
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import {
   Button,
@@ -25,6 +24,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Transform, UserId } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";

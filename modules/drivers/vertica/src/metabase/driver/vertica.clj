@@ -350,4 +350,4 @@
   (= (sql-jdbc/get-sql-state e) "42V01"))
 
 (defmethod driver/llm-sql-dialect-resource :vertica [_]
-  "llm/prompts/dialects/vertica.md")
+  "metabot/prompts/dialects/vertica.md")

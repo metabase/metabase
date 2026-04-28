@@ -35,7 +35,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     getInterceptsForArea(area);
   });
@@ -283,7 +283,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
-          H.activateToken("bleeding-edge");
+          H.activateToken("pro-self-hosted");
 
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -433,6 +433,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       TablePicker.getTables().should("have.length", 8);
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("ID");
 
       if (area === "data studio") {
@@ -547,6 +550,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.get()
           .findByText("This table has no fields")
           .should("exist");
@@ -628,6 +634,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           tableId: ORDERS_ID,
         });
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
         cy.wait("@updateField");
         verifyAndCloseToast("Name of Tax updated");
@@ -657,6 +666,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           tableId: ORDERS_ID,
         });
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.getFieldDescriptionInput("Total")
           .clear()
           .type("New description")
@@ -693,6 +705,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           tableId: ORDERS_ID,
         });
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.getFieldDescriptionInput("Total").clear().blur();
         cy.wait("@updateField");
         verifyAndCloseToast("Description of Total updated");

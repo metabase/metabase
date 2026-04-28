@@ -11,29 +11,27 @@ import type {
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type {
-  DataPermissionValue,
-  PermissionEditorType,
-} from "metabase/admin/permissions/types";
+import type { PermissionEditorType } from "metabase/admin/permissions/types";
 import {
   Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+import type { ExpandedCollection, State } from "metabase/redux/store";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+} from "metabase/utils/groups";
 import type {
   Collection,
   CollectionId,
   CollectionPermissions,
+  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
-import type { ExpandedCollection, State } from "metabase-types/store";
 
 export const tenantCollectionsQuery = {
   tree: true,

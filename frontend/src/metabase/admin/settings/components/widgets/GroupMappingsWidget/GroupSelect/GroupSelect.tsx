@@ -3,18 +3,17 @@ import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
-import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
 import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   canEditMembership,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
-import { color } from "metabase/ui/colors";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo } from "metabase-types/api";
 
 function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
@@ -78,9 +77,12 @@ export const GroupSelect = ({
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover withinPortal={false} position="bottom-start">
+        <Popover.Target>{triggerElement}</Popover.Target>
+        <Popover.Dropdown style={{ boxSizing: "border-box" }}>
+          <Box p="sm">{emptyListMessage}</Box>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 

@@ -1,0 +1,31 @@
+name: USER_ID
+display_name: User ID
+created_at: '2024-08-28T14:38:42.774331Z'
+visibility_type: normal
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+database_type: INTEGER
+base_type: type/Integer
+effective_type: type/Integer
+semantic_type: type/FK
+fk_target_field_id:
+- Sample Database
+- PUBLIC
+- PEOPLE
+- ID
+dimensions: []
+position: 1
+custom_position: 0
+database_position: 1
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: ORDERS
+  model: Table
+- id: USER_ID
+  model: Field
+database_indexed: true
