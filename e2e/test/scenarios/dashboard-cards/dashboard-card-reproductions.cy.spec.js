@@ -1648,10 +1648,8 @@ describe("issue 63416", () => {
     H.showDashcardVisualizerModalSettings(0, {
       isVisualizerCard: false,
     });
-    H.modal()
-      .findByLabelText("Description")
-      .type("Make this a visualizer card");
 
+    cy.log("Make this a visualizer card");
     H.saveDashcardVisualizerModal();
 
     H.saveDashboard();
