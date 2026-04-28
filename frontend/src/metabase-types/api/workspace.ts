@@ -31,19 +31,19 @@ export type UpdateWorkspaceRequest = {
 };
 
 export type CreateWorkspaceDatabaseRequest = {
-  workspaceId: WorkspaceId;
+  workspace_id: WorkspaceId;
   database_id: DatabaseId;
   input_schemas: string[];
 };
 
 export type UpdateWorkspaceDatabaseRequest = {
-  workspaceId: WorkspaceId;
+  workspace_id: WorkspaceId;
   database_id: DatabaseId;
   input_schemas: string[];
 };
 
 export type DeleteWorkspaceDatabaseRequest = {
-  workspaceId: WorkspaceId;
+  workspace_id: WorkspaceId;
   database_id: DatabaseId;
 };
 

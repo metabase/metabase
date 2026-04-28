@@ -57,44 +57,44 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       Workspace,
       CreateWorkspaceDatabaseRequest
     >({
-      query: ({ workspaceId, database_id, input_schemas }) => ({
+      query: ({ workspace_id, database_id, input_schemas }) => ({
         method: "POST",
-        url: `/api/ee/workspace/${workspaceId}/database`,
+        url: `/api/ee/workspace/${workspace_id}/database`,
         body: { database_id, input_schemas },
       }),
-      invalidatesTags: (_, error, { workspaceId }) =>
+      invalidatesTags: (_, error, { workspace_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
-          idTag("workspace", workspaceId),
+          idTag("workspace", workspace_id),
         ]),
     }),
     updateWorkspaceDatabase: builder.mutation<
       Workspace,
       UpdateWorkspaceDatabaseRequest
     >({
-      query: ({ workspaceId, database_id, input_schemas }) => ({
+      query: ({ workspace_id, database_id, input_schemas }) => ({
         method: "PUT",
-        url: `/api/ee/workspace/${workspaceId}/database/${database_id}`,
+        url: `/api/ee/workspace/${workspace_id}/database/${database_id}`,
         body: { input_schemas },
       }),
-      invalidatesTags: (_, error, { workspaceId }) =>
+      invalidatesTags: (_, error, { workspace_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
-          idTag("workspace", workspaceId),
+          idTag("workspace", workspace_id),
         ]),
     }),
     deleteWorkspaceDatabase: builder.mutation<
       Workspace,
       DeleteWorkspaceDatabaseRequest
     >({
-      query: ({ workspaceId, database_id }) => ({
+      query: ({ workspace_id, database_id }) => ({
         method: "DELETE",
-        url: `/api/ee/workspace/${workspaceId}/database/${database_id}`,
+        url: `/api/ee/workspace/${workspace_id}/database/${database_id}`,
       }),
-      invalidatesTags: (_, error, { workspaceId }) =>
+      invalidatesTags: (_, error, { workspace_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
-          idTag("workspace", workspaceId),
+          idTag("workspace", workspace_id),
         ]),
     }),
     getCurrentWorkspace: builder.query<WorkspaceInstance, void>({

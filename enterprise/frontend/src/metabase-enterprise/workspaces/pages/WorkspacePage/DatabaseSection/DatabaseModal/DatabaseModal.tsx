@@ -112,7 +112,7 @@ function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
       return;
     }
     const { error } = await createWorkspaceDatabase({
-      workspaceId: workspace.id,
+      workspace_id: workspace.id,
       database_id: getDatabaseId(values.databaseId),
       input_schemas: values.inputSchemas,
     });
@@ -190,7 +190,7 @@ function UpdateDatabaseForm({
       return;
     }
     const { error } = await updateWorkspaceDatabase({
-      workspaceId: workspace.id,
+      workspace_id: workspace.id,
       database_id: getDatabaseId(values.databaseId),
       input_schemas: values.inputSchemas,
     });
@@ -213,7 +213,7 @@ function UpdateDatabaseForm({
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
         const { error } = await deleteWorkspaceDatabase({
-          workspaceId: workspace.id,
+          workspace_id: workspace.id,
           database_id: databaseId,
         });
         if (error) {

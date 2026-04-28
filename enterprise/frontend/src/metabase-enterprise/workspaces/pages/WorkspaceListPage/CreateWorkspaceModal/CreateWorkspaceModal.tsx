@@ -35,20 +35,6 @@ export function CreateWorkspaceModal({
   opened,
   onClose,
 }: CreateWorkspaceModalProps) {
-  const dispatch = useDispatch();
-  const [createWorkspace] = useCreateWorkspaceMutation();
-  const { sendErrorToast } = useMetadataToasts();
-
-  const handleSubmit = async ({ name }: CreateWorkspaceValues) => {
-    const { data, error } = await createWorkspace({ name: name.trim() });
-    if (error || data == null) {
-      sendErrorToast(t`Failed to create workspace`);
-      return;
-    }
-    onClose();
-    dispatch(push(Urls.workspace(data.id)));
-  };
-
   return (
     <Modal
       title={t`Create workspace`}
@@ -57,24 +43,55 @@ export function CreateWorkspaceModal({
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      <FormProvider
-        initialValues={INITIAL_VALUES}
-        validationSchema={VALIDATION_SCHEMA}
-        onSubmit={handleSubmit}
-      >
-        <Form>
-          <Stack gap="lg">
-            <FormTextInput name="name" label={t`Name`} autoFocus />
-            <Group>
-              <Box flex={1}>
-                <FormErrorMessage />
-              </Box>
-              <Button onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton label={t`Create`} variant="filled" />
-            </Group>
-          </Stack>
-        </Form>
-      </FormProvider>
+      <CreateWorkspaceForm onClose={onClose} />
     </Modal>
+  );
+}
+
+type CreateWorkspaceFormProps = {
+  onClose: () => void;
+};
+
+function CreateWorkspaceForm({ onClose }: CreateWorkspaceFormProps) {
+  const dispatch = useDispatch();
+  const [createWorkspace] = useCreateWorkspaceMutation();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const handleSubmit = async ({ name }: CreateWorkspaceValues) => {
+    const { data: workspace, error } = await createWorkspace({
+      name: name.trim(),
+    });
+    if (error || workspace == null) {
+      sendErrorToast(t`Failed to create workspace`);
+      return;
+    }
+    onClose();
+    dispatch(push(Urls.workspace(workspace.id)));
+  };
+
+  return (
+    <FormProvider
+      initialValues={INITIAL_VALUES}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      <Form>
+        <Stack gap="lg">
+          <FormTextInput
+            name="name"
+            label={t`Name`}
+            placeholder={t`My workspace`}
+            data-autofocus
+          />
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton label={t`Create`} variant="filled" />
+          </Group>
+        </Stack>
+      </Form>
+    </FormProvider>
   );
 }
