@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
-import { Button, Group } from "metabase/ui";
+import { Button, Group, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 
@@ -18,12 +18,11 @@ export function SaveSection({ workspace }: SaveSectionProps) {
   const [createWorkspace, { isLoading }] = useCreateWorkspaceMutation();
   const { sendErrorToast } = useMetadataToasts();
 
-  const isValid =
-    workspace.name.trim().length > 0 && workspace.databases.length > 0;
+  const { isValid, error } = validateWorkspace(workspace);
 
   const handleSave = async () => {
     const { data, error } = await createWorkspace({
-      name: workspace.name,
+      name: workspace.name.trim(),
       databases: workspace.databases,
     });
     if (error || data == null) {
@@ -35,12 +34,35 @@ export function SaveSection({ workspace }: SaveSectionProps) {
 
   return (
     <Group justify="flex-end">
-      <Button
-        variant="filled"
-        loading={isLoading}
-        disabled={!isValid}
-        onClick={handleSave}
-      >{t`Save`}</Button>
+      <Tooltip label={error} disabled={isValid}>
+        <Button
+          variant="filled"
+          loading={isLoading}
+          disabled={!isValid}
+          onClick={handleSave}
+        >{t`Save`}</Button>
+      </Tooltip>
     </Group>
   );
+}
+
+function validateWorkspace(workspace: WorkspaceInfo) {
+  if (workspace.name.trim().length === 0) {
+    return {
+      isValid: false,
+      error: t`Workspace name is required.`,
+    };
+  }
+
+  if (workspace.databases.length === 0) {
+    return {
+      isValid: false,
+      error: t`At least one database is required.`,
+    };
+  }
+
+  return {
+    isValid: true,
+    error: null,
+  };
 }
