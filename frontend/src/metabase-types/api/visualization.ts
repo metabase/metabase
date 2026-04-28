@@ -30,6 +30,7 @@ export const cardDisplayTypes = [
   "progress",
   "funnel",
   "object",
+  "page",
   "map",
   "scatter",
   "boxplot",
