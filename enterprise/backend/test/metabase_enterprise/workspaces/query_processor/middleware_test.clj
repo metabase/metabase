@@ -70,7 +70,7 @@
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
         (let [called? (atom false)
-              mock-qp (fn [query rff] (reset! called? true) :ok)
+              mock-qp (fn [_query _rff] (reset! called? true) :ok)
               wrapped  (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
               query    {:database (mt/id)
                         :qp/compiled {:query "SELECT * FROM foo"}}]
@@ -84,7 +84,7 @@
         (binding [ws.remapping/*skip-remapping?* true]
           (let [original-sql "SELECT * FROM PUBLIC.VENUES"
                 called-with  (atom nil)
-                mock-qp      (fn [query rff] (reset! called-with query) :ok)
+                mock-qp      (fn [query _rff] (reset! called-with query) :ok)
                 wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
                 query        {:database (mt/id)
                               :qp/compiled {:query original-sql}}]
@@ -97,7 +97,7 @@
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (binding [driver/*driver* :h2]
           (let [called-with (atom nil)
-                mock-qp    (fn [query rff] (reset! called-with query) :ok)
+                mock-qp    (fn [query _rff] (reset! called-with query) :ok)
                 wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
                 query      {:database (mt/id)
                             :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
@@ -112,7 +112,7 @@
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (binding [driver/*driver* :h2]
           (let [called-with (atom nil)
-                mock-qp    (fn [query rff] (reset! called-with query) :ok)
+                mock-qp    (fn [query _rff] (reset! called-with query) :ok)
                 wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
                 query      {:database           (mt/id)
                             :qp/compiled        {:query "SELECT * FROM PUBLIC.VENUES"}
@@ -126,7 +126,7 @@
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (binding [driver/*driver* :h2]
           (let [called-with (atom nil)
-                mock-qp    (fn [query rff] (reset! called-with query) :ok)
+                mock-qp    (fn [query _rff] (reset! called-with query) :ok)
                 wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
                 query      {:database    (mt/id)
                             :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES WHERE id = ?"
@@ -143,7 +143,7 @@
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (binding [driver/*driver* :h2]
           (let [called? (atom false)
-                mock-qp (fn [query rff] (reset! called? true) :ok)
+                mock-qp (fn [_query _rff] (reset! called? true) :ok)
                 wrapped (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
                 query   {:database    (mt/id)
                          :qp/compiled {:query "SELECT * FROM mb_iso_abc.VENUES"}}]
@@ -195,7 +195,7 @@
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["ws_unsynced" "venues_unsynced"]}
         (binding [driver/*driver* :h2]
           (let [called-with (atom nil)
-                mock-qp    (fn [query rff] (reset! called-with query) :ok)
+                mock-qp    (fn [query _rff] (reset! called-with query) :ok)
                 wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
                 query      {:database    (mt/id)
                             :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
