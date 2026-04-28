@@ -1,0 +1,12 @@
+.container {
+  height: 100%;
+  min-height: 0;
+}
+
+.main {
+  overflow: hidden;
+}
+
+.resizing {
+  user-select: none;
+}

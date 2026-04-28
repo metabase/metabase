@@ -1,5 +1,6 @@
 import type {
   CreateWorkspaceRequest,
+  TableRemapping,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
@@ -118,6 +119,12 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         }
       },
     }),
+    listTableRemappings: builder.query<TableRemapping[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/workspace/remappings",
+      }),
+    }),
   }),
 });
 
@@ -129,4 +136,5 @@ export const {
   useDeleteWorkspaceMutation,
   useProvisionWorkspaceMutation,
   useDeprovisionWorkspaceMutation,
+  useListTableRemappingsQuery,
 } = workspaceApi;

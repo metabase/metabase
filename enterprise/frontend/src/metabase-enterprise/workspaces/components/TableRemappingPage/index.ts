@@ -1,0 +1,1 @@
+export { TableRemappingPage } from "./TableRemappingPage";

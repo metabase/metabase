@@ -52,65 +52,106 @@
 
 ;;; -------------------------------------------- Round-trip test ------------------------------------------------
 
-(defn- table-ref-set
-  "Extract table references from SQL as a set of [schema table] pairs."
+(defn- referenced-tables-or-error
+  "Return either the parsed table refs (a possibly-empty seq of `{:schema ..., :table ...}`)
+   or `[::parse-failed ex-message]` if SQLGlot couldn't parse the SQL."
   [driver sql]
   (try
-    (into #{}
-          (map (fn [{:keys [schema table]}] [schema table]))
-          (sql-tools/referenced-tables-raw driver sql))
-    (catch Exception _
-      nil)))
+    (sql-tools/referenced-tables-raw driver sql)
+    (catch Exception e
+      [::parse-failed (ex-message e)])))
 
 (defn- run-roundtrip
-  "Run a single round-trip remapping test. Returns nil on success, error map on failure."
+  "Run a single round-trip remapping test. Returns one of:
+
+     {:outcome :passed}                                      — round-trip succeeded
+     {:outcome :no-tables}                                   — original SQL has no table refs to rewrite
+     {:outcome :source-parse-failed, :message ..., :sql ...} — original SQL didn't parse at all
+     {:outcome :ref-survived, :original ..., :refs ...}      — rewriter missed the ref
+     {:outcome :rewrite-failed, :message ..., :sql ...}      — replace-names threw
+
+   No silent skips — every input maps to exactly one outcome category."
   [driver sql]
-  (let [refs (table-ref-set driver sql)]
-    (when (seq refs)
-      ;; Pick a table to remap — use the first one that has a table name
-      (let [raw-refs     (sql-tools/referenced-tables-raw driver sql)
-            remap-target (first (filter :table raw-refs))]
-        (when remap-target
+  (let [refs (referenced-tables-or-error driver sql)]
+    (cond
+      (and (vector? refs) (= ::parse-failed (first refs)))
+      {:outcome :source-parse-failed
+       :message (second refs)
+       :sql     (subs sql 0 (min 200 (count sql)))}
+
+      (empty? refs)
+      {:outcome :no-tables}
+
+      :else
+      (let [remap-target (first (filter :table refs))]
+        (if-not remap-target
+          ;; Refs were extracted but none had a :table — treat the same as :no-tables;
+          ;; the rewriter has nothing to do.
+          {:outcome :no-tables}
           (let [[from-spec to-spec] (synthetic-remap remap-target)
-                replacements {:tables {from-spec to-spec}}]
+                replacements        {:tables {from-spec to-spec}}]
             (try
-              (let [rewritten   (sql-tools/replace-names driver sql replacements {:allow-unused? true})
-                    new-refs    (table-ref-set driver rewritten)
-                    original    [(:schema from-spec) (:table from-spec)]]
-                (when (and new-refs (contains? new-refs original))
-                  {:error    :ref-survived
+              (let [rewritten (sql-tools/replace-names driver sql replacements {:allow-unused? true})
+                    new-refs  (referenced-tables-or-error driver rewritten)
+                    original  [(:schema from-spec) (:table from-spec)]]
+                (cond
+                  ;; If we can't re-parse the rewritten SQL, that's a different failure mode —
+                  ;; the rewriter produced unparseable output. Surface it loudly rather than
+                  ;; silently passing.
+                  (and (vector? new-refs) (= ::parse-failed (first new-refs)))
+                  {:outcome :rewrite-emitted-unparseable
+                   :message (second new-refs)
+                   :sql     (subs sql 0 (min 200 (count sql)))}
+
+                  (contains? (into #{}
+                                   (map (fn [{:keys [schema table]}] [schema table]))
+                                   new-refs)
+                             original)
+                  {:outcome  :ref-survived
                    :original original
-                   :sql      (subs sql 0 (min 200 (count sql)))
-                   :refs     new-refs}))
+                   :sql      (subs sql 0 (min 200 (count sql)))}
+
+                  :else
+                  {:outcome :passed}))
               (catch Exception e
-                {:error   :rewrite-failed
+                {:outcome :rewrite-failed
                  :message (ex-message e)
                  :sql     (subs sql 0 (min 200 (count sql)))}))))))))
 
 ;;; ---------------------------------------------- Tests -------------------------------------------------------
 
 (defn run-corpus-for-dialect
-  "Run round-trip tests for a single dialect file. Returns {:total N :passed N :errors [...]}.
-   `dir` is the path to the directory containing the corpus markdown files."
+  "Run round-trip tests for a single dialect file. Returns
+   `{:total N :passed N :no-tables N :source-parse-failed N :errors [...]}`.
+
+   `:passed` is the count of queries that genuinely round-tripped — the rewriter saw the
+   picked ref and produced output where it no longer appears.
+
+   `:no-tables` and `:source-parse-failed` are queries the test could not meaningfully
+   exercise (the rewriter wouldn't be invoked for them, or would be invoked on something
+   it can't parse — the production fail-closed path catches the latter at runtime).
+
+   `:errors` contains genuine failures: `:ref-survived`, `:rewrite-failed`, or
+   `:rewrite-emitted-unparseable`."
   [dir filename driver]
   (let [file    (io/file dir filename)
         content (slurp file)
         queries (extract-sql-blocks content)
-        results (atom {:total 0 :passed 0 :parse-skipped 0 :errors []})]
+        results (atom {:total                0
+                       :passed               0
+                       :no-tables            0
+                       :source-parse-failed  0
+                       :errors               []})]
     (doseq [sql queries]
       (swap! results update :total inc)
-      (let [result (run-roundtrip driver sql)]
-        (cond
-          (nil? result)
-          (swap! results update :passed inc)
-
-          (= :rewrite-failed (:error result))
+      (let [{:keys [outcome] :as result} (run-roundtrip driver sql)]
+        (case outcome
+          :passed              (swap! results update :passed inc)
+          :no-tables           (swap! results update :no-tables inc)
+          :source-parse-failed (swap! results update :source-parse-failed inc)
           (do
             (swap! results update :errors conj result)
-            (log/debugf "Rewrite failed for %s: %s" filename (:message result)))
-
-          :else
-          (swap! results update :errors conj result))))
+            (log/debugf "%s for %s: %s" outcome filename (:message result))))))
     @results))
 
 (comment
@@ -121,14 +162,26 @@
 
   ;; Run a single dialect:
   (time (run-corpus-for-dialect dir "postgres.md" :postgres))
-  ;; => {:total 1384, :passed 1384, :parse-skipped 0, :errors []}
+  ;; => {:total 1384, :passed 1257, :no-tables 124, :source-parse-failed 3, :errors []}
 
   ;; Run all dialects:
   (into []
         (map (fn [[file driver]] [file (run-corpus-for-dialect dir file driver)]))
         dialect-for-file)
 
-  ;; Results as of 2026-04-27:
-  ;;   postgres.md   1384/1384  (215s)
-  ;;   bigquery.md   1558/1558  (75s)
+  ;; Results as of 2026-04-28 (with the categorising harness):
+  ;;   dialect       passed/eligible   no-tables   source-parse-failed   errors
+  ;;   postgres        1257/1260           124              3              0
+  ;;   bigquery        1517/1520            38              3              0
+  ;;   snowflake       1501/1502            41              1              0
+  ;;   redshift         303/305             12              2              0
+  ;;   sqlserver       1243/1262            23             19              0
+  ;;   mysql           3362/3364            78              2              0
+  ;;   clickhouse      2894/2896            86              2              0
+  ;;   total          12077/12109          402             32              0
+  ;;
+  ;; "passed/eligible" excludes :no-tables (nothing to rewrite) and
+  ;; :source-parse-failed (rewriter never invoked; production fail-closed catches these
+  ;; at runtime). Across 12077 SQL strings that actually exercised the rewriter, zero
+  ;; produced surviving original refs and zero raised :rewrite-failed.
   )
