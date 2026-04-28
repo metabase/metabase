@@ -262,6 +262,74 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
+;;; `[absolute-datetime, {}, <iso-str>, "day"]`.
+;;;
+;;; LLMs frequently write `[between, {}, <date-field>, "2024-01-01", "2024-12-31"]`,
+;;; using bare strings as the bounds. lib's `:between` schema demands a temporal
+;;; expression on each side once any side is temporal; bare strings won't satisfy
+;;; `:type/Date`. We detect the case where at least one of the two bounds matches the
+;;; ISO-8601 `yyyy-mm-dd` pattern and wrap each matching string as an
+;;; `["absolute-datetime" {} <iso-str> "day"]` clause. Carried over from the sexp
+;;; pipeline's `wrap-iso-date-as-absolute-datetime` (see
+;;; `repr-deletion-followups.md` § 1.6). High-frequency LLM pattern.
+;;;
+;;; Idempotency: after wrap, bounds are vectors, so the predicate (string + ISO regex)
+;;; no longer matches.
+;;; ============================================================
+
+(def ^:private iso-date-pattern
+  "Recognises an ISO-8601 calendar-date string (yyyy-mm-dd, optionally with a time portion)."
+  #"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+\-]\d{2}:?\d{2})?)?")
+
+(defn- iso-date-string? [v]
+  (and (string? v)
+       (re-matches iso-date-pattern (str/trim v))))
+
+(defn- temporal-clause-head?
+  "Heads that are unambiguously temporal-shaped clauses."
+  [head]
+  (contains? #{"absolute-datetime" "relative-datetime" "now"
+               "get-year" "get-quarter" "get-month" "get-week" "get-day"
+               "get-day-of-week" "get-hour" "get-minute" "get-second"}
+             head))
+
+(defn- temporal-shaped-clause? [v]
+  (and (vector? v)
+       (>= (count v) 1)
+       (string? (nth v 0))
+       (temporal-clause-head? (nth v 0))))
+
+(defn- wrap-iso-date [v]
+  (if (iso-date-string? v)
+    ["absolute-datetime" {} (str/trim v) "day"]
+    v))
+
+(defn- between-needs-iso-wrap?
+  "Trigger the ISO-wrap when at least one bound is already a temporal-shaped clause OR
+  at least one bound is an ISO-date string. The first case mirrors sexp's behaviour
+  (`temporal-expression?` on either side), the second case is a small extension - if
+  both bounds are bare ISO date strings the structure is unambiguous and bare strings
+  would fail validation anyway."
+  [lo hi]
+  (or (temporal-shaped-clause? lo)
+      (temporal-shaped-clause? hi)
+      (iso-date-string? lo)
+      (iso-date-string? hi)))
+
+(defn- wrap-iso-date-bounds*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (between-clause? node)
+              (between-needs-iso-wrap? (nth node 3) (nth node 4)))
+       (-> node
+           (assoc 3 (wrap-iso-date (nth node 3)))
+           (assoc 4 (wrap-iso-date (nth node 4))))
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
 ;;;
 ;;; The lib schema for `:between` does not enforce `min <= max` (there's an explicit TODO
@@ -1161,6 +1229,7 @@
       unwrap-nested-field-clauses*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
+      wrap-iso-date-bounds*
       swap-between-bounds*
       normalize-expressions-shape*
       ensure-lib-types*))

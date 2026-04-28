@@ -259,6 +259,80 @@
     (is (= "ASC" (repair/repair trivial-mp "ASC")))))
 
 ;;; ============================================================
+;;; Pass 1.86 - wrap bare ISO-date strings as absolute-datetime in between
+;;; ============================================================
+
+(deftest wrap-iso-date-bounds-both-bare-test
+  (testing "both bounds are bare yyyy-mm-dd strings: both get wrapped"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-01-01" "2024-12-31"]]
+      (is (= ["between" {}
+              field
+              ["absolute-datetime" {} "2024-01-01" "day"]
+              ["absolute-datetime" {} "2024-12-31" "day"]]
+             (repair/repair trivial-mp input))))))
+
+(deftest wrap-iso-date-bounds-mixed-test
+  (testing "one bound already absolute-datetime, the other a bare string: bare side
+           gets wrapped"
+    (let [field   ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          wrapped ["absolute-datetime" {} "2024-01-01" "day"]
+          input   ["between" {} field wrapped "2024-12-31"]]
+      (is (= ["between" {}
+              field
+              wrapped
+              ["absolute-datetime" {} "2024-12-31" "day"]]
+             (repair/repair trivial-mp input)))))
+  (testing "one bound a relative-datetime, the other a bare ISO string: bare side gets
+           wrapped (presence of temporal sibling triggers the rule)"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          rel   ["relative-datetime" {} -7 "day"]
+          input ["between" {} field rel "2024-12-31"]]
+      (is (= ["between" {} field rel
+              ["absolute-datetime" {} "2024-12-31" "day"]]
+             (repair/repair trivial-mp input))))))
+
+(deftest wrap-iso-date-bounds-numeric-untouched-test
+  (testing "both bounds numeric: not wrapped (between also works for numbers)"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+          input ["between" {} field 10 100]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest wrap-iso-date-bounds-with-time-portion-test
+  (testing "yyyy-mm-ddThh:mm:ss bounds also get wrapped"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]]
+      (is (= ["between" {}
+              field
+              ["absolute-datetime" {} "2024-06-15T09:00:00" "day"]
+              ["absolute-datetime" {} "2024-06-15T18:00:00" "day"]]
+             (repair/repair trivial-mp input))))))
+
+(deftest wrap-iso-date-bounds-idempotent-test
+  (testing "wrapping is idempotent: two wraps == one wrap"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-01-01" "2024-12-31"]
+          once  (repair/repair trivial-mp input)
+          twice (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+(deftest wrap-iso-date-bounds-then-swap-test
+  (testing "wrap + swap compose: out-of-order bare ISO strings wrap then swap"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input ["between" {} field "2024-12-31" "2024-01-01"]]
+      (is (= ["between" {}
+              field
+              ["absolute-datetime" {} "2024-01-01" "day"]
+              ["absolute-datetime" {} "2024-12-31" "day"]]
+             (repair/repair trivial-mp input))))))
+
+(deftest wrap-iso-date-bounds-non-iso-untouched-test
+  (testing "random strings (not yyyy-mm-dd shaped) are left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X"]]
+          input ["between" {} field "hello" "world"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+;;; ============================================================
 ;;; Pass 1.87 - swap out-of-order between bounds (literal scalars only)
 ;;; ============================================================
 
@@ -284,20 +358,34 @@
       (is (= once twice)))))
 
 (deftest swap-between-bounds-iso-string-test
-  (testing "ISO-8601 date strings ordered chronologically: out-of-order is swapped"
+  ;; Note: bare ISO strings are wrapped by Pass 1.86 ("wrap-iso-date-bounds*") *before*
+  ;; this swap pass runs, so the canonical post-repair form has \"[absolute-datetime ...]\"
+  ;; bounds. The swap still proceeds because \"swap-between-bounds*\" knows how to extract
+  ;; the inner ISO string for comparison.
+  (testing "ISO-8601 date strings ordered chronologically: wrapped + swapped"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-12-31" "2024-01-01"]]
-      (is (= ["between" {} field "2024-01-01" "2024-12-31"]
+      (is (= ["between" {}
+              field
+              ["absolute-datetime" {} "2024-01-01" "day"]
+              ["absolute-datetime" {} "2024-12-31" "day"]]
              (repair/repair trivial-mp input)))))
-  (testing "ISO-8601 datetime strings: out-of-order is swapped"
+  (testing "ISO-8601 datetime strings: wrapped + swapped"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-06-15T18:00:00" "2024-06-15T09:00:00"]]
-      (is (= ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]
+      (is (= ["between" {}
+              field
+              ["absolute-datetime" {} "2024-06-15T09:00:00" "day"]
+              ["absolute-datetime" {} "2024-06-15T18:00:00" "day"]]
              (repair/repair trivial-mp input)))))
-  (testing "in-order ISO strings are left alone"
+  (testing "in-order ISO strings: wrapped, no swap"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-01-01" "2024-12-31"]]
-      (is (= input (repair/repair trivial-mp input))))))
+      (is (= ["between" {}
+              field
+              ["absolute-datetime" {} "2024-01-01" "day"]
+              ["absolute-datetime" {} "2024-12-31" "day"]]
+             (repair/repair trivial-mp input))))))
 
 (deftest swap-between-bounds-absolute-datetime-test
   (testing "out-of-order absolute-datetime clauses: swap by inner ISO string"
