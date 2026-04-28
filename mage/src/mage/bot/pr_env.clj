@@ -13,10 +13,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-username "pr@metabase.com")
-(def ^:private default-password "jLY_9sFif6GsvkBw76!Y")
-(def ^:private repl-host "repl.coredev.metabase.com")
-
 (defn- pr-env-dir
   "Return the .bot directory inside the current user cwd (the worktree).
    Creates it if it doesn't exist."
@@ -54,22 +50,14 @@
 
 (defn- write-env-file!
   "Write .bot/pr-env.env with the PR env config."
-  [{:keys [base-url pr-num username password]}]
-  (let [content (str/join "\n"
-                          ["BASE_URL=" base-url
-                           "PR_NUM=" pr-num
-                           "REPL_HOST=" repl-host
-                           "REPL_PORT=" pr-num
-                           "USERNAME=" username
-                           "PASSWORD=" password
-                           ""])]
-    (spit (env-file)
-          (str "BASE_URL=" base-url "\n"
-               "PR_NUM=" pr-num "\n"
-               "REPL_HOST=" repl-host "\n"
-               "REPL_PORT=" pr-num "\n"
-               "USERNAME=" username "\n"
-               "PASSWORD=" password "\n"))))
+  [{:keys [base-url pr-num repl-host username password]}]
+  (spit (env-file)
+        (str "BASE_URL=" base-url "\n"
+             "PR_NUM=" pr-num "\n"
+             "REPL_HOST=" repl-host "\n"
+             "REPL_PORT=" pr-num "\n"
+             "USERNAME=" username "\n"
+             "PASSWORD=" password "\n")))
 
 (defn- read-env-file
   "Read .bot/pr-env.env into a map of string keys. Returns nil if missing."
@@ -126,21 +114,26 @@
       (println (c/red "Usage: ./bin/mage -bot-pr-env --url <URL> --pr <PR_NUMBER>"))
       (u/exit 1))
     (preflight/check-mise!)
-    (let [cfg {:base-url url
-               :pr-num   pr
-               :username default-username
-               :password default-password}]
+    (let [resolved  (preflight/check-pr-env-vars!)
+          username  (get resolved "PR_ENV_USERNAME")
+          password  (get resolved "PR_ENV_PASSWORD")
+          repl-host (get resolved "PR_ENV_REPL_HOST")
+          cfg {:base-url  url
+               :pr-num    pr
+               :repl-host repl-host
+               :username  username
+               :password  password}]
       (println (c/bold (c/green "Configuring PR preview environment")))
       (println (c/yellow "  URL:      ") url)
       (println (c/yellow "  PR:       ") pr)
-      (println (c/yellow "  Username: ") default-username)
+      (println (c/yellow "  Username: ") username)
       (println)
 
       (write-env-file! cfg)
       (println (c/green "  Wrote .bot/pr-env.env"))
 
       (try
-        (let [token (login! url default-username default-password)]
+        (let [token (login! url username password)]
           (spit (session-file) (str token "\n"))
           (println (c/green "  Logged in, cached session token to .bot/pr-env-session.txt"))
           (println)

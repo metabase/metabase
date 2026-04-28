@@ -88,6 +88,33 @@
           false))
       true)))
 
+(def pr-env-vars
+  "Env vars required to talk to a PR preview environment."
+  ["PR_ENV_USERNAME" "PR_ENV_PASSWORD" "PR_ENV_REPL_HOST"])
+
+(defn check-pr-env-vars!
+  "Ensure PR_ENV_USERNAME, PR_ENV_PASSWORD, and PR_ENV_REPL_HOST are set
+   (in mise.local.toml, .env, .lein-env, or the system env). Exits on failure.
+   Returns a map of {var-name value} on success."
+  []
+  (let [resolved (into {} (map (fn [v] [v (bot-env/resolve-env v)]) pr-env-vars))
+        missing  (->> resolved
+                      (filter (fn [[_ v]] (str/blank? v)))
+                      (mapv key))]
+    (when (seq missing)
+      (println (c/red "Missing required environment variables for PR preview environment:"))
+      (doseq [v missing]
+        (println (c/red (str "  - " v))))
+      (println)
+      (println "Set these in your shell profile or in .mise.local.toml / .env at the repo root.")
+      (println "For example, in .mise.local.toml:")
+      (println "  [env]")
+      (println "  PR_ENV_USERNAME = \"pr@metabase.com\"")
+      (println "  PR_ENV_PASSWORD = \"...\"")
+      (println "  PR_ENV_REPL_HOST = \"repl.coredev.metabase.com\"")
+      (u/exit 1))
+    resolved))
+
 (defn check-ee-token!
   "Check MB_PREMIUM_EMBEDDING_TOKEN env var. Exits on failure."
   []

@@ -2,6 +2,7 @@
   "Unified autobot session management — launch, stop, list, quit."
   (:require
    [clojure.string :as str]
+   [mage.bot.preflight :as preflight]
    [mage.bot.setup :as bot-setup]
    [mage.color :as c]
    [mage.shell :as shell]
@@ -423,6 +424,8 @@
         (println (c/red "Could not extract PR number from --pr-env-url: " pr-env-url))
         (println (c/red "Expected format: https://pr<NUMBER>.coredev.metabase.com"))
         (u/exit 1))
+      (when pr-env-url
+        (preflight/check-pr-env-vars!))
       (when (str/blank? bot-name)
         (println (c/red "--bot is required"))
         (u/exit 1))
