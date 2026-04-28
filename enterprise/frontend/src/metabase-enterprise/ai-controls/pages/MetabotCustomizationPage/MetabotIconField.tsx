@@ -80,10 +80,10 @@ export function MetabotIconField() {
   return (
     <Stack gap={0}>
       <Text lh="lg" fz="md" mb="xs" fw="bold">
-        {t`Metabot's icon`}
+        {t`AI agent's icon`}
       </Text>
       <Text fz="md" c="text-secondary" lh="lg">
-        {t`Upload a custom icon for Metabot. For best results, use an SVG or PNG with a transparent background.`}
+        {t`Upload a custom icon for the AI agent. For best results, use an SVG or PNG with a transparent background.`}
       </Text>
       {iconError && (
         <Text fz="sm" c="error" mt="xs">
