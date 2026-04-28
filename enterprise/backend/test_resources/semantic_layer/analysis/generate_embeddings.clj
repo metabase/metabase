@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-layer.representation :as rep]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (defn- split-name [s]
@@ -61,7 +62,7 @@
   (let [names   (vec (keys texts-by-name))
         batches (partition-all 10 (map (fn [n] [n (texts-by-name n)]) names))
         embs    (atom {})
-        t0      (System/currentTimeMillis)]
+        timer   (u/start-timer)]
     (println (format "  %d names → %s" (count names) out-path))
     (doseq [[i batch] (map-indexed vector batches)]
       (let [vs (embedding/get-embeddings-batch model (mapv second batch))]
@@ -69,10 +70,10 @@
           (swap! embs assoc n (vec v))))
       (when (zero? (mod (inc i) 100))
         (println (format "    %d/%d %.0fs" (inc i) (count batches)
-                         (/ (- (System/currentTimeMillis) t0) 1000.0)))))
+                         (/ (u/since-ms timer) 1000.0)))))
     (spit out-path (json/encode @embs))
     (println (format "    Done: %d embeddings in %.0fs" (count @embs)
-                     (/ (- (System/currentTimeMillis) t0) 1000.0)))))
+                     (/ (u/since-ms timer) 1000.0)))))
 
 (def ^:private variants
   "All (text-type × model) combinations to produce.
