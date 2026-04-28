@@ -9,6 +9,7 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
+import { getIcon } from "metabase/common/utils/icon";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -21,7 +22,6 @@ import {
 } from "metabase/selectors/user";
 import { Button, Flex, Icon } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
