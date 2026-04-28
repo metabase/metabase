@@ -209,12 +209,6 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
-(defn- merge-metadata
-  [a b]
-  (map #(apply merge %)
-       (vals
-        (group-by :name (concat a b)))))
-
 (mu/defn populate-result-metadata :- [:map
                                       [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
