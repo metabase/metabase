@@ -9,11 +9,11 @@ import {
 } from "metabase/common/hooks";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Databases } from "metabase/entities/databases";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type {
   BookmarkId,
   BookmarkType,

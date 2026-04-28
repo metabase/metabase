@@ -3,10 +3,10 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { metabaseReduxContext } from "metabase/redux/context";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { isBackendOnlyPath } from "./route-guards";
-import { MetabaseReduxContext } from "./utils/redux";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
@@ -20,7 +20,7 @@ describe("route-guards", () => {
       let selectorState: any;
       const RouteGuard = setupRouteGuard({
         // leverage the same context used by the main application
-        context: MetabaseReduxContext,
+        context: metabaseReduxContext,
         authenticatedSelector: (state) => {
           selectorState = state;
           return !!state.auth.VAL_ONLY_IN_THIS_CTX;

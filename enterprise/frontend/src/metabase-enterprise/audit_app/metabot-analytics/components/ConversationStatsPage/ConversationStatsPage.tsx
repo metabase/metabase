@@ -7,8 +7,8 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
+import { useDispatch } from "metabase/redux";
 import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import {
   VIEW_CONVERSATIONS,

@@ -1,7 +1,7 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
@@ -119,9 +119,9 @@
                          (remove #(#{:start :usage :finish} (:type %)))
                          (filter streaming/persistable-data-part?)
                          (mapv strip-tool-output-bloat))]
-    (prometheus/observe! :metabase-metabot/message-persist-bytes
-                         {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count (json/encode content)))
+    (analytics/observe! :metabase-metabot/message-persist-bytes
+                        {:profile-id (or profile-id "unknown")}
+                        (u/string-byte-count (json/encode content)))
     (t2/with-transaction [_conn]
       ;; Always upsert the conversation row — the assistant message insert FKs
       ;; to it, and the caller may not have written a user-message row (e.g.

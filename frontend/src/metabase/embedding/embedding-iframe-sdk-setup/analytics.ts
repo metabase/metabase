@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { trackSimpleEvent } from "metabase/analytics";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
@@ -9,7 +10,6 @@ import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
-import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import type {

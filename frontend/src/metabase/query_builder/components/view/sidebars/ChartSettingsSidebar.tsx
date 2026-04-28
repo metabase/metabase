@@ -9,11 +9,11 @@ import {
   getUiControls,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   onCloseChartSettings,
   onOpenChartType,
 } from "metabase/redux/query-builder";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type Question from "metabase-lib/v1/Question";

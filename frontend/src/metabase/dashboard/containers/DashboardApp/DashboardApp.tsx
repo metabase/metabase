@@ -32,9 +32,9 @@ import {
   usePageTitle,
   usePageTitleWithLoadingTime,
 } from "metabase/hooks/use-page-title";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 

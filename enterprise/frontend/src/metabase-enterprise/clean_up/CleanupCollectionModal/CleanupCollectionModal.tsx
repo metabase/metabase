@@ -8,8 +8,8 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useUserSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { Search } from "metabase/entities/search";
+import { useDispatch } from "metabase/redux";
 import { Flex, Modal } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import type { SortingOptions } from "metabase-types/api/sorting";

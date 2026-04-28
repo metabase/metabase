@@ -8,9 +8,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
+import { useDispatch } from "metabase/redux";
 import { Badge, Ellipsified, Flex } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { useDispatch } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
 

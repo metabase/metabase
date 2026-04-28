@@ -297,24 +297,29 @@
 
 (defn- maybe-install-audit-db!
   []
-  (let [audit-db (t2/select-one :model/Database :is_audit true)]
-    (cond
-      (not (audit-app.settings/install-analytics-database))
-      (u/prog1 ::blocked
-        (log/info "Not installing Audit DB - install-analytics-database setting is false"))
+  (let [audit-db (t2/select-one :model/Database :is_audit true)
+        result   (cond
+                   (not (audit-app.settings/install-analytics-database))
+                   (u/prog1 ::blocked
+                     (log/info "Not installing Audit DB - install-analytics-database setting is false"))
 
-      (nil? audit-db)
-      (u/prog1 ::installed
-        (log/info "Installing Audit DB...")
-        (install-database! (mdb/db-type) audit/audit-db-id))
+                   (nil? audit-db)
+                   (u/prog1 ::installed
+                     (log/info "Installing Audit DB...")
+                     (install-database! (mdb/db-type) audit/audit-db-id))
 
-      (not= (mdb/db-type) (:engine audit-db))
-      (u/prog1 ::updated
-        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
-        (adjust-audit-db-to-host! audit-db))
+                   (not= (mdb/db-type) (:engine audit-db))
+                   (u/prog1 ::updated
+                     (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
+                     (adjust-audit-db-to-host! audit-db))
 
-      :else
-      ::no-op)))
+                   :else
+                   ::no-op)]
+    (when (contains? #{::installed ::updated} result)
+      (when-let [db (t2/select-one :model/Database :is_audit true)]
+        (log/info "Syncing Audit DB")
+        (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
+    result))
 
 (defn- views-checksum
   "Checksum of the `instance_analytics_views` SQL files. Stored in the `last-analytics-views-checksum`

@@ -17,6 +17,7 @@ import type {
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -33,7 +34,6 @@ import {
   Title,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { useSelector } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
