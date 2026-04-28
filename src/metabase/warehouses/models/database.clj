@@ -608,45 +608,35 @@
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
-  {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
-               :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix]
-   :skip      [;; deprecated field
-               :cache_ttl]
-   :transform {:created_at          (serdes/date)
-               ;; details should be imported if available regardless of options
-               :details             {:export-with-context
-                                     (fn [current _ details]
-                                       (if (and include-database-secrets
-                                                (not (:is_attached_dwh current)))
-                                         details
-                                         ::serdes/skip))
-                                     :import identity}
-               :write_data_details {:export-with-context
-                                    (fn [current _ details]
-                                      (if (and include-database-secrets
-                                               (not (:is_attached_dwh current)))
-                                        details
-                                        ::serdes/skip))
-                                    :import identity}
-               :admin_details      {:export-with-context
-                                    (fn [current _ details]
-                                      (if (and include-database-secrets
-                                               (not (:is_attached_dwh current)))
-                                        details
-                                        ::serdes/skip))
-                                    :import identity}
-               :creator_id          (serdes/fk :model/User)
-               :router_database_id (serdes/fk :model/Database)
-               :initial_sync_status {:export identity :import (constantly "complete")}}
-   :defaults {:auto_run_queries true
-              :is_attached_dwh  false
-              :is_audit         false
-              :is_full_sync     true
-              :is_on_demand     false
-              :is_sample        false
-              :uploads_enabled  false}})
+  ;; details should be imported if available regardless of options. Same export rule applies to all
+  ;; details-shaped columns: skip on export unless secrets are included AND the database is not an
+  ;; attached DWH; identity on import.
+  (let [details-transform {:export-with-context (fn [current _ details]
+                                                  (if (and include-database-secrets
+                                                           (not (:is_attached_dwh current)))
+                                                    details
+                                                    ::serdes/skip))
+                           :import              identity}]
+    {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+                 :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :uploads_schema_name :uploads_table_prefix]
+     :skip      [;; deprecated field
+                 :cache_ttl]
+     :transform {:created_at          (serdes/date)
+                 :details             details-transform
+                 :write_data_details  details-transform
+                 :admin_details       details-transform
+                 :creator_id          (serdes/fk :model/User)
+                 :router_database_id  (serdes/fk :model/Database)
+                 :initial_sync_status {:export identity :import (constantly "complete")}}
+     :defaults  {:auto_run_queries true
+                 :is_attached_dwh  false
+                 :is_audit         false
+                 :is_full_sync     true
+                 :is_on_demand     false
+                 :is_sample        false
+                 :uploads_enabled  false}}))
 
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]

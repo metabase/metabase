@@ -15,7 +15,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 ;; Database `:details` is a single encrypted JSON column that stores everything a driver
 ;; needs to know about a connection. The problem is that "everything a driver needs to know"
@@ -122,14 +123,14 @@
 (defenterprise database-write-data-details
   "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.
    OSS implementation always returns `nil`."
-  metabase-enterprise.writable-connection.core
+  metabase-enterprise.connection-overlays.core
   [_database]
   nil)
 
 (defenterprise database-admin-details
   "Returns the `:admin-details` for a database, or `nil` if the admin-connection feature is not available.
    OSS implementation always returns `nil`."
-  metabase-enterprise.admin-connection.core
+  metabase-enterprise.connection-overlays.core
   [_database]
   nil)
 
@@ -154,7 +155,7 @@
    overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (let [overlay  (overlay-details-for-type database *connection-type*)
+    (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
           base     (merge (:details database) overlay)
           eff-type (if overlay *connection-type* :default)]
       ;; Track when an overlay is genuinely used (not fallback, not workspace-swapped).
@@ -204,7 +205,7 @@
   [database]
   (let [database (driver.u/ensure-lib-database database)]
     (if (and (not= *connection-type* :default)
-             (some? (overlay-details-for-type database *connection-type*)))
+             (seq (overlay-details-for-type database *connection-type*)))
       *connection-type*
       :default)))
 

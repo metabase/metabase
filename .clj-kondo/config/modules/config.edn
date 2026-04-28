@@ -2807,6 +2807,11 @@
            util
            enterprise/harbormaster}}
 
+  enterprise/connection-overlays
+  {:team "Graphy"
+   :api  #{}
+   :uses #{premium-features}}
+
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.routes}
@@ -3402,16 +3407,6 @@
 
   enterprise/workspaces
   {:team "Metabot"
-   :api  #{}
-   :uses #{premium-features}}
-
-  enterprise/writable-connection
-  {:team "Graphy"
-   :api  #{}
-   :uses #{premium-features}}
-
-  enterprise/admin-connection
-  {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}}
 
