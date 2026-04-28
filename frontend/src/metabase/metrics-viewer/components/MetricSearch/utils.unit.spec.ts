@@ -1865,24 +1865,24 @@ describe("parseFullText with identities", () => {
 // ---------------------------------------------------------------------------
 
 describe("planMetricInsertion", () => {
-  it("appends a trailing ', ' when inserting into an empty formula", () => {
+  it("inserts the metric name into an empty formula", () => {
     const plan = planMetricInsertion({
       docText: "",
       wordStart: 0,
       wordEnd: 0,
       metricName: "Revenue",
     });
-    expect(plan.insertText).toBe("Revenue, ");
+    expect(plan.insertText).toBe("Revenue");
     expect(plan.replaceFrom).toBe(0);
     expect(plan.replaceTo).toBe(0);
-    expect(plan.newCursorPos).toBe("Revenue, ".length);
+    expect(plan.newCursorPos).toBe("Revenue".length);
     expect(plan.metricFrom).toBe(0);
     expect(plan.metricTo).toBe("Revenue".length);
     expect(plan.needsLeadingComma).toBe(false);
     expect(plan.isAtEndOfFormula).toBe(true);
   });
 
-  it("appends a trailing ', ' when replacing a partial word at the end of the formula", () => {
+  it("inserts the metric name when replacing a partial word at the end of the formula", () => {
     // "Rev" → pick "Revenue"
     const plan = planMetricInsertion({
       docText: "Rev",
@@ -1890,7 +1890,7 @@ describe("planMetricInsertion", () => {
       wordEnd: 3,
       metricName: "Revenue",
     });
-    expect(plan.insertText).toBe("Revenue, ");
+    expect(plan.insertText).toBe("Revenue");
     expect(plan.replaceFrom).toBe(0);
     expect(plan.replaceTo).toBe(3);
     expect(plan.isAtEndOfFormula).toBe(true);
@@ -1905,7 +1905,7 @@ describe("planMetricInsertion", () => {
       wordEnd: 11,
       metricName: "Costs",
     });
-    expect(plan.insertText).toBe(", Costs, ");
+    expect(plan.insertText).toBe(", Costs");
     // Leading ", " replaces the trailing whitespace after "Revenue"
     expect(plan.replaceFrom).toBe("Revenue".length);
     expect(plan.replaceTo).toBe(docText.length);
@@ -1926,11 +1926,11 @@ describe("planMetricInsertion", () => {
       metricName: "Costs",
     });
     expect(plan.needsLeadingComma).toBe(false);
-    expect(plan.insertText).toBe("Costs, ");
+    expect(plan.insertText).toBe("Costs");
     expect(plan.isAtEndOfFormula).toBe(true);
   });
 
-  it("does not append ', ' when replacement occurs in the middle of the formula", () => {
+  it("inserts only the metric name when replacement occurs in the middle of the formula", () => {
     // "Rev|enue + Costs" — replacing "Revenue" mid-formula
     const docText = "Revenue + Costs";
     const plan = planMetricInsertion({
@@ -1956,7 +1956,7 @@ describe("planMetricInsertion", () => {
     // Leading separator added because prev char is alphanumeric (via trimEnd)
     expect(plan.needsLeadingComma).toBe(true);
     expect(plan.isAtEndOfFormula).toBe(true);
-    expect(plan.insertText).toBe(", Costs, ");
+    expect(plan.insertText).toBe(", Costs");
     // Swallows the trailing whitespace
     expect(plan.replaceFrom).toBe("Revenue".length);
     expect(plan.replaceTo).toBe(docText.length);

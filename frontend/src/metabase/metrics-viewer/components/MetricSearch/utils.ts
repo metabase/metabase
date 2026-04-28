@@ -77,11 +77,11 @@ export const ENTITY_SEPARATOR = ", ";
  * Plans how to splice a selected metric name into the current formula text.
  *
  * Determines whether a leading "," separator is required (when the metric is
- * chained after other content), and whether a trailing separator should be
- * appended so the dropdown can re-open and the user can pick another metric
- * without having to type one. The trailing separator is added when the word
- * being replaced is the last content in the formula (trailing whitespace is
- * ignored).
+ * chained after other content). Returns `isAtEndOfFormula` so the caller can
+ * decide whether to keep the dropdown open for a chained pick (no trailing
+ * separator is inserted — the dropdown is reopened programmatically instead).
+ * Trailing whitespace after the word being replaced is still swallowed so
+ * the formula doesn't accumulate stale spaces.
  *
  * Returned offsets are in post-change document coordinates, so `metricFrom`
  * and `metricTo` can be passed straight to the metric-identity tracker.
@@ -111,15 +111,13 @@ export function planMetricInsertion({
   const needsLeadingComma =
     textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
 
-  // When nothing meaningful follows the word being replaced, this selection
-  // lands the metric at the tail of the formula — append ", " so the caller
-  // can re-open the dropdown for a chained pick. Trailing whitespace that
-  // was after the word is swallowed into the separator.
+  // The selection lands the metric at the tail of the formula when nothing
+  // meaningful follows the word being replaced. Used by the caller to decide
+  // whether to reopen the dropdown for a chained pick.
   const isAtEndOfFormula = docText.slice(wordEnd).trim().length === 0;
 
   const leadingSep = needsLeadingComma ? ENTITY_SEPARATOR : "";
-  const trailingSep = isAtEndOfFormula ? ENTITY_SEPARATOR : "";
-  const insertText = leadingSep + metricName + trailingSep;
+  const insertText = leadingSep + metricName;
   const replaceFrom = needsLeadingComma ? textBeforeWord.length : wordStart;
   const replaceTo = isAtEndOfFormula ? docText.length : wordEnd;
   const newCursorPos = replaceFrom + insertText.length;

@@ -17,7 +17,6 @@ import {
   createMetricSourceId,
 } from "../../../utils/source-ids";
 import {
-  ENTITY_SEPARATOR,
   type MetricNameMap,
   NO_COMMA_CHARS,
   applyTrackedDefinitions,
@@ -186,21 +185,19 @@ export function useFormulaEditor({
       );
 
     // If the user is entering focus at the end of a non-empty formula that
-    // doesn't already end with a separator, append ", " and open the
-    // dropdown so they can immediately pick the next metric.  The caret
-    // lands after the inserted separator.  Skipped when
-    // pendingCaretPositionRef is set (handleEditExpression places the caret
-    // mid-formula) or when the formula is empty.
+    // doesn't already end with a separator, open the dropdown so they can
+    // immediately pick the next metric. The text isn't mutated — the caret
+    // simply lands at the end and the dropdown shows the full list.
+    // Skipped when pendingCaretPositionRef is set (handleEditExpression
+    // places the caret mid-formula) or when the formula is empty.
     const requestedCaret = pendingCaretPositionRef.current;
     const trimmedEnd = fullText.trimEnd();
     const lastChar = trimmedEnd[trimmedEnd.length - 1];
-    const shouldAppendSeparator =
+    const shouldOpenDropdown =
       requestedCaret == null &&
       trimmedEnd.length > 0 &&
       !NO_COMMA_CHARS.has(lastChar);
-    const initialText = shouldAppendSeparator
-      ? fullText + ENTITY_SEPARATOR
-      : fullText;
+    const initialText = fullText;
 
     setTextAtFocus(initialText);
     setIsFocused(true);
@@ -231,7 +228,7 @@ export function useFormulaEditor({
         if (coords) {
           setAnchorRect({ left: coords.left, top: coords.bottom });
         }
-        if (shouldAppendSeparator) {
+        if (shouldOpenDropdown) {
           setCurrentWord("");
           setIsOpen(true);
         }
