@@ -333,6 +333,55 @@
       (is (= input (repair/repair trivial-mp input))))))
 
 ;;; ============================================================
+;;; Pass 1.865 - wrap bare "now" literals in temporal-comparison contexts
+;;; ============================================================
+
+(deftest wrap-now-literals-comparison-test
+  (testing "`<` between a temporal-bucketed field and bare 'now': now gets wrapped"
+    (let [field-with-unit ["field" {"temporal-unit" "day"}
+                           ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input  ["<" {} field-with-unit "now"]]
+      (is (= ["<" {} field-with-unit ["now" {}]]
+             (repair/repair trivial-mp input)))))
+  (testing "`>=` between an absolute-datetime and bare 'now': now gets wrapped"
+    (let [abs   ["absolute-datetime" {} "2024-01-01" "day"]
+          input [">=" {} abs "now"]]
+      (is (= [">=" {} abs ["now" {}]]
+             (repair/repair trivial-mp input)))))
+  (testing "case-insensitive 'NOW' / mixed case / whitespace get wrapped"
+    (let [abs ["absolute-datetime" {} "2024-01-01" "day"]]
+      (doseq [variant ["NOW" "Now" " now " "now\n"]]
+        (is (= ["=" {} abs ["now" {}]]
+               (repair/repair trivial-mp ["=" {} abs variant]))
+            variant))))
+  (testing "bare 'now' in a non-temporal context (no other temporal operand) is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["=" {} field "now"]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "already-canonical [now {}] is left alone (idempotency)"
+    (let [abs   ["absolute-datetime" {} "2024-01-01" "day"]
+          input ["<" {} abs ["now" {}]]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest wrap-now-literals-between-test
+  (testing "between(<temporal-field>, ISO-string, 'now') wraps both bounds"
+    (let [field-with-unit ["field" {"temporal-unit" "day"}
+                           ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+          input  ["between" {} field-with-unit "2024-01-01" "now"]]
+      ;; ISO date wrapped (Pass 1.86), bare 'now' wrapped (Pass 1.865).
+      (is (= ["between" {}
+              field-with-unit
+              ["absolute-datetime" {} "2024-01-01" "day"]
+              ["now" {}]]
+             (repair/repair trivial-mp input)))))
+  (testing "between(<numeric-field>, 'now', 'now'): no temporal sibling, leave alone"
+    ;; The expression's column is non-temporal and bare 'now' is the only thing in sight;
+    ;; we don't have evidence this is a temporal context.
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+          input ["between" {} field "now" "now"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+;;; ============================================================
 ;;; Pass 1.87 - swap out-of-order between bounds (literal scalars only)
 ;;; ============================================================
 

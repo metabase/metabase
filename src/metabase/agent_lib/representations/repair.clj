@@ -330,6 +330,74 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.865 -- wrap bare `"now"` string literals in temporal contexts as the canonical
+;;; `["now" {}]` clause.
+;;;
+;;; LLMs sometimes write `[<, {}, <date-field>, "now"]` or `[between, {}, <field>,
+;;; "2024-01-01", "now"]` - using the bare string `"now"` (case-insensitive, optional
+;;; whitespace) where lib expects a `["now" {}]` clause. We rewrite such literals to the
+;;; canonical clause shape **only inside a clause whose other operand is already temporal-
+;;; shaped** (a `field` with `temporal-unit`, an `absolute-datetime`, a `relative-datetime`,
+;;; another `now`, or one of the `get-*` extraction heads).
+;;;
+;;; The context restriction matters: a column literally containing the value `"now"` could
+;;; legitimately appear as an operand in a non-temporal comparison. Carried over from the
+;;; sexp pipeline's `wrap-now-as-expression` (see `repr-deletion-followups.md` § 1.7).
+;;; ============================================================
+
+(defn- now-literal? [v]
+  (and (string? v)
+       (= "now" (str/lower-case (str/trim v)))))
+
+(defn- field-with-temporal-unit? [v]
+  (and (vector? v)
+       (>= (count v) 2)
+       (= "field" (nth v 0))
+       (map? (nth v 1))
+       (contains? (nth v 1) "temporal-unit")))
+
+(defn- temporal-context-operand? [v]
+  (or (temporal-shaped-clause? v)
+      (field-with-temporal-unit? v)))
+
+(def ^:private temporal-comparison-heads
+  "Comparison-style heads for which we'll wrap a bare `\"now\"` literal in another operand
+  position."
+  #{"=" "!=" "<" "<=" ">" ">=" "between"})
+
+(defn- temporal-comparison-clause? [v]
+  (and (vector? v)
+       (>= (count v) 3)
+       (string? (nth v 0))
+       (map? (nth v 1))
+       (contains? temporal-comparison-heads (nth v 0))))
+
+(defn- wrap-now-literal [v]
+  (if (now-literal? v)
+    ["now" {}]
+    v))
+
+(defn- maybe-wrap-now-operands
+  "For a comparison clause, return a clause with each `\"now\"` literal in arg positions
+  rewritten to `[\"now\" {}]`, but only if at least one *other* operand in the clause is
+  already temporal-shaped (so we know we're really in a temporal context)."
+  [clause]
+  (let [args (subvec clause 2)]
+    (if (some temporal-context-operand? args)
+      (let [rewritten (mapv wrap-now-literal args)]
+        (into (subvec clause 0 2) rewritten))
+      clause)))
+
+(defn- wrap-now-literals*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (temporal-comparison-clause? node)
+       (maybe-wrap-now-operands node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
 ;;;
 ;;; The lib schema for `:between` does not enforce `min <= max` (there's an explicit TODO
@@ -1230,6 +1298,7 @@
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
       wrap-iso-date-bounds*
+      wrap-now-literals*
       swap-between-bounds*
       normalize-expressions-shape*
       ensure-lib-types*))
