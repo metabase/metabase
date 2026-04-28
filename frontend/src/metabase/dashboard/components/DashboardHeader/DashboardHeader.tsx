@@ -16,17 +16,30 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { hook } from "metabase/lib/plugins-v2";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { Flex, Loader } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
+import { Button, Flex, Loader } from "metabase/ui";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
 
 import { DashboardHeaderView } from "./DashboardHeaderView";
 import { CancelEditButton, SaveEditButton } from "./buttons";
+
+declare module "metabase/lib/plugins-v2/types" {
+  interface HookRegistry {
+    "dashboard.header.label": (params: {
+      dashboardId: DashboardId;
+      dashboardName?: string;
+    }) => string;
+    "dashboard.header.alertAction": (params: {
+      dashboardId: DashboardId;
+    }) => void;
+  }
+}
 
 export type DashboardHeaderProps = {
   dashboard: Dashboard;
@@ -150,6 +163,26 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
               }
         }
       />
+
+      <Flex align="center" gap="md" px="md" py="xs" bg="background-warning">
+        <span data-testid="plugins-v2-demo-label">
+          {hook("dashboard.header.label", () => "this is default behavior", {
+            dashboardId: dashboard.id,
+            dashboardName: dashboard.name,
+          })}
+        </span>
+        <Button
+          data-testid="plugins-v2-demo-button"
+          size="xs"
+          onClick={() =>
+            hook("dashboard.header.alertAction", () => alert("default click"), {
+              dashboardId: dashboard.id,
+            })
+          }
+        >
+          {t`plugins-v2 demo button`}
+        </Button>
+      </Flex>
 
       <LeaveConfirmModal
         opened={modalOpened}

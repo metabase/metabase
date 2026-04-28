@@ -18,6 +18,7 @@ import { initializePlugin as initializeWhitelabelPlugin } from "./whitelabel";
 import { initializePlugin as initializeWhitelabelOverridePlugin } from "./whitelabel/sdk-overrides";
 
 import { initializePlugin as initializeNotifications } from "../embedding-sdk-ee/notifications";
+import { initializePlugin as initializeSdkPluginsV2Demo } from "../embedding-sdk-ee/plugins_v2_demo";
 
 /**
  * Initialize all SDK enterprise plugins that use hasPremiumFeature.
@@ -33,6 +34,7 @@ export function initializePlugins() {
   initializeNotifications();
   initializeSharing();
   initializeHandleLinkPlugin();
+  initializeSdkPluginsV2Demo();
 }
 
 // "SDK EE-plugins", that are specific to the embedding sdk.
