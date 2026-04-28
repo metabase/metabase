@@ -17,6 +17,18 @@
 
 (def ^:private endpoint "ee/data-complexity-score/complexity")
 
+(defn- random-vec-for-name
+  "Deterministic 8-dim Gaussian vector seeded by the name's hash.
+   Same name always returns the same vector across catalogs, so library ⊆ universe synonym
+   pairs holds; different names produce visibly different vectors, so the synonym axis exercises
+   real cosine work instead of collapsing to zero."
+  ^floats [^String n]
+  (let [rng (java.util.Random. (long (hash n)))]
+    (float-array (repeatedly 8 #(.nextGaussian rng)))))
+
+(def ^:private random-synonym-embedder
+  (embedders/fn-embedder #(mapv random-vec-for-name %)))
+
 (defn- internal-metabot-id
   "Primary key of the internal Metabot row — used by the tests that temporarily tweak its
    `use_verified_content`/`collection_id` via `mt/with-temp-vals-in-db`. Calls
@@ -35,11 +47,11 @@
 
 (deftest complexity-endpoint-superuser-gets-consistent-totals-test
   (testing "check invariants not covered by schema"
-    ;; Stub the default synonym embedder to a constant-empty lookup so the synonym axis scores a
-    ;; deterministic 0 in every catalog. Without this, CI environments where ai-service isn't
-    ;; reachable would see `score-synonym-pairs` cascade nil + :error and the invariants below
-    ;; would silently skip those rows — letting regressions through.
-    (mt/with-dynamic-fn-redefs [embedders/default-synonym-embedder (fn [_entities] {})]
+    ;; Stub the default synonym embedder to a deterministic hash-seeded random vector lookup.
+    ;; Returning {} would zero out the synonym axis and trivialize the invariants below; calling
+    ;; the real ai-service would make this test depend on environments where it's unreachable.
+    ;; Same name → same vector across catalogs preserves the library ⊆ universe pair invariant.
+    (mt/with-dynamic-fn-redefs [embedders/default-synonym-embedder random-synonym-embedder]
       (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
             measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
             component-score  (fn [cat k] (get-in resp [cat :components k :score]))

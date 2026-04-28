@@ -556,8 +556,8 @@
 (deftest ^:sequential default-synonym-embedder-splits-names-before-calling-provider-test
   (testing "names are split on _/-/./camelCase before being sent to get-embeddings-batch"
     (let [captured (atom nil)]
-      (with-redefs [semantic-search/get-embeddings-batch
-                    (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
+      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                  (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
         (embedders/default-synonym-embedder
          [{:id 1 :name "monthly_active_users" :kind :table}
           {:id 2 :name "dim-date"             :kind :table}
@@ -571,17 +571,17 @@
 
 (deftest ^:sequential default-synonym-embedder-propagates-provider-errors-test
   (testing "provider errors bubble up so score-synonym-pairs can report nil measurements + :error"
-    (with-redefs [semantic-search/get-embeddings-batch
-                  (fn [_ _] (throw (ex-info "ai-service down" {})))]
+    (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                (fn [_ _] (throw (ex-info "ai-service down" {})))]
       (is (thrown-with-msg? Throwable #"ai-service down"
                             (embedders/default-synonym-embedder
                              [{:id 1 :name "orders" :kind :table}]))))))
 
 (deftest ^:sequential default-synonym-embedder-zips-by-position-test
   (testing "vectors come back keyed by the normalized name; nil slots are dropped"
-    (with-redefs [semantic-search/get-embeddings-batch
-                  (fn [_ texts]
-                    (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
+    (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                (fn [_ texts]
+                                  (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
       (let [result (embedders/default-synonym-embedder
                     [{:id 1 :name "keep me"  :kind :table}
                      {:id 2 :name "drop_me"  :kind :table}
