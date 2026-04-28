@@ -13,8 +13,6 @@ post_create:
   - bash -c 'MAIN=$(git rev-parse --git-common-dir); MAIN=${MAIN%/.git}; "$MAIN/bin/mage" -bot-setup-worktree --worktree "$PWD"'
   # Dev environment (DB, mise.local.toml, bot dirs)
   - ./bin/mage -bot-dev-env --app-db {{APP_DB}} --bot {{BOT_NAME}}
-  # Bot hooks (workmux-status hooks.json)
-  - ./bin/mage -bot-setup --bot {{BOT_NAME}}
 
 pre_remove:
   - ./bin/mage -bot-dev-env --down

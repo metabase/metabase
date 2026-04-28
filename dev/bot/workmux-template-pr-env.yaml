@@ -13,8 +13,6 @@ post_create:
   - bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); "$MAIN/bin/mage" -bot-setup-worktree --worktree "$PWD"'
   # Write PR-env config (URL, PR#, creds) and cache a session token from the remote instance
   - ./bin/mage -bot-pr-env --url {{PR_ENV_URL}} --pr {{PR_NUM}}
-  # Bot hooks (workmux-status hooks.json)
-  - ./bin/mage -bot-setup --bot {{BOT_NAME}}
 
 pre_remove: []
 

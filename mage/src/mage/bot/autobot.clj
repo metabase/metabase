@@ -5,7 +5,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.bot.preflight :as preflight]
-   [mage.bot.setup :as bot-setup]
    [mage.color :as c]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -239,14 +238,14 @@
 
 (defn- relaunch-existing-session!
   "Relaunch a session in an existing worktree.
-   Installs hooks, then launches workmux open with --config pointing at a
-   per-launch yaml under <wt-path>/.bot/launch/<session>.yaml. The worktree's
-   own persistent .workmux.yaml is left untouched. The mode (window vs
-   session) is whatever the original `workmux add` recorded."
-  [{:keys [bot-name session-name wt-path prompt-file workmux-config]}]
-  ;; Install hooks
-  (bot-setup/setup-bot-worktree! {:bot-name bot-name :wt-path wt-path})
+   Launches workmux open with --config pointing at a per-launch yaml under
+   <wt-path>/.bot/launch/<session>.yaml. The worktree's own persistent
+   .workmux.yaml is left untouched. The mode (window vs session) is whatever
+   the original `workmux add` recorded.
 
+   `bot-name` is currently unused but kept in the call signature so
+   bot-specific relaunch behavior can be added later without changing callers."
+  [{:keys [_bot-name session-name wt-path prompt-file workmux-config]}]
   ;; Copy prompt file into worktree as prompt.md. Callers always pass an absolute path.
   (let [prompt-dest (str wt-path "/prompt.md")]
     (spit prompt-dest (slurp prompt-file))

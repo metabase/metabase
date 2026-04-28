@@ -660,13 +660,6 @@
               :multi true :default [] :update-fn conj]]
    :task (task! (bot-prompt/generate-prompt! parsed))}
 
-  -bot-setup
-  {:doc "Install workmux-status hooks in a bot worktree"
-   :examples [["./bin/mage -bot-setup --bot fixbot" "Install hooks for fixbot"]]
-   :requires [[mage.bot.setup :as bot-setup]]
-   :options [[nil "--bot BOT" "Bot name: fixbot, qabot, uxbot"]]
-   :task (task! (bot-setup/setup! parsed))}
-
   ;;; Unified autobot session management
 
   -autobot-go
