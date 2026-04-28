@@ -78,8 +78,12 @@
   query)
 
 (defenterprise apply-workspace-remapping
-  "Pre-processing middleware (Phase 1). Swaps MBQL table metadata for workspace isolation.
-   Does not touch native SQL — that happens in Phase 2 after full compilation."
+  "**Workspace remapping, Phase 1 — preprocess.** Mutates cached MBQL table metadata so
+   downstream middleware and HoneySQL compilation see workspace identifiers.
+
+   Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
+   authoritative security boundary. Native SQL is intentionally untouched here. See the EE
+   impl namespace docstring for the full design rationale."
   metabase-enterprise.workspaces.query-processor.middleware
   [query]
   query)
@@ -87,9 +91,16 @@
 ;;;; Execution middleware
 
 (defenterprise apply-workspace-sql-remapping
-  "Execution middleware (Phase 2). The authoritative SQL rewriter for workspace isolation.
-   Parses compiled SQL, rewrites table references, re-emits. Runs for all queries against
-   remapped databases after snippets, card refs, and parameters are fully resolved."
+  "**Workspace remapping, Phase 2 — execute (post-compilation).** Authoritative SQL rewriter
+   and the security boundary for workspace isolation.
+
+   Runs after all preprocess work — snippets, card refs, params, and MBQL compilation are
+   complete — so the query is reduced to one canonical SQL string. Parses it, rewrites every
+   `from` table ref to its `to` counterpart, re-emits.
+
+   **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There
+   is no fallback to the original SQL — a silent pass-through would breach workspace
+   isolation."
   metabase-enterprise.workspaces.query-processor.middleware
   [qp]
   qp)

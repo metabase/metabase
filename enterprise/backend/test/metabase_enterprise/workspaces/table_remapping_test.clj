@@ -198,3 +198,54 @@
          (is (= (mt/id) (:db-id (ex-data ex)))))
        (testing "no app-db row was written"
          (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))))
+
+;;; --------------------------- Pre-sync ordering: to-side has no :model/Table yet -------------------------------
+;;;
+;;; A `TableRemapping` row can be inserted before sync has run on the workspace's destination schema, so the
+;;; `(to_schema, to_table_name)` pair has no corresponding `:model/Table` row in the app DB yet. Every code path
+;;; that consumes the remapping must operate on the schema/table strings alone — none should require a hydrated
+;;; `:model/Table` for the to-side. These tests pin that contract so a future change that adds `:model/Table`
+;;; lookup on the to-side surfaces immediately.
+
+(deftest remap-table-works-without-to-side-model-table-test
+  (testing "remap-table returns the [to-schema to-table-name] pair even when no :model/Table exists for it"
+    (clean-db-fixture
+     (mt/id)
+     (fn []
+       (let [to-schema "ws_unsynced"
+             to-table  "orders_workspace_copy"]
+         (testing "precondition: no :model/Table row exists for the to-side"
+           (is (nil? (t2/select-one :model/Table :db_id (mt/id) :schema to-schema :name to-table))))
+         (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "ORDERS"] [to-schema to-table])
+         (is (= [to-schema to-table]
+                (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))
+             "remap-table operates on strings only — no :model/Table lookup on the to-side"))))))
+
+(deftest workspace-remap-schema+name-works-without-to-side-model-table-test
+  (testing "the sync hook returns [to-schema to-table-name] even when no :model/Table exists for it"
+    (clean-db-fixture
+     (mt/id)
+     (fn []
+       (let [to-schema "ws_unsynced"
+             to-table  "orders_workspace_copy"]
+         (is (nil? (t2/select-one :model/Table :db_id (mt/id) :schema to-schema :name to-table))
+             "precondition: no :model/Table row exists for the to-side")
+         (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "ORDERS"] [to-schema to-table])
+         (is (= [to-schema to-table]
+                (ws.table-remapping/workspace-remap-schema+name (mt/id) "PUBLIC" "ORDERS"))
+             "sync hook returns the remap pair regardless of to-side sync state"))))))
+
+(deftest all-mappings-for-db-works-without-to-side-model-tables-test
+  (testing "all-mappings-for-db returns rows whose to-side has no :model/Table yet"
+    (clean-db-fixture
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "ORDERS"]    ["ws_unsynced" "orders_copy"])
+       (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "PEOPLE"]    ["ws_unsynced" "people_copy"])
+       (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "PRODUCTS"]  ["ws_unsynced" "products_copy"])
+       (let [mappings (ws.table-remapping/all-mappings-for-db (mt/id))]
+         (is (= {["PUBLIC" "ORDERS"]   ["ws_unsynced" "orders_copy"]
+                 ["PUBLIC" "PEOPLE"]   ["ws_unsynced" "people_copy"]
+                 ["PUBLIC" "PRODUCTS"] ["ws_unsynced" "products_copy"]}
+                mappings)
+             "all-mappings-for-db is purely (schema, name) string-based — no :model/Table required"))))))

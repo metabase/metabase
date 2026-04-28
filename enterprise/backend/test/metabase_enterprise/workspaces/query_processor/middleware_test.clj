@@ -162,3 +162,46 @@
              (get result {:schema "public" :table "orders"})))
       (is (= {:schema "mb_iso" :table "users"}
              (get result {:schema "public" :table "users"}))))))
+
+;;; -------------------------- Pre-sync ordering: to-side has no :model/Table yet ----------------------------------
+;;;
+;;; When a TableRemapping row points to a (to_schema, to_table_name) that has not yet been synced into the app DB,
+;;; both phases must still operate correctly. They consume schema/table strings from the remapping store; nothing
+;;; should require a hydrated `:model/Table` on the to-side.
+
+(deftest phase-1-handles-to-side-without-model-table-test
+  (testing "Phase 1 mutates the from-side metadata even when the to-side has no :model/Table"
+    (mt/with-premium-features #{:workspaces}
+      (qp.store/with-metadata-provider (mt/id)
+        (let [venues-table    (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
+              original-schema (:schema venues-table)
+              original-name   (:name venues-table)
+              to-schema       "ws_unsynced"
+              to-table        "remapped_venues_no_sync"]
+          (with-remappings (mt/id) {[original-schema original-name] [to-schema to-table]}
+            (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
+                            (assoc :database (mt/id)))]
+              ;; Should not throw — the to-side strings are written into the from-side metadata in place.
+              (#'ws.middleware/apply-workspace-remapping query)
+              (let [table-after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
+                (is (= to-schema (:schema table-after))
+                    "Phase 1 wrote the to-side schema even with no :model/Table for it")
+                (is (= to-table (:name table-after))
+                    "Phase 1 wrote the to-side name even with no :model/Table for it")))))))))
+
+(deftest phase-2-handles-to-side-without-model-table-test
+  (testing "Phase 2 rewrites SQL using to-side strings even when no :model/Table exists for the to-side"
+    (mt/with-premium-features #{:workspaces}
+      (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["ws_unsynced" "venues_unsynced"]}
+        (binding [driver/*driver* :h2]
+          (let [called-with (atom nil)
+                mock-qp    (fn [query rff] (reset! called-with query) :ok)
+                wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+                query      {:database    (mt/id)
+                            :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
+            (wrapped query identity)
+            (let [rewritten (get-in @called-with [:qp/compiled :query])]
+              (is (re-find #"(?i)ws_unsynced" rewritten)
+                  "Phase 2 emits the to-side schema in the rewritten SQL")
+              (is (re-find #"(?i)venues_unsynced" rewritten)
+                  "Phase 2 emits the to-side table name in the rewritten SQL"))))))))
