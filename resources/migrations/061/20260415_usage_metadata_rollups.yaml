@@ -10,7 +10,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
+                  type: int
                   autoIncrement: true
                   remarks: Surrogate primary key
                   constraints:
@@ -18,7 +18,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: source_type
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Owning source kind for direct or projected facts, or null for canonical mixed facts
               - column:
                   name: source_id
@@ -26,7 +26,7 @@ databaseChangeLog:
                   remarks: Owning table or card ID for direct or projected facts, or null for canonical mixed facts
               - column:
                   name: ownership_mode
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Ownership attribution mode such as direct, projected, or mixed
                   constraints:
                     nullable: false
@@ -64,7 +64,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
+                  type: int
                   autoIncrement: true
                   remarks: Surrogate primary key
                   constraints:
@@ -72,7 +72,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: source_type
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Owning source kind for direct or projected facts, or null for canonical mixed facts
               - column:
                   name: source_id
@@ -80,13 +80,13 @@ databaseChangeLog:
                   remarks: Owning table or card ID for direct or projected facts, or null for canonical mixed facts
               - column:
                   name: ownership_mode
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Ownership attribution mode such as direct, projected, or mixed
                   constraints:
                     nullable: false
               - column:
                   name: agg_type
-                  type: varchar(32)
+                  type: varchar(254)
                   remarks: Aggregation operator for the metric fact
                   constraints:
                     nullable: false
@@ -100,7 +100,7 @@ databaseChangeLog:
                   remarks: Breakout field supplying temporal context for the metric fact when applicable
               - column:
                   name: temporal_unit
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Temporal bucketing unit associated with the metric fact when applicable
               - column:
                   name: bucket_date
@@ -126,7 +126,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
+                  type: int
                   autoIncrement: true
                   remarks: Surrogate primary key
                   constraints:
@@ -134,7 +134,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: source_type
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Owning source kind for the dimension fact
                   constraints:
                     nullable: false
@@ -146,7 +146,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: ownership_mode
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Ownership attribution mode for the dimension fact
                   constraints:
                     nullable: false
@@ -158,7 +158,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: temporal_unit
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Temporal bucketing unit for temporal breakouts when applicable
               - column:
                   name: binning
@@ -188,7 +188,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
+                  type: int
                   autoIncrement: true
                   remarks: Surrogate primary key
                   constraints:
@@ -196,7 +196,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: source_type
-                  type: varchar(16)
+                  type: varchar(254)
                   remarks: Owning source kind for the profiled dimension
                   constraints:
                     nullable: false
@@ -214,13 +214,13 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: source_basis
-                  type: varchar(32)
+                  type: varchar(254)
                   remarks: Provenance of the profile signal such as fingerprint
                   constraints:
                     nullable: false
               - column:
                   name: observation_type
-                  type: varchar(32)
+                  type: varchar(254)
                   remarks: Kind of profile observation such as single-value or all-null
                   constraints:
                     nullable: false
