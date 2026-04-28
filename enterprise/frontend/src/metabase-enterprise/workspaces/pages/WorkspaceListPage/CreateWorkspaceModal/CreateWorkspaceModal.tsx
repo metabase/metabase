@@ -58,7 +58,10 @@ function CreateWorkspaceForm({ onCancel }: CreateWorkspaceFormProps) {
   const [createWorkspace] = useCreateWorkspaceMutation();
 
   const handleSubmit = async (values: CreateWorkspaceFormValues) => {
-    const workspace = await createWorkspace({ name: values.name }).unwrap();
+    const workspace = await createWorkspace({
+      name: values.name,
+      databases: [],
+    }).unwrap();
     onCancel();
     dispatch(push(Urls.adminWorkspace(workspace.id)));
   };

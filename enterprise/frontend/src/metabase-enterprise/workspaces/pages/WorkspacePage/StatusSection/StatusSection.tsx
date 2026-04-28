@@ -25,6 +25,8 @@ type StatusSectionProps = {
 export function StatusSection({ workspace }: StatusSectionProps) {
   const hasProvisioned = workspace.databases.some(isDatabaseProvisioned);
   const hasUnprovisioned = workspace.databases.some(isDatabaseUnprovisioned);
+  const hasProvisioning = workspace.databases.some(isDatabaseProvisioning);
+  const hasUnprovisioning = workspace.databases.some(isDatabaseUnprovisioning);
 
   return (
     <TitleSection
@@ -37,8 +39,12 @@ export function StatusSection({ workspace }: StatusSectionProps) {
           <Text>{getStatusMessage(workspace)}</Text>
         </Group>
         <Group gap="sm" wrap="nowrap">
-          {hasUnprovisioned && <ProvisionButton workspace={workspace} />}
-          {hasProvisioned && <UnprovisionButton workspace={workspace} />}
+          {(hasUnprovisioned || hasProvisioning) && (
+            <ProvisionButton workspace={workspace} />
+          )}
+          {(hasProvisioned || hasUnprovisioning) && (
+            <UnprovisionButton workspace={workspace} />
+          )}
         </Group>
       </Group>
     </TitleSection>

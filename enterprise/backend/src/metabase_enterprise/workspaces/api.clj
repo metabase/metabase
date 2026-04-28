@@ -18,10 +18,15 @@
    [:database_id   ms/PositiveInt]
    [:input_schemas [:sequential ms/NonBlankString]]])
 
-(def ^:private WorkspaceParams
+(def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name      ms/NonBlankString]
-   [:databases [:sequential WorkspaceDatabaseParams]]])
+   [:databases {:optional true} [:sequential WorkspaceDatabaseParams]]])
+
+(def ^:private UpdateWorkspaceParams
+  [:map {:closed true}
+   [:name      {:optional true} ms/NonBlankString]
+   [:databases {:optional true} [:sequential WorkspaceDatabaseParams]]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map
@@ -73,7 +78,9 @@
   (select-keys wsd [:database_id :input_schemas]))
 
 (defn- sanitize-workspace-params [params]
-  (update params :databases #(mapv sanitize-database-params %)))
+  (cond-> params
+    (contains? params :databases)
+    (update :databases #(mapv sanitize-database-params %))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -91,7 +98,7 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace."
-  [_route-params _query-params params :- WorkspaceParams]
+  [_route-params _query-params params :- CreateWorkspaceParams]
   (api/check-superuser)
   (present-workspace
    (ws/create-workspace!
@@ -102,7 +109,7 @@
   "Update an existing Workspace. Only allowed when all databases are unprovisioned."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   params :- WorkspaceParams]
+   params :- UpdateWorkspaceParams]
   (api/check-superuser)
   (present-workspace (ws/update-workspace! id (sanitize-workspace-params params))))
 

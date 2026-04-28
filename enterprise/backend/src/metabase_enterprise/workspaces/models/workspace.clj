@@ -110,19 +110,23 @@
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
   list. Only `:unprovisioned` rows are freely mutable. Rows in any other state
   (`:provisioning`, `:provisioned`, `:unprovisioning`) must be preserved by
-  `database_id` with matching `:input_schemas`, or a 409 is raised."
-  [id {:keys [name databases]}]
+  `database_id` with matching `:input_schemas`, or a 409 is raised. Fields not
+  present in `params` are left untouched."
+  [id params]
   (t2/with-transaction [_conn]
-    (let [existing         (t2/select :model/WorkspaceDatabase :workspace_id id)
-          active           (remove #(= :unprovisioned (:status %)) existing)
-          unprovisioned    (filter #(= :unprovisioned (:status %)) existing)
-          incoming-by-db-id (into {} (map (juxt :database_id identity)) databases)
-          preserved-db-ids (set (map :database_id active))]
-      (reject-active-modification! active incoming-by-db-id)
-      (t2/update! :model/Workspace :id id {:name name})
-      (when-let [to-delete-ids (seq (map :id unprovisioned))]
-        (t2/delete! :model/WorkspaceDatabase :id [:in to-delete-ids]))
-      (when-let [to-insert (seq (remove #(contains? preserved-db-ids (:database_id %)) databases))]
-        (t2/insert! :model/WorkspaceDatabase
-                    (map #(with-workspace-database-defaults % id) to-insert)))
-      (get-workspace id))))
+    (when (contains? params :name)
+      (t2/update! :model/Workspace :id id {:name (:name params)}))
+    (when (contains? params :databases)
+      (let [databases         (:databases params)
+            existing          (t2/select :model/WorkspaceDatabase :workspace_id id)
+            active            (remove #(= :unprovisioned (:status %)) existing)
+            unprovisioned     (filter #(= :unprovisioned (:status %)) existing)
+            incoming-by-db-id (into {} (map (juxt :database_id identity)) databases)
+            preserved-db-ids  (set (map :database_id active))]
+        (reject-active-modification! active incoming-by-db-id)
+        (when-let [to-delete-ids (seq (map :id unprovisioned))]
+          (t2/delete! :model/WorkspaceDatabase :id [:in to-delete-ids]))
+        (when-let [to-insert (seq (remove #(contains? preserved-db-ids (:database_id %)) databases))]
+          (t2/insert! :model/WorkspaceDatabase
+                      (map #(with-workspace-database-defaults % id) to-insert)))))
+    (get-workspace id)))
