@@ -615,6 +615,81 @@
       (is (= input (repair/repair trivial-mp input))))))
 
 ;;; ============================================================
+;;; Pass 1.55 - normalise `fields:` to sequential-of-clause when given a single clause
+;;; ============================================================
+
+(deftest normalise-fields-on-stage-test
+  (testing "single clause as `fields:` value gets wrapped in a one-element list"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
+          input {"lib/type"     "mbql/query"
+                 "database"     "Sample"
+                 "stages"       [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "fields"       field}]}
+          output (repair/repair trivial-mp input)]
+      (is (= [field] (get-in output ["stages" 0 "fields"])))))
+  (testing "sequential `fields:` is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
+          input {"lib/type"     "mbql/query"
+                 "database"     "Sample"
+                 "stages"       [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "fields"       [field]}]}
+          output (repair/repair trivial-mp input)]
+      (is (= [field] (get-in output ["stages" 0 "fields"]))))))
+
+(deftest normalise-fields-on-join-test
+  (testing "single clause as join `fields:` gets wrapped"
+    (let [field ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "NAME"]]
+          stage {"lib/type"     "mbql.stage/mbql"
+                 "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}
+          join  {"lib/type"   "mbql/join"
+                 "alias"      "P"
+                 "stages"     [stage]
+                 "conditions" [["=" {}
+                                ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]
+                 "fields"     field}
+          input {"lib/type" "mbql/query"
+                 "database" "Sample"
+                 "stages"   [{"lib/type"     "mbql.stage/mbql"
+                              "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                              "joins"        [join]}]}
+          output (repair/repair trivial-mp input)]
+      (is (= [field] (get-in output ["stages" 0 "joins" 0 "fields"])))))
+  (testing "join `fields:` enum value (\"all\" / \"none\") is left alone"
+    (doseq [enum-value ["all" "none"]]
+      (let [stage {"lib/type"     "mbql.stage/mbql"
+                   "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}
+            join  {"lib/type"   "mbql/join"
+                   "alias"      "P"
+                   "stages"     [stage]
+                   "conditions" [["=" {}
+                                  ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                  ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]
+                   "fields"     enum-value}
+            input {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "joins"        [join]}]}
+            output (repair/repair trivial-mp input)]
+        (is (= enum-value (get-in output ["stages" 0 "joins" 0 "fields"]))
+            enum-value)))))
+
+(deftest normalise-fields-idempotent-test
+  (testing "after wrap, second pass is a no-op"
+    (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
+          input {"lib/type"     "mbql/query"
+                 "database"     "Sample"
+                 "stages"       [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "fields"       field}]}
+          once  (repair/repair trivial-mp input)
+          twice (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+;;; ============================================================
 ;;; Pass 2 - fill in missing `lib/type`
 ;;; ============================================================
 

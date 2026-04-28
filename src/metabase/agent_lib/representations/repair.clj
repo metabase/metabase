@@ -651,6 +651,55 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.55 -- normalise `fields:` on a stage / join when the LLM wrote a single clause
+;;; instead of a sequential of clauses.
+;;;
+;;; The repr schema for both stage and join requires
+;;; `"fields": [:sequential [:ref ::clause]]` (joins additionally accept the enum strings
+;;; `"all"` / `"none"`). LLMs occasionally write a single clause as the value, e.g.
+;;;
+;;;   stages:
+;;;   - …
+;;;     fields: [field, {}, [Sample, PUBLIC, T, COL]]
+;;;
+;;; rather than the canonical list-of-one
+;;;
+;;;   stages:
+;;;   - …
+;;;     fields:
+;;;     - [field, {}, [Sample, PUBLIC, T, COL]]
+;;;
+;;; The single-clause shape would otherwise fail validation. We detect it (a vector whose
+;;; slot 0 is a string head AND slot 1 is a map - i.e. clause-shaped) and wrap it in a
+;;; one-element list.
+;;;
+;;; Carried over from the sexp pipeline's \`normalize-with-fields-selection\` (see
+;;; `repr-deletion-followups.md` § 1.9). Idempotent: after wrapping, the value is
+;;; sequential-of-clause and the predicate no longer matches.
+;;; ============================================================
+
+(defn- single-clause-shape? [v]
+  (and (vector? v)
+       (>= (count v) 2)
+       (string? (nth v 0))
+       (map? (nth v 1))))
+
+(defn- normalise-fields-key [m]
+  (let [fields (get m "fields")]
+    (if (single-clause-shape? fields)
+      (assoc m "fields" [fields])
+      m)))
+
+(defn- normalise-fields-shape*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (contains? node "fields"))
+       (normalise-fields-key node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -1489,6 +1538,7 @@
       wrap-now-literals*
       swap-between-bounds*
       normalise-case-clauses*
+      normalise-fields-shape*
       normalize-expressions-shape*
       ensure-lib-types*))
 
