@@ -6,11 +6,7 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  Collections,
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections";
+import { Collections, getCollectionType } from "metabase/entities/collections";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
@@ -162,7 +158,6 @@ export const Questions = createEntity({
   objectSelectors: {
     getName: (card) => card && card.name,
     getColor: () => color("text-secondary"),
-    getCollection: (card) => card && normalizedCollection(card.collection),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

@@ -812,9 +812,6 @@ export function createEntity(def: EntityDef): Entity {
     getColor(_object: EntityObject): string | undefined {
       return undefined;
     },
-    getCollection(object: EntityObject) {
-      return object.collection;
-    },
     ...(def.objectSelectors || {}),
   };
 

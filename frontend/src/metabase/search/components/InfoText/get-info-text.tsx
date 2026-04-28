@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { normalizedCollection } from "metabase/collections/utils";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -11,6 +12,9 @@ import {
   dashboard as dashboardUrl,
 } from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
+
+const getCollection = (result: WrappedResult): Partial<Collection> | null =>
+  normalizedCollection(result.collection as Collection | null);
 
 export type InfoTextData = {
   link?: string | null;
@@ -62,7 +66,7 @@ const getDatabaseInfoText = (): InfoTextData => {
   };
 };
 const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
-  const collection: Partial<Collection> = result.getCollection();
+  const collection: Partial<Collection> = getCollection(result) ?? {};
 
   if (
     PLUGIN_COLLECTIONS.isRegularCollection(collection) ||
@@ -79,8 +83,11 @@ const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
 };
 
 const getCollectionResult = (result: WrappedResult): InfoTextData => {
-  const collection = result.getCollection();
-  const colUrl = collectionUrl(collection);
+  const collection = getCollection(result);
+  if (!collection) {
+    return {};
+  }
+  const colUrl = collectionUrl(collection as Collection);
   const collectionName = collection.name;
   return collectionName
     ? {

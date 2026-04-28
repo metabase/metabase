@@ -9,9 +9,7 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-export interface WrappedResult extends SearchResult {
-  getCollection: () => SearchResult["collection"];
-}
+export type WrappedResult = SearchResult;
 
 export type TypeFilterProps = EnabledSearchModel[];
 export type CreatedByFilterProps = UserId[];

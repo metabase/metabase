@@ -9,10 +9,7 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections/utils";
+import { getCollectionType } from "metabase/entities/collections/utils";
 import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { color } from "metabase/ui/colors";
@@ -176,8 +173,6 @@ export const Dashboards = createEntity({
 
   objectSelectors: {
     getName: (dashboard) => dashboard && dashboard.name,
-    getCollection: (dashboard) =>
-      dashboard && normalizedCollection(dashboard.collection),
     getColor: () => color("dashboard"),
   },
 

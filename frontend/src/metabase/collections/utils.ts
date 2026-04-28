@@ -5,6 +5,7 @@ import {
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
   getLibraryCollectionType,
 } from "metabase/data-studio/utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   type CardType,
@@ -179,6 +180,14 @@ export function isPersonalCollectionChild(
 
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
+}
+
+export function normalizedCollection(
+  collection: Collection | null | undefined,
+) {
+  return !collection || isRootCollection(collection)
+    ? ROOT_COLLECTION
+    : collection;
 }
 
 export function isItemPinned(item: CollectionItem) {

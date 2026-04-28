@@ -7,6 +7,7 @@ import { jt, t } from "ttag";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { normalizedCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
@@ -381,7 +382,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     );
   } else {
     return (
-      <SubtitleText>{wrappedSearchResult.getCollection?.()?.name}</SubtitleText>
+      <SubtitleText>
+        {normalizedCollection(wrappedSearchResult.collection)?.name}
+      </SubtitleText>
     );
   }
 };
