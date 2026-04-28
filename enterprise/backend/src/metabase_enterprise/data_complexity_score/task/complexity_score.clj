@@ -6,9 +6,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
-   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.settings :as settings]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -24,21 +24,20 @@
 (defn- current-fingerprint
   "String capturing everything that changes the meaning of an emitted score.
 
-  Mirrors the Snowplow `formula_version` + `parameters` fields.
-  `weights` is included so re-tuning forces a re-score without a `formula-version` bump;
-  only structural scoring-algorithm changes need that.
+  Mirrors the Snowplow `formula_version` + `parameters` fields. `weights` is included so re-tuning
+  forces a re-score without a `formula-version` bump; only structural scoring-algorithm changes
+  need that.
 
-  `:embedding-model` and `:text-variant` are fixed synonym-axis descriptors — stable across
-  pgvector state changes, so the fingerprint doesn't drift when the search index is rebuilt
-  or unreachable, but a swap to a different model or preprocessing variant does force a
-  re-score."
+  The synonym-axis fragment comes from [[synonym-source/fingerprint-fragment]] so the fingerprint
+  reacts to the source toggle and the configured model — and on the search-index path also picks
+  up swaps in the active pgvector model so a re-index that swaps the model invalidates prior
+  scores."
   []
   (pr-str (into (sorted-map)
-                {:formula-version   complexity/formula-version
-                 :synonym-threshold complexity/synonym-similarity-threshold
-                 :weights           complexity/weights
-                 :embedding-model   embedders/default-synonym-model
-                 :text-variant      embedders/default-text-variant})))
+                (merge {:formula-version   complexity/formula-version
+                        :synonym-threshold complexity/synonym-similarity-threshold
+                        :weights           complexity/weights}
+                       (synonym-source/fingerprint-fragment)))))
 
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
@@ -55,7 +54,9 @@
   [claim-fingerprint]
   (if (settings/data-complexity-scoring-enabled)
     (try
-      (let [result (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
+      (let [result (complexity/complexity-scores
+                    (assoc (synonym-source/complexity-scores-opts)
+                           :metabot-scope (metabot-scope/internal-metabot-scope)))]
         (if (::complexity/snowplow-published? (meta result))
           (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
           (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))

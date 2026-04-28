@@ -9,6 +9,7 @@
    [metabase-enterprise.data-complexity-score.init]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.settings :as data-complexity-score.settings]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
@@ -528,17 +529,18 @@
       true?  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
       false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
-(deftest ^:sequential meta-advertises-default-synonym-model-and-text-variant-test
+(deftest ^:sequential meta-passes-through-caller-supplied-model-and-variant-test
   (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                               (constantly {:library [] :universe [] :metabot []})]
-    (testing ":meta carries the full MiniLM descriptor + :names-split when using the default embedder"
-      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])]
-        (let [{:keys [meta]} (complexity/complexity-scores)]
-          (is (= embedders/default-synonym-model (:embedding-model meta)))
-          (is (= :names-split (:text-variant meta))))))
-    (testing ":embedding-model and :text-variant are omitted when the caller passes an explicit embedder"
-      (let [{:keys [meta]} (complexity/complexity-scores :embedder (embedders/fn-embedder
-                                                                    (fn [_] [])))]
+    (testing ":embedding-model and :text-variant are published in :meta when the caller passes them"
+      (let [{:keys [meta]} (complexity/complexity-scores
+                            :embedder             (embedders/fn-embedder (fn [_] []))
+                            :embedding-model-meta {:provider "test" :model-name "fake" :model-dimensions 4}
+                            :text-variant         :names-split)]
+        (is (= {:provider "test" :model-name "fake" :model-dimensions 4} (:embedding-model meta)))
+        (is (= :names-split (:text-variant meta)))))
+    (testing ":embedding-model and :text-variant are omitted when the caller doesn't pass them"
+      (let [{:keys [meta]} (complexity/complexity-scores :embedder (embedders/fn-embedder (fn [_] [])))]
         (is (not (contains? meta :embedding-model)))
         (is (not (contains? meta :text-variant)))))
     (testing ":embedding-model and :text-variant are omitted when synonym scoring is disabled (embedder is nil)"
@@ -546,19 +548,24 @@
         (is (not (contains? meta :embedding-model)))
         (is (not (contains? meta :text-variant)))))))
 
-(deftest ^:parallel default-synonym-model-pins-minilm-via-ai-service-test
-  (testing "descriptor is the fixed MiniLM-L6-v2 via ai-service — breaks on accidental rename/swap"
-    (is (= {:provider         "ai-service"
-            :model-name       "sentence-transformers/all-MiniLM-L6-v2"
-            :model-dimensions 384}
-           embedders/default-synonym-model))))
+(deftest ^:sequential synonym-source-default-opts-pin-minilm-via-ai-service-test
+  (testing "at default settings, synonym-source produces the MiniLM-L6-v2 ai-service descriptor + names-split text variant"
+    (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)]
+      (is (= {:provider         "ai-service"
+              :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+              :model-dimensions 384}
+             embedding-model-meta))
+      (is (= :names-split text-variant))
+      (is (fn? embedder)
+          "synonym-source returns a fresh provider-embedder for the descriptor"))))
 
-(deftest ^:sequential default-synonym-embedder-splits-names-before-calling-provider-test
-  (testing "names are split on _/-/./camelCase before being sent to get-embeddings-batch"
-    (let [captured (atom nil)]
+(deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
+  (testing "provider-embedder splits names on _/-/./camelCase before sending to get-embeddings-batch"
+    (let [captured (atom nil)
+          embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
                                   (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
-        (embedders/default-synonym-embedder
+        (embedder
          [{:id 1 :name "monthly_active_users" :kind :table}
           {:id 2 :name "dim-date"             :kind :table}
           {:id 3 :name "pageViews"            :kind :card}
@@ -569,25 +576,26 @@
                 "metabase v2 foo"]
                @captured))))))
 
-(deftest ^:sequential default-synonym-embedder-propagates-provider-errors-test
+(deftest ^:sequential provider-embedder-propagates-provider-errors-test
   (testing "provider errors bubble up so score-synonym-pairs can report nil measurements + :error"
-    (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
-                                (fn [_ _] (throw (ex-info "ai-service down" {})))]
-      (is (thrown-with-msg? Throwable #"ai-service down"
-                            (embedders/default-synonym-embedder
-                             [{:id 1 :name "orders" :kind :table}]))))))
+    (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
+      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                  (fn [_ _] (throw (ex-info "ai-service down" {})))]
+        (is (thrown-with-msg? Throwable #"ai-service down"
+                              (embedder [{:id 1 :name "orders" :kind :table}])))))))
 
-(deftest ^:sequential default-synonym-embedder-zips-by-position-test
+(deftest ^:sequential provider-embedder-zips-by-position-test
   (testing "vectors come back keyed by the normalized name; nil slots are dropped"
-    (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
-                                (fn [_ texts]
-                                  (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
-      (let [result (embedders/default-synonym-embedder
-                    [{:id 1 :name "keep me"  :kind :table}
-                     {:id 2 :name "drop_me"  :kind :table}
-                     {:id 3 :name "another"  :kind :card}])]
-        (is (= #{"keep me" "another"} (set (keys result))))
-        (is (every? #(instance? (Class/forName "[F") %) (vals result)))))))
+    (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 2})]
+      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                  (fn [_ texts]
+                                    (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
+        (let [result (embedder
+                      [{:id 1 :name "keep me"  :kind :table}
+                       {:id 2 :name "drop_me"  :kind :table}
+                       {:id 3 :name "another"  :kind :card}])]
+          (is (= #{"keep me" "another"} (set (keys result))))
+          (is (every? #(instance? (Class/forName "[F") %) (vals result))))))))
 
 (deftest ^:sequential active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
@@ -746,7 +754,7 @@
                 "error is clipped to the schema's maxLength of 1024")))))))
 
 (deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
-  (testing "every event's parameters carry the nested embedding_model + text_variant when using the default embedder"
+  (testing "every event's parameters carry the nested embedding_model + text_variant from synonym-source"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])
                                   complexity/enumerate-catalogs
@@ -754,7 +762,7 @@
                                                :universe [(entity :name "orders")]
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
-        (complexity/complexity-scores)
+        (complexity/complexity-scores (synonym-source/complexity-scores-opts))
         (let [events         (complexity-events!)
               expected-model {"provider"         "ai-service"
                               "model_name"       "sentence-transformers/all-MiniLM-L6-v2"

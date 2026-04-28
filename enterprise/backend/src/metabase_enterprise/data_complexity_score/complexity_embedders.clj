@@ -47,24 +47,6 @@
           vectors (when (seq names) (vec (name-embed-fn names)))]
       (into {} (filter val) (zipmap names vectors)))))
 
-(def default-synonym-model
-  "Fixed model descriptor for the complexity score's synonym axis.
-
-  all-MiniLM-L6-v2 is a Sentence-Transformers model trained on Semantic Textual Similarity.
-  STS precision beats retrieval recall for the \"are these two names confusingly similar\"
-  question this axis asks.
-  Arctic-L at 0.90 was the pragmatic fallback when only a retrieval model was available.
-
-  Served through ai-service.
-  When the model isn't deployed there yet, calls throw and the synonym axis reports nil
-  measurements + an error — by design, so broken runs are visible rather than masquerading
-  as zero.
-
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb."
-  {:provider         "ai-service"
-   :model-name       "sentence-transformers/all-MiniLM-L6-v2"
-   :model-dimensions 384})
-
 (def default-text-variant
   "Which text form of each entity name gets embedded by the default synonym embedder.
 
@@ -132,10 +114,3 @@
           (into {}
                 (keep (fn [[n v]] (when v [n (ensure-floats v)])))
                 (map vector names vectors)))))))
-
-(def default-synonym-embedder
-  "Default embedder for the complexity score's synonym axis.
-
-  Held as a value (not a `defn`) so callers can identify the default path by identity — see
-  `metabase-enterprise.data-complexity-score.complexity/complexity-scores`."
-  (provider-embedder default-synonym-model))

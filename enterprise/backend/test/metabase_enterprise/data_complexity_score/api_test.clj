@@ -5,6 +5,7 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -47,11 +48,12 @@
 
 (deftest complexity-endpoint-superuser-gets-consistent-totals-test
   (testing "check invariants not covered by schema"
-    ;; Stub the default synonym embedder to a deterministic hash-seeded random vector lookup.
-    ;; Returning {} would zero out the synonym axis and trivialize the invariants below; calling
-    ;; the real ai-service would make this test depend on environments where it's unreachable.
-    ;; Same name → same vector across catalogs preserves the library ⊆ universe pair invariant.
-    (mt/with-dynamic-fn-redefs [embedders/default-synonym-embedder random-synonym-embedder]
+    ;; Stub the synonym-source's opts to a deterministic hash-seeded random vector lookup. Returning
+    ;; {} would zero out the synonym axis and trivialize the invariants below; calling the real
+    ;; ai-service would make this test depend on environments where it's unreachable. Same name →
+    ;; same vector across catalogs preserves the library ⊆ universe pair invariant.
+    (mt/with-dynamic-fn-redefs [synonym-source/complexity-scores-opts
+                                (constantly {:embedder random-synonym-embedder})]
       (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
             measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
             component-score  (fn [cat k] (get-in resp [cat :components k :score]))
