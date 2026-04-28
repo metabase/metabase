@@ -208,6 +208,12 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
+(defn- merge-metadata
+  [a b]
+  (map #(apply merge %)
+       (vals
+        (group-by :name (concat a b)))))
+
 (mu/defn populate-result-metadata :- [:map
                                       [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -244,6 +250,6 @@ saved later when it is ready."
          :else
          (do
            (log/debug "Attempting to infer result metadata for Card")
-           (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
+           (update card :result_metadata merge-metadata (infer-metadata-with-model-overrides query card))))
        ;; now normalize the result metadata as needed so it passes the output schema check
        (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))
