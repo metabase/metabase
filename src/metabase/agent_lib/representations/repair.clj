@@ -210,6 +210,58 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.85 -- canonicalise order-by direction aliases.
+;;;
+;;; The lib schema accepts only `[asc, {}, <ref>]` and `[desc, {}, <ref>]` as order-by
+;;; direction clauses. LLMs sometimes write `[ascending, {}, …]` / `[descending, {}, …]`
+;;; and uppercase variants like `[ASC, {}, …]`. We rewrite any case-insensitive variant of
+;;; the four spellings (`asc`, `ascending`, `desc`, `descending`) to canonical lowercase
+;;; `asc` / `desc` when used as a clause head.
+;;;
+;;; The rewrite is restricted to the **order-by-clause shape** (head + options map +
+;;; exactly one ref-shaped argument); we don't touch a bare string "ASC"/"DESC" that might
+;;; appear elsewhere as a literal value. Carried over with a wider alias set than the
+;;; sexp original (which accepted only case-insensitive `asc`/`desc`); see
+;;; `repr-deletion-followups.md` § 1.3.
+;;; ============================================================
+
+(def ^:private direction-aliases
+  "Map from lowercase alias to canonical lib direction string."
+  {"asc"        "asc"
+   "ascending"  "asc"
+   "desc"       "desc"
+   "descending" "desc"})
+
+(defn- direction-clause-head?
+  "True when `head` is a non-canonical alias (case-insensitive variant of one of
+  `direction-aliases`' keys) that should be rewritten. We exclude the canonical lowercase
+  `asc` / `desc` so that already-canonical clauses pass through unchanged (preserving
+  idempotency cheaply)."
+  [head]
+  (and (string? head)
+       (let [lower (str/lower-case head)]
+         (and (contains? direction-aliases lower)
+              (not= head (get direction-aliases lower))))))
+
+(defn- direction-alias-clause?
+  "True when `node` is a clause-shaped vector (head + options-map + 1 arg) whose head is
+  a direction alias to be rewritten."
+  [node]
+  (and (vector? node)
+       (= 3 (count node))
+       (map? (nth node 1))
+       (direction-clause-head? (nth node 0))))
+
+(defn- rewrite-direction-aliases*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (direction-alias-clause? node)
+       (assoc node 0 (get direction-aliases (str/lower-case (nth node 0))))
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -1042,6 +1094,7 @@
       ensure-clause-options*
       unwrap-nested-field-clauses*
       rewrite-temporal-bucket-aliases*
+      rewrite-direction-aliases*
       normalize-expressions-shape*
       ensure-lib-types*))
 

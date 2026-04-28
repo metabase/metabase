@@ -214,6 +214,51 @@
       (is (= input (repair/repair trivial-mp input))))))
 
 ;;; ============================================================
+;;; Pass 1.85 - rewrite order-by direction aliases to canonical asc/desc
+;;; ============================================================
+
+(deftest rewrite-direction-aliases-test
+  (testing "long-form aliases rewrite to canonical short form"
+    (is (= ["asc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+           (repair/repair trivial-mp
+                          ["ascending" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]])))
+    (is (= ["desc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+           (repair/repair trivial-mp
+                          ["descending" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]))))
+  (testing "uppercase / mixed-case variants rewrite to canonical lowercase"
+    (doseq [variant ["ASC" "Asc" "ASCENDING" "Ascending"]]
+      (is (= ["asc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+             (repair/repair trivial-mp
+                            [variant {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]))
+          variant))
+    (doseq [variant ["DESC" "Desc" "DESCENDING" "Descending"]]
+      (is (= ["desc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+             (repair/repair trivial-mp
+                            [variant {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]))
+          variant)))
+  (testing "already-canonical asc/desc clauses pass through unchanged"
+    (let [asc  ["asc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+          desc ["desc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]]
+      (is (= asc  (repair/repair trivial-mp asc)))
+      (is (= desc (repair/repair trivial-mp desc)))))
+  (testing "alias appearing inside an order-by stage list is rewritten"
+    (let [stage  {"lib/type"     "mbql.stage/mbql"
+                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                  "order-by"     [["ASCENDING" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]
+                                  ["descending" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]]}
+          input  {"lib/type" "mbql/query" "database" "Sample" "stages" [stage]}
+          output (repair/repair trivial-mp input)
+          [a d]  (get-in output ["stages" 0 "order-by"])]
+      (is (= "asc"  (first a)))
+      (is (= "desc" (first d)))))
+  (testing "non-direction strings are not touched"
+    ;; A column literally named "asc" inside an FK path stays put.
+    (let [input ["field" {} ["Sample" "PUBLIC" "T" "asc"]]]
+      (is (= input (repair/repair trivial-mp input))))
+    ;; A scalar string "ASC" by itself (not a clause) is untouched.
+    (is (= "ASC" (repair/repair trivial-mp "ASC")))))
+
+;;; ============================================================
 ;;; Pass 2 - fill in missing `lib/type`
 ;;; ============================================================
 
