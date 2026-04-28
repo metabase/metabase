@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -14,22 +13,30 @@ import { TitleSection } from "../../../components/TitleSection";
 import { CreateDatabaseModal, UpdateDatabaseModal } from "./DatabaseModal";
 import { DatabaseTable } from "./DatabaseTable";
 
+type ModalType = "create" | "update";
+
 type DatabaseSectionProps = {
   workspace: Workspace;
 };
 
 export function DatabaseSection({ workspace }: DatabaseSectionProps) {
   const workspaceDatabases = workspace.databases;
-  const [isCreateOpened, { open: openCreate, close: closeCreate }] =
-    useDisclosure(false);
-  const [editingDatabaseId, setEditingDatabaseId] = useState<DatabaseId>();
+  const [modalType, setModalType] = useState<ModalType | null>(null);
+  const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
 
-  const handleOpenEdit = (workspaceDatabase: WorkspaceDatabase) => {
-    setEditingDatabaseId(workspaceDatabase.database_id);
+  const handleOpenCreate = () => {
+    setSelectedDatabaseId(undefined);
+    setModalType("create");
   };
 
-  const handleCloseEdit = () => {
-    setEditingDatabaseId(undefined);
+  const handleOpenEdit = (workspaceDatabase: WorkspaceDatabase) => {
+    setSelectedDatabaseId(workspaceDatabase.database_id);
+    setModalType("update");
+  };
+
+  const handleClose = () => {
+    setModalType(null);
+    setSelectedDatabaseId(undefined);
   };
 
   return (
@@ -40,7 +47,7 @@ export function DatabaseSection({ workspace }: DatabaseSectionProps) {
         rightSection={
           <Button
             variant={workspaceDatabases.length === 0 ? "filled" : "default"}
-            onClick={openCreate}
+            onClick={handleOpenCreate}
           >
             {t`Add database`}
           </Button>
@@ -51,17 +58,19 @@ export function DatabaseSection({ workspace }: DatabaseSectionProps) {
           onRowClick={handleOpenEdit}
         />
       </TitleSection>
-      <CreateDatabaseModal
-        workspace={workspace}
-        opened={isCreateOpened}
-        onClose={closeCreate}
-      />
-      {editingDatabaseId != null && (
+      {modalType === "create" && (
+        <CreateDatabaseModal
+          workspace={workspace}
+          opened
+          onClose={handleClose}
+        />
+      )}
+      {modalType === "update" && selectedDatabaseId != null && (
         <UpdateDatabaseModal
           workspace={workspace}
-          databaseId={editingDatabaseId}
+          databaseId={selectedDatabaseId}
           opened
-          onClose={handleCloseEdit}
+          onClose={handleClose}
         />
       )}
     </>
