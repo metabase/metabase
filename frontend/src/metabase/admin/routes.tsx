@@ -69,6 +69,7 @@ import { ModelPersistenceConfiguration } from "./performance/components/ModelPer
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
+import { SecurityCenterUpsell } from "./tools/components/SecurityCenterUpsell/SecurityCenterUpsell";
 import { SerializationUpsell } from "./tools/components/SerializationUpsell/SerializationUpsell";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
@@ -323,6 +324,7 @@ export const getRoutes = (
               />
             )}
             <Route path="serialization" component={SerializationUpsell} />
+            <Route path="security-center" component={SecurityCenterUpsell} />
           </Route>
         </Route>
       </Route>

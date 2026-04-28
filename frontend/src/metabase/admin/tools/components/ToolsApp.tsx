@@ -64,6 +64,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             icon="folder_filled"
             location={location}
           />
+          <ToolsNavItem
+            label={t`Security Center`}
+            path="/admin/tools/security-center"
+            icon="lock"
+            location={location}
+          />
         </AdminNavWrapper>
       }
     >
