@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
-import { Badge, Box, Ellipsified, Flex } from "metabase/ui";
+import { Badge, Ellipsified, Flex } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
@@ -112,18 +112,10 @@ export function ConversationsTable({
                     <DateTime value={convo.created_at} unit="day" />
                   </Ellipsified>
                 </td>
-                <Box component="td" ta="right">
-                  {convo.message_count}
-                </Box>
-                <Box component="td" ta="right">
-                  {convo.total_tokens.toLocaleString()}
-                </Box>
-                <Box component="td" ta="right">
-                  {convo.query_count}
-                </Box>
-                <Box component="td" ta="right">
-                  {convo.search_count}
-                </Box>
+                <td>{convo.message_count}</td>
+                <td>{convo.total_tokens.toLocaleString()}</td>
+                <td>{convo.query_count}</td>
+                <td>{convo.search_count}</td>
                 <td>{convo.ip_address ?? "—"}</td>
               </tr>
             ))}
