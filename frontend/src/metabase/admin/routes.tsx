@@ -68,6 +68,7 @@ import { ModelPersistenceConfiguration } from "./performance/components/ModelPer
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
+import { SerializationUpsell } from "./tools/components/SerializationUpsell/SerializationUpsell";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { getTasksRoutes } from "./tools/routes";
@@ -319,6 +320,7 @@ export const getRoutes = (
                 component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
               />
             )}
+            <Route path="serialization" component={SerializationUpsell} />
           </Route>
         </Route>
       </Route>

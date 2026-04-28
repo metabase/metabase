@@ -58,6 +58,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             icon="database"
             location={location}
           />
+          <ToolsNavItem
+            label={t`Serialization`}
+            path="/admin/tools/serialization"
+            icon="folder_filled"
+            location={location}
+          />
         </AdminNavWrapper>
       }
     >

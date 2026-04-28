@@ -10,6 +10,7 @@ export * from "./UpsellHosting";
 export * from "./UpsellPerformanceTools";
 export * from "./UpsellPermissions";
 export * from "./UpsellSSO";
+export * from "./UpsellSerialization";
 export * from "./UpsellSessionTimeout";
 export * from "./UpsellUploads";
 export * from "./UpsellWhitelabel";
