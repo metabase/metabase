@@ -1593,5 +1593,11 @@ describe("issue 57685", () => {
 
   it("should handle empty column names without error (metabase#57685)", () => {
     cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+
+    H.tableInteractive().should("be.visible");
   });
 });
