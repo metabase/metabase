@@ -12,11 +12,11 @@
   :default    :main)
 
 (defsetting has-remappings-enabled
-  (deferred-tru "Whether the table remapping feature is available.")
+  (deferred-tru "Whether the table remapping feature is available on this instance. True on development (child) instances, false on main (parent) instances.")
   :type       :boolean
   :visibility :authenticated
   :export?    false
   :setter     :none
-  :getter     (fn [] true)
+  :getter     (fn [] (= (workspace-mode) :development))
   :audit      :never
   :doc        false)
