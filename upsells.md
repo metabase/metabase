@@ -94,23 +94,33 @@ These features are 100% gated to enterprise but have no upsell anywhere in the O
 - **`content_translation`** has no surface in OSS settings to anchor an upsell. Would need a new section in localization settings.
 - **`tenants`**, **`serialization`**, and **`admin_security_center`** would each justify a new nav item with an upsell page (similar to `DependenciesUpsellPage`). Lower priority because they're niche.
 
-## Newly added upsells (this PR)
+## Newly added upsells
 
-The following upsells are added in this change. Each follows the existing `UpsellBanner` / `UpsellCard` pattern, gates itself on the matching token feature, and is wired into the most natural existing OSS surface.
+Each upsell below follows the existing `UpsellBanner` / `UpsellCard` / `UpsellPill` pattern, gates itself on the matching token feature(s), and is wired into the most natural existing OSS surface. Each row corresponds to a separate commit.
+
+### Settings-page banners
 
 | Feature | Component | OSS surface |
 |---|---|---|
 | `email_allow_list` + `email_restrict_recipients` | `UpsellEmailRecipients` | [EmailSettingsPage.tsx](frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx) |
 | `session_timeout_config` + `disable_password_login` | `UpsellSessionTimeout` | [AuthenticationSettingsPage.tsx](frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx) |
 | `cache_preemptive` | `UpsellCachePreemptive` | [StrategyEditorForDatabases.tsx](frontend/src/metabase/admin/performance/components/StrategyEditorForDatabases.tsx) |
+| `database_routing` | `UpsellDatabaseRouting` | [DatabaseEditApp.tsx](frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx) |
+| `writable_connection` | `UpsellWritableConnection` | [DatabaseEditApp.tsx](frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx) |
 
-These are deliberately the easy wins: each wraps a single `UpsellBanner` in the established admin-upsells pattern, and each slots into a settings page where the corresponding feature gates already live (so there is real signal to the admin about what they would unlock).
+### Inline pills
 
-## Higher-effort opportunities (not in this PR)
+| Feature | Component | OSS surface |
+|---|---|---|
+| `content_verification` | `UpsellContentVerificationPill` | [QuestionInfoSidebar.tsx](frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx) |
+| `official_collections` | `UpsellOfficialCollectionsPill` | [CollectionInfoSidebar.tsx](frontend/src/metabase/collections/components/CollectionInfoSidebar/CollectionInfoSidebar.tsx) |
+| `snippet_collections` | `UpsellSnippetCollectionsPill` | [SnippetSidebar.jsx](frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.jsx) |
+| `ai_sql_fixer` + `ai_sql_generation` | `UpsellSqlFixerPill` | [VisualizationError.tsx](frontend/src/metabase/querying/components/QueryVisualization/VisualizationError/VisualizationError.tsx) |
 
-- `content_verification` upsell in the question info sidebar (requires a new `PLUGIN_MODERATION`-aware slot).
-- `official_collections` upsell in `CollectionInfoSidebar` (small, would benefit from a one-line gem pill rather than a banner).
-- `snippet_collections` pill in the snippet sidebar's "+" menu (needs JSX → TSX conversion of `SnippetSidebar.jsx`).
-- `database_routing` and `writable_connection` upsells in the database edit page (need to coordinate with the existing PLUGIN slots so OSS shows an upsell when the plugin returns null).
-- Full upsell pages for `serialization`, `tenants`, and `admin_security_center` (each would be a new admin nav item + `BaseUpsellPage`-style route).
-- Metabot / AI surfacing in the SQL editor (requires net-new UI affordance to attach to).
+### Full upsell pages (new admin routes)
+
+| Feature | Page | Nav location |
+|---|---|---|
+| `serialization` | `SerializationUpsell` at `/admin/tools/serialization` | Tools sidebar |
+| `tenants` | `TenantsUpsell` at `/admin/people/tenants-upsell` | People sidebar |
+| `admin_security_center` | `SecurityCenterUpsell` at `/admin/tools/security-center` | Tools sidebar |
