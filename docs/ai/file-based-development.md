@@ -1,17 +1,17 @@
 ---
-title: File-based development
+title: Agent-driven development
 summary: "Use an agent with skills to create Metabase content on your local machine as YAML files, then upload the files to your Metabase."
 ---
 
-# File-based development
+# Agent-driven development
 
 {% include plans-blockquote.html feature="File-based development" %}
 
-Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files directly, but you can also just throw an agent at them.
+Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files by hand, sure, but now that we have actual genies, you can just ask them to edit them for you (call it "lamp-rubbing development").
 
-Paired with some skills we've developed, you can ask your agent to build new questions and dashboards as YAML files, then import that new content into your Metabase. This file-based development flow opens up a whole new way to work with your Metabase.
+Paired with some skills we've developed, you can export your Metabase as YAML files, ask your agent to create new questions and dashboards YAML files, then import that new content into your Metabase. It's a whole new way to work with Metabase.
 
-## The file-based toolkit
+## The agent-driven development toolkit
 
 To develop your Metabase content on your local filesystem, we've put together a set of tools, including a set of agent skills.
 
