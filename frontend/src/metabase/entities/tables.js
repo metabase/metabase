@@ -347,8 +347,6 @@ export const Tables = createEntity({
 
     return state;
   },
-  objectSelectors: {},
-
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
     // these unfiltered selectors include hidden tables/fields for display in the admin panel

@@ -9,10 +9,7 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections/utils";
+import { getCollectionType } from "metabase/entities/collections/utils";
 import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -171,11 +168,6 @@ export const Dashboards = createEntity({
       return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
-  },
-
-  objectSelectors: {
-    getCollection: (dashboard) =>
-      dashboard && normalizedCollection(dashboard.collection),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

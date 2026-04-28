@@ -4,4 +4,4 @@ import type { IconComponentProps } from "./ItemIcon";
 
 export const isWrappedResult = (
   item: IconComponentProps["item"],
-): item is WrappedResult => item && "getIcon" in item;
+): item is WrappedResult => !!item && "archived" in item;

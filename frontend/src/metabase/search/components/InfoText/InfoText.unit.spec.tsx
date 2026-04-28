@@ -77,14 +77,10 @@ async function setup({
   });
   setupUserRecipientsEndpoint({ users: [MOCK_USER, MOCK_OTHER_USER] });
 
-  const result = createSearchResult({ model, ...resultProps });
-
-  const getCollection = jest.fn(() => result.collection);
-
-  const wrappedResult: WrappedResult = {
-    ...result,
-    getCollection,
-  };
+  const wrappedResult: WrappedResult = createSearchResult({
+    model,
+    ...resultProps,
+  });
 
   renderWithProviders(
     <InfoText result={wrappedResult} isCompact={isCompact} />,
@@ -98,10 +94,6 @@ async function setup({
 
   // await waitforAssetLinkLoadingTextToBeRemoved()
   await waitForLoadingTextToBeRemoved();
-
-  return {
-    getCollection,
-  };
 }
 
 describe("InfoText", () => {
