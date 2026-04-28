@@ -2,6 +2,7 @@ export * from "./UpsellBetterSupport";
 export * from "./UpsellCacheConfig";
 export * from "./UpsellCachePreemptive";
 export * from "./UpsellCloud";
+export * from "./UpsellDatabaseRouting";
 export * from "./UpsellEmailRecipients";
 export * from "./UpsellEmailWhitelabel";
 export * from "./UpsellEmbeddingTheme";

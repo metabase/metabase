@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { UpsellDatabaseRouting } from "metabase/admin/upsells";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
@@ -139,6 +140,8 @@ function DatabaseEditAppInner({
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
                     database={database}
                   />
+
+                  <UpsellDatabaseRouting location="database-edit-routing" />
 
                   <DatabaseDangerZoneSection
                     isAdmin={isAdmin}
