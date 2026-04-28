@@ -231,6 +231,9 @@
                     (lib/query meta/metadata-provider)
                     (sql.qp/mbql->native :h2))))))))
 
+(defn- join->mbql5 [join]
+  (-> join (#'lib.util/join->pipeline) lib.convert/->mbql5))
+
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
     (mt/with-metadata-provider meta/metadata-provider
@@ -240,20 +243,18 @@
                 [:=
                  (h2x/with-database-type-info (h2x/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                  (h2x/identifier :field "card" "id")]]
-               (->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                     :alias        "card"
-                     :strategy     :left-join
-                     :condition    [:=
-                                    [:field %venue-id {::add/source-table $$checkins
-                                                       ::add/source-alias "VENUE_ID"}]
-                                    [:field "id" {:join-alias        "card"
-                                                  :base-type         :type/Integer
-                                                  ::add/source-table "card"
-                                                  ::add/source-alias "id"}]]}
-                    (lib.tu.macros/$ids checkins)
-                    (#'lib.util/join->pipeline)
-                    (lib.convert/->mbql5)
-                    (sql.qp/join->honeysql :h2))))))))
+               (cond->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                         :alias        "card"
+                         :strategy     :left-join
+                         :condition    [:=
+                                        [:field (meta/id :checkins :venue-id) {::add/source-table (meta/id :checkins)
+                                                                               ::add/source-alias "VENUE_ID"}]
+                                        [:field "id" {:join-alias        "card"
+                                                      :base-type         :type/Integer
+                                                      ::add/source-table "card"
+                                                      ::add/source-alias "id"}]]}
+                 (isa? driver/hierarchy :h2 :sql-mbql5) (join->mbql5)
+                 :always (sql.qp/join->honeysql :h2))))))))
 
 (defn- compile-join [driver]
   (driver/with-driver driver
@@ -268,9 +269,9 @@
                                                         ::add/source-table "card"
                                                         ::add/source-alias "id"}]]}
                    (isa? driver/hierarchy driver :sql-mbql5)
-                   ((comp lib.convert/->mbql5 #'lib.util/join->pipeline))
+                   (join->mbql5)
 
-                   true  (sql.qp/join->honeysql driver))]
+                   :always (sql.qp/join->honeysql driver))]
         (sql.qp/format-honeysql driver {:join join})))))
 
 ;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs
