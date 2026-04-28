@@ -16,12 +16,20 @@ import { PAGE_SIZE, urlStateConfig } from "./utils";
 
 export function ConversationsPage({ location }: WithRouterProps) {
   const [
-    { page, sort_column, sort_direction, date, user, group },
+    { page, sort_column, sort_direction, date, user, group, tenant },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
   const sortingOptions = { sort_column, sort_direction };
-  const { userOptions, groupOptions } = useFilterOptions();
+  const {
+    userId,
+    groupId,
+    tenantId,
+    userOptions,
+    groupOptions,
+    tenantOptions,
+    hasTenants,
+  } = useFilterOptions({ date, user, group, tenant });
 
   const {
     data: conversationsData,
@@ -33,7 +41,10 @@ export function ConversationsPage({ location }: WithRouterProps) {
       offset: page * PAGE_SIZE,
       "sort-by": sort_column,
       "sort-dir": sort_direction,
-      "user-id": user ? parseInt(user, 10) : undefined,
+      "user-id": userId,
+      "group-id": groupId,
+      "tenant-id": tenantId,
+      date: date ?? undefined,
     },
     { refetchOnMountOrArgChange: true },
   );
@@ -59,8 +70,12 @@ export function ConversationsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+            tenant={tenant}
+            onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
             userOptions={userOptions}
             groupOptions={groupOptions}
+            tenantOptions={tenantOptions}
+            hasTenants={hasTenants}
           />
         </Flex>
 

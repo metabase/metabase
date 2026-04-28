@@ -1,29 +1,108 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
+import { useMemo } from "react";
+import { t } from "ttag";
 
-import { BreakoutChart } from "./BreakoutChart";
-import { type UsageStatsMetric, getChartTitle } from "./query-utils";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  metric: UsageStatsMetric;
-  viewName?: string;
-  onDimensionClick?: (value: unknown) => void;
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
+
+import { BreakoutChartCard } from "./BreakoutChartCard";
+import { toBreakoutRawSeries } from "./breakout-raw-series";
+import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
+import type { ChartInnerProps, ChartProps } from "./types";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Conversations by source`;
+  },
+  get messages() {
+    return t`Messages by source`;
+  },
+  get tokens() {
+    return t`Tokens by source`;
+  },
 };
 
 export function ConversationsBySourceChart({
-  dateFilter,
-  metric,
-  viewName,
-  onDimensionClick,
-}: Props) {
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
   return (
-    <BreakoutChart
-      dateFilter={dateFilter}
-      breakoutColumn="source"
-      title={getChartTitle(metric, "source")}
+    <ConversationsBySourceChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsBySourceChartInner({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+  metric,
+  onDimensionClick,
+  h,
+}: ChartInnerProps) {
+  const query = useMemo(
+    () =>
+      buildSourceBreakoutQuery({
+        provider,
+        table,
+        groupMembersTable,
+        dateFilter,
+        userId,
+        groupId,
+        tenantId,
+        metric,
+        breakoutColumn: "source",
+      }),
+    [
+      provider,
+      table,
+      groupMembersTable,
+      dateFilter,
+      userId,
+      groupId,
+      tenantId,
+      metric,
+    ],
+  );
+
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
+
+  const rawSeries = useMemo(
+    () =>
+      toBreakoutRawSeries(data, jsQuery, {
+        metric,
+        display: "bar",
+        maxCategories: 8,
+        otherLabel: t`Other`,
+        getColor: themeColor,
+      }),
+    [data, jsQuery, metric, themeColor],
+  );
+
+  return (
+    <BreakoutChartCard
+      title={TITLES[metric]}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
       display="bar"
-      metric={metric}
-      viewName={viewName}
+      h={h}
+      otherLabel={t`Other`}
       onDimensionClick={onDimensionClick}
     />
   );

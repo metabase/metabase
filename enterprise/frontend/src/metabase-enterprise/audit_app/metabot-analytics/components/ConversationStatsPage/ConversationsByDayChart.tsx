@@ -1,142 +1,225 @@
-import cx from "classnames";
+import dayjs from "dayjs";
 import { useMemo } from "react";
+import { t } from "ttag";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
-import { Card, Skeleton, Text } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
-import type { ClickActionsMode } from "metabase/visualizations/types";
+import { Skeleton, useMantineTheme } from "metabase/ui";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import { createMockCard } from "metabase-types/api/mocks";
 
-import { VIEW_CONVERSATIONS } from "../../constants";
-import { useAuditTable } from "../../hooks/useAuditTable";
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
-import S from "./ChartCard.module.css";
+import { BreakoutChartCard } from "./BreakoutChartCard";
 import {
+  type GetColor,
+  type StatsFilters,
   type UsageStatsMetric,
   applyDateFilter,
+  applyIdFilter,
   applyUsageStatsAggregation,
   findColumn,
-  getChartTitle,
   getMetricSeriesSettings,
-  isSingleDayFilter,
+  joinGroupMembers,
 } from "./query-utils";
+import type { ChartDataSources, ChartInnerProps, ChartProps } from "./types";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  metric: UsageStatsMetric;
-  viewName?: string;
-  onDimensionClick?: (value: unknown) => void;
-};
+type BucketName = "day" | "hour";
 
-const CLICKABLE_MODE: ClickActionsMode = {
-  actionsForClick: () => [{ name: "custom-click" } as any],
+export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
+  if (dateFilter.type === "relative") {
+    return dateFilter.unit === "day" && Math.abs(dateFilter.value) <= 1;
+  }
+  if (dateFilter.type === "specific" && !dateFilter.hasTime) {
+    const { operator, values } = dateFilter;
+    if (operator === "=") {
+      return true;
+    }
+    if (operator === "between") {
+      return dayjs(values[0]).isSame(values[1], "day");
+    }
+  }
+  return false;
+}
+
+const TITLES: Record<BucketName, Record<UsageStatsMetric, string>> = {
+  day: {
+    get conversations() {
+      return t`Conversations by day`;
+    },
+    get messages() {
+      return t`Messages by day`;
+    },
+    get tokens() {
+      return t`Tokens by day`;
+    },
+  },
+  hour: {
+    get conversations() {
+      return t`Conversations by hour`;
+    },
+    get messages() {
+      return t`Messages by hour`;
+    },
+    get tokens() {
+      return t`Tokens by hour`;
+    },
+  },
 };
 
 export function ConversationsByDayChart({
-  dateFilter,
-  metric,
-  viewName = VIEW_CONVERSATIONS,
-  onDimensionClick,
-}: Props) {
-  const { provider, table } = useAuditTable(viewName);
-
-  const bucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
-
-  const query = useMemo(() => {
-    if (!provider || !table) {
-      return null;
-    }
-    let q = Lib.queryFromTableOrCardMetadata(provider, table);
-
-    q = applyDateFilter(q, dateFilter);
-    const { query: aggregated } = applyUsageStatsAggregation(q, metric);
-    q = aggregated;
-
-    const createdAtCol = findColumn(q, "created_at", Lib.breakoutableColumns);
-    if (createdAtCol) {
-      const buckets = Lib.availableTemporalBuckets(q, 0, createdAtCol);
-      const matchedBucket = buckets.find((bucket) => {
-        const info = Lib.displayInfo(q, 0, bucket);
-        return info.shortName === bucketName;
-      });
-      const bucketed = matchedBucket
-        ? Lib.withTemporalBucket(createdAtCol, matchedBucket)
-        : createdAtCol;
-      q = Lib.breakout(q, 0, bucketed);
-    }
-
-    return q;
-  }, [provider, table, dateFilter, metric, bucketName]);
-
-  const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
-
-  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? ({} as any), {
-    skip: !jsQuery,
-  });
-
-  const rawSeries = useMemo(() => {
-    if (!data?.data || !jsQuery) {
-      return null;
-    }
-    const cols = data.data.cols as Array<{ source?: string; name?: string }>;
-    const aggregationColumnNames = cols
-      .filter((c) => c.source === "aggregation")
-      .map((c) => c.name ?? "");
-    const isMultiSeriesTokens =
-      metric === "tokens" && aggregationColumnNames.length === 2;
-    return [
-      {
-        card: createMockCard({
-          dataset_query: jsQuery as any,
-          display: isMultiSeriesTokens ? "line" : "area",
-          visualization_settings: {
-            "graph.x_axis.scale": "timeseries",
-            "graph.x_axis.title_text": "",
-            "graph.y_axis.title_text": "",
-            "line.interpolate": "cardinal",
-            "line.marker_enabled": false,
-            ...getMetricSeriesSettings(metric, aggregationColumnNames, {
-              dualAxis: true,
-            }),
-          },
-        }),
-        data: data.data,
-      },
-    ];
-  }, [data, jsQuery, metric]);
-
-  if (isFetching || !rawSeries) {
-    return <Skeleton h={350} />;
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
   }
+  return (
+    <ConversationsByDayChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsByDayChartInner({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+  metric,
+  onDimensionClick,
+  h,
+}: ChartInnerProps) {
+  const bucketName: BucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
+
+  const query = useMemo(
+    () =>
+      buildTimeseriesBreakoutQuery({
+        provider,
+        table,
+        groupMembersTable,
+        dateFilter,
+        userId,
+        groupId,
+        tenantId,
+        metric,
+        bucketName,
+      }),
+    [
+      provider,
+      table,
+      groupMembersTable,
+      dateFilter,
+      userId,
+      groupId,
+      tenantId,
+      metric,
+      bucketName,
+    ],
+  );
+
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
+
+  const rawSeries = useMemo(
+    () => toTimeseriesRawSeries(data, jsQuery, metric, themeColor),
+    [data, jsQuery, metric, themeColor],
+  );
 
   return (
-    <Card
-      className={cx(S.visualization, {
-        [S.nonClickable]: !onDimensionClick,
-      })}
-      withBorder
-      shadow="none"
-      px="lg"
-      pt="md"
-      pb="0"
-      h={350}
-    >
-      <Text fw="bold" mb="md">
-        {getChartTitle(metric, bucketName)}
-      </Text>
-      <Visualization
-        rawSeries={rawSeries}
-        isDashboard
-        mode={onDimensionClick ? CLICKABLE_MODE : undefined}
-        handleVisualizationClick={(clicked: any) => {
-          const value = clicked?.dimensions?.[0]?.value;
-          if (value != null && onDimensionClick) {
-            onDimensionClick(value);
-          }
-        }}
-      />
-    </Card>
+    <BreakoutChartCard
+      title={TITLES[bucketName][metric]}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
+      display="area"
+      h={h}
+      otherLabel={t`Other`}
+      onDimensionClick={onDimensionClick}
+    />
   );
+}
+
+type BuildQueryOpts = StatsFilters &
+  ChartDataSources & { bucketName: BucketName };
+
+function buildTimeseriesBreakoutQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+  metric,
+  bucketName,
+}: BuildQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
+  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
+  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
+  q = applyUsageStatsAggregation(q, metric);
+  q = breakoutByCreatedAtBucket(q, bucketName);
+  return q;
+}
+
+function breakoutByCreatedAtBucket(
+  query: Query,
+  bucketName: BucketName,
+): Query {
+  const col = findColumn(query, "created_at", Lib.breakoutableColumns);
+  if (!col) {
+    return query;
+  }
+  const bucket = Lib.availableTemporalBuckets(query, 0, col).find((b) => {
+    return Lib.displayInfo(query, 0, b).shortName === bucketName;
+  });
+  const bucketed = bucket ? Lib.withTemporalBucket(col, bucket) : col;
+  return Lib.breakout(query, 0, bucketed);
+}
+
+function toTimeseriesRawSeries(
+  data: ReturnType<typeof useAdhocBreakoutQuery>["data"],
+  jsQuery: ReturnType<typeof useAdhocBreakoutQuery>["jsQuery"],
+  metric: UsageStatsMetric,
+  getColor: GetColor,
+) {
+  if (!data?.data || !jsQuery) {
+    return null;
+  }
+
+  const aggregationColumnNames = data.data.cols
+    .filter((c) => c.source === "aggregation")
+    .map((c) => c.name);
+  const isMultiSeriesTokens =
+    metric === "tokens" && aggregationColumnNames.length === 2;
+
+  return [
+    {
+      data: data.data,
+      card: {
+        dataset_query: jsQuery,
+        display: isMultiSeriesTokens ? "line" : "area",
+        visualization_settings: {
+          "graph.x_axis.scale": "timeseries",
+          "graph.x_axis.title_text": "",
+          "graph.y_axis.title_text": "",
+          "line.interpolate": "cardinal",
+          ...getMetricSeriesSettings(metric, getColor, aggregationColumnNames, {
+            dualAxis: true,
+          }),
+        },
+      },
+    },
+  ];
 }

@@ -1,34 +1,26 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
-
-import {
-  getMetricSeriesSettings,
-  getViewForMetric,
-  isSingleDayFilter,
-} from "./query-utils";
-
-describe("getViewForMetric", () => {
-  it("routes the tokens metric to v_ai_usage_log", () => {
-    expect(getViewForMetric("tokens")).toBe(VIEW_USAGE_LOG);
-  });
-
-  it("routes conversations and messages to v_metabot_conversations", () => {
-    expect(getViewForMetric("conversations")).toBe(VIEW_CONVERSATIONS);
-    expect(getViewForMetric("messages")).toBe(VIEW_CONVERSATIONS);
-  });
-});
+import { isSingleDayFilter } from "./ConversationsByDayChart";
+import { excludeAllUsersGroup } from "./ConversationsByGroupChart";
+import { applyIdFilter, getMetricSeriesSettings } from "./query-utils";
 
 describe("getMetricSeriesSettings", () => {
+  const getColor = (name: string) => `#${name}`;
+
   it("returns two-series config for tokens with both aggregation columns, no stacking, dual axis on opt-in", () => {
-    const grouped = getMetricSeriesSettings("tokens", ["sum", "sum_2"]);
+    const grouped = getMetricSeriesSettings("tokens", getColor, [
+      "sum",
+      "sum_2",
+    ]);
     expect(grouped["graph.metrics"]).toEqual(["sum", "sum_2"]);
     expect(grouped.series_settings?.sum?.title).toMatch(/input/i);
     expect(grouped.series_settings?.sum_2?.title).toMatch(/output/i);
     expect(grouped.series_settings?.sum?.axis).toBeUndefined();
     expect(grouped.series_settings?.sum_2?.axis).toBeUndefined();
 
-    const dual = getMetricSeriesSettings("tokens", ["sum", "sum_2"], {
+    const dual = getMetricSeriesSettings("tokens", getColor, ["sum", "sum_2"], {
       dualAxis: true,
     });
     expect(dual.series_settings?.sum?.axis).toBe("left");
@@ -36,7 +28,7 @@ describe("getMetricSeriesSettings", () => {
   });
 
   it("falls back to single-series settings otherwise", () => {
-    const settings = getMetricSeriesSettings("conversations");
+    const settings = getMetricSeriesSettings("conversations", getColor);
     expect(settings["graph.metrics"]).toBeUndefined();
     expect(settings.series_settings).toHaveProperty("count");
   });
@@ -167,5 +159,57 @@ describe("isSingleDayFilter", () => {
       values: [1],
     };
     expect(isSingleDayFilter(value)).toBe(false);
+  });
+});
+
+describe("applyIdFilter", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when id is undefined", () => {
+    const q = baseQuery();
+    const result = applyIdFilter(q, "user_id", undefined);
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("adds an equality filter on the named column when present (Orders.USER_ID matches case-insensitively)", () => {
+    const q = baseQuery();
+    const result = applyIdFilter(q, "user_id", 42);
+    const [clause, ...rest] = Lib.filters(result, 0);
+    expect(rest).toHaveLength(0);
+    const parts = Lib.numberFilterParts(result, 0, clause);
+    expect(parts?.operator).toBe("=");
+    expect(parts?.values).toEqual([42]);
+  });
+
+  it("is a no-op when the column cannot be found on the query", () => {
+    const q = baseQuery();
+    const result = applyIdFilter(q, "column_that_does_not_exist", 42);
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("excludeAllUsersGroup", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
+    const result = excludeAllUsersGroup(baseQuery());
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("adds a != 1 filter on group_id when the column is present", () => {
+    const queryWithGroupId = Lib.expression(
+      baseQuery(),
+      0,
+      "group_id",
+      Lib.expressionClause(1),
+    );
+    const result = excludeAllUsersGroup(queryWithGroupId);
+    const [clause, ...rest] = Lib.filters(result, 0);
+    expect(rest).toHaveLength(0);
+    const parts = Lib.numberFilterParts(result, 0, clause);
+    expect(parts?.operator).toBe("!=");
+    expect(parts?.values).toEqual([1]);
   });
 });

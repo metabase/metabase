@@ -1,35 +1,113 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { DateFilterValue } from "metabase/querying/common/types";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
-import { BreakoutChart } from "./BreakoutChart";
-import { type UsageStatsMetric, getChartTitle } from "./query-utils";
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  metric: UsageStatsMetric;
-  viewName?: string;
-  onDimensionClick?: (value: unknown) => void;
-  h?: number;
+import { BreakoutChartCard } from "./BreakoutChartCard";
+import {
+  mapBreakoutDimension,
+  toBreakoutRawSeries,
+} from "./breakout-raw-series";
+import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
+import type { ChartInnerProps, ChartProps } from "./types";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`IP addresses with most conversations`;
+  },
+  get messages() {
+    return t`IP addresses with most messages`;
+  },
+  get tokens() {
+    return t`IP addresses with most tokens`;
+  },
 };
 
 export function ConversationsByIPAddressChart({
+  provider,
+  table,
+  groupMembersTable,
+  h = 350,
+  ...rest
+}: ChartProps) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
+  return (
+    <ConversationsByIPAddressChartInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...rest}
+    />
+  );
+}
+
+function ConversationsByIPAddressChartInner({
+  provider,
+  table,
+  groupMembersTable,
   dateFilter,
+  userId,
+  groupId,
+  tenantId,
   metric,
-  viewName,
   onDimensionClick,
   h,
-}: Props) {
+}: ChartInnerProps) {
+  const query = useMemo(
+    () =>
+      buildSourceBreakoutQuery({
+        provider,
+        table,
+        groupMembersTable,
+        dateFilter,
+        userId,
+        groupId,
+        tenantId,
+        metric,
+        breakoutColumn: "ip_address",
+      }),
+    [
+      provider,
+      table,
+      groupMembersTable,
+      dateFilter,
+      userId,
+      groupId,
+      tenantId,
+      metric,
+    ],
+  );
+
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
+
+  const rawSeries = useMemo(() => {
+    const labeledData = mapBreakoutDimension(data, (value) =>
+      value == null ? t`Unknown` : value,
+    );
+    return toBreakoutRawSeries(labeledData, jsQuery, {
+      metric,
+      display: "row",
+      maxCategories: 8,
+      otherLabel: t`Other`,
+      getColor: themeColor,
+    });
+  }, [data, jsQuery, metric, themeColor]);
+
   return (
-    <BreakoutChart
-      dateFilter={dateFilter}
-      breakoutColumn="ip_address"
-      title={getChartTitle(metric, "ip_address")}
-      metric={metric}
-      viewName={viewName}
-      onDimensionClick={onDimensionClick}
+    <BreakoutChartCard
+      title={TITLES[metric]}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
+      display="row"
       h={h}
-      nullLabel={t`Unknown`}
+      otherLabel={t`Other`}
+      onDimensionClick={onDimensionClick}
     />
   );
 }

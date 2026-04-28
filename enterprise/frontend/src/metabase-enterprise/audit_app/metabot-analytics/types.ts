@@ -36,6 +36,9 @@ export type ConversationsRequest = {
   limit?: number;
   offset?: number;
   "user-id"?: number;
+  "group-id"?: number;
+  "tenant-id"?: number;
+  date?: string;
   "sort-by"?: ConversationSortColumn;
   "sort-dir"?: "asc" | "desc";
 };

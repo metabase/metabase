@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -6,11 +6,15 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
+import {
+  VIEW_CONVERSATIONS,
+  VIEW_GROUP_MEMBERS,
+  VIEW_USAGE_LOG,
+} from "../../constants";
+import { useAuditTable } from "../../hooks/useAuditTable";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import {
   type UrlState as ConversationsUrlState,
@@ -23,38 +27,42 @@ import { ConversationsByGroupChart } from "./ConversationsByGroupChart";
 import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
 import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
 import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
+import { ConversationsByTenantChart } from "./ConversationsByTenantChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
-import { type UsageStatsMetric, getViewForMetric } from "./query-utils";
+import type { UsageStatsMetric } from "./query-utils";
+import type { ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
-
-const DEFAULT_DATE_FILTER: DateFilterValue = {
-  type: "relative",
-  value: -30,
-  unit: "day",
-  options: { includeCurrent: true },
-};
 
 export function ConversationStatsPage({ location }: WithRouterProps) {
   const dispatch = useDispatch();
-  const [{ date, user, group, metric }, { patchUrlState }] = useUrlState(
-    location,
-    statsUrlStateConfig,
-  );
+  const [{ date, user, group, tenant, metric }, { patchUrlState }] =
+    useUrlState(location, statsUrlStateConfig);
 
-  const dateFilter: DateFilterValue = useMemo(() => {
-    if (!date) {
-      return DEFAULT_DATE_FILTER;
-    }
-    const parsed = deserializeDateParameterValue(date);
-    if (parsed && "type" in parsed) {
-      return parsed as DateFilterValue;
-    }
-    return DEFAULT_DATE_FILTER;
-  }, [date]);
+  const {
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+    userOptions,
+    groupOptions,
+    tenantOptions,
+    hasTenants,
+  } = useFilterOptions({ date, user, group, tenant });
 
-  const { userOptions, groupOptions } = useFilterOptions();
+  const conversationsAudit = useAuditTable(VIEW_CONVERSATIONS);
+  const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
+  const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
-  const viewName = getViewForMetric(metric);
+  const sharedChartProps: ChartProps = {
+    provider: conversationsAudit.provider,
+    table: metric === "tokens" ? usageLogAudit.table : conversationsAudit.table,
+    groupMembersTable: groupMembersAudit.table,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+    metric,
+  };
 
   const navigateToConversations = useCallback(
     (filterOverrides: Partial<ConversationsUrlState>) => {
@@ -68,12 +76,13 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             date,
             user,
             group,
+            tenant,
             ...filterOverrides,
           }),
         }),
       );
     },
-    [dispatch, date, user, group],
+    [dispatch, date, user, group, tenant],
   );
 
   const handleDayClick = useCallback(
@@ -116,8 +125,12 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val })}
+            tenant={tenant}
+            onTenantChange={(val) => patchUrlState({ tenant: val })}
             userOptions={userOptions}
             groupOptions={groupOptions}
+            tenantOptions={tenantOptions}
+            hasTenants={hasTenants}
           />
         </Flex>
 
@@ -143,45 +156,30 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         </Tabs>
 
         <ConversationsByDayChart
-          dateFilter={dateFilter}
-          metric={metric}
-          viewName={viewName}
+          {...sharedChartProps}
           onDimensionClick={handleDayClick}
         />
 
         <SimpleGrid cols={2} spacing="lg">
-          <ConversationsBySourceChart
-            dateFilter={dateFilter}
-            metric={metric}
-            viewName={viewName}
-          />
-          <ConversationsByProfileBarChart
-            dateFilter={dateFilter}
-            metric={metric}
-            viewName={viewName}
-          />
+          <ConversationsBySourceChart {...sharedChartProps} />
+          <ConversationsByProfileBarChart {...sharedChartProps} />
         </SimpleGrid>
 
-        <SimpleGrid cols={3} spacing="lg">
-          <ConversationsByGroupChart
-            dateFilter={dateFilter}
-            metric={metric}
-            viewName={viewName}
-            h={500}
-          />
+        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
+          {hasTenants && (
+            <ConversationsByTenantChart
+              {...sharedChartProps}
+              tenantOptions={tenantOptions}
+              h={500}
+            />
+          )}
+          <ConversationsByGroupChart {...sharedChartProps} h={500} />
           <ConversationsByUserChart
-            dateFilter={dateFilter}
-            metric={metric}
-            viewName={viewName}
+            {...sharedChartProps}
             onDimensionClick={handleUserClick}
             h={500}
           />
-          <ConversationsByIPAddressChart
-            dateFilter={dateFilter}
-            metric={metric}
-            viewName={viewName}
-            h={500}
-          />
+          <ConversationsByIPAddressChart {...sharedChartProps} h={500} />
         </SimpleGrid>
       </SettingsPageWrapper>
     </MetabotAdminLayout>

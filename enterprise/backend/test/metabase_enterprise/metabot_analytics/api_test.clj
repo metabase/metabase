@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-analytics.api-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase.slackbot.api :as slackbot.api]
    [metabase.test :as mt]
@@ -205,6 +206,61 @@
     (fn [{:keys [response-path]}]
       (is (some? (:errors (mt/user-http-request :crowberto :get 400
                                                 (format "%s&sort-by=drop_table" response-path))))))))
+
+(defn- with-filters-fixture!
+  [thunk]
+  (mt/with-premium-features #{:audit-app :tenants}
+    (mt/with-temp [:model/Tenant                     {tenant-a :id} {}
+                   :model/Tenant                     {tenant-b :id} {}
+                   :model/User                       {user-a :id}   {:email     "metabot-analytics-filters-a@metabase.com"
+                                                                     :tenant_id tenant-a}
+                   :model/User                       {user-b :id}   {:email     "metabot-analytics-filters-b@metabase.com"
+                                                                     :tenant_id tenant-b}
+                   :model/PermissionsGroup           {group-id :id} {:name "Metabot analytics filters"}
+                   :model/PermissionsGroupMembership _              {:user_id user-a :group_id group-id}]
+      (let [convo-1 (str (random-uuid))
+            convo-2 (str (random-uuid))
+            convo-3 (str (random-uuid))]
+        (try
+          (insert-conversation! {:conversation-id convo-1 :user-id user-a
+                                 :created-at (offset-date-time "2026-01-01T00:00:00Z")})
+          (insert-conversation! {:conversation-id convo-2 :user-id user-a
+                                 :created-at (offset-date-time "2026-01-02T00:00:00Z")})
+          (insert-conversation! {:conversation-id convo-3 :user-id user-b
+                                 :created-at (offset-date-time "2026-01-03T00:00:00Z")})
+          (thunk {:base-path   "ee/metabot-analytics/conversations"
+                  :group-id    group-id
+                  :tenant-a-id tenant-a
+                  :user-a-id   user-a
+                  :convo-1     convo-1
+                  :convo-2     convo-2
+                  :convo-3     convo-3})
+          (finally
+            (delete-conversations! [convo-1 convo-2 convo-3])))))))
+
+(deftest list-conversations-filter-test
+  (with-filters-fixture!
+    (fn [{:keys [base-path group-id tenant-a-id user-a-id convo-1 convo-2 convo-3]}]
+      (let [seeded      #{convo-1 convo-2 convo-3}
+            request-ids (fn [query-string]
+                          (->> (str base-path "?" query-string)
+                               (mt/user-http-request :crowberto :get 200)
+                               :data
+                               (into #{} (map :conversation_id))
+                               (set/intersection seeded)))]
+        (testing "date narrows to the half-open [start, end) window"
+          (is (= #{convo-1 convo-2} (request-ids "date=2026-01-01~2026-01-02"))))
+        (testing "group-id narrows to conversations owned by group members"
+          (is (= #{convo-1 convo-2} (request-ids (str "group-id=" group-id)))))
+        (testing "group-id=1 (All Users) is treated as no-filter"
+          (is (= #{convo-1 convo-2 convo-3} (request-ids "group-id=1"))))
+        (testing "tenant-id narrows to conversations owned by users in that tenant"
+          (is (= #{convo-1 convo-2} (request-ids (str "tenant-id=" tenant-a-id)))))
+        (testing "filters compose: group-id + user-id + date narrow cumulatively"
+          (is (= #{convo-1} (request-ids (format "group-id=%d&user-id=%d&date=2026-01-01~2026-01-01"
+                                                 group-id user-a-id)))))
+        (testing "malformed date returns 400"
+          (mt/user-http-request :crowberto :get 400 (str base-path "?date=not-a-real-range")))))))
 
 (deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}
