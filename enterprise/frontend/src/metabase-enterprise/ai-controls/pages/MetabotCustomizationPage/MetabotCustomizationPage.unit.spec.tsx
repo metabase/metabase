@@ -46,6 +46,9 @@ describe("MetabotCustomizationPage", () => {
       screen.queryByRole("button", { name: /Remove custom icon/ }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Metabot illustrations")).not.toBeInTheDocument();
+    expect(
+      screen.queryByAltText("Metabot illustration preview"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the remove button and illustrations toggle when a custom icon is set", async () => {
@@ -56,6 +59,9 @@ describe("MetabotCustomizationPage", () => {
       screen.getByRole("button", { name: /Remove custom icon/ }),
     ).toBeInTheDocument();
     expect(screen.getByText("Metabot illustrations")).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Metabot illustration preview"),
+    ).toBeInTheDocument();
   });
 
   it("shows the custom icon preview image when a custom icon is set", async () => {
