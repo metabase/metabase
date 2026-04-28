@@ -11,6 +11,8 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private fixture-1-dir
   "enterprise/backend/test_resources/data_complexity_score/complexity_fixture_1")
 
@@ -48,7 +50,10 @@
                 :metabot-source    :universe-fallback}
                (:meta result)))))))
 
-(deftest ^:parallel run-cli-writes-readable-edn-to-output-file-test
+(deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
+  ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
+  ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
+  ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
   (testing "--output path gets a readable EDN dump of the same result"
     (let [tmp (doto (java.io.File/createTempFile "complexity-cli-output-" ".edn") .deleteOnExit)]
       ;; Call internals instead of -main, which terminates the JVM via System/exit.
