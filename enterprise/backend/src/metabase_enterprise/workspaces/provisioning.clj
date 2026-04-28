@@ -40,7 +40,10 @@
               ws-details  (merge workspace init-result)
               schemas     (mapv (fn [s] {:schema s}) (:input_schemas wsd))]
           (try
-            (driver/grant-workspace-read-access! driver db ws-details schemas)
+            ;; HACK: temporarily disabled — the multimethod contract requires
+            ;; tables (with :schema and :name), but we only have schemas here.
+            #_(driver/grant-workspace-read-access! driver db ws-details schemas)
+            (identity schemas)
             (catch Throwable t
               (driver/destroy-workspace-isolation! driver db ws-details)
               (throw t)))
