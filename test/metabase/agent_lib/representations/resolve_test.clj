@@ -210,3 +210,57 @@
       (is false "expected throw")
       (catch clojure.lang.ExceptionInfo e
         (is (= :unknown-database (:error (ex-data e))))))))
+
+;;; ============================================================
+;;; Extended source-field variants (step 12)
+;;;
+;;; The resolver itself does no special handling: `source-field-name` and
+;;; `source-field-join-alias` are plain strings that pass through `import-mbql` untouched and
+;;; are keywordized by `lib.normalize`. Documented here so a future change to either layer
+;;; that breaks the propagation is caught by a single explicit test.
+;;; ============================================================
+
+(deftest extended-source-field-variants-pass-through-test
+  (testing "source-field-name (multi-stage previous-stage column ref) is preserved as a string"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                              {"lib/type" "mbql.stage/mbql"
+                               "fields"   [["field"
+                                            {"base-type"         "type/Text"
+                                             "source-field-name" "PRODUCT_ID"}
+                                            "CATEGORY"]]}]}
+          out (repr.resolve/resolve-query mp parsed)
+          field-clause (get-in out [:stages 1 :fields 0])
+          opts         (nth field-clause 1)]
+      (is (schema-valid? out))
+      (is (= "PRODUCT_ID" (:source-field-name opts)))
+      (is (= "CATEGORY" (nth field-clause 2))
+          "the field clause's third slot stays the cross-stage column name (a string)")))
+  (testing "source-field-join-alias (FK column lives on an explicitly-joined table) is preserved as a string"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "joins"        [{"lib/type"   "mbql/join"
+                                                "alias"      "Orders_A"
+                                                "strategy"   "left-join"
+                                                "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                               "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                                                "conditions" [["=" {}
+                                                               ["field" {}
+                                                                ["Sample" "PUBLIC" "ORDERS" "ID"]]
+                                                               ["field" {"join-alias" "Orders_A"}
+                                                                ["Sample" "PUBLIC" "ORDERS" "ID"]]]]}]
+                               "fields"       [["field"
+                                                {"source-field"            ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]
+                                                 "source-field-join-alias" "Orders_A"}
+                                                ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
+          out (repr.resolve/resolve-query mp parsed)
+          field-clause (get-in out [:stages 0 :fields 0])
+          opts         (nth field-clause 1)]
+      (is (schema-valid? out))
+      (is (= "Orders_A" (:source-field-join-alias opts)))
+      (is (= 103 (:source-field opts))
+          "the portable `source-field` FK is still resolved to its numeric id alongside the alias"))))

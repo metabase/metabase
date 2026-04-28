@@ -280,6 +280,9 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
   ```
 - If there is **no** FK path from source to target, you'll get a `:no-fk-path` error. In that case, switch to an explicit `joins:` entry or use a field on the source table instead.
 - Inside an explicit `joins:` block, field references continue to require `{join-alias: <alias>}`; the implicit-join pass does not rewrite those.
+- Advanced disambiguators — use only if you actually need them; never combine with `source-field` on the same clause for the same purpose:
+  - `source-field-name: "<col>"` — implicit join in a **later stage** where the FK column comes from the previous stage's output (referenced by name, not portable FK).
+  - `source-field-join-alias: "<alias>"` — implicit join where the FK-bearing column lives on an **explicitly joined** table; the alias picks which copy of the FK to use.
 
 **Tip:** Use the `entity_details` tool or `read_resource metabase://table/<id>/fields` to discover FK columns. FK columns are marked in the returned XML with a `fk_target_fully_qualified_name="schema.table.field"` attribute, for example:
 

@@ -637,8 +637,11 @@
 ;;; interprets this as an implicit join (the same machinery users get from the notebook UI).
 ;;;
 ;;; The pass walks stage[0] only, skips descent into the `\"joins\"` subtree (field clauses
-;;; inside a join live in a join context), and is a no-op on clauses that already carry
-;;; `source-field` or `join-alias`.
+;;; inside a join live in a join context), and is a no-op on clauses that already carry any
+;;; of the disambiguating opts: `source-field`, `source-field-name`, `source-field-join-alias`,
+;;; or `join-alias`. The latter three are LLM-authored variants we do *not* auto-fill:
+;;; correctly filling them in would require resolving a previous-stage's returned-columns or
+;;; an explicit-join's FK shape, neither of which is in scope for this pass.
 ;;; ============================================================
 
 (defn- field-clause?
@@ -700,11 +703,19 @@
   (let [opts (nth clause 1)
         fk   (nth clause 2)]
     (cond
-      ;; already has source-field or join-alias: leave it alone.
-      (contains? opts "source-field")
-      clause
-
-      (contains? opts "join-alias")
+      ;; Already disambiguated by the LLM. We leave any clause that carries one of the
+      ;; implicit-/explicit-join disambiguators alone:
+      ;;   * `source-field` — implicit join with FK column from the *source-table* (handled
+      ;;     downstream by the resolver); we don't try to second-guess the LLM here.
+      ;;   * `source-field-name` — implicit join from a *previous stage*'s output column
+      ;;     (multi-stage); the FK column is referenced by name, not portable FK path.
+      ;;   * `source-field-join-alias` — implicit join where the FK-bearing column lives on
+      ;;     an *explicitly joined* table; the alias picks which copy of the FK to use.
+      ;;   * `join-alias` — the field itself comes from an explicit join.
+      (or (contains? opts "source-field")
+          (contains? opts "source-field-name")
+          (contains? opts "source-field-join-alias")
+          (contains? opts "join-alias"))
       clause
 
       :else

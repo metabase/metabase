@@ -536,6 +536,27 @@
       (is (= {"join-alias" "Products"}
              (get-in out ["stages" 0 "breakout" 0 1]))))))
 
+(deftest implicit-join-skips-source-field-name-test
+  (testing (str "a field clause carrying `source-field-name` (multi-stage implicit-join via a "
+                "previous-stage column name) is left alone - we don't auto-fill `source-field`, "
+                "even though the target table is otherwise reachable via a unique FK")
+    (let [opts {"source-field-name" "PRODUCT_ID"}
+          q    (assoc-in base-query ["stages" 0 "breakout" 0 1] opts)
+          out  (repair/repair mp-fks q)
+          out-opts (get-in out ["stages" 0 "breakout" 0 1])]
+      (is (= opts out-opts))
+      (is (not (contains? out-opts "source-field"))))))
+
+(deftest implicit-join-skips-source-field-join-alias-test
+  (testing (str "a field clause carrying `source-field-join-alias` (implicit-join where the FK "
+                "column lives on an explicitly-joined table) is left alone")
+    (let [opts {"source-field-join-alias" "Orders_A"}
+          q    (assoc-in base-query ["stages" 0 "breakout" 0 1] opts)
+          out  (repair/repair mp-fks q)
+          out-opts (get-in out ["stages" 0 "breakout" 0 1])]
+      (is (= opts out-opts))
+      (is (not (contains? out-opts "source-field"))))))
+
 (deftest implicit-join-skips-field-on-source-table-test
   (testing "field that already lives on source-table doesn't get source-field added"
     (let [q (assoc-in base-query
