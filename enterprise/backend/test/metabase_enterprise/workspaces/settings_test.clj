@@ -36,14 +36,30 @@
           (t2/delete! :model/TableRemapping :id remap-id)
           (is (false? (ws.settings/has-remappings-enabled))))))))
 
-(deftest has-remappings-enabled-true-via-workspace-config-test
-  (testing "has-remappings-enabled is true when workspace-config-present? is set, even with no remappings"
+(deftest has-remappings-enabled-true-via-provisioned-workspace-database-test
+  (testing "has-remappings-enabled is true when a provisioned WorkspaceDatabase row exists, even with no remappings"
     (mt/with-empty-h2-app-db!
-      ;; No TableRemapping rows exist; the canonical signal alone should flip the setting on.
-      (let [original @ws.settings/workspace-config-present?]
-        (try
-          (reset! ws.settings/workspace-config-present? true)
-          (is (true? (ws.settings/has-remappings-enabled))
-              "config-file signal alone is sufficient — true even with zero TableRemapping rows")
-          (finally
-            (reset! ws.settings/workspace-config-present? original)))))))
+      (mt/with-temp [:model/Database         {db-id :id} {}
+                     :model/Workspace        {ws-id :id} {:name "ws-test"}
+                     :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                 :database_id      db-id
+                                                 :database_details {}
+                                                 :output_schema    "ws_test_schema"
+                                                 :input_schemas    []
+                                                 :status           :provisioned}]
+        (is (true? (ws.settings/has-remappings-enabled))
+            "any provisioned workspace_database row is sufficient — true even with zero TableRemapping rows")))))
+
+(deftest has-remappings-enabled-false-when-only-unprovisioned-workspace-database-test
+  (testing "has-remappings-enabled is false when WorkspaceDatabase rows exist but none are :provisioned"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database         {db-id :id} {}
+                     :model/Workspace        {ws-id :id} {:name "ws-test"}
+                     :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                 :database_id      db-id
+                                                 :database_details {}
+                                                 :output_schema    ""
+                                                 :input_schemas    []
+                                                 :status           :unprovisioned}]
+        (is (false? (ws.settings/has-remappings-enabled))
+            "unprovisioned workspace_database doesn't count — only :provisioned does")))))
