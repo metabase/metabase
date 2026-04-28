@@ -24,6 +24,7 @@ import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
+  SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
@@ -74,10 +75,12 @@ export function getDataStudioRoutes(
             component={DependencyDiagnosticsUpsellPage}
           />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="schema-viewer">
             {PLUGIN_DEPENDENCIES.getDataStudioSchemaViewerRoutes()}
           </Route>
+        ) : (
+          <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>
