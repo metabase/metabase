@@ -102,7 +102,20 @@
           (is (= :mbql/query (:lib/type q)))
           (is (= 1 (:database q)))
           (is (= 10 (get-in q [:stages 0 :source-table])))
-          (is (= :count (first (get-in q [:stages 0 :aggregation 0])))))))))
+          (is (= :count (first (get-in q [:stages 0 :aggregation 0])))))
+        (testing "query-yaml is the post-repair canonical representations YAML"
+          (is (string? (:query-yaml structured)))
+          ;; parse with `:keywords false` to mirror what `repr/parse-yaml` does, so we can
+          ;; assert on the *portable* string-keyed shape the YAML actually carries.
+          (let [round-tripped (yaml/parse-string (:query-yaml structured) :keywords false)]
+            (testing "YAML is the still-portable string-keyed shape, not the resolved numeric-id pMBQL"
+              (is (= "mbql/query" (get round-tripped "lib/type")))
+              (is (= ["Sample" "PUBLIC" "ORDERS"]
+                     (get-in round-tripped ["stages" 0 "source-table"]))))
+            (testing "YAML idempotency: feeding it back to the tool yields a result whose query-yaml is byte-equal"
+              (let [redo (construct/execute-representations-query (:query-yaml structured))]
+                (is (= (:query-yaml structured)
+                       (get-in redo [:structured-output :query-yaml])))))))))))
 
 (deftest malformed-yaml-surfaces-agent-error-test
   (with-mp-and-stubs!

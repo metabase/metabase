@@ -15,9 +15,9 @@
    [metabase.metabot.tools.util :as tools.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -220,13 +220,13 @@
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
     ;; them reach the tool wrapper with the flag set.
     (try
-      (let [pmbql-query (->> parsed
-                             (repr.repair/repair mp)
-                             repr/validate-query
-                             (repr.resolve/resolve-query mp))
+      (let [repaired    (repr.repair/repair mp parsed)
+            _validated  (repr/validate-query repaired)
+            pmbql-query (repr.resolve/resolve-query mp repaired)
             query-id    (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
+                             :query-yaml     (yaml/generate-string repaired :dumper-options {:flow-style :block})
                              :result-columns (result-columns-for-query pmbql-query mp)}
          :instructions      (instructions/query-created-instructions-for query-id)})
       (catch clojure.lang.ExceptionInfo e
@@ -245,15 +245,23 @@
 
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
-  Converts the MBQL 5 query to legacy MBQL, JSON-encodes it, and wraps result columns."
-  [{:keys [query-id query result-columns]}]
+
+  `:query-content` is the **canonical post-repair representations YAML** the LLM
+  authored - i.e. the same shape it sent us in, but with `{}` options filled in,
+  `lib/type` markers stamped, implicit-join `source-field` wired up, placeholder
+  `@agg-N` references resolved to UUIDs, etc. By feeding the LLM back its own
+  normalized form (rather than legacy-MBQL JSON) on the next turn it can reference
+  exactly the field paths and aggregation refs it just wrote.
+
+  See repr-plan.md step 18."
+  [{:keys [query-id query query-yaml result-columns]}]
   (let [legacy-query (when (and (map? query) (:lib/type query))
                        #_{:clj-kondo/ignore [:discouraged-var]}
                        (lib/->legacy-MBQL query))]
     {:query-type    "notebook"
      :query-id      query-id
      :database_id   (:database legacy-query)
-     :query-content (when legacy-query (json/encode legacy-query))
+     :query-content query-yaml
      :result        (when (seq result-columns)
                       {:result_columns result-columns})}))
 
