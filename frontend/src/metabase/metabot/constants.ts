@@ -40,6 +40,12 @@ export const METABOT_PROFILES = {
       return t`SQL`;
     },
   },
+  // deprecated
+  slack: {
+    get label() {
+      return t`Slackbot`;
+    },
+  },
   slackbot: {
     get label() {
       return t`Slackbot`;
