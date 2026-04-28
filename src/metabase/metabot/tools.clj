@@ -16,6 +16,7 @@
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
+   [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.navigation :as tools.navigation]
    [metabase.metabot.tools.resources :as tools.resources]
@@ -46,6 +47,8 @@
   document-schema-collect-tool
   document-construct-sql-chart-tool
   document-construct-model-chart-tool]
+ [tools.explorations
+  select-exploration-metrics-tool]
  [tools.metadata
   list-available-data-sources-tool
   list-available-fields-tool

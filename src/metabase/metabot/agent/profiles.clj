@@ -170,6 +170,15 @@
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})
 
+(register-profile!
+ {:name            :explorations
+  :prompt-template "explorations.selmer"
+  :max-iterations  10
+  :temperature     0.3
+  :tools           [#'tools/search-tool
+                    #'tools/read-resource-tool
+                    #'tools/select-exploration-metrics-tool]})
+
 (def ^:private api-string->capability-keyword
   "Map from API capability strings (as sent by the frontend) to the keywords
   used in tool :capabilities metadata. Keywords pass through unchanged."

@@ -9,6 +9,7 @@ import type {
   MetricDimension,
   MetricOrMeasure,
 } from "metabase/explorations/types";
+import { toMetricOrMeasure } from "metabase/explorations/utils";
 import { useDispatch } from "metabase/redux";
 import {
   Box,
@@ -39,17 +40,6 @@ export interface AddMetricsModalProps {
     newMetrics: MetricOrMeasure[],
     newDimensions: MetricDimension[],
   ) => void;
-}
-
-function toMetricOrMeasure(metric: Metric): MetricOrMeasure {
-  return {
-    type: "metric",
-    id: metric.id,
-    name: metric.name,
-    description: metric.description,
-    dimensions: metric.dimensions ?? [],
-    dimension_mappings: metric.dimension_mappings,
-  };
 }
 
 function dedupeDimensions(metrics: MetricOrMeasure[]): MetricDimension[] {
