@@ -118,7 +118,9 @@
       (is (str/includes? xml "name=\"total_revenue\""))
       (is (str/includes? xml "display_name=\"Total Revenue\""))
       (is (str/includes? xml "Sum of all revenue"))
-      (is (str/includes? xml "Definition: Sum of Price"))
+      ;; The human-prose `Definition: <description>` line is gone. The structured
+      ;; `<definition>...</definition>` block below carries the same information for the LLM.
+      (is (not (str/includes? xml "Definition: Sum of Price")))
       (is (str/includes? xml "<definition>"))
       (is (str/includes? xml ":source-table 5"))
       (is (str/ends-with? (str/trim xml) "</measure>"))))
@@ -148,11 +150,15 @@
                    :definition-description "Price is greater than 0"}
           xml (llm-shape/segment->xml segment)]
       (is (str/starts-with? xml "<segment"))
-      (is (str/includes? xml "segment_id=\"1\""))
+      ;; The `<segment id=...>` attribute is named `id` (not `segment_id`) for consistency with
+      ;; <table>, <metabase-model>, <metric> and friends. Renamed in the d47d35b7bec slim-down.
+      (is (str/includes? xml "id=\"1\""))
       (is (str/includes? xml "name=\"active_customers\""))
       (is (str/includes? xml "display_name=\"Active Customers\""))
       (is (str/includes? xml "Customers who made a purchase in the last 30 days"))
-      (is (str/includes? xml "Definition: Price is greater than 0"))
+      ;; The human-prose `Definition: <description>` line is gone. The structured
+      ;; `<definition>...</definition>` block below carries the same information for the LLM.
+      (is (not (str/includes? xml "Definition: Price is greater than 0")))
       (is (str/includes? xml "<definition>"))
       (is (str/includes? xml ":source-table 5"))
       (is (str/ends-with? (str/trim xml) "</segment>"))))
@@ -160,7 +166,7 @@
   (testing "handles segment without description or definition-description"
     (let [segment {:id 2 :name "new_users"}
           xml (llm-shape/segment->xml segment)]
-      (is (str/includes? xml "segment_id=\"2\""))
+      (is (str/includes? xml "id=\"2\""))
       (is (str/includes? xml "name=\"new_users\""))
       (is (not (str/includes? xml "<definition>")))
       (is (not (str/includes? xml "Definition:")))
@@ -216,7 +222,7 @@
       (is (str/includes? xml "<measure measure_id=\"1\""))
       (is (str/includes? xml "Average Order Value"))
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
-      (is (str/includes? xml "<segment segment_id=\"2\""))
+      (is (str/includes? xml "<segment id=\"2\""))
       (is (str/includes? xml "Q4 Orders"))))
 
   (testing "omits measures and segments sections when empty"
@@ -266,7 +272,7 @@
       (is (str/includes? xml "<measure measure_id=\"1\""))
       (is (str/includes? xml "Total Net Revenue"))
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
-      (is (str/includes? xml "<segment segment_id=\"1\""))
+      (is (str/includes? xml "<segment id=\"1\""))
       (is (str/includes? xml "New Customers"))))
 
   (testing "omits measures and segments sections when empty"
