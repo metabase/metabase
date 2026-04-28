@@ -19,6 +19,7 @@
    driver in the case statements below."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -98,35 +99,50 @@
   [driver]
   (sql-jdbc.conn/connection-details->spec driver (:details (mt/db))))
 
-(defn- with-workspace-table!
-  "Provision a workspace schema and an `orders`-named table whose case matches
-   the canonical table (so the remap's `to-name` matches exactly what the
-   rewriter emits). Inserts `workspace-rows` (a seq of `[id v]` pairs). Runs
-   `body-fn` with the created schema name; tears everything down afterward.
+(defn- with-workspace-tables!
+  "Provision a workspace schema and one or more tables, each shaped to match a
+   canonical-table's MBQL field references for the test query.
 
-   Schema name is `mb_xdr_<random>`. The table column shape (`id INT, v
-   VARCHAR(32)`) is intentionally minimal — the read-side test uses
-   `[:count]` aggregation, which doesn't reference any specific field, so
-   schema-mismatch with canonical doesn't matter."
-  [workspace-rows body-fn]
-  (let [driver    driver/*driver*
-        suffix    (random-suffix)
-        ws-schema (str "mb_xdr_" suffix)
-        spec      (admin-spec driver)
-        ws-table  (canonical-table-name)]
+   `tables` is a vector of `{:canonical-kw <kw>, :columns \"col1 type, col2 type\",
+   :insert-rows [[id, val] ...]}` maps. Each table is created in the workspace
+   schema with the given DDL, named the same as its canonical counterpart
+   (case-matched), and seeded with the rows. Row values are interpolated raw
+   into the INSERT — wrap strings in literal quotes (`\"'foo'\"`).
+
+   Runs `body-fn` with the schema name; tears everything down afterward."
+  [tables body-fn]
+  (let [driver         driver/*driver*
+        suffix         (random-suffix)
+        ws-schema      (str "mb_xdr_" suffix)
+        spec           (admin-spec driver)
+        ws-table-names (mapv #(t2/select-one-fn :name :model/Table :id (mt/id (:canonical-kw %)))
+                             tables)]
     (try
       (jdbc/execute! spec [(create-namespace-sql driver ws-schema)])
-      (jdbc/execute! spec [(str "CREATE TABLE " (qualify driver ws-schema ws-table)
-                                " (id INT, v VARCHAR(32))"
-                                (create-table-tail driver))])
-      (doseq [[id v] workspace-rows]
-        (jdbc/execute! spec [(str "INSERT INTO " (qualify driver ws-schema ws-table)
-                                  " VALUES (" id ", '" v "')")]))
+      (doseq [{:keys [canonical-kw columns insert-rows]} tables
+              :let [ws-table (t2/select-one-fn :name :model/Table :id (mt/id canonical-kw))]]
+        (jdbc/execute! spec [(str "CREATE TABLE " (qualify driver ws-schema ws-table)
+                                  " (" columns ")"
+                                  (create-table-tail driver))])
+        (doseq [row insert-rows]
+          (jdbc/execute! spec [(str "INSERT INTO " (qualify driver ws-schema ws-table)
+                                    " VALUES (" (str/join ", " row) ")")])))
       (body-fn ws-schema)
       (finally
-        (doseq [sql (drop-namespace-sqls driver ws-schema ws-table)]
+        (doseq [ws-table ws-table-names
+                sql      (drop-namespace-sqls driver ws-schema ws-table)]
           (try (jdbc/execute! spec [sql])
                (catch Throwable _)))))))
+
+(defn- with-workspace-table!
+  "Single-table convenience wrapper. Creates a workspace `orders` table with
+   `(id INT, v VARCHAR(32))` columns and the given `[[id v] ...]` rows."
+  [orders-rows body-fn]
+  (with-workspace-tables!
+    [{:canonical-kw :orders
+      :columns      "id INT, v VARCHAR(32)"
+      :insert-rows  (mapv (fn [[id v]] [id (str \' v \')]) orders-rows)}]
+    body-fn))
 
 (defn- with-remapping!
   "Insert a TableRemapping row pointing canonical -> workspace, run `body-fn`,
@@ -191,3 +207,105 @@
                 (fn []
                   (is (= 2 (count-via-qp))
                       (str "count came from workspace (2 rows), not canonical (" canonical-count " rows)")))))))))))
+
+(deftest non-remapped-passthrough-cross-driver-test
+  (testing "0/1: a query against a non-remapped table still hits canonical even when an unrelated remap exists"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (mt/with-premium-features #{:workspaces}
+        ;; Setup: a workspace `orders` table with 2 rows + a remap orders -> workspace.
+        ;; Query: `:people` (NOT remapped). Must return canonical people count.
+        (let [workspace-rows  [[1 "ws-foo"] [2 "ws-bar"]]
+              canonical-count (-> (mt/process-query
+                                   {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :people)
+                                               :aggregation  [[:count]]}})
+                                  mt/rows ffirst)]
+          (with-workspace-table! workspace-rows
+            (fn [ws-schema]
+              (with-remapping! (canonical-schema) (canonical-table-name)
+                ws-schema (canonical-table-name)
+                (fn []
+                  (let [people-count (-> (mt/process-query
+                                          {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table (mt/id :people)
+                                                      :aggregation  [[:count]]}})
+                                         mt/rows ffirst)]
+                    (is (= canonical-count people-count)
+                        "people read passes through canonical when only orders is remapped")))))))))))
+
+(deftest join-one-side-remapped-cross-driver-test
+  (testing "1/2: an MBQL join with only the orders side remapped reads workspace orders + canonical people"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (mt/with-premium-features #{:workspaces}
+        ;; Workspace orders has 2 rows; both have user_id values that exist in canonical people.
+        ;; The join count should be 2 (one row per workspace order, joined to its canonical people row).
+        ;; If the remap silently failed and the query hit canonical orders, the count would be ~thousands.
+        (with-workspace-tables!
+          [{:canonical-kw :orders
+            :columns      "id INT, user_id INT"
+            :insert-rows  [[1 1] [2 2]]}]
+          (fn [ws-schema]
+            (with-remapping! (canonical-schema) (canonical-table-name)
+              ws-schema (canonical-table-name)
+              (fn []
+                (let [orders-id      (mt/id :orders)
+                      orders-user-id (mt/id :orders :user_id)
+                      people-id      (mt/id :people :id)
+                      people-tbl-id  (mt/id :people)
+                      result-count   (-> (mt/process-query
+                                          {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table orders-id
+                                                      :joins        [{:source-table people-tbl-id
+                                                                      :alias        "p"
+                                                                      :fields       :none
+                                                                      :condition    [:= [:field orders-user-id nil]
+                                                                                     [:field people-id {:join-alias "p"}]]}]
+                                                      :aggregation  [[:count]]}})
+                                         mt/rows ffirst)]
+                  (is (= 2 result-count)
+                      "join count = workspace orders rows that match canonical people"))))))))))
+
+(deftest join-both-sides-remapped-cross-driver-test
+  (testing "2/2: an MBQL join with both sides remapped reads workspace orders + workspace people"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (mt/with-premium-features #{:workspaces}
+        ;; Workspace orders has user_id 999; workspace people has id 999.
+        ;; Canonical people doesn't have id 999, so the 999/999 match exists
+        ;; only when both sides are remapped. Workspace tables mirror
+        ;; canonical column shape because the QP's implicit join compiles to
+        ;; SELECT (every canonical field) — `:fields :none` doesn't suppress
+        ;; this when the join target is itself remapped.
+        (with-workspace-tables!
+          [{:canonical-kw :orders
+            :columns      "ID BIGINT, USER_ID INT, PRODUCT_ID INT, SUBTOTAL DOUBLE, TAX DOUBLE, TOTAL DOUBLE, DISCOUNT DOUBLE, CREATED_AT TIMESTAMP, QUANTITY INT"
+            :insert-rows  [[1 999 "NULL" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL"]]}
+           {:canonical-kw :people
+            :columns      "ID BIGINT, ADDRESS VARCHAR(256), EMAIL VARCHAR(256), PASSWORD VARCHAR(256), NAME VARCHAR(256), CITY VARCHAR(256), LONGITUDE DOUBLE, STATE VARCHAR(256), SOURCE VARCHAR(256), BIRTH_DATE DATE, ZIP VARCHAR(256), LATITUDE DOUBLE, CREATED_AT TIMESTAMP"
+            :insert-rows  [[999 "NULL" "NULL" "NULL" "'ws-only-person'" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL"]]}]
+          (fn [ws-schema]
+            (with-remapping! (canonical-schema) (t2/select-one-fn :name :model/Table :id (mt/id :orders))
+              ws-schema (t2/select-one-fn :name :model/Table :id (mt/id :orders))
+              (fn []
+                (with-remapping! (canonical-schema) (t2/select-one-fn :name :model/Table :id (mt/id :people))
+                  ws-schema (t2/select-one-fn :name :model/Table :id (mt/id :people))
+                  (fn []
+                    (let [orders-id      (mt/id :orders)
+                          orders-user-id (mt/id :orders :user_id)
+                          people-id      (mt/id :people :id)
+                          people-tbl-id  (mt/id :people)
+                          result-count   (-> (mt/process-query
+                                              {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table orders-id
+                                                          :joins        [{:source-table people-tbl-id
+                                                                          :alias        "p"
+                                                                          :fields       :none
+                                                                          :condition    [:= [:field orders-user-id nil]
+                                                                                         [:field people-id {:join-alias "p"}]]}]
+                                                          :aggregation  [[:count]]}})
+                                             mt/rows ffirst)]
+                      (is (= 1 result-count)
+                          "join count = 1, the 999/999 match that only exists in the workspace tables"))))))))))))
