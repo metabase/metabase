@@ -2,16 +2,14 @@
   "Internal API for table-to-table remapping. Used by workspace isolation to redirect
    queries from production tables to workspace tables.
 
-   Durability model. A remapping is only durable when it exists in *both* places:
+   A remapping is a single row in the app-db `table_remapping` table, consulted by the
+   query processor middleware at query time. Two writers:
 
-   - The app-db [[:model/TableRemapping]] cache, consulted by the query processor
-     middleware at query time.
-   - The warehouse-side `_mb_remappings` ledger inside the workspace schema, the
-     source of truth that survives an app-db reset.
-
-   Transform code must therefore call [[record-remapping!]], which writes both. The
-   low-level [[add-schema+table-mapping!]] only writes the app-db cache and is
-   reserved for the poller replaying rows from the ledger."
+   - [[add-schema+table-mapping!]] — the primary writer. Inserts a row directly with
+     idempotent upsert semantics.
+   - [[record-remapping!]] — a thin wrapper for transform code that resolves the
+     destination schema from the database's provisioned `WorkspaceDatabase` row before
+     delegating to [[add-schema+table-mapping!]]."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.table-remapping]
@@ -64,14 +62,7 @@
       :else (recur (.getCause cause)))))
 
 (defn add-schema+table-mapping!
-  "App-db-only writer for a single `table_remapping` row. Do NOT call this from
-   transform code — it bypasses the warehouse-side `_mb_remappings` ledger, so the
-   mapping would vanish on the next app-db reset. Transforms must use
-   [[record-remapping!]] instead, which writes the ledger and this cache together.
-
-   The only production caller is [[metabase-enterprise.workspaces.remapping-poll]],
-   which replays ledger rows that the ledger is already the source of truth for;
-   writing back to the ledger would be circular.
+  "Insert a single `table_remapping` row.
 
    Idempotent: a duplicate insert (unique-constraint violation on the
    `(database_id, from_schema, from_table_name)` constraint) is swallowed and the fn
@@ -118,31 +109,13 @@
   (t2/delete! :model/TableRemapping :database_id database-id))
 
 (defn record-remapping!
-  "Durably record a table remapping for a workspaced database: writes the workspace
-   warehouse-side `_mb_remappings` ledger (the source of truth) and the app-db
-   `table_remapping` cache in that order.
+  "Record a table remapping for a workspaced database. Resolves the destination schema
+   from the database's provisioned `WorkspaceDatabase` row, then delegates to
+   [[add-schema+table-mapping!]] (which is itself idempotent).
 
-   Warehouse write first, app-db second — so that a mid-op failure leaves the
-   ledger truthful and the poller will catch the app-db up on its next tick.
-
-   Idempotent at the DB level on both sides: the ledger uses ON CONFLICT DO NOTHING;
-   [[add-schema+table-mapping!]] swallows a SQLSTATE 23505 unique-constraint
-   violation. Safe to call concurrently from multiple callers with the same mapping.
-
-   Transaction boundary: the warehouse-side ledger writes happen in their own
-   transaction, opened by this fn. They are NOT bundled with any transform-side
-   transaction that produced the physical output table. If atomic co-commit with
-   the transform's write is required, call [[ledger/ensure-ledger-table!]] and
-   [[ledger/record-remap!]] directly inside that transaction, then call
-   [[add-schema+table-mapping!]] for the app-db side.
-
-   This is the function transform code must call for the ledger+cache pair. Do NOT
-   call [[add-schema+table-mapping!]] directly from transform code — it updates
-   only the app-db cache and bypasses the ledger.
-
-   Throws when the database is not workspaced (`ws/db-workspace-schema` returns
-   nil): a caller getting here in that case is a programming error — the
-   transform path should gate on [[ws/active?]]/[[ws/db-workspace-schema]] first."
+   Throws when the database is not workspaced (`ws/db-workspace-schema` returns nil):
+   a caller getting here in that case is a programming error — the transform path
+   should gate on [[ws/db-workspace-schema]] first."
   [db-id from-schema from-table-name to-table-name]
   (let [workspace-schema (ws/db-workspace-schema db-id)]
     (when-not workspace-schema
@@ -154,3 +127,4 @@
     (add-schema+table-mapping! db-id
                                [from-schema from-table-name]
                                [workspace-schema to-table-name])))
+

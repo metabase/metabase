@@ -1,1 +1,1 @@
-export * from "./TitleSection";
+export { TitleSection } from "./TitleSection";

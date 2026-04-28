@@ -7,27 +7,30 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceStatus
   [:enum "unprovisioned" "provisioning" "provisioned" "deprovisioning"])
 
-(def ^:private WorkspaceDatabaseParams
-  [:map
+(def ^:private AddDatabaseParams
+  [:map {:closed true}
    [:database_id   ms/PositiveInt]
+   [:input_schemas [:sequential ms/NonBlankString]]])
+
+(def ^:private UpdateDatabaseParams
+  [:map {:closed true}
    [:input_schemas [:sequential ms/NonBlankString]]])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name      ms/NonBlankString]
-   [:databases [:sequential WorkspaceDatabaseParams]]])
+   [:name ms/NonBlankString]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name      {:optional true} ms/NonBlankString]
-   [:databases {:optional true} [:sequential WorkspaceDatabaseParams]]])
+   [:name {:optional true} ms/NonBlankString]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map
@@ -75,14 +78,6 @@
           (update :creator present-creator)
           (update :databases #(mapv present-workspace-database %))))
 
-(defn- sanitize-database-params [wsd]
-  (select-keys wsd [:database_id :input_schemas]))
-
-(defn- sanitize-workspace-params [params]
-  (cond-> params
-    (contains? params :databases)
-    (update :databases #(mapv sanitize-database-params %))))
-
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
@@ -98,49 +93,102 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
-  "Create a new Workspace."
+  "Create a new Workspace (name only, no databases)."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/check-superuser)
   (present-workspace
    (ws/create-workspace!
-    (assoc (sanitize-workspace-params params)
-           :creator_id api/*current-user-id*))))
+    (assoc params :creator_id api/*current-user-id*))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
-  "Update an existing Workspace. Only allowed when all databases are unprovisioned."
+  "Update a workspace's name."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
   (api/check-superuser)
-  (present-workspace (ws/update-workspace! id (sanitize-workspace-params params))))
+  ;; For now just name updates — structural changes go through the database sub-endpoints
+  (when (:name params)
+    (t2/update! :model/Workspace :id id {:name (:name params)}))
+  (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id"
   :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Delete a Workspace. All databases must be unprovisioned."
+  "Delete a Workspace. Deprovisions all databases first (blocking)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (ws/delete-workspace! id)
   {:id id :deleted true})
 
-(api.macros/defendpoint :post "/:id/provision"
-  :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
-  "Provision all unprovisioned databases. Can retry after partial failure."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  {:workspace_id id :triggered (ws/provision! id)})
+;;; ---------------------------------------- Database sub-endpoints --------------------------------------------
 
-(api.macros/defendpoint :post "/:id/deprovision"
-  :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
-  "Deprovision all provisioned databases."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+(api.macros/defendpoint :post "/:id/database" :- WorkspaceResponse
+  "Add a database to a workspace and provision it immediately (blocking)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   params :- AddDatabaseParams]
   (api/check-superuser)
-  {:workspace_id id :triggered (ws/deprovision! id)})
+  (present-workspace
+   (ws/add-database! id (:database_id params) (:input_schemas params))))
+
+(api.macros/defendpoint :put "/:id/database/:db-id" :- WorkspaceResponse
+  "Update a database's input schemas. Deprovisions the old config and reprovisions
+   with the new one (blocking)."
+  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]
+   _query-params
+   params :- UpdateDatabaseParams]
+  (api/check-superuser)
+  (present-workspace
+   (ws/update-database! id db-id (:input_schemas params))))
+
+(api.macros/defendpoint :delete "/:id/database/:db-id"
+  :- WorkspaceResponse
+  "Deprovision and remove a database from a workspace (blocking)."
+  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (present-workspace
+   (ws/remove-database! id db-id)))
+
+;;; ------------------------------------------- Read-only endpoints --------------------------------------------
 
 (api.macros/defendpoint :get "/remappings"
   "Return all table remappings."
   []
   (api/check-superuser)
   (ws/list-remappings))
+
+(def ^:private WorkspaceInstanceDatabase
+  [:map
+   [:name          ms/NonBlankString]
+   [:input_schemas [:sequential ms/NonBlankString]]
+   [:output_schema :string]])
+
+(def ^:private WorkspaceInstance
+  [:map
+   [:name             ms/NonBlankString]
+   [:databases        [:map-of ms/PositiveInt WorkspaceInstanceDatabase]]
+   [:remappings_count ms/IntGreaterThanOrEqualToZero]])
+
+(api.macros/defendpoint :get "/current" :- [:maybe WorkspaceInstance]
+  "Read-only summary of the workspace loaded on this (child) instance."
+  []
+  (api/check-superuser)
+  (when-let [workspace (->> (ws/list-workspaces)
+                            (sort-by :created_at)
+                            reverse
+                            (some (fn [w] (when (seq (:databases w)) w))))]
+    (let [db-ids    (mapv :database_id (:databases workspace))
+          dbs-by-id (when (seq db-ids)
+                      (into {} (map (juxt :id identity))
+                            (t2/select [:model/Database :id :name] :id [:in db-ids])))]
+      {:name             (:name workspace)
+       :remappings_count (count (ws/list-remappings))
+       :databases        (into {}
+                               (map (fn [wsd]
+                                      [(:database_id wsd)
+                                       {:name          (get-in dbs-by-id [(:database_id wsd) :name] "")
+                                        :input_schemas (vec (:input_schemas wsd))
+                                        :output_schema (or (:output_schema wsd) "")}]))
+                               (:databases workspace))})))
 
 (api.macros/defendpoint :get "/:id/config/yaml"
   :- [:map

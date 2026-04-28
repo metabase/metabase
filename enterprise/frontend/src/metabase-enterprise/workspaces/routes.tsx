@@ -1,5 +1,7 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRedirect, IndexRoute, Route } from "react-router";
 
+import { WorkspaceInstanceOverviewPage } from "./pages/WorkspaceInstanceOverviewPage";
+import { WorkspaceInstanceRemappingsPage } from "./pages/WorkspaceInstanceRemappingsPage";
 import { WorkspaceListPage } from "./pages/WorkspaceListPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 
@@ -8,6 +10,16 @@ export function getDataStudioWorkspaceRoutes() {
     <>
       <IndexRoute component={WorkspaceListPage} />
       <Route path=":workspaceId" component={WorkspacePage} />
+    </>
+  );
+}
+
+export function getDataStudioWorkspaceInstanceRoutes() {
+  return (
+    <>
+      <IndexRedirect to="overview" />
+      <Route path="overview" component={WorkspaceInstanceOverviewPage} />
+      <Route path="remappings" component={WorkspaceInstanceRemappingsPage} />
     </>
   );
 }

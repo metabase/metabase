@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -17,7 +18,9 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -58,7 +61,7 @@
                               :transforms/table                 true
                               :transforms/index-ddl             false
                               :uuid-type                        false
-                              :workspace                        false}]
+                              :workspace                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -703,13 +706,101 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Redshift inherits init-workspace-isolation! and grant-workspace-read-access! from Postgres.
-;; Only destroy needs to be overridden because Redshift doesn't support DROP OWNED BY.
+;; All three workspace-isolation multimethods are overridden for Redshift:
+;;
+;; - `init` drops the postgres impl's trailing `GRANT "<user>" TO CURRENT_USER`
+;;   (PG-specific role-membership syntax Redshift rejects).
+;;
+;; - `grant-workspace-read-access!` adds `REVOKE CREATE ON SCHEMA … FROM <user>`
+;;   and `REVOKE INSERT, UPDATE, DELETE, … ON ALL TABLES IN SCHEMA … FROM <user>`
+;;   per source schema, plus a pre-flight probe for the public-CREATE-grant
+;;   limit (see below).
+;;
+;; - `destroy` replaces the postgres impl's `DROP OWNED BY` (which behaves
+;;   differently in Redshift) with explicit per-schema REVOKEs.
+;;
+;; Isolation limit, checked at grant time via [[assert-no-public-create-grant!]]:
+;; Redshift's permission model (inherited from PostgreSQL) lets a user receive
+;; privileges either directly or through PUBLIC. REVOKE-ing CREATE from a
+;; specific user only removes their direct grant — it can't override a PUBLIC
+;; grant. Redshift's `public` schema has CREATE granted to PUBLIC by default,
+;; so on a default-config cluster the workspace user inherits CREATE on `public`
+;; transitively: it can create tables there (privilege-escalation hole), becomes
+;; their owner, and `DROP USER` then fails at deprovisioning. The probe at grant
+;; time fails fast with a 412 so the cluster admin can run
+;; `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before retrying. Custom input
+;; schemas created without a PUBLIC grant pass the probe and don't need any
+;; admin action.
 
 (defn- user-exists?
   "Check if a Redshift user exists."
   [conn username]
   (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defn- public-create-grant?
+  "Redshift-flavored check for `public-create-grant?`. Postgres reads
+   `pg_namespace.nspacl::text`, but Redshift refuses to cast `aclitem` to
+   character varying — so we use Redshift's own `SVV_SCHEMA_PRIVILEGES`
+   system view instead, which exposes the equivalent grant info as plain
+   columns."
+  [conn schema-name]
+  (boolean
+   (seq (jdbc/query conn
+                    ["SELECT 1 FROM svv_schema_privileges
+                       WHERE namespace_name = ?
+                         AND identity_type = 'public'
+                         AND privilege_type = 'CREATE'"
+                     schema-name]))))
+
+(defn- assert-no-public-create-grant!
+  [conn schema-name]
+  (when (public-create-grant? conn schema-name)
+    (postgres/raise-public-create-grant! schema-name)))
+
+(defmethod driver/init-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
+                     :password (driver.u/random-workspace-password)}]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-sql (if (user-exists? t-conn (:user read-user))
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       user-sql
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\""
+                               schema-name (:user read-user))]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
+    {:schema           schema-name
+     :database_details read-user}))
+
+(defmethod driver/grant-workspace-read-access! :redshift
+  [_driver database workspace tables]
+  (let [username       (-> workspace :database_details :user)
+        qu             (sql.u/quote-name :postgres :field username)
+        source-schemas (into #{} (keep :schema) tables)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC, or
+      ;; the user-level REVOKE-s below are no-ops and isolation leaks. See the
+      ;; comment block at the top of this section for the full picture.
+      (doseq [s source-schemas]
+        (assert-no-public-create-grant! t-conn s))
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [s   source-schemas
+                :let [sq (sql.u/quote-name :postgres :schema s)]
+                sql [(format "GRANT USAGE ON SCHEMA %s TO %s" sq qu)
+                     (format "REVOKE CREATE ON SCHEMA %s FROM %s" sq qu)
+                     (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s" sq qu)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (doseq [{s :schema, t :name} tables
+                :let [tq (if (str/blank? s)
+                           (sql.u/quote-name :postgres :table t)
+                           (str (sql.u/quote-name :postgres :schema s) "." (sql.u/quote-name :postgres :table t)))]]
+          (.addBatch ^Statement stmt ^String (format "GRANT SELECT ON TABLE %s TO %s" tq qu)))
+        (.executeBatch ^Statement stmt)))))
 
 (defn- schema-exists?
   "Check if a schema exists in Redshift."

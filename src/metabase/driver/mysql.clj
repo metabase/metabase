@@ -1274,19 +1274,22 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
+(defn- grant-workspace-read-access-sqls
+  "Build SQL statements that grant `username` SELECT on all tables in each source database
+  referenced by `tables`. Per-table `:name` granularity is intentionally discarded —
+  workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
+  [username tables]
+  (let [qu              (sql.u/quote-name :mysql :field username)
+        source-databases (into #{} (keep :schema) tables)]
+    (mapv (fn [db]
+            (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                    (sql.u/quote-name :mysql :schema db) qu))
+          source-databases)))
+
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace tables]
   (let [username (-> workspace :database_details :user)
-        qu       (sql.u/quote-name :mysql :field username)
-        ;; In MySQL, tables don't have separate schemas within a database,
-        ;; but the :schema field contains the source database name
-        sqls     (for [{db :schema, t :name} tables]
-                   (if (str/blank? db)
-                     (format "GRANT SELECT ON %s TO %s@'%%'"
-                             (sql.u/quote-name :mysql :table t) qu)
-                     (format "GRANT SELECT ON %s.%s TO %s@'%%'"
-                             (sql.u/quote-name :mysql :schema db)
-                             (sql.u/quote-name :mysql :table t) qu)))]
+        sqls     (grant-workspace-read-access-sqls username tables)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

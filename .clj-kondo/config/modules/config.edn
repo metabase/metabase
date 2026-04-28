@@ -3403,7 +3403,14 @@
   enterprise/workspaces
   {:team "Metabot"
    :api  #{}
-   :uses #{premium-features}}
+   :uses #{driver
+           lib
+           premium-features
+           query-processor
+           sql-tools}
+   :model-imports #{:model/Database
+                    :model/Table
+                    :model/TableRemapping}}
 
   enterprise/writable-connection
   {:team "Graphy"
