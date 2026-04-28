@@ -5,7 +5,7 @@
   `{normalized-name -> ^floats vector}`, omitting entities without a known vector."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.embeddings.client :as embeddings]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -84,7 +84,7 @@
   256)
 
 (defn provider-embedder
-  "Build an embedder that embeds names via `semantic-search/get-embeddings-batch` using
+  "Build an embedder that embeds names via [[embeddings.client/get-embeddings-batch]] using
   `model-descriptor` (`{:provider :model-name :model-dimensions}`).
 
   For each distinct normalized name the raw form is sent through [[split-for-embedding]].
@@ -109,7 +109,7 @@
       (when (seq names)
         (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
               vectors (into []
-                            (mapcat #(semantic-search/get-embeddings-batch model-descriptor %))
+                            (mapcat #(embeddings/get-embeddings-batch model-descriptor %))
                             (partition-all provider-batch-size texts))]
           (into {}
                 (keep (fn [[n v]] (when v [n (ensure-floats v)])))

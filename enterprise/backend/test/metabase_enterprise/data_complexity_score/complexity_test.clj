@@ -11,6 +11,7 @@
    [metabase-enterprise.data-complexity-score.settings :as data-complexity-score.settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
+   [metabase-enterprise.embeddings.client :as embeddings]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
@@ -563,7 +564,7 @@
   (testing "provider-embedder splits names on _/-/./camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)
           embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
-      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
                                   (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
         (embedder
          [{:id 1 :name "monthly_active_users" :kind :table}
@@ -579,7 +580,7 @@
 (deftest ^:sequential provider-embedder-propagates-provider-errors-test
   (testing "provider errors bubble up so score-synonym-pairs can report nil measurements + :error"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
-      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
                                   (fn [_ _] (throw (ex-info "ai-service down" {})))]
         (is (thrown-with-msg? Throwable #"ai-service down"
                               (embedder [{:id 1 :name "orders" :kind :table}])))))))
@@ -587,7 +588,7 @@
 (deftest ^:sequential provider-embedder-zips-by-position-test
   (testing "vectors come back keyed by the normalized name; nil slots are dropped"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 2})]
-      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
                                   (fn [_ texts]
                                     (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
         (let [result (embedder
@@ -756,7 +757,7 @@
 (deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
   (testing "every event's parameters carry the nested embedding_model + text_variant from synonym-source"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])
+      (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch (fn [_ _] [])
                                   complexity/enumerate-catalogs
                                   (constantly {:library  [(entity :name "orders")]
                                                :universe [(entity :name "orders")]
