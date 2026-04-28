@@ -27,23 +27,25 @@
     (let [result (#'cli/run-cli {:representation-dir fixture-1-dir})]
       (testing "library score matches the hand-derived total"
         (is (= {:total      215
-                :components {:entity-count      {:count 6 :score 60}
-                             :name-collisions   {:pairs 1 :score 100}
-                             :synonym-pairs     {:pairs 1 :score 50}
-                             :field-count       {:count 3 :score 3}
-                             :repeated-measures {:count 1 :score 2}}}
+                :components {:entity-count      {:measurement 6.0 :score 60}
+                             :name-collisions   {:measurement 1.0 :score 100}
+                             :synonym-pairs     {:measurement 1.0 :score 50}
+                             :field-count       {:measurement 3.0 :score 3}
+                             :repeated-measures {:measurement 1.0 :score 2}}}
                (:library result))))
       (testing "universe score matches the hand-derived total"
         (is (= {:total      399
-                :components {:entity-count      {:count 9 :score 90}
-                             :name-collisions   {:pairs 2 :score 200}
-                             :synonym-pairs     {:pairs 2 :score 100}
-                             :field-count       {:count 5 :score 5}
-                             :repeated-measures {:count 2 :score 4}}}
+                :components {:entity-count      {:measurement 9.0 :score 90}
+                             :name-collisions   {:measurement 2.0 :score 200}
+                             :synonym-pairs     {:measurement 2.0 :score 100}
+                             :field-count       {:measurement 5.0 :score 5}
+                             :repeated-measures {:measurement 2.0 :score 4}}}
                (:universe result))))
-      (testing "meta has formula-version + threshold but no :embedding-model (offline mode)"
+      (testing "meta has formula-version + threshold + weights but no :embedding-model (offline mode)"
         (is (= {:formula-version   1
-                :synonym-threshold 0.8}
+                :synonym-threshold 0.8
+                :weights           complexity/weights
+                :metabot-source    :universe-fallback}
                (:meta result)))))))
 
 (deftest ^:parallel run-cli-writes-readable-edn-to-output-file-test
@@ -86,19 +88,19 @@
         (write "tables"
                [{:id 10 :db_id 1 :name "Alpha" :active true :is_published true :collection_id 1}
                 {:id 11 :db_id 1 :name "Beta"  :active true :is_published true :collection_id 1}])
-        ;; Cosine(Alpha, Beta) ≈ 0.995, well above the 0.90 threshold.
+        ;; Cosine(Alpha, Beta) ≈ 0.995, well above the 0.80 threshold.
         (write "embeddings" {"ALPHA"  [1.0 0.0 0.0]
                              " Beta " [0.99 0.1 0.0]})
         (let [result (#'cli/run-cli {:representation-dir (.getAbsolutePath tmp-dir)})]
           (testing ":library synonym-pairs reflects the normalized match"
-            (is (= {:pairs 1 :score 50}
+            (is (= {:measurement 1.0 :score 50}
                    (get-in result [:library :components :synonym-pairs]))))
           (testing ":universe mirrors it (same two tables)"
-            (is (= {:pairs 1 :score 50}
+            (is (= {:measurement 1.0 :score 50}
                    (get-in result [:universe :components :synonym-pairs])))))))))
 
 (deftest ^:parallel synonym-threshold-test
-  (testing "synonym detection requires cosine ≥ 0.90 — a regression to the old 0.30 cutoff would"
+  (testing "synonym detection requires cosine ≥ 0.80 — a regression to the old 0.30 cutoff would"
     (testing "flag mid-similarity pairs that the current formula correctly rejects."
       (let [score-pairs (fn [embeddings]
                           (get-in (complexity/score-from-entities
@@ -107,16 +109,16 @@
                                    []
                                    (embedders/file-embedder embeddings)
                                    {})
-                                  [:library :components :synonym-pairs :pairs]))]
-        (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.90: NOT a synonym"
-          (is (= 0 (score-pairs {"alpha" [1.0 0.0]
-                                 "beta"  [0.5 0.866]}))))
-        (testing "cosine ≈ 0.89 — just below the new threshold: NOT a synonym"
-          (is (= 0 (score-pairs {"alpha" [1.0 0.0]
-                                 "beta"  [0.89 0.456]}))))
-        (testing "cosine ≈ 0.91 — just above the new threshold: IS a synonym"
-          (is (= 1 (score-pairs {"alpha" [1.0 0.0]
-                                 "beta"  [0.91 0.415]}))))))))
+                                  [:library :components :synonym-pairs :measurement]))]
+        (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.80: NOT a synonym"
+          (is (= 0.0 (score-pairs {"alpha" [1.0 0.0]
+                                   "beta"  [0.5 0.866]}))))
+        (testing "cosine ≈ 0.79 — just below the threshold: NOT a synonym"
+          (is (= 0.0 (score-pairs {"alpha" [1.0 0.0]
+                                   "beta"  [0.79 0.613]}))))
+        (testing "cosine ≈ 0.81 — just above the threshold: IS a synonym"
+          (is (= 1.0 (score-pairs {"alpha" [1.0 0.0]
+                                   "beta"  [0.81 0.586]}))))))))
 
 (deftest ^:parallel embeddings-path-override-test
   (testing "explicit :embeddings-path resolves relative to the representation dir, not cwd,"
@@ -146,7 +148,7 @@
                                       []
                                       embedder
                                       {})]
-              (is (= 1 (get-in result [:library :components :synonym-pairs :pairs])))))
+              (is (= 1.0 (get-in result [:library :components :synonym-pairs :measurement])))))
           (testing "absolute override is used as-is"
             (let [abs-path (.getAbsolutePath (java.io.File. ^java.io.File tmp-dir "embeddings/variant.json"))
                   {:keys [embedder]} (representation/load-dir dir-path :embeddings-path abs-path)
@@ -156,7 +158,7 @@
                                       []
                                       embedder
                                       {})]
-              (is (= 1 (get-in result [:library :components :synonym-pairs :pairs])))))
+              (is (= 1.0 (get-in result [:library :components :synonym-pairs :measurement])))))
           (testing "missing override file throws ex-info with the resolved path"
             (let [ex (try (representation/load-dir dir-path :embeddings-path "embeddings/does-not-exist.json")
                           nil
