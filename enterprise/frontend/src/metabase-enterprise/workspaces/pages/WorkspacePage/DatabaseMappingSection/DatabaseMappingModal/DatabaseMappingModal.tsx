@@ -37,7 +37,7 @@ type DatabaseMappingModalProps = {
   databases: Database[];
   opened: boolean;
   canDelete?: boolean;
-  isReadOnly?: boolean;
+  readOnly?: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
@@ -48,7 +48,7 @@ export function DatabaseMappingModal({
   databases,
   opened,
   canDelete = true,
-  isReadOnly = false,
+  readOnly = false,
   onSubmit,
   onDelete,
   onClose,
@@ -66,7 +66,7 @@ export function DatabaseMappingModal({
         mapping={mapping}
         databases={databases}
         canDelete={canDelete}
-        isReadOnly={isReadOnly}
+        readOnly={readOnly}
         onSubmit={onSubmit}
         onDelete={onDelete}
         onClose={onClose}
@@ -79,7 +79,7 @@ type DatabaseMappingFormProps = {
   mapping?: WorkspaceDatabase;
   databases: Database[];
   canDelete: boolean;
-  isReadOnly: boolean;
+  readOnly: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
@@ -89,7 +89,7 @@ function DatabaseMappingForm({
   mapping,
   databases,
   canDelete,
-  isReadOnly,
+  readOnly,
   onSubmit,
   onDelete,
   onClose,
@@ -134,29 +134,27 @@ function DatabaseMappingForm({
                 placeholder={t`Select a database`}
                 data={getDatabaseOptions(databases)}
                 searchable
-                readOnly={isReadOnly}
+                readOnly={readOnly}
                 onChange={handleDatabaseChange}
               />
               {databaseId != null && (
                 <DatabaseSchemasSelect
                   databaseId={databaseId}
                   selectedSchemas={values.input_schemas}
-                  isReadOnly={isReadOnly}
+                  readOnly={readOnly}
                 />
               )}
               <Group>
                 {hasDelete && (
                   <Tooltip
-                    label={getDeleteButtonLabel(isReadOnly, canDelete) ?? ""}
-                    disabled={
-                      getDeleteButtonLabel(isReadOnly, canDelete) == null
-                    }
+                    label={getDeleteButtonLabel(readOnly, canDelete) ?? ""}
+                    disabled={getDeleteButtonLabel(readOnly, canDelete) == null}
                     openDelay={TOOLTIP_OPEN_DELAY}
                   >
                     <Button
                       variant="subtle"
                       color="error"
-                      disabled={isReadOnly || !canDelete}
+                      disabled={readOnly || !canDelete}
                       onClick={handleDelete}
                     >
                       {t`Delete`}
@@ -169,13 +167,13 @@ function DatabaseMappingForm({
                 <Button onClick={onClose}>{t`Cancel`}</Button>
                 <Tooltip
                   label={t`Unprovision this workspace before editing.`}
-                  disabled={!isReadOnly}
+                  disabled={!readOnly}
                   openDelay={TOOLTIP_OPEN_DELAY}
                 >
                   <FormSubmitButton
                     label={isNew ? t`Add database` : t`Save`}
                     variant="filled"
-                    disabled={isReadOnly || (!isNew && !dirty)}
+                    disabled={readOnly || (!isNew && !dirty)}
                   />
                 </Tooltip>
               </Group>
@@ -188,10 +186,10 @@ function DatabaseMappingForm({
 }
 
 function getDeleteButtonLabel(
-  isReadOnly: boolean,
+  readOnly: boolean,
   canDelete: boolean,
 ): string | undefined {
-  if (isReadOnly) {
+  if (readOnly) {
     return t`Unprovision this workspace before editing.`;
   }
   if (!canDelete) {
@@ -202,13 +200,13 @@ function getDeleteButtonLabel(
 type DatabaseSchemasSelectProps = {
   databaseId: DatabaseId;
   selectedSchemas: string[];
-  isReadOnly: boolean;
+  readOnly: boolean;
 };
 
 function DatabaseSchemasSelect({
   databaseId,
   selectedSchemas,
-  isReadOnly,
+  readOnly,
 }: DatabaseSchemasSelectProps) {
   const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
     databaseId != null ? { id: databaseId, include_hidden: true } : skipToken,
@@ -225,7 +223,7 @@ function DatabaseSchemasSelect({
       placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
       data={availableSchemas}
       searchable
-      readOnly={isReadOnly}
+      readOnly={readOnly}
     />
   );
 }

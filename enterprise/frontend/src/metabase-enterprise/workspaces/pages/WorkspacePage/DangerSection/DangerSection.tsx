@@ -40,7 +40,7 @@ export function DangerSection({ workspace }: DangerSectionProps) {
           return;
         }
         sendSuccessToast(t`Workspace deleted`);
-        dispatch(push(Urls.workspaceList()));
+        dispatch(push(Urls.adminWorkspaceList()));
       },
     });
   };

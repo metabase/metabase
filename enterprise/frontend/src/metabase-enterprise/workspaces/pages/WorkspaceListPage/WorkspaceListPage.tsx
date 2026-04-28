@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -25,7 +26,7 @@ export function WorkspaceListPage() {
       {error ? (
         <DelayedLoadingAndErrorWrapper loading={false} error={error} />
       ) : (
-        <WorkspaceListPageBody workspaces={workspaces} isLoading={isLoading} />
+        <WorkspaceListPageBody workspaces={workspaces} loading={isLoading} />
       )}
     </SettingsPageWrapper>
   );
@@ -33,15 +34,16 @@ export function WorkspaceListPage() {
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
-  isLoading: boolean;
+  loading: boolean;
 };
 
 function WorkspaceListPageBody({
   workspaces,
-  isLoading,
+  loading,
 }: WorkspaceListPageBodyProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const debouncedQuery = useDebouncedValue(
     searchQuery.trim(),
     SEARCH_DEBOUNCE_DURATION,
@@ -66,17 +68,15 @@ function WorkspaceListPageBody({
         />
         <Button
           leftSection={<Icon name="add" />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={openModal}
         >{t`New`}</Button>
       </Flex>
       <WorkspaceList
         workspaces={filteredWorkspaces}
-        isFiltered={isFiltered}
-        isLoading={isLoading}
+        filtered={isFiltered}
+        loading={loading}
       />
-      {isModalOpen && (
-        <CreateWorkspaceModal onClose={() => setIsModalOpen(false)} />
-      )}
+      <CreateWorkspaceModal opened={isModalOpened} onClose={closeModal} />
     </Stack>
   );
 }

@@ -118,7 +118,7 @@ export function DatabaseMappingSection({
                 key={mapping.database_id}
                 mapping={mapping}
                 database={databasesById.get(mapping.database_id)}
-                isReadOnly={isReadOnly}
+                readOnly={isReadOnly}
                 onEdit={() => handleOpenEdit(mapping)}
                 onRemove={() => handleRemove(mapping)}
               />
@@ -135,7 +135,7 @@ export function DatabaseMappingSection({
           selectedDatabaseId,
         )}
         canDelete={mappings.length > 1}
-        isReadOnly={isReadOnly}
+        readOnly={isReadOnly}
         onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
         onDelete={selectedMapping != null ? handleRemove : undefined}
         onClose={handleClose}

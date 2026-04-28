@@ -24,8 +24,8 @@ export function getAvailableDatabases(
   );
 }
 
-export function getAddTooltipLabel(isReadOnly: boolean): string {
-  return isReadOnly
+export function getAddTooltipLabel(readOnly: boolean): string {
+  return readOnly
     ? t`Unprovision this workspace before editing.`
     : t`No available databases that support workspaces.`;
 }

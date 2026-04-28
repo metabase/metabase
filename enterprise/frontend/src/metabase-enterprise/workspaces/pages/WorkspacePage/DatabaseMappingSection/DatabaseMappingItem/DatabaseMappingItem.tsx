@@ -8,7 +8,7 @@ import { isDatabaseProvisioned } from "../../../../utils";
 type DatabaseMappingItemProps = {
   mapping: WorkspaceDatabase;
   database?: Database;
-  isReadOnly: boolean;
+  readOnly: boolean;
   onEdit: () => void;
   onRemove: () => void;
 };
@@ -16,7 +16,7 @@ type DatabaseMappingItemProps = {
 export function DatabaseMappingItem({
   mapping,
   database,
-  isReadOnly,
+  readOnly,
   onEdit,
   onRemove,
 }: DatabaseMappingItemProps) {
@@ -42,14 +42,14 @@ export function DatabaseMappingItem({
         <Menu.Dropdown>
           <Menu.Item
             leftSection={<Icon name="pencil" />}
-            disabled={isReadOnly}
+            disabled={readOnly}
             onClick={onEdit}
           >
             {t`Edit`}
           </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="trash" />}
-            disabled={isReadOnly}
+            disabled={readOnly}
             onClick={onRemove}
           >
             {t`Remove`}

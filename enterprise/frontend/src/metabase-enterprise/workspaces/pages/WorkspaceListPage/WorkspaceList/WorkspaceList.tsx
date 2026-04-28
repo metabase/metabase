@@ -18,21 +18,21 @@ import { getColumns, getEmptyLabel } from "./utils";
 
 type WorkspaceListProps = {
   workspaces: Workspace[];
-  isFiltered?: boolean;
-  isLoading?: boolean;
+  filtered?: boolean;
+  loading?: boolean;
 };
 
 export function WorkspaceList({
   workspaces,
-  isFiltered = false,
-  isLoading = false,
+  filtered = false,
+  loading = false,
 }: WorkspaceListProps) {
   const dispatch = useDispatch();
   const columns = useMemo(() => getColumns(), []);
 
   const handleRowActivate = useCallback(
     (row: Row<Workspace>) => {
-      dispatch(push(Urls.workspace(row.original.id)));
+      dispatch(push(Urls.adminWorkspace(row.original.id)));
     },
     [dispatch],
   );
@@ -44,11 +44,11 @@ export function WorkspaceList({
     onRowActivate: handleRowActivate,
   });
 
-  const emptyLabel = getEmptyLabel(isFiltered);
+  const emptyLabel = getEmptyLabel(filtered);
 
   return (
     <Card flex="0 1 auto" mih={0} p={0} withBorder data-testid="workspace-list">
-      {isLoading ? (
+      {loading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
         <TreeTable

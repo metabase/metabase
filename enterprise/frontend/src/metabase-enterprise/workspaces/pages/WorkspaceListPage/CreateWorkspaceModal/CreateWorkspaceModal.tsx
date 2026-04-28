@@ -28,44 +28,62 @@ const INITIAL_VALUES: CreateWorkspaceFormValues = {
 };
 
 type CreateWorkspaceModalProps = {
+  opened: boolean;
   onClose: () => void;
 };
 
-export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
+export function CreateWorkspaceModal({
+  opened,
+  onClose,
+}: CreateWorkspaceModalProps) {
+  return (
+    <Modal
+      title={t`New workspace`}
+      opened={opened}
+      padding="xl"
+      onClose={onClose}
+    >
+      <FocusTrap.InitialFocus />
+      <CreateWorkspaceForm onCancel={onClose} />
+    </Modal>
+  );
+}
+
+type CreateWorkspaceFormProps = {
+  onCancel: () => void;
+};
+
+function CreateWorkspaceForm({ onCancel }: CreateWorkspaceFormProps) {
   const dispatch = useDispatch();
   const [createWorkspace] = useCreateWorkspaceMutation();
 
   const handleSubmit = async (values: CreateWorkspaceFormValues) => {
     const workspace = await createWorkspace({ name: values.name }).unwrap();
-    onClose();
-    dispatch(push(Urls.workspace(workspace.id)));
+    onCancel();
+    dispatch(push(Urls.adminWorkspace(workspace.id)));
   };
 
   return (
-    <Modal title={t`New workspace`} opened padding="xl" onClose={onClose}>
-      <FocusTrap active>
-        <FormProvider
-          initialValues={INITIAL_VALUES}
-          validationSchema={VALIDATION_SCHEMA}
-          onSubmit={handleSubmit}
-        >
-          <Form>
-            <Stack gap="lg">
-              <FormTextInput
-                name="name"
-                label={t`Name`}
-                placeholder={t`My workspace`}
-                autoFocus
-              />
-              <FormErrorMessage />
-              <Group justify="flex-end">
-                <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton label={t`Create`} variant="filled" />
-              </Group>
-            </Stack>
-          </Form>
-        </FormProvider>
-      </FocusTrap>
-    </Modal>
+    <FormProvider
+      initialValues={INITIAL_VALUES}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      <Form>
+        <Stack gap="lg">
+          <FormTextInput
+            name="name"
+            label={t`Name`}
+            placeholder={t`My workspace`}
+            data-autofocus
+          />
+          <FormErrorMessage />
+          <Group justify="flex-end">
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <FormSubmitButton label={t`Create`} variant="filled" />
+          </Group>
+        </Stack>
+      </Form>
+    </FormProvider>
   );
 }

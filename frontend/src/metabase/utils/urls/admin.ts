@@ -182,10 +182,14 @@ export function adminToolsGrantAccess() {
   return "/admin/tools/help/grant-access";
 }
 
-export function workspaceList() {
+export function adminWorkspaceList() {
   return "/admin/settings/workspaces";
 }
 
-export function workspace(workspaceId: WorkspaceId) {
+export function adminWorkspace(workspaceId: WorkspaceId) {
   return `/admin/settings/workspaces/${workspaceId}`;
+}
+
+export function adminDeveloperInstance() {
+  return "/admin/settings/workspaces/development-instance";
 }
