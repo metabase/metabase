@@ -201,11 +201,42 @@
                                            (format "%s&sort-by=message_count&sort-dir=asc" response-path))]
         (is (= [convo-3 convo-1 convo-2] (map :conversation_id (:data response))))))))
 
+(deftest list-conversations-sorting-desc-test
+  (testing "sort-dir=desc reverses the sort order — same fixture as the asc test"
+    (with-list-conversations-fixture!
+      (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "%s&sort-by=message_count&sort-dir=desc" response-path))]
+          (is (= [convo-2 convo-1 convo-3]
+                 (map :conversation_id (:data response)))))))))
+
 (deftest list-conversations-invalid-sort-test
   (with-list-conversations-fixture!
     (fn [{:keys [response-path]}]
       (is (some? (:errors (mt/user-http-request :crowberto :get 400
                                                 (format "%s&sort-by=drop_table" response-path))))))))
+
+(deftest list-conversations-invalid-sort-dir-test
+  (testing "sort-dir is constrained to the {asc, desc} enum"
+    (with-list-conversations-fixture!
+      (fn [{:keys [response-path]}]
+        (is (some? (:errors (mt/user-http-request :crowberto :get 400
+                                                  (format "%s&sort-dir=sideways" response-path)))))))))
+
+(deftest list-conversations-user-with-no-conversations-test
+  (testing "filtering by a user-id that has no conversations returns an empty data set, not an error"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User {empty-user-id :id} {:email "no-convos-user@metabase.com"}]
+        (is (=? {:total 0
+                 :data  []}
+                (mt/user-http-request :crowberto :get 200
+                                      (format "ee/metabot-analytics/conversations?user-id=%s"
+                                              empty-user-id))))))))
+
+(deftest list-conversations-requires-audit-app-feature-test
+  (testing "GET /api/ee/metabot-analytics/conversations is gated by :audit-app and 402s without it"
+    (mt/with-premium-features #{}
+      (mt/user-http-request :crowberto :get 402 "ee/metabot-analytics/conversations"))))
 
 (defn- with-filters-fixture!
   [thunk]
@@ -261,6 +292,12 @@
                                                  group-id user-a-id)))))
         (testing "malformed date returns 400"
           (mt/user-http-request :crowberto :get 400 (str base-path "?date=not-a-real-range")))))))
+
+(deftest get-conversation-detail-requires-audit-app-feature-test
+  (testing "GET /api/ee/metabot-analytics/conversations/:id is gated by :audit-app and 402s without it"
+    (mt/with-premium-features #{}
+      (mt/user-http-request :crowberto :get 402
+                            (format "ee/metabot-analytics/conversations/%s" (random-uuid))))))
 
 (deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}

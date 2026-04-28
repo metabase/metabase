@@ -130,3 +130,106 @@
         (is (= team-id (:slack_team_id conversation)))
         (is (= channel-id (:slack_channel_id conversation)))
         (is (= thread-ts (:slack_thread_ts conversation)))))))
+
+(deftest combine-text-parts-xf-merges-consecutive-text-test
+  (testing "consecutive :text parts coalesce; non-text parts split runs"
+    (let [parts [{:type :text :text "Hello, "}
+                 {:type :text :text "world"}
+                 {:type :text :text "!"}
+                 {:type :tool-input :id "c1" :function "search"}
+                 {:type :text :text "After "}
+                 {:type :text :text "tool."}]
+          out   (into [] (metabot-persistence/combine-text-parts-xf) parts)]
+      (is (= [{:type :text :text "Hello, world!"}
+              {:type :tool-input :id "c1" :function "search"}
+              {:type :text :text "After tool."}]
+             out))))
+  (testing "single text part flushes on completion"
+    (is (= [{:type :text :text "lone"}]
+           (into [] (metabot-persistence/combine-text-parts-xf) [{:type :text :text "lone"}]))))
+  (testing "empty input"
+    (is (= [] (into [] (metabot-persistence/combine-text-parts-xf) [])))))
+
+(deftest store-native-parts-persists-slack-metadata-on-conversation-test
+  (testing "store-native-parts! lands slack-team-id / channel-id / slack-thread-ts on the conversation row,
+            and slack-msg-id / channel-id / user-id on the message row, on first insert"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            team-id         "T-NATIVE"
+            channel-id      "C-NATIVE"
+            thread-ts       "1700000000.000001"
+            slack-msg-id    "1700000000.000099"
+            user-id         (mt/user->id :rasta)]
+        (mt/with-current-user user-id
+          (metabot-persistence/store-native-parts!
+           conversation-id
+           "metabot-1"
+           [{:type :text :text "hello from slack"}]
+           :slack-team-id team-id
+           :channel-id channel-id
+           :slack-thread-ts thread-ts
+           :slack-msg-id slack-msg-id
+           :user-id user-id))
+        (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)
+              message      (t2/select-one :model/MetabotMessage :conversation_id conversation-id)]
+          (is (= user-id (:user_id conversation)))
+          (is (= team-id (:slack_team_id conversation)))
+          (is (= channel-id (:slack_channel_id conversation)))
+          (is (= thread-ts (:slack_thread_ts conversation)))
+          (is (= channel-id (:channel_id message)))
+          (is (= slack-msg-id (:slack_msg_id message)))
+          (is (= user-id (:user_id message))))))))
+
+(deftest store-native-parts-does-not-overwrite-slack-metadata-test
+  (testing "slack metadata on the conversation row is set once and never overwritten by a later writer"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/store-native-parts!
+           conversation-id "metabot-1" [{:type :text :text "first"}]
+           :slack-team-id "T-FIRST"
+           :channel-id "C-FIRST"
+           :slack-thread-ts "1700000000.000001"))
+        (mt/with-current-user (mt/user->id :lucky)
+          (metabot-persistence/store-native-parts!
+           conversation-id "metabot-1" [{:type :text :text "second"}]
+           :slack-team-id "T-SECOND"
+           :channel-id "C-SECOND"
+           :slack-thread-ts "1700000000.999999"))
+        (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+          (is (= "T-FIRST" (:slack_team_id conversation)))
+          (is (= "C-FIRST" (:slack_channel_id conversation)))
+          (is (= "1700000000.000001" (:slack_thread_ts conversation))))))))
+
+(deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
+  (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :rasta)
+            now             (java.time.OffsetDateTime/now)
+            insert!         (fn [{:keys [text created-at deleted-at external-id role]
+                                  :or   {role "assistant"}}]
+                              (t2/insert-returning-pks!
+                               :model/MetabotMessage
+                               (cond-> {:conversation_id conversation-id
+                                        :role            role
+                                        :profile_id      "metabot-1"
+                                        :external_id     (or external-id (str (random-uuid)))
+                                        :total_tokens    0
+                                        :data            [{:type "text" :text text :id (str (random-uuid))}]
+                                        :created_at      created-at}
+                                 deleted-at (assoc :deleted_at deleted-at))))]
+        (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+        (insert! {:text "second" :created-at (.plusSeconds now 2)})
+        (insert! {:text "first"  :created-at (.plusSeconds now 1)})
+        (insert! {:text "deleted-third"
+                  :created-at (.plusSeconds now 3)
+                  :deleted-at now})
+        (let [detail (metabot-persistence/conversation-detail conversation-id)
+              texts  (mapv :message (:chat_messages detail))]
+          (is (= conversation-id (:conversation_id detail)))
+          (is (= ["first" "second"] texts)))))))
+
+(deftest conversation-detail-returns-nil-for-missing-conversation-test
+  (testing "conversation-detail returns nil when the conversation does not exist"
+    (is (nil? (metabot-persistence/conversation-detail (str (random-uuid)))))))
