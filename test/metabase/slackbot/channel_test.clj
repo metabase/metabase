@@ -9,7 +9,7 @@
   (let [request-opts (atom nil)]
     (with-redefs [slackbot.client/set-status (constantly {:ok true})
                   slackbot.client/post-thread-reply (constantly {:ok true :ts "1700000000.000002"})
-                  metabot.persistence/set-response-slack-msg-id! (fn [& _])]
+                  metabot.persistence/set-response-slack-msg-id! (constantly nil)]
       (slackbot.channel/send-channel-response
        {}
        {:ts "1700000000.000001"}
@@ -29,9 +29,9 @@
                                       "message-external-id")
         :collect-viz-blocks         (constantly {:blocks [] :errors []})
         :feedback-blocks            (constantly [])
-        :post-viz-error!            (fn [& _])
+        :post-viz-error!            (constantly nil)
         :make-viz-prefetch-callback (constantly (fn [& _]))
-        :cancel-prefetched-viz!     (fn [& _])}))
+        :cancel-prefetched-viz!     (constantly nil)}))
     (is (= {:team-id          "T123"
             :thread-ts        "1700000000.000001"
             :req-slack-msg-id "1700000000.000001"}
