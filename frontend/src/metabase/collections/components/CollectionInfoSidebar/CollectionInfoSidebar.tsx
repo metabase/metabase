@@ -9,6 +9,7 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
+import { UpsellOfficialCollectionsPill } from "metabase/common/components/upsells/UpsellOfficialCollections";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
@@ -65,6 +66,7 @@ export const CollectionInfoSidebar = ({
             <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay
               collection={collection}
             />
+            <UpsellOfficialCollectionsPill source="collection-info-sidebar" />
           </Stack>
         </SidesheetCard>
         {collection.entity_id && (
