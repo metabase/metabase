@@ -10,7 +10,6 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
-import { McpExploreButton } from "./McpExploreButton";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
@@ -125,28 +124,18 @@ export function McpUiAppRoute() {
           withChartTypeSelector={false}
           onDrillThrough={handleDrillThrough}
         >
-          <Flex
-            justify="space-between"
-            align="center"
-            pr="md"
-            mb="xs"
-            style={{ flexShrink: 0 }}
-          >
-            <div>
-              <McpQuestionTitle />
-            </div>
-
-            <McpExploreButton app={app} instanceUrl={instanceUrl} />
-          </Flex>
+          <div style={{ flexShrink: 0 }}>
+            <McpQuestionTitle />
+          </div>
 
           {/* Visualization fills the remaining space */}
           <Flex flex={1} mih={0} style={{ overflow: "hidden" }}>
             <SdkQuestion.QuestionVisualization height="calc(500px - 8rem)" />
           </Flex>
 
-          {/* Metric-viewer-style query bar: chart type + time granularity */}
-          <Flex justify="center" py="xs" style={{ flexShrink: 0 }}>
-            <McpQueryBar />
+          {/* Query bar: viz selectors (left), time controls (center), explore (right) */}
+          <Flex py="xs" px="sm" style={{ flexShrink: 0 }}>
+            <McpQueryBar app={app} instanceUrl={instanceUrl} />
           </Flex>
         </SdkQuestion>
       </div>

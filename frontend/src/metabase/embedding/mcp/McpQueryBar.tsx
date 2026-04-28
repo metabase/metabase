@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { QueryExplorerBar } from "metabase/metrics-viewer/components/QueryExplorerBar";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
@@ -13,11 +14,17 @@ import {
   Popover,
 } from "metabase/ui";
 
+import { McpExploreButton } from "./McpExploreButton";
 import { useChartTypes } from "./hooks/useChartTypes";
 import { useDateFilter } from "./hooks/useDateFilter";
 import { useTemporalGranularity } from "./hooks/useTemporalGranularity";
 
-export function McpQueryBar() {
+interface McpQueryBarProps {
+  app: App | null;
+  instanceUrl: string;
+}
+
+export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
   const [isBucketOpen, setIsBucketOpen] = useState(false);
   const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
@@ -166,6 +173,9 @@ export function McpQueryBar() {
       onChartTypeChange={handleDisplayChange}
       filterControl={filterControl}
       granularityControl={granularityControl}
+      exploreControl={
+        <McpExploreButton app={app} instanceUrl={instanceUrl} />
+      }
     />
   );
 }

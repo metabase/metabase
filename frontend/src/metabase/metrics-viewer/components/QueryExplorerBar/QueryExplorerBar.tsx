@@ -1,14 +1,12 @@
 import type { ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
-import { Divider, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
 import type { MetricsViewerDisplayType } from "../../types/viewer-state";
 import type { ChartTypeOption } from "../../utils/tab-config";
 import { ChartLayoutPicker } from "../MetricControls/ChartLayoutPicker";
 import { ChartTypePicker } from "../MetricControls/ChartTypePicker";
-
-import S from "./QueryExplorerBar.module.css";
 
 export type QueryExplorerBarChartType = {
   /** The identifier for this chart type (e.g. line, bar, area) */
@@ -41,6 +39,9 @@ export type QueryExplorerBarProps = {
 
   /** Optional slot for a time granularity control (e.g. temporal bucket picker) */
   granularityControl?: ReactNode;
+
+  /** Optional slot for an action button on the right (e.g. explore) */
+  exploreControl?: ReactNode;
 };
 
 export function QueryExplorerBar({
@@ -50,49 +51,42 @@ export function QueryExplorerBar({
   layout,
   filterControl,
   granularityControl,
+  exploreControl,
 }: QueryExplorerBarProps) {
   return (
     <Flex
-      maw="100%"
-      h="3.3rem"
-      display="inline-flex"
-      bg="background-primary"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="lg"
-      px="sm"
+      w="100%"
+      h="32px"
       align="center"
-      gap="xs"
+      justify="space-between"
       data-testid="query-explorer-bar"
     >
-      <ChartTypePicker
-        chartTypes={chartTypes as ChartTypeOption[]}
-        value={currentChartType as MetricsViewerDisplayType}
-        onChange={onChartTypeChange}
-      />
+      {/* Left: viz type selectors */}
+      <Flex align="center" gap="xs">
+        <ChartTypePicker
+          chartTypes={chartTypes as ChartTypeOption[]}
+          value={currentChartType as MetricsViewerDisplayType}
+          onChange={onChartTypeChange}
+        />
 
-      {layout && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
+        {layout && (
           <ChartLayoutPicker
             isStacked={layout.isStacked}
             onToggle={layout.onToggle}
           />
-        </>
-      )}
+        )}
+      </Flex>
 
-      {filterControl && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
+      {/* Center: time range + granularity */}
+      {(filterControl || granularityControl) && (
+        <Flex align="center" gap="xs">
           {filterControl}
-        </>
+          {granularityControl}
+        </Flex>
       )}
 
-      {granularityControl && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
-          {granularityControl}
-        </>
-      )}
+      {/* Right: explore */}
+      {exploreControl && <Flex align="center">{exploreControl}</Flex>}
     </Flex>
   );
 }
