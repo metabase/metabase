@@ -17,7 +17,7 @@ export function NewExplorationChat({
 }: NewExplorationChatProps) {
   return (
     <Stack
-      flex={1}
+      w="100%"
       bg="background-primary"
       bd="1px solid border"
       bdrs="md"
