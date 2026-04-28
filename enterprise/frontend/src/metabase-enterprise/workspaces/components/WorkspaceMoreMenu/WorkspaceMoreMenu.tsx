@@ -51,7 +51,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
         </Menu.Target>
         <Menu.Dropdown>
           <Tooltip
-            label={t`Unprovision the workspace before deleting it.`}
+            label={t`Deprovision this workspace before deleting it.`}
             disabled={isUnprovisioned}
             openDelay={TOOLTIP_OPEN_DELAY}
           >

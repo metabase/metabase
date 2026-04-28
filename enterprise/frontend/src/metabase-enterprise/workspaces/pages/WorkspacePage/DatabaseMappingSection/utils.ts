@@ -36,7 +36,7 @@ export function getAddTooltipLabel({
   hasAvailableDatabases,
 }: AddTooltipParams): string {
   if (readOnly) {
-    return t`Unprovision this workspace before editing.`;
+    return t`Deprovision this workspace before editing.`;
   }
   if (!hasSupportedDatabases) {
     return t`No databases support workspaces.`;
