@@ -1628,6 +1628,28 @@
               (is (contains? dashboard-ids regular-dashboard-id))
               (is (not (contains? dashboard-ids internal-dashboard-id))))))))))
 
+(deftest ^:sequential breaking-entities-includes-internal-content-test
+  (testing "GET /api/ee/dependencies/graph/breaking still surfaces internal-user (system-managed) content"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+          (let [[internal-model dependent-card]
+                (lib-be/with-metadata-provider-cache
+                  (let [internal-model (create-model-card! user "Internal Model - intbreaking")
+                        dependent-card (create-dependent-card-on-model! user internal-model "Dependent - intbreaking")]
+                    [internal-model dependent-card]))]
+            (t2/update! :model/Card (:id internal-model) {:creator_id config/internal-mb-user-id})
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! (t2/select-one :model/Card :id (:id internal-model))))
+            (lib-be/with-metadata-provider-cache
+              (deps.test/synchronously-run-backfill!)
+              (run-analysis-for-card! (:id dependent-card)))
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/breaking?types=card&query=intbreaking")
+                  card-ids (set (map :id (:data response)))]
+              (is (contains? card-ids (:id internal-model))
+                  "Internal-user model card should still appear in breaking list"))))))))
+
 (deftest ^:sequential unreferenced-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
     (mt/with-premium-features #{:dependencies}

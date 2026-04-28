@@ -839,7 +839,7 @@
     #{}))
 
 (defn- build-optional-filters
-  [{:keys [entity-type card-types query include-archived-items include-personal-collections]}
+  [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections]}
    {:keys [name-column location-column]}]
   (let [card-type-filter (when (and (= entity-type :card)
                                     (seq card-types))
@@ -853,12 +853,15 @@
         database-filter (when (= entity-type :table)
                           {:filter [:and [:not :database.is_sample] [:not :database.is_audit]]
                            :filter-joins #{:database}})
-        ;; Hide system-managed (internal-user) content like Usage Analytics from the user-facing
-        ;; graph, mirroring the `is_audit` database exclusion above for tables.
-        internal-content-filter (when-let [model (case entity-type
-                                                   :card      :model/Card
-                                                   :dashboard :model/Dashboard
-                                                   nil)]
+        ;; Hide system-managed (internal-user) content like Usage Analytics from the unreferenced
+        ;; list — analytics dashboards have nothing pointing at them by design and would just be
+        ;; noise. The breaking-items list intentionally still surfaces them, since broken analytics
+        ;; deps are real signals worth showing.
+        internal-content-filter (when-let [model (and (= query-type :unreferenced)
+                                                      (case entity-type
+                                                        :card      :model/Card
+                                                        :dashboard :model/Dashboard
+                                                        nil))]
                                   {:filter (mi/exclude-internal-content-hsql model :table-alias :entity)
                                    :filter-joins #{}})
         archived-filter (when (= include-archived-items :exclude)
