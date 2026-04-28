@@ -1,16 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { Skeleton, useMantineTheme } from "metabase/ui";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
-import {
-  mapBreakoutDimension,
-  toBreakoutRawSeries,
-} from "./breakout-raw-series";
+import { toBreakoutRawSeries } from "./breakout-raw-series";
 import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
 import type { ChartInnerProps, ChartProps } from "./types";
 
@@ -70,7 +66,7 @@ function ConversationsByProfileBarChartInner({
         groupId,
         tenantId,
         metric,
-        breakoutColumn: "profile_id",
+        breakoutColumn: "profile_name",
       }),
     [
       provider,
@@ -87,18 +83,17 @@ function ConversationsByProfileBarChartInner({
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
   const { themeColor } = useMantineTheme().fn;
 
-  const rawSeries = useMemo(() => {
-    const labeledData = mapBreakoutDimension(data, (value) =>
-      typeof value === "string" ? renderMetabotProfileLabel(value) : value,
-    );
-    return toBreakoutRawSeries(labeledData, jsQuery, {
-      metric,
-      display: "bar",
-      maxCategories: 8,
-      otherLabel: t`Other`,
-      getColor: themeColor,
-    });
-  }, [data, jsQuery, metric, themeColor]);
+  const rawSeries = useMemo(
+    () =>
+      toBreakoutRawSeries(data, jsQuery, {
+        metric,
+        display: "bar",
+        maxCategories: 8,
+        otherLabel: t`Other`,
+        getColor: themeColor,
+      }),
+    [data, jsQuery, metric, themeColor],
+  );
 
   return (
     <BreakoutChartCard

@@ -587,10 +587,10 @@
 (deftest call-llm-prometheus-test
   (mt/with-prometheus-system! [_ system]
     (with-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels {:model "openrouter/test-model" :source "agent"}]
+      (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
@@ -611,7 +611,7 @@
                                   (if (< (swap! calls inc) 3)
                                     (throw (ex-info "rate limited" {:status 429}))
                                     (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
-                (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"}))))
+                (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
             (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
             (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
@@ -628,7 +628,7 @@
                           (reify clojure.lang.IReduceInit
                             (reduce [_ _rf _init]
                               (throw (ex-info "unauthorized" {:status 401})))))]
-            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))))
+            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
@@ -642,7 +642,7 @@
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (with-redefs [openrouter/openrouter
                         (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
@@ -655,7 +655,7 @@
                                       {:type  :usage
                                        :usage {:promptTokens 100 :completionTokens 25}
                                        :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
           (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
@@ -663,7 +663,7 @@
 (deftest call-llm-structured-prometheus-test
   (mt/with-prometheus-system! [_ system]
     (with-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels        {:model "openrouter/test-model" :source "agent"}
+      (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
             success-mock  (test-util/mock-llm-response
                            [{:type :start :id "m1"}
                             {:type :tool-input :id "call-1" :function "json"
@@ -672,7 +672,7 @@
                                "openrouter/test-model"
                                [{:role "user" :content "test"}]
                                {:type "object" :properties {:answer {:type "string"}}}
-                               0.3 1024 {:tag "agent"})]
+                               0.3 1024 {:tag "metabot_agent"})]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter (constantly success-mock)]
             (call-structured!))
@@ -745,7 +745,7 @@
 (def ^:private snowplow-tracking-opts
   {:request-id "00000000-0000-0000-0000-000000000001"
    :session-id "00000000-0000-0000-0000-000000000002"
-   :source     "test-source"
+   :source     "metabot_agent"
    :tag        "test-tag"})
 
 (deftest call-llm-snowplow-test
@@ -771,13 +771,13 @@
                                   "completion_tokens"    20
                                   "estimated_costs_usd"  0.0
                                   "duration_ms"          nat-int?
-                                  "source"               "test-source"
+                                  "source"               "metabot_agent"
                                   "tag"                  "test-tag"
                                   "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                       token-events))
               (is (=? [{:user-id (str rasta-id)
                         :data    {"event"         "agent_used_tool"
-                                  "source"        "test-source"
+                                  "source"        "metabot_agent"
                                   "result"        "success"
                                   "duration_ms"   nat-int?
                                   "session_id"    "00000000-0000-0000-0000-000000000002"
@@ -811,7 +811,7 @@
                                   "completion_tokens"    10
                                   "estimated_costs_usd"  0.0
                                   "duration_ms"          nat-int?
-                                  "source"               "test-source"
+                                  "source"               "metabot_agent"
                                   "tag"                  "test-tag"
                                   "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                       token-events)))))))))

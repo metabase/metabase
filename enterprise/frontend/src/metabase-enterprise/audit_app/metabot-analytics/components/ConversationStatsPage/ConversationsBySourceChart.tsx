@@ -66,7 +66,7 @@ function ConversationsBySourceChartInner({
         groupId,
         tenantId,
         metric,
-        breakoutColumn: "source",
+        breakoutColumn: "source_name",
       }),
     [
       provider,

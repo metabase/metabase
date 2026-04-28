@@ -5,6 +5,17 @@ SELECT
     a.id                                                              AS usage_log_id,
     a.created_at,
     a.source,
+    CASE a.source
+        WHEN 'metabot_agent'                     THEN 'Metabot'
+        WHEN 'document_generate_content'         THEN 'Documents'
+        WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
+        WHEN 'slack'                             THEN 'Slackbot'
+        WHEN 'slackbot'                          THEN 'Slackbot'
+        WHEN 'oss-sql-gen'                       THEN 'SQL'
+        WHEN 'sql-gen'                           THEN 'SQL'
+        WHEN 'unknown'                           THEN 'Unknown'
+        ELSE a.source
+    END                                                               AS source_name,
     a.model,
     a.profile_id,
     a.prompt_tokens,
