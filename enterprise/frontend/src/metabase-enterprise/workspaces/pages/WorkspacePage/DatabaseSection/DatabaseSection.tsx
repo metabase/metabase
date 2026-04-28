@@ -9,7 +9,7 @@ import type {
   WorkspaceDatabase,
 } from "metabase-types/api";
 
-import { TitleSection } from "../TitleSection";
+import { TitleSection } from "../../../components/TitleSection";
 
 import { CreateDatabaseModal, UpdateDatabaseModal } from "./DatabaseModal";
 import { DatabaseTable } from "./DatabaseTable";

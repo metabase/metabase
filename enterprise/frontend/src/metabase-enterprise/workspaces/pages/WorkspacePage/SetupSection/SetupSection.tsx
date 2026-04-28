@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { Box, Button, Code, Divider, Stack, Text } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
-import { TitleSection } from "../TitleSection";
+import { TitleSection } from "../../../components/TitleSection";
 
 const DOCKER_COMMAND = `docker run -d -p 3000:3000 \\
   -v $(pwd)/config.yml:/config.yml \\

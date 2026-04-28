@@ -7,20 +7,30 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import * as Urls from "metabase/utils/urls";
+import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
 type WorkspaceHeaderProps = {
   workspace: Workspace;
   menu?: ReactNode;
-  onNameChange: (name: string) => void;
 };
 
-export function WorkspaceHeader({
-  workspace,
-  menu,
-  onNameChange,
-}: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ workspace, menu }: WorkspaceHeaderProps) {
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const handleNameChange = async (name: string) => {
+    if (name === workspace.name) {
+      return;
+    }
+    const { error } = await updateWorkspace({ id: workspace.id, name });
+    if (error) {
+      sendErrorToast(t`Failed to update workspace name`);
+    }
+  };
+
   return (
     <PaneHeader
       py={0}
@@ -35,7 +45,7 @@ export function WorkspaceHeader({
       title={
         <PaneHeaderInput
           initialValue={workspace.name}
-          onChange={onNameChange}
+          onChange={handleNameChange}
         />
       }
       menu={menu}
