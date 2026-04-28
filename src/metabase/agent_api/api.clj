@@ -651,7 +651,7 @@
                        {:id api/*current-user-id*})]
     {:id            (:id card)
      :name          (:name card)
-     :display       (clojure.core/name (:display card))
+     :display       (name (:display card))
      :collection_id (:collection_id card)
      :description   (:description card)}))
 
