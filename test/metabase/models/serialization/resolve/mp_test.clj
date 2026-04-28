@@ -401,3 +401,48 @@
 (deftest outbound-fks-from-table-simple-mp-test
   (testing "works on the existing simple MP too (no FKs configured)"
     (is (= [] (resolve.mp/outbound-fks-from-table mp-simple 10)))))
+
+;;; ============================================================
+;;; ContentStore - custom (no-app-db) lookups
+;;; ============================================================
+
+(defn- map-content-store
+  "Build an in-memory [[ContentStore]] from `entity-id->card` (a map). Cards must include
+  `:id` and `:database_id` so the resolver can do the cross-DB check."
+  [entity-id->card]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id [_ entity-id]
+      (get entity-id->card entity-id))))
+
+(deftest import-fk-card-via-custom-content-store-happy-path-test
+  (testing "a custom ContentStore lets the resolver work without an app DB"
+    (let [card-eid "abcdefghijabcdefghij1"
+          store    (map-content-store {card-eid {:id 4242 :database_id 1}})
+          ir       (resolve.mp/import-resolver mp-simple store)]
+      (is (= 4242 (resolve/import-fk ir card-eid 'Card))))))
+
+(deftest import-fk-card-via-custom-content-store-unknown-test
+  (testing "unknown entity_id from a custom store still surfaces :unknown-card"
+    (let [ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+      (try
+        (resolve/import-fk ir "nonexistent_entity_id1" 'Card)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (true? (:agent-error? d)))
+            (is (= :unknown-card (:error d)))))))))
+
+(deftest import-fk-card-via-custom-content-store-cross-database-test
+  (testing "cross-DB check fires regardless of where the card came from"
+    (let [card-eid "abcdefghijabcdefghij2"
+          ;; mp-simple's database is id=1; serve a card pinned to a different db.
+          store    (map-content-store {card-eid {:id 99 :database_id 999}})
+          ir       (resolve.mp/import-resolver mp-simple store)]
+      (try
+        (resolve/import-fk ir card-eid 'Card)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (true? (:agent-error? d)))
+            (is (= :cross-database-card (:error d)))
+            (is (= 999 (:card-database-id d)))))))))

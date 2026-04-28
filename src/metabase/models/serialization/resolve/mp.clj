@@ -20,7 +20,17 @@
     * Everything else throws `:not-implemented-yet` for now.
 
   Phase 2 additions (per `repr-plan.md`):
-    * `import-fk` for `Card` / `:model/Card` by `entity_id` (step 11)."
+    * `import-fk` for `Card` / `:model/Card` by `entity_id` (step 11).
+
+  Asset vs metadata split:
+    The resolver has two orthogonal lookup responsibilities:
+      * **Warehouse metadata** (databases, tables, fields) is resolved through a
+        `lib.metadata/MetadataProvider`.
+      * **Metabase content / assets** (cards, snippets, segments, …) is resolved through a
+        [[ContentStore]]. The default app-DB-backed store goes through `serdes/lookup-by-id`,
+        but a different store (e.g. backed by the checker's YAML index, an in-memory test
+        fixture, or a snapshot) can be supplied to make the resolver usable without an
+        application database."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -29,7 +39,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
 
@@ -322,6 +333,27 @@
     (into [(db-name metadata-provider) (:schema table) (:name table)] chain)))
 
 ;;; ============================================================
+;;; Content store - Metabase asset lookups (cards, etc.) by portable id
+;;; ============================================================
+
+(p.types/defprotocol+ ContentStore
+  "Lookup of Metabase content (\"assets\") by portable id.
+
+  Kept separate from the warehouse-metadata `MetadataProvider` so the resolver can be reused in
+  contexts without an application database (e.g. the serdes checker, in-memory tests)."
+  (card-by-entity-id [this entity-id]
+    "Return the card row for the given portable `entity_id`, or nil. The returned map must at
+    least carry `:id` and `:database_id` so the resolver can perform cross-database checks."))
+
+(def app-db-content-store
+  "Default [[ContentStore]] backed by the Metabase application database via
+  `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
+  different store implementation when running without one (checker, isolated tests)."
+  (reify ContentStore
+    (card-by-entity-id [_ entity-id]
+      (serdes/lookup-by-id 'Card entity-id))))
+
+;;; ============================================================
 ;;; Resolver implementations
 ;;; ============================================================
 
@@ -355,9 +387,9 @@
   Guards against the card belonging to a different database than the metadata provider -
   that would produce a broken cross-database query at resolve time, so we surface a clear
   agent-facing error here instead."
-  [metadata-provider entity-id]
+  [metadata-provider content-store entity-id]
   (let [current-db-id (:id (lib.metadata/database metadata-provider))
-        card          (serdes/lookup-by-id 'Card entity-id)]
+        card          (card-by-entity-id content-store entity-id)]
     (cond
       (nil? card)
       (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` with `entity-type: question` or `entity-type: model` and the card''s numeric id first, then copy the exact `portable_entity_id` from the response into `source-card:`."
@@ -383,7 +415,12 @@
       (:id card))))
 
 (defn import-resolver
-  "Build a `SerdesImportResolver` backed by `metadata-provider`.
+  "Build a `SerdesImportResolver` backed by `metadata-provider` (warehouse metadata) and
+  `content-store` (Metabase content / assets).
+
+  The 1-arity form uses [[app-db-content-store]] - i.e. it goes through `serdes/lookup-by-id`
+  for content lookups and therefore requires the application database. Pass an explicit
+  `content-store` to use this resolver without an app DB (checker, in-memory tests, etc.).
 
   Implemented methods:
     * `import-table-fk`, `import-field-fk` (Phase 1).
@@ -392,28 +429,30 @@
     * `import-fk` for `Card` / `:model/Card` by `entity_id` (Phase 2, step 11).
 
   Other methods throw `:not-implemented-yet`."
-  [metadata-provider]
-  (reify resolve/SerdesImportResolver
-    (import-fk       [_ eid model]
-      (cond
-        (nil? eid)          nil
-        (card-model? model) (import-card-by-entity-id metadata-provider eid)
-        :else               (not-implemented! :import-fk)))
-    (import-fk-keyed [_ portable model field]
-      (cond
-        (and (or (= model :model/Database) (= model 'Database))
-             (= field :name))
-        (import-database-by-name metadata-provider portable)
+  ([metadata-provider]
+   (import-resolver metadata-provider app-db-content-store))
+  ([metadata-provider content-store]
+   (reify resolve/SerdesImportResolver
+     (import-fk       [_ eid model]
+       (cond
+         (nil? eid)          nil
+         (card-model? model) (import-card-by-entity-id metadata-provider content-store eid)
+         :else               (not-implemented! :import-fk)))
+     (import-fk-keyed [_ portable model field]
+       (cond
+         (and (or (= model :model/Database) (= model 'Database))
+              (= field :name))
+         (import-database-by-name metadata-provider portable)
 
-        :else
-        (not-implemented! :import-fk-keyed)))
-    (import-user     [_ _email]                  (not-implemented! :import-user))
-    (import-table-fk [_ path]
-      (when path
-        (:id (find-table metadata-provider path))))
-    (import-field-fk [_ path]
-      (when path
-        (:id (find-field metadata-provider path))))))
+         :else
+         (not-implemented! :import-fk-keyed)))
+     (import-user     [_ _email]                  (not-implemented! :import-user))
+     (import-table-fk [_ path]
+       (when path
+         (:id (find-table metadata-provider path))))
+     (import-field-fk [_ path]
+       (when path
+         (:id (find-field metadata-provider path)))))))
 
 (defn export-resolver
   "Build a `SerdesExportResolver` backed by `metadata-provider`.
