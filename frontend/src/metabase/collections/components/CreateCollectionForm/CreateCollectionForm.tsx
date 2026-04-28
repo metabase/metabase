@@ -13,6 +13,7 @@ import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type {
+  EntityPickerOptions,
   FilterItemsInPersonalCollection,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
@@ -50,6 +51,7 @@ export interface CreateCollectionFormOwnProps {
   onCancel?: () => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   showCollectionPicker?: boolean;
+  pickerOptions?: EntityPickerOptions;
   showAuthorityLevelPicker?: boolean;
 }
 
@@ -89,6 +91,7 @@ function CreateCollectionForm({
   onCancel,
   filterPersonalCollections,
   showCollectionPicker = true,
+  pickerOptions,
   showAuthorityLevelPicker = true,
 }: Props) {
   const initialValues = useMemo(
@@ -138,18 +141,19 @@ function CreateCollectionForm({
             />
             {showCollectionPicker && (
               <FormCollectionPicker
-                name="parent_id"
-                title={t`Collection it's saved in`}
-                filterPersonalCollections={filterPersonalCollections}
+                collectionPickerModalProps={{ options: pickerOptions }}
                 entityType="collection"
-                onCollectionSelect={setSelectedParentCollection}
+                filterPersonalCollections={filterPersonalCollections}
                 mb="1rem"
+                name="parent_id"
+                onCollectionSelect={setSelectedParentCollection}
+                title={t`Collection it's saved in`}
               />
             )}
             {showAuthorityLevelPicker && !isParentTenantCollection && (
               <FormAuthorityLevelField />
             )}
-            <FormFooter>
+            <FormFooter mt="lg">
               <FormErrorMessage inline />
               <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
                 {!!onCancel && (

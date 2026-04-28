@@ -5,7 +5,9 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import CreateCollectionModal, {
+  type CreateCollectionModalOwnProps,
+} from "metabase/collections/containers/CreateCollectionModal";
 import { Modal } from "metabase/common/components/Modal";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
@@ -28,7 +30,7 @@ import type { WritebackAction } from "metabase-types/api";
 export const NewModals = withRouter((props: WithRouterProps) => {
   const { pathname } = useLocation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
-    getCurrentOpenModalState,
+    getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
   const collectionId = useSelector((state) =>
@@ -70,13 +72,12 @@ export const NewModals = withRouter((props: WithRouterProps) => {
 
   switch (currentNewModalId) {
     case "collection": {
-      const collectionProps = currentNewModalProps as {
-        collectionId?: number;
-      } | null;
+      const collectionProps = currentNewModalProps || null;
 
       return (
         <CreateCollectionModal
           onClose={handleModalClose}
+          {...collectionProps}
           collectionId={collectionProps?.collectionId ?? collectionId}
         />
       );

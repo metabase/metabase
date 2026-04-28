@@ -3,7 +3,6 @@ import type { Location } from "history";
 
 import {
   canonicalCollectionId,
-  isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import type { State } from "metabase/redux/store";
@@ -54,10 +53,19 @@ const getInitialCollectionId = createSelector(
     byCollectionUrlId,
     byCollectionQueryParameter, // used by new model flow
   ],
-  (collections, personalCollectionId, ...collectionIds) => {
+  (collections, personalCollectionId, collectionIdProp, ...collectionIds) => {
+    if (collectionIdProp !== undefined) {
+      // Always use collectionId prop if it's defined
+      return canonicalCollectionId(collectionIdProp);
+    }
+
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
     const validCollectionIds = collectionIds
-      .filter((id) => !isRootTrashCollection(collections[id as CollectionId]))
+      .filter(
+        (id) =>
+          id !== undefined &&
+          !isRootTrashCollection(collections[id as CollectionId]),
+      )
       .concat(rootCollectionId) as CollectionId[];
 
     if (personalCollectionId) {
@@ -66,11 +74,7 @@ const getInitialCollectionId = createSelector(
 
     for (const collectionId of validCollectionIds) {
       const collection = collections[collectionId];
-      if (
-        collection != null &&
-        collection.can_write &&
-        !isLibraryCollection(collection)
-      ) {
+      if (collection != null && collection.can_write) {
         return canonicalCollectionId(collectionId);
       }
     }

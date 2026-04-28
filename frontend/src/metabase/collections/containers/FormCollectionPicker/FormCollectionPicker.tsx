@@ -120,7 +120,7 @@ function FormCollectionPicker({
   const nonDefaultNamespace =
     collectionPickerModalProps?.namespaces?.[0] ?? null;
 
-  const options = useMemo<EntityPickerOptions>( // FIXME, this should throw more type errors 🤔
+  const defaultOptions = useMemo<EntityPickerOptions>( // FIXME, this should throw more type errors 🤔
     () => ({
       hasPersonalCollections:
         !nonDefaultNamespace && filterPersonalCollections !== "exclude",
@@ -193,7 +193,7 @@ function FormCollectionPicker({
           }}
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
-          options={options}
+          options={collectionPickerModalProps?.options || defaultOptions}
           entityType={entityType}
           {...collectionPickerModalProps}
         />

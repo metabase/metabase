@@ -143,7 +143,7 @@ function SnippetCollectionForm({
               namespaces: ["snippets"],
             }}
           />
-          <FormFooter>
+          <FormFooter mt="lg">
             <FormErrorMessage inline />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

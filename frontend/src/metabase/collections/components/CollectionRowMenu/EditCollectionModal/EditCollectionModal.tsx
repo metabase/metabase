@@ -8,7 +8,10 @@ import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
 } from "metabase/collections/schemas";
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type {
+  EntityPickerOptions,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -20,12 +23,18 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 type EditCollectionModalProps = {
-  collection: Collection;
+  collection: Collection | CollectionItem;
   onClose: () => void;
   onSave?: () => void;
+};
+
+const isCollectionItem = (
+  collection: Collection | CollectionItem,
+): collection is CollectionItem => {
+  return "collection_id" in collection;
 };
 
 export function EditCollectionModal(props: EditCollectionModalProps) {
@@ -33,7 +42,9 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
   const [sendToast] = useToast();
   const [updateCollection] = useUpdateCollectionMutation();
   const initialValues = useMemo<CollectionFormValues>(() => {
-    const parentId = collection.parent_id;
+    const parentId = isCollectionItem(collection)
+      ? collection.collection_id
+      : collection.parent_id;
     return {
       name: collection.name ?? "",
       description: collection.description ?? null,
@@ -106,8 +117,11 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
                 name="parent_id"
                 title={t`Parent collection`}
                 collectionPickerModalProps={{
+                  options: pickerOptions,
                   isDisabledItem: shouldDisableItem,
-                  namespaces: [collection.namespace],
+                  namespaces: collection.namespace
+                    ? [collection.namespace]
+                    : [],
                 }}
               />
               <Group justify="flex-end">
@@ -126,3 +140,13 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
     </Modal>
   );
 }
+
+const pickerOptions: EntityPickerOptions = {
+  hasLibrary: true,
+  hasRootCollection: false,
+  hasPersonalCollections: false,
+  hasRecents: false,
+  hasSearch: false,
+  hasConfirmButtons: true,
+  canCreateCollections: false,
+};

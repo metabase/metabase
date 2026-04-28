@@ -28,6 +28,7 @@ export function initializePlugin() {
     PLUGIN_SNIPPET_FOLDERS.CollectionFormModal = SnippetCollectionFormModal;
     PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
       SnippetCollectionPermissionsModal;
+    PLUGIN_SNIPPET_FOLDERS.CollectionMenu = SnippetCollectionMenu;
     PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
     PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
       icon: "folder",

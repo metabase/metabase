@@ -15,12 +15,13 @@ import type { CreateCollectionFormOwnProps } from "../components/CreateCollectio
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
 
-interface CreateCollectionModalOwnProps extends Omit<
+export interface CreateCollectionModalOwnProps extends Omit<
   CreateCollectionFormOwnProps,
   "onCancel" | "onSubmit"
 > {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
+  visitOnCreate?: boolean;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -42,6 +43,7 @@ function CreateCollectionModal({
   onChangeLocation,
   onClose,
   handleCreateCollection,
+  visitOnCreate = true,
   ...props
 }: Props) {
   const handleCreate = useCallback(
@@ -53,10 +55,18 @@ function CreateCollectionModal({
         onCreate(collection);
       } else {
         onClose();
-        onChangeLocation(Urls.collection(collection));
+        if (visitOnCreate) {
+          onChangeLocation(Urls.collection(collection));
+        }
       }
     },
-    [onCreate, onChangeLocation, onClose, handleCreateCollection],
+    [
+      handleCreateCollection,
+      onCreate,
+      onClose,
+      visitOnCreate,
+      onChangeLocation,
+    ],
   );
 
   useEscapeToCloseModal(onClose);

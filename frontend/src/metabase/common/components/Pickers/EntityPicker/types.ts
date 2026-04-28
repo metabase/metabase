@@ -87,6 +87,7 @@ export type OmniPickerCollectionItem = Pick<
   | "type"
   | "database_id"
   | "effective_location"
+  | "is_library_root"
 > & {
   id: CollectionItem["id"] | CollectionId;
   collection?:

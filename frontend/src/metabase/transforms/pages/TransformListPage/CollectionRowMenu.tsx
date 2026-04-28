@@ -14,14 +14,14 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
   return (
     <BaseCollectionRowMenu
       collection={collection}
-      archiveConfirmMessage={
+      customArchiveMessage={
         transformCount > 0
           ? ngettext(
               msgid`This will also archive ${transformCount} transform inside it.`,
               `This will also archive ${transformCount} transforms inside it.`,
               transformCount,
             )
-          : t`Are you sure you want to archive this collection?`
+          : t`Are you sure you want to archive this folder?`
       }
     />
   );

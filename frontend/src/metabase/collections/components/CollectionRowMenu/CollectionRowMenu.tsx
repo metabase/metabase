@@ -29,11 +29,11 @@ import { EditCollectionModal } from "./EditCollectionModal";
 type CollectionRowMenuProps = {
   collection: Collection;
   onChangePermissions?: (collectionId: CollectionId) => void;
-  archiveConfirmMessage?: string;
+  customArchiveMessage?: string;
 };
 
 export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const { collection, onChangePermissions, archiveConfirmMessage } = props;
+  const { collection, onChangePermissions, customArchiveMessage } = props;
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
@@ -85,16 +85,12 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
   };
 
   const onArchiveClick = () => {
-    if (archiveConfirmMessage) {
-      show({
-        title: t`Archive "${collection.name}"?`,
-        message: archiveConfirmMessage,
-        confirmButtonText: t`Archive`,
-        onConfirm: handleArchive,
-      });
-    } else {
-      void handleArchive();
-    }
+    show({
+      title: t`Archive "${collection.name}"?`,
+      message: customArchiveMessage,
+      confirmButtonText: t`Archive`,
+      onConfirm: handleArchive,
+    });
   };
 
   if (collection.archived) {

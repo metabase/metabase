@@ -102,7 +102,12 @@ function SnippetFormInner({
             <FormCollectionPicker
               name="collection_id"
               title={t`Folder this should be in`}
-              collectionPickerModalProps={{ namespaces: ["snippets"] }}
+              collectionPickerModalProps={{
+                namespaces: ["snippets"],
+                options: {
+                  canCreateCollections: false,
+                },
+              }}
             />
           )}
           <Flex align="center" justify="space-between">
@@ -119,7 +124,7 @@ function SnippetFormInner({
               )}
               <FormErrorMessage inline />
             </Flex>
-            <Flex align="center" justify="center" gap="sm">
+            <Flex align="center" justify="center" gap="sm" mt="md">
               {!!onCancel && (
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
               )}

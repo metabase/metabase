@@ -64,7 +64,12 @@ export const CreateMenu = ({
           dispatch(
             setOpenModalWithProps({
               id: "collection",
-              props: { collectionId: dataCollectionId },
+              props: {
+                collectionId: dataCollectionId,
+                pickerOptions: libraryCollectionPickerOptions,
+                showAuthorityLevelPicker: false,
+                visitOnCreate: false,
+              },
             }),
           )
         }
@@ -135,4 +140,14 @@ export const CreateMenu = ({
       />
     </>
   );
+};
+
+const libraryCollectionPickerOptions = {
+  hasLibrary: true,
+  hasRootCollection: false,
+  hasPersonalCollections: false,
+  hasRecents: false,
+  hasSearch: false,
+  hasConfirmButtons: true,
+  canCreateCollections: false,
 };
