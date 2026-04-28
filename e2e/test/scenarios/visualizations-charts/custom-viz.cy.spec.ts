@@ -1736,18 +1736,15 @@ describe("sandbox", () => {
     H.updateSetting("custom-viz-enabled", true);
     H.setupCustomVizPlugin();
 
-    H.createQuestion(
-      {
-        name: "Custom Viz Sandbox Test",
-        query: {
-          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: H.CUSTOM_VIZ_DISPLAY,
+    H.createQuestion({
+      name: "Custom Viz Sandbox Test",
+      query: {
+        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+        aggregation: [["count"]],
       },
-      { wrapId: true },
-    ).then((response) => {
-      sandboxCardId = response;
+      display: H.CUSTOM_VIZ_DISPLAY,
+    }).then(({ body }) => {
+      sandboxCardId = body.id;
     });
   });
 
@@ -1756,52 +1753,62 @@ describe("sandbox", () => {
     cy.wrap(sandboxCardId).as("sandboxCardId");
   });
 
-  // Each case prepends `payload` to the legitimate plugin bundle. The bundle
-  // is a top-level IIFE, so the injection runs during `sandbox.evaluate(text)`
-  // and must trip a distortion before the IIFE assigns __customVizPlugin__.
-  const CANARY_URL = "/api/canary-should-be-blocked-by-sandbox";
-  const SANDBOX_CASES: ReadonlyArray<{
+  const blockedPattern = (suffix: RegExp) =>
+    new RegExp(String.raw`\[plugin \d+\] blocked ${suffix.source}`);
+
+  const SANDBOX_CASES: Array<{
     name: string;
     payload: string;
     errorPattern: RegExp;
+    before?: () => void;
+    additionalAssertions?: () => void;
   }> = [
     {
       name: "window.fetch",
-      payload: `window.fetch(${JSON.stringify(CANARY_URL)});`,
-      errorPattern: /\[plugin \d+\] blocked API call: window\.fetch/,
+      payload: 'window.fetch("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
     },
     {
       name: "document.open",
-      payload: `document.open(${JSON.stringify(CANARY_URL)});`,
-      errorPattern: /\[plugin \d+\] blocked API call: Document\.open/,
+      payload: 'document.open("https://evilsite.example");',
+      errorPattern: blockedPattern(/API call: Document\.open/),
     },
     {
       name: "document.cookie getter",
       payload: "var stolen = document.cookie;",
-      errorPattern: /\[plugin \d+\] blocked API call: Document\.get cookie/,
+      errorPattern: blockedPattern(/API call: Document\.get cookie/),
     },
     {
       name: 'setAttribute("onclick", ...)',
       payload: 'document.body.setAttribute("onclick", "alert(1)");',
-      errorPattern:
-        /\[plugin \d+\] blocked setAttribute for inline event handler: onclick/,
+      errorPattern: blockedPattern(
+        /setAttribute for inline event handler: onclick/,
+      ),
     },
     {
       name: "navigator.clipboard",
       payload: "var c = navigator.clipboard;",
-      errorPattern: /\[plugin \d+\] blocked API call: Navigator\.get clipboard/,
+      errorPattern: blockedPattern(/API call: Navigator\.get clipboard/),
     },
   ];
 
-  for (const { name, payload, errorPattern } of SANDBOX_CASES) {
-    it(`blocks ${name} called by injected plugin code`, () => {
-      cy.intercept("GET", CANARY_URL).as("canary");
+  it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(
+    (testCase) => `blocks ${testCase.name} called by injected plugin code`,
+    (testCase) => {
+      const { payload, errorPattern } = testCase;
+      testCase.before?.();
 
       cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
         req.continue((res) => {
-          res.body =
-            `console.log("injected bundle");${payload}\n` +
-            (res.body as string);
+          res.body = `console.log("injected bundle");${payload}\n${String(res.body)};\n`;
           res.send();
         });
       }).as("injectedBundle");
@@ -1831,8 +1838,7 @@ describe("sandbox", () => {
         Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
       );
 
-      // No payload's network side-effect (if any) escaped the sandbox.
-      cy.get("@canary.all").should("have.length", 0);
-    });
-  }
+      testCase.additionalAssertions?.();
+    },
+  );
 });
