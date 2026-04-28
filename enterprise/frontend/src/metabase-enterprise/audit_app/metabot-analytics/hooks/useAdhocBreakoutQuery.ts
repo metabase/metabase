@@ -3,10 +3,10 @@ import { useMemo } from "react";
 import { useGetAdhocQueryQuery } from "metabase/api";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
+import type { Dataset, DatasetQuery } from "metabase-types/api";
 
 type AdhocQueryResult = {
-  data: ReturnType<typeof useGetAdhocQueryQuery>["data"];
+  data: Dataset | undefined;
   jsQuery: DatasetQuery | null;
   isFetching: boolean;
 };

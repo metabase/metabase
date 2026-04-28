@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.slackbot.api :as slackbot.api]
    [metabase.util.date-2 :as u.date]
@@ -19,10 +20,6 @@
 
 (def ^:private default-limit  50)
 (def ^:private default-offset 0)
-
-;; matches the frontend `DEFAULT_GROUP = "1"` — the "All Users" / no-filter
-;; sentinel in ConversationFilters/useFilterOptions.ts
-(def ^:private all-users-group-id 1)
 
 (defn- date-string->constraints
   "Parse a serialized date-param string into half-open HoneySQL predicates on `col`.
@@ -50,7 +47,7 @@
   (let [clauses (cond-> []
                   user-id (conj [:= :c.user_id user-id])
                   (seq date) (conj (date-string->constraints :c.created_at date))
-                  (and group-id (not= group-id all-users-group-id))
+                  (and group-id (not= group-id (:id (perms/all-users-group))))
                   (conj [:exists {:select [1]
                                   :from   [[:permissions_group_membership :pgm]]
                                   :where  [:and

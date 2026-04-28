@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
-import { Skeleton } from "metabase/ui";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
@@ -85,6 +85,7 @@ function ConversationsByProfileBarChartInner({
   );
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
 
   const rawSeries = useMemo(() => {
     const labeledData = mapBreakoutDimension(data, (value) =>
@@ -95,8 +96,9 @@ function ConversationsByProfileBarChartInner({
       display: "bar",
       maxCategories: 8,
       otherLabel: t`Other`,
+      getColor: themeColor,
     });
-  }, [data, jsQuery, metric]);
+  }, [data, jsQuery, metric, themeColor]);
 
   return (
     <BreakoutChartCard

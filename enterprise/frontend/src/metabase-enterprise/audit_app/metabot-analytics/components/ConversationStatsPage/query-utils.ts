@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
-import { color } from "metabase/ui/colors/palette";
+import type { ColorName } from "metabase/ui/colors/types";
 import type {
   CardMetadata,
   ColumnMetadata,
@@ -14,10 +14,10 @@ import type {
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
+export type GetColor = (name: ColorName) => string;
+
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
 
-// the user-set inputs that drive every chart on the stats page —
-// filters (date / user / group / tenant) plus the metric the tabs select
 export type StatsFilters = {
   dateFilter: DateFilterValue;
   userId?: number;
@@ -26,7 +26,7 @@ export type StatsFilters = {
   metric: UsageStatsMetric;
 };
 
-const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
+const METRIC_ACCENT: Record<UsageStatsMetric, ColorName> = {
   conversations: "accent0",
   tokens: "accent2",
   messages: "accent4",
@@ -45,6 +45,7 @@ type TokenSeriesSettings = Pick<
 
 export function getMetricSeriesSettings(
   metric: UsageStatsMetric,
+  getColor: GetColor,
   aggregationColumnNames?: string[],
   options?: { dualAxis?: boolean },
 ): TokenSeriesSettings {
@@ -54,12 +55,12 @@ export function getMetricSeriesSettings(
       ({ cols: [inputCol, outputCol] }) => ({
         series_settings: {
           [inputCol]: {
-            color: color("accent2"),
+            color: getColor("accent2"),
             title: t`Input tokens`,
             ...(options?.dualAxis && { axis: "left" }),
           },
           [outputCol]: {
-            color: color("accent3"),
+            color: getColor("accent3"),
             title: t`Output tokens`,
             ...(options?.dualAxis && { axis: "right" }),
           },
@@ -71,15 +72,12 @@ export function getMetricSeriesSettings(
       const colName = cols?.[0] ?? METRIC_COLUMN_NAME[metric];
       return {
         series_settings: {
-          [colName]: { color: color(METRIC_ACCENT[metric]) },
+          [colName]: { color: getColor(METRIC_ACCENT[metric]) },
         },
       };
     });
 }
 
-/**
- * Case-insensitive column lookup — handles H2 uppercasing vs Postgres lowercase.
- */
 export function findColumn(
   query: Query,
   name: string,
@@ -93,10 +91,6 @@ export function findColumn(
   });
 }
 
-/**
- * Apply a DatePickerValue filter to a date column on the query.
- * Uses the same filter clause generation as Metabase's standard date picker.
- */
 export function applyDateFilter(
   query: Query,
   dateFilter: DateFilterValue,
@@ -111,22 +105,22 @@ export function applyDateFilter(
   return Lib.filter(query, 0, clause);
 }
 
-export function applyUserFilter(
+export function applyIdFilter(
   query: Query,
-  userId: number | undefined,
-  columnName = "user_id",
+  columnName: string,
+  id: number | undefined,
 ): Query {
-  if (userId == null) {
+  if (id == null) {
     return query;
   }
-  const col = findColumn(query, columnName, Lib.filterableColumns);
-  if (!col) {
+  const column = findColumn(query, columnName, Lib.filterableColumns);
+  if (!column) {
     return query;
   }
   return Lib.filter(
     query,
     0,
-    Lib.numberFilterClause({ operator: "=", column: col, values: [userId] }),
+    Lib.numberFilterClause({ operator: "=", column, values: [id] }),
   );
 }
 
@@ -142,8 +136,6 @@ function findJoinableColumn(
   });
 }
 
-// the source view's group_name is lossy (alphabetically-first non-All-Users
-// group only), so callers needing "all groups a user belongs to" join here
 export function joinGroupMembers(
   query: Query,
   groupMembersTable: TableMetadata | CardMetadata | null | undefined,
@@ -153,22 +145,11 @@ export function joinGroupMembers(
     return query;
   }
 
-  const lhsColumns = Lib.joinConditionLHSColumns(
-    query,
-    0,
-    groupMembersTable,
-    undefined,
-    undefined,
-  );
-  const rhsColumns = Lib.joinConditionRHSColumns(
-    query,
-    0,
-    groupMembersTable,
-    undefined,
-    undefined,
-  );
+  const lhsColumns = Lib.joinConditionLHSColumns(query, 0, groupMembersTable);
   const lhsUserId = findJoinableColumn(lhsColumns, query, sourceUserIdColumn);
+  const rhsColumns = Lib.joinConditionRHSColumns(query, 0, groupMembersTable);
   const rhsUserId = findJoinableColumn(rhsColumns, query, "user_id");
+
   if (!lhsUserId || !rhsUserId) {
     return query;
   }
@@ -181,15 +162,17 @@ export function joinGroupMembers(
     return query;
   }
 
-  const condition = Lib.joinConditionClause("=", lhsUserId, rhsUserId);
   return Lib.join(
     query,
     0,
-    Lib.joinClause(groupMembersTable, [condition], innerJoin),
+    Lib.joinClause(
+      groupMembersTable,
+      [Lib.joinConditionClause("=", lhsUserId, rhsUserId)],
+      innerJoin,
+    ),
   );
 }
 
-// no-op pre-join: group_id only exists on v_group_members
 export function applyGroupIdFilter(
   query: Query,
   groupId: number | undefined,
@@ -208,9 +191,6 @@ export function applyGroupIdFilter(
   );
 }
 
-/**
- * Add a sum aggregation for the given column name.
- */
 export function addSumAggregation(query: Query, columnName: string): Query {
   const operators = Lib.availableAggregationOperators(query, 0);
   const sumOp = operators.find((op) => {
@@ -294,8 +274,8 @@ export function buildSourceBreakoutQuery({
 }: SourceBreakoutQueryOpts): Query {
   let q = Lib.queryFromTableOrCardMetadata(provider, table);
   q = applyDateFilter(q, dateFilter);
-  q = applyUserFilter(q, userId);
-  q = applyUserFilter(q, tenantId, "tenant_id");
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
   q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
   q = applyUsageStatsAggregation(q, metric);

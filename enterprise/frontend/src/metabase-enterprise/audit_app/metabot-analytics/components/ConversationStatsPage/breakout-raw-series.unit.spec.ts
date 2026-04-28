@@ -21,6 +21,7 @@ const baseOpts = {
   metric: "conversations" as const,
   display: "row" as const,
   otherLabel: "Other",
+  getColor: (name: string) => `#${name}`,
 };
 
 describe("toBreakoutRawSeries", () => {

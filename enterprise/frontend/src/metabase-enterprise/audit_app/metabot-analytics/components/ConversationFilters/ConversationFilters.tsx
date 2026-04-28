@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { DatePickerOperator } from "metabase/querying/common/types";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { Button, Flex, Popover, Select } from "metabase/ui";
 
 import { getDateLabel } from "../ConversationStatsPage/utils";
+
+const DATE_OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
 
 type ConversationFiltersProps = {
   date: string | null;
@@ -52,6 +55,7 @@ export function ConversationFilters({
         <Popover.Dropdown>
           <DateAllOptionsWidget
             value={null}
+            availableOperators={DATE_OPERATORS}
             onChange={(val) => {
               onDateChange(val);
               setDateOpened(false);

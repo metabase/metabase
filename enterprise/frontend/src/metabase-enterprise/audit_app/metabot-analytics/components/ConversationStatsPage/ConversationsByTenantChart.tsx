@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton } from "metabase/ui";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
@@ -13,17 +13,18 @@ import {
   toBreakoutRawSeries,
 } from "./breakout-raw-series";
 import {
+  type StatsFilters,
   type UsageStatsMetric,
   applyDateFilter,
   applyGroupIdFilter,
+  applyIdFilter,
   applyMetricOrderBy,
   applyUsageStatsAggregation,
-  applyUserFilter,
   breakoutByColumn,
   findColumn,
   joinGroupMembers,
 } from "./query-utils";
-import type { ChartInnerProps, ChartProps } from "./types";
+import type { ChartDataSources, ChartInnerProps, ChartProps } from "./types";
 
 const TITLES: Record<UsageStatsMetric, string> = {
   get conversations() {
@@ -104,6 +105,7 @@ function ConversationsByTenantChartInner({
   );
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
 
   const tenantNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -124,8 +126,9 @@ function ConversationsByTenantChartInner({
       display: "row",
       maxCategories: 8,
       otherLabel: t`Other`,
+      getColor: themeColor,
     });
-  }, [data, jsQuery, metric, tenantNameById]);
+  }, [data, jsQuery, metric, tenantNameById, themeColor]);
 
   return (
     <BreakoutChartCard
@@ -140,17 +143,7 @@ function ConversationsByTenantChartInner({
   );
 }
 
-type BuildQueryOpts = Pick<
-  TenantChartInnerProps,
-  | "provider"
-  | "table"
-  | "groupMembersTable"
-  | "dateFilter"
-  | "userId"
-  | "groupId"
-  | "tenantId"
-  | "metric"
->;
+type BuildQueryOpts = StatsFilters & ChartDataSources;
 
 function applyTenantNotNullFilter(query: Query): Query {
   const col = findColumn(query, "tenant_id", Lib.filterableColumns);
@@ -172,8 +165,8 @@ function buildTenantBreakoutQuery({
 }: BuildQueryOpts): Query {
   let q = Lib.queryFromTableOrCardMetadata(provider, table);
   q = applyDateFilter(q, dateFilter);
-  q = applyUserFilter(q, userId);
-  q = applyUserFilter(q, tenantId, "tenant_id");
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
   q = applyTenantNotNullFilter(q);
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
   q = groupId != null ? applyGroupIdFilter(q, groupId) : q;

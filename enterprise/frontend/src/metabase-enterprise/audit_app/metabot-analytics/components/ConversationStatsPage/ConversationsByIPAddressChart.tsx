@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton } from "metabase/ui";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
@@ -84,6 +84,7 @@ function ConversationsByIPAddressChartInner({
   );
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
 
   const rawSeries = useMemo(() => {
     const labeledData = mapBreakoutDimension(data, (value) =>
@@ -94,8 +95,9 @@ function ConversationsByIPAddressChartInner({
       display: "row",
       maxCategories: 8,
       otherLabel: t`Other`,
+      getColor: themeColor,
     });
-  }, [data, jsQuery, metric]);
+  }, [data, jsQuery, metric, themeColor]);
 
   return (
     <BreakoutChartCard

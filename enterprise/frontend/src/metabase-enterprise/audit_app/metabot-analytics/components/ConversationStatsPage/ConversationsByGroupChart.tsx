@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton } from "metabase/ui";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
@@ -13,27 +13,13 @@ import {
   type UsageStatsMetric,
   applyDateFilter,
   applyGroupIdFilter,
+  applyIdFilter,
   applyMetricOrderBy,
   applyUsageStatsAggregation,
-  applyUserFilter,
   findColumn,
   joinGroupMembers,
 } from "./query-utils";
 import type { ChartInnerProps, ChartProps } from "./types";
-
-// matches the view's own group_name subquery (WHERE pg.id != 1) so a
-// by-group breakout isn't dominated by an All Users bar
-export function excludeAllUsersGroup(query: Query): Query {
-  const col = findColumn(query, "group_id", Lib.filterableColumns);
-  if (!col) {
-    return query;
-  }
-  return Lib.filter(
-    query,
-    0,
-    Lib.numberFilterClause({ operator: "!=", column: col, values: [1] }),
-  );
-}
 
 const TITLES: Record<UsageStatsMetric, string> = {
   get conversations() {
@@ -46,6 +32,18 @@ const TITLES: Record<UsageStatsMetric, string> = {
     return t`Groups with most tokens`;
   },
 };
+
+export function excludeAllUsersGroup(query: Query): Query {
+  const col = findColumn(query, "group_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "!=", column: col, values: [1] }),
+  );
+}
 
 function breakoutByJoinedGroupName(query: Query): Query {
   const col = Lib.breakoutableColumns(query, 0).find((col) => {
@@ -91,8 +89,8 @@ function ConversationsByGroupChartInner({
   const query = useMemo(() => {
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
     q = applyDateFilter(q, dateFilter);
-    q = applyUserFilter(q, userId);
-    q = applyUserFilter(q, tenantId, "tenant_id");
+    q = applyIdFilter(q, "user_id", userId);
+    q = applyIdFilter(q, "tenant_id", tenantId);
     q = joinGroupMembers(q, groupMembersTable);
     q = excludeAllUsersGroup(q);
     q = applyGroupIdFilter(q, groupId);
@@ -112,6 +110,7 @@ function ConversationsByGroupChartInner({
   ]);
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
 
   const rawSeries = useMemo(
     () =>
@@ -120,8 +119,9 @@ function ConversationsByGroupChartInner({
         display: "row",
         maxCategories: 8,
         otherLabel: t`Other`,
+        getColor: themeColor,
       }),
-    [data, jsQuery, metric],
+    [data, jsQuery, metric, themeColor],
   );
 
   return (

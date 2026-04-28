@@ -3,21 +3,21 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
-import { Skeleton } from "metabase/ui";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import { createMockCard } from "metabase-types/api/mocks";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
 import {
+  type GetColor,
   type StatsFilters,
   type UsageStatsMetric,
   applyDateFilter,
   applyGroupIdFilter,
+  applyIdFilter,
   applyUsageStatsAggregation,
-  applyUserFilter,
   findColumn,
   getMetricSeriesSettings,
   joinGroupMembers,
@@ -129,10 +129,11 @@ function ConversationsByDayChartInner({
   );
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+  const { themeColor } = useMantineTheme().fn;
 
   const rawSeries = useMemo(
-    () => toTimeseriesRawSeries(data, jsQuery, metric),
-    [data, jsQuery, metric],
+    () => toTimeseriesRawSeries(data, jsQuery, metric, themeColor),
+    [data, jsQuery, metric, themeColor],
   );
 
   return (
@@ -164,8 +165,8 @@ function buildTimeseriesBreakoutQuery({
 }: BuildQueryOpts): Query {
   let q = Lib.queryFromTableOrCardMetadata(provider, table);
   q = applyDateFilter(q, dateFilter);
-  q = applyUserFilter(q, userId);
-  q = applyUserFilter(q, tenantId, "tenant_id");
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
   q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
@@ -192,33 +193,29 @@ function toTimeseriesRawSeries(
   data: ReturnType<typeof useAdhocBreakoutQuery>["data"],
   jsQuery: ReturnType<typeof useAdhocBreakoutQuery>["jsQuery"],
   metric: UsageStatsMetric,
+  getColor: GetColor,
 ) {
   if (!data?.data || !jsQuery) {
     return null;
   }
-  const cols = data.data.cols as Array<{ source?: string; name?: string }>;
-  const aggregationColumnNames = cols
+  const aggregationColumnNames = data.data.cols
     .filter((c) => c.source === "aggregation")
-    .map((c) => c.name ?? "");
+    .map((c) => c.name);
   const isMultiSeriesTokens =
     metric === "tokens" && aggregationColumnNames.length === 2;
-  return [
-    {
-      card: createMockCard({
-        dataset_query: jsQuery as any,
-        display: isMultiSeriesTokens ? "line" : "area",
-        visualization_settings: {
-          "graph.x_axis.scale": "timeseries",
-          "graph.x_axis.title_text": "",
-          "graph.y_axis.title_text": "",
-          "line.interpolate": "cardinal",
-          "line.marker_enabled": false,
-          ...getMetricSeriesSettings(metric, aggregationColumnNames, {
-            dualAxis: true,
-          }),
-        },
+  const card = {
+    dataset_query: jsQuery,
+    display: isMultiSeriesTokens ? "line" : "area",
+    visualization_settings: {
+      "graph.x_axis.scale": "timeseries",
+      "graph.x_axis.title_text": "",
+      "graph.y_axis.title_text": "",
+      "line.interpolate": "cardinal",
+      "line.marker_enabled": false,
+      ...getMetricSeriesSettings(metric, getColor, aggregationColumnNames, {
+        dualAxis: true,
       }),
-      data: data.data,
     },
-  ];
+  };
+  return [{ card, data: data.data }];
 }

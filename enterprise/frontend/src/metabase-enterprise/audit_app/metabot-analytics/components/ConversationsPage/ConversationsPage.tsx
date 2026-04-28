@@ -31,11 +31,6 @@ export function ConversationsPage({ location }: WithRouterProps) {
     hasTenants,
   } = useFilterOptions({ date, user, group, tenant });
 
-  // Exclude-shape date filters (e.g. "exclude-days-Mon") can't be expressed
-  // as a single [start, end) range that the list endpoint accepts; drop them
-  // instead of surfacing a 400. Stats charts still apply them natively.
-  const dateParam = date && !date.startsWith("exclude-") ? date : undefined;
-
   const {
     data: conversationsData,
     isLoading,
@@ -49,7 +44,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
       "user-id": userId,
       "group-id": groupId,
       "tenant-id": tenantId,
-      date: dateParam,
+      date: date ?? undefined,
     },
     { refetchOnMountOrArgChange: true },
   );

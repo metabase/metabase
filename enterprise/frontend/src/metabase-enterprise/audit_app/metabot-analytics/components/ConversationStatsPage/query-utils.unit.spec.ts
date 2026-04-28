@@ -6,21 +6,26 @@ import { isSingleDayFilter } from "./ConversationsByDayChart";
 import { excludeAllUsersGroup } from "./ConversationsByGroupChart";
 import {
   applyGroupIdFilter,
-  applyUserFilter,
+  applyIdFilter,
   getMetricSeriesSettings,
   joinGroupMembers,
 } from "./query-utils";
 
 describe("getMetricSeriesSettings", () => {
+  const getColor = (name: string) => `#${name}`;
+
   it("returns two-series config for tokens with both aggregation columns, no stacking, dual axis on opt-in", () => {
-    const grouped = getMetricSeriesSettings("tokens", ["sum", "sum_2"]);
+    const grouped = getMetricSeriesSettings("tokens", getColor, [
+      "sum",
+      "sum_2",
+    ]);
     expect(grouped["graph.metrics"]).toEqual(["sum", "sum_2"]);
     expect(grouped.series_settings?.sum?.title).toMatch(/input/i);
     expect(grouped.series_settings?.sum_2?.title).toMatch(/output/i);
     expect(grouped.series_settings?.sum?.axis).toBeUndefined();
     expect(grouped.series_settings?.sum_2?.axis).toBeUndefined();
 
-    const dual = getMetricSeriesSettings("tokens", ["sum", "sum_2"], {
+    const dual = getMetricSeriesSettings("tokens", getColor, ["sum", "sum_2"], {
       dualAxis: true,
     });
     expect(dual.series_settings?.sum?.axis).toBe("left");
@@ -28,7 +33,7 @@ describe("getMetricSeriesSettings", () => {
   });
 
   it("falls back to single-series settings otherwise", () => {
-    const settings = getMetricSeriesSettings("conversations");
+    const settings = getMetricSeriesSettings("conversations", getColor);
     expect(settings["graph.metrics"]).toBeUndefined();
     expect(settings.series_settings).toHaveProperty("count");
   });
@@ -162,19 +167,19 @@ describe("isSingleDayFilter", () => {
   });
 });
 
-describe("applyUserFilter", () => {
+describe("applyIdFilter", () => {
   const baseQuery = () =>
     Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
-  it("is a no-op when userId is undefined", () => {
+  it("is a no-op when id is undefined", () => {
     const q = baseQuery();
-    const result = applyUserFilter(q, undefined, "user_id");
+    const result = applyIdFilter(q, "user_id", undefined);
     expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 
   it("adds an equality filter on the named column when present (Orders.USER_ID matches case-insensitively)", () => {
     const q = baseQuery();
-    const result = applyUserFilter(q, 42, "user_id");
+    const result = applyIdFilter(q, "user_id", 42);
     const [clause, ...rest] = Lib.filters(result, 0);
     expect(rest).toHaveLength(0);
     const parts = Lib.numberFilterParts(result, 0, clause);
@@ -184,7 +189,7 @@ describe("applyUserFilter", () => {
 
   it("is a no-op when the column cannot be found on the query", () => {
     const q = baseQuery();
-    const result = applyUserFilter(q, 42, "column_that_does_not_exist");
+    const result = applyIdFilter(q, "column_that_does_not_exist", 42);
     expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 });
