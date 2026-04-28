@@ -50,7 +50,7 @@ export function DangerSection({ workspace }: DangerSectionProps) {
       label={t`Danger zone`}
       description={t`Deleting a workspace removes its database access mappings. The workspace must be unprovisioned first.`}
     >
-      <Flex p="md" justify="flex-end">
+      <Flex p="md">
         <Tooltip
           label={t`Unprovision the workspace before deleting it.`}
           disabled={isFullyUnprovisioned}

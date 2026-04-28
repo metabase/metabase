@@ -21,7 +21,7 @@ export function WorkspaceListPage() {
   return (
     <SettingsPageWrapper
       title={t`Workspaces`}
-      description={t`Create a workspace to develop transforms in isolation.`}
+      description={t`Create a workspace to iterate on queries with full database-level isolation.`}
     >
       {error ? (
         <DelayedLoadingAndErrorWrapper loading={false} error={error} />

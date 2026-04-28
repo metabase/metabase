@@ -7,7 +7,8 @@ import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
 import { DangerSection } from "./DangerSection";
 import { DatabaseMappingSection } from "./DatabaseMappingSection";
-import { StatusSection } from "./StatusSection";
+import { ProvisionSection } from "./ProvisionSection";
+import { SetupSection } from "./SetupSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
 type WorkspacePageProps = {
@@ -37,8 +38,9 @@ function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
   return (
     <Stack gap="3.25rem">
       <WorkspaceHeader workspace={workspace} />
-      <StatusSection workspace={workspace} />
       <DatabaseMappingSection workspace={workspace} />
+      <ProvisionSection workspace={workspace} />
+      <SetupSection workspace={workspace} />
       <DangerSection workspace={workspace} />
     </Stack>
   );

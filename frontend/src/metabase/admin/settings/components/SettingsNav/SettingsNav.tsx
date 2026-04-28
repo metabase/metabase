@@ -51,12 +51,8 @@ export function SettingsNav() {
         {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
       <PLUGIN_REMOTE_SYNC.LibraryNav />
-      {PLUGIN_WORKSPACES.isEnabled && (
-        <>
-          <NavDivider />
-          {PLUGIN_WORKSPACES.getWorkspaceAdminNavItems()}
-        </>
-      )}
+      {PLUGIN_WORKSPACES.isEnabled &&
+        PLUGIN_WORKSPACES.getWorkspaceAdminNavItems()}
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />

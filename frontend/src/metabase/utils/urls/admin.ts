@@ -189,7 +189,3 @@ export function adminWorkspaceList() {
 export function adminWorkspace(workspaceId: WorkspaceId) {
   return `/admin/settings/workspaces/${workspaceId}`;
 }
-
-export function adminDeveloperInstance() {
-  return "/admin/settings/workspaces/development-instance";
-}
