@@ -152,8 +152,16 @@
 
         ([acc row]
          (if (map? row)
-           (vreset! final-metadata row)
-           (rf acc row)))))))
+           ;; The map-row is the cached final-metadata; stash it and preserve the fresh
+           ;; acc (returning `row` would clobber anything middlewares wrote at init,
+           ;; e.g. :viz-settings). `unreduced` strips any reduced marker so it doesn't
+           ;; leak out through the stashed handoff.
+           (do (vreset! final-metadata row) (unreduced acc))
+           ;; `reducible-rows` keeps reading past a reduced acc (see cache/impl.clj);
+           ;; propagate it here instead of calling `rf` past the short-circuit.
+           (if (reduced? acc)
+             acc
+             (rf acc row))))))))
 
 (mu/defn- maybe-reduce-cached-results :- [:tuple
                                           #_status
