@@ -22,6 +22,7 @@ export const TAG_TYPES = [
   "public-document",
   "comment",
   "embedding-hub-checklist",
+  "exploration",
   "field",
   "field-values",
   "glossary",

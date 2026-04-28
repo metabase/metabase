@@ -47,6 +47,12 @@
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
     :model/EmbeddingTheme                    metabase.embedding.models.theme
+    :model/Exploration                       metabase.explorations.models.exploration
+    :model/ExplorationQuery                  metabase.explorations.models.exploration-query
+    :model/ExplorationThread                 metabase.explorations.models.exploration-thread
+    :model/ExplorationThreadDimension        metabase.explorations.models.exploration-thread-dimension
+    :model/ExplorationThreadMetric           metabase.explorations.models.exploration-thread-metric
+    :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values

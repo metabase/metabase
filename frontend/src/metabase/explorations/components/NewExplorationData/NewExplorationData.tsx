@@ -28,6 +28,9 @@ export interface NewExplorationDataProps {
   setDimensions: (dimensions: MetricDimension[]) => void;
   timelines: Timeline[];
   setTimelines: (timelines: Timeline[]) => void;
+  onStart: () => void;
+  isStarting: boolean;
+  canStart: boolean;
 }
 
 export function NewExplorationData({
@@ -37,6 +40,9 @@ export function NewExplorationData({
   setDimensions,
   timelines,
   setTimelines,
+  onStart,
+  isStarting,
+  canStart,
 }: NewExplorationDataProps) {
   const [isAddMetricsModalOpen, setIsAddMetricsModalOpen] = useState(false);
   const [isAddTimelinesModalOpen, setIsAddTimelinesModalOpen] = useState(false);
@@ -111,6 +117,9 @@ export function NewExplorationData({
           my="md"
           size="sm"
           variant="filled"
+          loading={isStarting}
+          disabled={!canStart || isStarting}
+          onClick={onStart}
         >{t`Start exploration`}</Button>
       </Stack>
       <AddMetricsModal

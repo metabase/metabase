@@ -1,0 +1,586 @@
+## Initial exploration related tables
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.g43w3qr4
+      author: nvoxland
+      comment: Create exploration table
+      changes:
+        - createTable:
+            tableName: exploration
+            remarks: A user-created data investigation, e.g. "why is revenue down".
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Human-readable name for the exploration
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional longer description of what is being investigated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created the exploration; owns it for permissions
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether the exploration has been archived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the exploration was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the exploration was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.g442xf
+      author: nvoxland
+      comment: FK exploration.creator_id -> core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_exploration_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.92fasdf
+      author: nvoxland
+      comment: Index on exploration.creator_id
+      changes:
+        - createIndex:
+            tableName: exploration
+            indexName: idx_exploration_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v62.bnweradf
+      author: nvoxland
+      comment: Create exploration_thread table
+      changes:
+        - createTable:
+            tableName: exploration_thread
+            remarks: A hypothesis / iteration within an exploration.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_id
+                  type: int
+                  remarks: The exploration this thread belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Optional name for the thread / hypothesis
+                  constraints:
+                    nullable: true
+              - column:
+                  name: prompt
+                  type: ${text.type}
+                  remarks: Natural-language prompt the user typed for this thread
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of threads within an exploration
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: Set when the user clicks "Start exploration"; null means draft
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the thread was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the thread was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.gpores
+      author: nvoxland
+      comment: FK exploration_thread.exploration_id -> exploration.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread
+            baseColumnNames: exploration_id
+            referencedTableName: exploration
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_exploration_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.g89asrdg
+      author: nvoxland
+      comment: Index on exploration_thread.exploration_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread
+            indexName: idx_exploration_thread_exploration_id
+            columns:
+              - column:
+                  name: exploration_id
+
+  - changeSet:
+      id: v62.bjiofd
+      author: nvoxland
+      comment: Create exploration_thread_metric join table
+      changes:
+        - createTable:
+            tableName: exploration_thread_metric
+            remarks: Metrics (Cards of type=metric) selected on a thread.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this selection belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The selected metric Card (report_card.id)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dimension_mappings
+                  type: ${text.type}
+                  remarks: JSON snapshot of the metric Card's dimension_mappings at selection time
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of metric selections within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.98ubfd
+      author: nvoxland
+      comment: Unique constraint on exploration_thread_metric (thread, card)
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_thread_metric
+            columnNames: exploration_thread_id, card_id
+            constraintName: uq_exploration_thread_metric_thread_card
+
+  - changeSet:
+      id: v62.ifddba
+      author: nvoxland
+      comment: FK exploration_thread_metric.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_metric
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_metric_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.bjiare
+      author: nvoxland
+      comment: FK exploration_thread_metric.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_metric
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_metric_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.jibredf
+      author: nvoxland
+      comment: Create exploration_thread_dimension join table
+      changes:
+        - createTable:
+            tableName: exploration_thread_dimension
+            remarks: Dimensions selected on a thread. Dimension IDs are virtual strings (not Field FKs).
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this dimension belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dimension_id
+                  type: ${text.type}
+                  remarks: Virtual dimension ID from the metric definition
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display_name
+                  type: ${text.type}
+                  remarks: Snapshot display name for the dimension
+                  constraints:
+                    nullable: true
+              - column:
+                  name: effective_type
+                  type: varchar(254)
+                  remarks: Snapshot effective type for the dimension
+                  constraints:
+                    nullable: true
+              - column:
+                  name: semantic_type
+                  type: varchar(254)
+                  remarks: Snapshot semantic type for the dimension
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of dimensions within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.4598gd
+      author: nvoxland
+      comment: FK exploration_thread_dimension.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_dimension
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_dimension_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.nbwerg
+      author: nvoxland
+      comment: Index on exploration_thread_dimension.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread_dimension
+            indexName: idx_exploration_thread_dimension_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
+      id: v62.bhresdfg
+      author: nvoxland
+      comment: Create exploration_thread_timeline join table
+      changes:
+        - createTable:
+            tableName: exploration_thread_timeline
+            remarks: Timelines associated with a thread.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this timeline belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timeline_id
+                  type: int
+                  remarks: The associated timeline
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of timelines within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.89yrbea
+      author: nvoxland
+      comment: Unique constraint on exploration_thread_timeline (thread, timeline)
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_thread_timeline
+            columnNames: exploration_thread_id, timeline_id
+            constraintName: uq_exploration_thread_timeline_thread_timeline
+
+  - changeSet:
+      id: v62.b89rae
+      author: nvoxland
+      comment: FK exploration_thread_timeline.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_timeline
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_timeline_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.hvdawe
+      author: nvoxland
+      comment: FK exploration_thread_timeline.timeline_id -> timeline.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_timeline
+            baseColumnNames: timeline_id
+            referencedTableName: timeline
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_timeline_timeline_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.iowdfzx
+      author: nvoxland
+      comment: Create exploration_query table
+      changes:
+        - createTable:
+            tableName: exploration_query
+            remarks: A chart definition produced when "Start exploration" is run on a thread.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this query belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Optional display name for the chart
+                  constraints:
+                    nullable: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The metric Card this chart is for
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dimension_ids
+                  type: ${text.type}
+                  remarks: JSON array of virtual dimension IDs used for this chart
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display
+                  type: varchar(64)
+                  remarks: Chart display type (line, bar, etc.)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: JSON visualization settings for this chart
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dataset_query
+                  type: ${text.type}
+                  remarks: Snapshot MBQL produced at "Start" time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of queries within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the query was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the query was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.bwbaxcz
+      author: nvoxland
+      comment: FK exploration_query.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.28easd
+      author: nvoxland
+      comment: FK exploration_query.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.badwes
+      author: nvoxland
+      comment: Index on exploration_query.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id

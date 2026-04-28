@@ -25,6 +25,7 @@
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.explorations.api]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
@@ -87,6 +88,7 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -177,6 +179,7 @@
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
+   "/exploration"          (+auth metabase.explorations.api/routes)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)

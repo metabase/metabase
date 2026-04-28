@@ -17,6 +17,7 @@ export * from "./dataset";
 export * from "./document";
 export * from "./glossary";
 export * from "./entity-id";
+export * from "./exploration";
 export * from "./field";
 export * from "./google";
 export * from "./ldap";
