@@ -217,10 +217,10 @@ result_metadata:
   lib/desired-column-alias: embedding_client
   lib/from-model?: true
   lib/internal-remap:
-    human-readable-values: [Modular embedding SDK, Modular embedding SDK (Preview), Modular embedding, Modular embedding (Preview), Public sharing, Static embedding, Static embedding (Preview), Full app embedding, Full app embedding (Preview)]
+    human-readable-values: [Modular embedding SDK, Modular embedding SDK (Preview), Modular embedding, Modular embedding (Preview), Public sharing, Static embedding, Static embedding (Preview), Full app embedding, Full app embedding (Preview), Embedding Unknown]
     id: 291
     name: Embedding Client
-    values: [embedding-sdk-react, embedding-sdk-react-preview, embedding-simple, embedding-simple-preview, embedding-public, embedding-iframe-static, embedding-iframe-static-preview, embedding-iframe-full-app, embedding-iframe-full-app-preview]
+    values: [embedding-sdk-react, embedding-sdk-react-preview, embedding-simple, embedding-simple-preview, embedding-public, embedding-iframe-static, embedding-iframe-static-preview, embedding-iframe-full-app, embedding-iframe-full-app-preview, embedding-iframe]
     lib/type: metadata.column.remapping/internal
   lib/original-display-name: Embedding Client
   lib/original-name: embedding_client

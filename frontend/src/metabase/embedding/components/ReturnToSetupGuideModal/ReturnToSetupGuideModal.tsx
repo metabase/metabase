@@ -1,9 +1,13 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { EMBEDDING_SETUP_GUIDE_PATH } from "metabase/embedding/embedding-hub/constants";
 import { useDispatch } from "metabase/redux";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+
+// Path to the admin embedding setup guide. Inlined here (rather than
+// imported from admin/) so this modal can live at the shared tier and be
+// invoked from dashboard/admin/etc. without a cross-feature dependency.
+const EMBEDDING_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 interface ReturnToSetupGuideModalProps {
   opened: boolean;
