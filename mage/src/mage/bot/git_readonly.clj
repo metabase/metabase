@@ -32,6 +32,20 @@
     "sparse-checkout" "submodule" "switch" "update-index"
     "update-ref" "worktree"})
 
+(def ^:private git-fetch-dangerous-flags
+  "Flags on `git fetch` that can execute arbitrary commands via the remote helper or pack protocol."
+  #{"--upload-pack" "--receive-pack" "--exec"})
+
+(defn- fetch-args-safe?
+  "Returns false if any arg is a dangerous --upload-pack/--receive-pack/--exec flag (with or without =value)."
+  [args]
+  (not (some (fn [a]
+               (some (fn [flag]
+                       (or (= a flag)
+                           (str/starts-with? a (str flag "="))))
+                     git-fetch-dangerous-flags))
+             args)))
+
 (defn- git-subcommand-readonly?
   "Returns true if the git subcommand is read-only, false if it writes, nil if unknown."
   [subcommand args]
@@ -40,7 +54,7 @@
     true
 
     (git-readonly-with-caveats subcommand)
-    true
+    (fetch-args-safe? args)
 
     (git-write-subcommands subcommand)
     false
@@ -99,18 +113,37 @@
     ["release" "create"] ["release" "delete"] ["release" "edit"]
     ["auth" "login"] ["auth" "logout"]})
 
-(defn- gh-api-readonly?
-  "Check if a `gh api` call is read-only. GET is read-only, everything else writes."
+(defn- gh-api-input-from-file?
+  "Returns true if any arg is `--input @file` or `--input=@file`, which would read arbitrary files into the request body."
   [args]
-  (let [method-idx (.indexOf ^java.util.List (vec args) "--method")
-        method     (when (and (>= method-idx 0) (< (inc method-idx) (count args)))
-                     (str/upper-case (nth args (inc method-idx))))
-        ;; Also check -X shorthand
-        x-idx      (.indexOf ^java.util.List (vec args) "-X")
-        x-method   (when (and (>= x-idx 0) (< (inc x-idx) (count args)))
-                     (str/upper-case (nth args (inc x-idx))))]
-    ;; Default is GET if no method specified
-    (let [effective-method (or method x-method "GET")]
+  (loop [remaining args]
+    (when (seq remaining)
+      (let [a (first remaining)]
+        (cond
+          (and (= a "--input")
+               (some-> (second remaining) (str/starts-with? "@")))
+          true
+
+          (and (str/starts-with? a "--input=")
+               (str/starts-with? (subs a (count "--input=")) "@"))
+          true
+
+          :else (recur (rest remaining)))))))
+
+(defn- gh-api-readonly?
+  "Check if a `gh api` call is read-only. GET is read-only, everything else writes.
+   Also blocks --input @file which can read arbitrary files into the request body."
+  [args]
+  (if (gh-api-input-from-file? args)
+    false
+    (let [method-idx (.indexOf ^java.util.List (vec args) "--method")
+          method     (when (and (>= method-idx 0) (< (inc method-idx) (count args)))
+                       (str/upper-case (nth args (inc method-idx))))
+          ;; Also check -X shorthand
+          x-idx      (.indexOf ^java.util.List (vec args) "-X")
+          x-method   (when (and (>= x-idx 0) (< (inc x-idx) (count args)))
+                       (str/upper-case (nth args (inc x-idx))))
+          effective-method (or method x-method "GET")]
       (= effective-method "GET"))))
 
 (defn- gh-command-readonly?
@@ -141,30 +174,38 @@
 ;;; Entry point
 
 (defn- parse-git-args
-  "Extract the git subcommand and remaining args, skipping global flags like -C and -c."
+  "Extract the git subcommand and remaining args, skipping known-safe global flags.
+   Returns {:subcommand ... :args ...} or {:error ...} for rejected flags.
+
+   `-c key=value` is rejected because git config can set knobs that execute commands
+   (core.sshCommand, core.gitProxy, http.<url>.proxy, protocol.ext.allow), giving
+   arbitrary code execution. Unknown global flags are also rejected."
   [args]
   (loop [remaining args]
-    (when (seq remaining)
+    (if-not (seq remaining)
+      {:error "No git subcommand provided."}
       (let [arg (first remaining)]
         (cond
-          ;; Skip -C <dir> (two-arg global flag)
+          ;; Skip -C <dir> (changes working directory — safe)
           (= arg "-C")
           (recur (drop 2 remaining))
 
-          ;; Skip -c key=value (two-arg global flag)
-          (= arg "-c")
-          (recur (drop 2 remaining))
+          ;; Reject -c key=value — can set config that executes commands
+          (or (= arg "-c") (str/starts-with? arg "-c="))
+          {:error (str "Refusing -c flag: 'git -c key=value' can set config "
+                       "(core.sshCommand, core.gitProxy, etc.) that executes arbitrary commands.")}
 
-          ;; Skip --git-dir=... --work-tree=... etc
-          (str/starts-with? arg "--git-dir")
+          ;; Skip --git-dir=... / --git-dir <path>
+          (or (= arg "--git-dir") (str/starts-with? arg "--git-dir="))
           (recur (if (str/includes? arg "=") (rest remaining) (drop 2 remaining)))
 
-          (str/starts-with? arg "--work-tree")
+          ;; Skip --work-tree=... / --work-tree <path>
+          (or (= arg "--work-tree") (str/starts-with? arg "--work-tree="))
           (recur (if (str/includes? arg "=") (rest remaining) (drop 2 remaining)))
 
-          ;; Skip single-char flags that take no argument
-          (and (str/starts-with? arg "-") (not (str/starts-with? arg "--")))
-          (recur (rest remaining))
+          ;; Reject any other global flag (anything starting with - before a subcommand)
+          (str/starts-with? arg "-")
+          {:error (str "Refusing unknown global git flag: " arg)}
 
           ;; Found the subcommand
           :else
@@ -185,9 +226,9 @@
       (u/exit 1))
 
     (let [readonly? (if (= tool "git")
-                      (let [{:keys [subcommand args]} (parse-git-args args)]
-                        (when-not subcommand
-                          (println (c/red "No git subcommand provided."))
+                      (let [{:keys [subcommand args error]} (parse-git-args args)]
+                        (when error
+                          (println (c/red error))
                           (u/exit 1))
                         (git-subcommand-readonly? subcommand args))
                       (gh-command-readonly? args))]

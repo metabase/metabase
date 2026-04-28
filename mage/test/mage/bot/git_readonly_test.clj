@@ -109,9 +109,6 @@
   (testing "finds subcommand after -C"
     (is (= {:subcommand "log" :args ["--oneline"]}
            (parse-args ["-C" "/some/dir" "log" "--oneline"]))))
-  (testing "finds subcommand after -c"
-    (is (= {:subcommand "diff" :args []}
-           (parse-args ["-c" "core.pager=cat" "diff"]))))
   (testing "finds subcommand after --git-dir="
     (is (= {:subcommand "status" :args []}
            (parse-args ["--git-dir=/path/.git" "status"]))))
@@ -121,3 +118,33 @@
   (testing "simple subcommand"
     (is (= {:subcommand "log" :args ["--oneline" "-5"]}
            (parse-args ["log" "--oneline" "-5"])))))
+
+(deftest parse-git-args-rejects-dangerous-globals
+  (testing "-c key=value is rejected (can set config that executes commands)"
+    (is (contains? (parse-args ["-c" "core.sshCommand=evil" "fetch"]) :error))
+    (is (contains? (parse-args ["-c" "core.gitProxy=evil" "fetch"]) :error))
+    (is (contains? (parse-args ["-c" "protocol.ext.allow=always" "fetch"]) :error)))
+  (testing "unknown global flags are rejected"
+    (is (contains? (parse-args ["--exec-path=/evil" "log"]) :error))
+    (is (contains? (parse-args ["--unknown-flag" "log"]) :error)))
+  (testing "empty args returns error"
+    (is (contains? (parse-args []) :error))))
+
+(deftest git-fetch-blocks-upload-pack-and-receive-pack
+  (testing "fetch with --upload-pack is blocked"
+    (is (false? (git-readonly? "fetch" ["--upload-pack=evil" "origin"])))
+    (is (false? (git-readonly? "fetch" ["--upload-pack" "evil" "origin"]))))
+  (testing "fetch with --receive-pack is blocked"
+    (is (false? (git-readonly? "fetch" ["--receive-pack=evil" "origin"]))))
+  (testing "fetch with --exec is blocked"
+    (is (false? (git-readonly? "fetch" ["--exec=evil" "origin"]))))
+  (testing "plain fetch is still allowed"
+    (is (true? (git-readonly? "fetch" ["origin" "master"])))))
+
+(deftest gh-api-blocks-input-from-file
+  (testing "--input @file is blocked (would read arbitrary files into request body)"
+    (is (false? (gh-api-ro? ["--input" "@/etc/passwd" "/repos"])))
+    (is (false? (gh-api-ro? ["--input=@/etc/passwd" "/repos"]))))
+  (testing "--input from stdin (-) or inline is fine for GET (still default)"
+    ;; --input without @ doesn't read a file; default GET is still read-only
+    (is (true? (gh-api-ro? ["/repos"])))))
