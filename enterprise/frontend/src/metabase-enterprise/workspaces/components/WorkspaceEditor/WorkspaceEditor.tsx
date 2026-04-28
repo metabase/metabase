@@ -4,12 +4,13 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { Stack } from "metabase/ui";
 import type { WorkspaceDatabase } from "metabase-types/api";
 
-import type { WorkspaceInfo } from "../../../types";
-import { isDatabaseProvisioned } from "../../../utils";
-import { DatabaseMappingSection } from "../DatabaseMappingSection";
-import { SetupSection } from "../SetupSection";
-import { StatusSection } from "../StatusSection";
-import { WorkspaceHeader } from "../WorkspaceHeader";
+import type { WorkspaceInfo } from "../../types";
+import { isDatabaseProvisioned } from "../../utils";
+
+import { DatabaseMappingSection } from "./DatabaseMappingSection";
+import { SetupSection } from "./SetupSection";
+import { StatusSection } from "./StatusSection";
+import { WorkspaceHeader } from "./WorkspaceHeader";
 
 type WorkspaceEditorProps = {
   workspace: WorkspaceInfo;

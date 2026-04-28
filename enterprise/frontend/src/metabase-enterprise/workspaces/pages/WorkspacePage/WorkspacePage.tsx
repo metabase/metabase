@@ -7,10 +7,9 @@ import * as Urls from "metabase/utils/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
+import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
 import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
-
-import { WorkspaceEditor } from "./WorkspaceEditor";
 
 type WorkspacePageProps = {
   params: { workspaceId: string };

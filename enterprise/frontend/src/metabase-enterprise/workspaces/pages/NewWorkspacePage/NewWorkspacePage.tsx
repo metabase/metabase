@@ -9,8 +9,8 @@ import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type { WorkspaceDatabase } from "metabase-types/api";
 
+import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import type { WorkspaceInfo } from "../../types";
-import { WorkspaceEditor } from "../WorkspacePage/WorkspaceEditor";
 
 export function NewWorkspacePage() {
   const dispatch = useDispatch();
