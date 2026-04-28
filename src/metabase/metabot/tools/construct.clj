@@ -11,7 +11,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -244,7 +244,7 @@
     :else                 chart-type))
 
 (defn- structured->query-data
-  "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
+  "Convert tool structured output to a map suitable for [[llm-shape/query->xml]].
 
   `:query-content` is the **canonical post-repair representations YAML** the LLM
   authored - i.e. the same shape it sent us in, but with `{}` options filled in,
@@ -268,7 +268,7 @@
 (defn- structured->chart-xml
   "Render the full chart XML for the construct_notebook_query tool result."
   [structured chart-id chart-type]
-  (llm-rep/visualization->xml
+  (llm-shape/visualization->xml
    {:chart-id               chart-id
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
@@ -318,7 +318,7 @@
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
         (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-rep/query->xml (structured->query-data s))
+          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
                 instruction-text (instructions/query-created-instructions-for (:query-id s))]
             (assoc query-result
                    :output (str "<result>\n" query-xml "\n</result>\n"

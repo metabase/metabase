@@ -10,7 +10,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -310,7 +310,7 @@
 (defn- format-search-output
   "Format search results as an LLM-ready string."
   [results]
-  (let [results-xml (llm-rep/search-results->xml results)]
+  (let [results-xml (llm-shape/search-results->xml results)]
     (te/lines
      "<result>"
      results-xml

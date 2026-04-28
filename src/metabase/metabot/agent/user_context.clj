@@ -9,7 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -126,7 +126,7 @@
 ;; via HTTP callbacks.
 
 (defn- fetch-and-format
-  "Fetch entity details and format with llm-rep. Falls back to format-simple-entity on failure."
+  "Fetch entity details and format with llm-shape. Falls back to format-simple-entity on failure."
   [entity preamble details-fn format-fn]
   (try
     (let [{:keys [structured-output]} (details-fn)]
@@ -147,7 +147,7 @@
                                                         :with-metrics? false
                                                         :with-measures? true
                                                         :with-segments? true})
-                    llm-rep/table->xml))
+                    llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
@@ -159,7 +159,7 @@
                                                         :with-metrics? false
                                                         :with-measures? true
                                                         :with-segments? true})
-                    llm-rep/model->xml))
+                    llm-shape/model->xml))
 
 (defn- format-chart-config-ids
   "Format chart config IDs for a viewing context item.
@@ -203,7 +203,7 @@
                       "The user is currently looking at the results of a report:"
                       #(entity-details/get-report-details {:report-id (:id entity)
                                                            :with-field-values? false})
-                      llm-rep/question->xml)))
+                      llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
@@ -211,14 +211,14 @@
                     "The user is currently looking at the details of a metric:"
                     #(entity-details/get-metric-details {:metric-id (:id entity)
                                                          :with-field-values? false})
-                    llm-rep/metric->xml))
+                    llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a dashboard:"
                     #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
-                    llm-rep/dashboard->xml))
+                    llm-shape/dashboard->xml))
 
 ;;; Viewing Context Formatting
 
@@ -369,10 +369,10 @@
   [_context]
   (try
     (when-let [{:keys [id name email-address glossary]} (:structured-output (entity-details/get-current-user nil))]
-      (llm-rep/user->xml {:id       id
-                          :name     name
-                          :email    email-address
-                          :glossary glossary}))
+      (llm-shape/user->xml {:id       id
+                            :name     name
+                            :email    email-address
+                            :glossary glossary}))
     (catch Exception e
       (log/error e "Error formatting current user info")
       nil)))

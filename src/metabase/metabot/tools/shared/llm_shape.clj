@@ -6,7 +6,7 @@
    Naming note: this is the *output* (response-side) shape, not to be confused with the
    *input*-side representations YAML format owned by `metabase.agent-lib.representations.*`.
    The two share no schema and no code path; they were briefly named symmetrically
-   (`llm-representations` here, `representations` there) and the symmetry caused enough
+   (`llm-shaperesentations` here, `representations` there) and the symmetry caused enough
    confusion to motivate this rename.
 
    Matches Python AI Service patterns exactly for consistency."

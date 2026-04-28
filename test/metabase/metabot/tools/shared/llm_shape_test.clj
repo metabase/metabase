@@ -2,19 +2,19 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.shared.llm-shape :as llm-rep]))
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
 
 (deftest escape-xml-test
   (testing "escape-xml handles special characters"
-    (is (= "&amp;" (#'llm-rep/escape-xml "&")))
-    (is (= "&lt;" (#'llm-rep/escape-xml "<")))
-    (is (= "&gt;" (#'llm-rep/escape-xml ">")))
-    (is (= "&quot;" (#'llm-rep/escape-xml "\"")))
+    (is (= "&amp;" (#'llm-shape/escape-xml "&")))
+    (is (= "&lt;" (#'llm-shape/escape-xml "<")))
+    (is (= "&gt;" (#'llm-shape/escape-xml ">")))
+    (is (= "&quot;" (#'llm-shape/escape-xml "\"")))
     (is (= "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;"
-           (#'llm-rep/escape-xml "<script>alert(\"xss\")</script>"))))
+           (#'llm-shape/escape-xml "<script>alert(\"xss\")</script>"))))
 
   (testing "escape-xml handles nil"
-    (is (nil? (#'llm-rep/escape-xml nil)))))
+    (is (nil? (#'llm-shape/escape-xml nil)))))
 
 (deftest field->xml-test
   (testing "formats field with all attributes matching Python format"
@@ -25,7 +25,7 @@
                  :type :integer
                  :database_type "INTEGER"
                  :description "The user identifier"}
-          xml (llm-rep/field->xml field)]
+          xml (llm-shape/field->xml field)]
       ;; Python format: name="\"user_id\""
       (is (str/includes? xml "id=\"f1\""))
       (is (str/includes? xml "name=\"\\\"user_id\\\"\""))
@@ -37,7 +37,7 @@
 
   (testing "handles missing optional attributes with defaults"
     (let [field {:field_id "f1" :name "test"}
-          xml (llm-rep/field->xml field)]
+          xml (llm-shape/field->xml field)]
       (is (str/includes? xml "id=\"f1\""))
       (is (str/includes? xml "name=\"\\\"test\\\"\""))
       (is (str/includes? xml "database_type=\"unknown\""))))
@@ -53,18 +53,18 @@
                  :type :string
                  :database_type "varchar"
                  :fk_target_portable_fk ["Analytics" "customerio_data" "customer" "id"]}
-          xml (llm-rep/field->xml field)]
+          xml (llm-shape/field->xml field)]
       (is (str/includes? xml "fk_target_fully_qualified_name=\"customerio_data.customer.id\""))))
 
   (testing "non-FK fields do not render an empty `fk_target_fully_qualified_name` attribute"
     (let [field {:field_id "1" :name "total" :type :number}
-          xml (llm-rep/field->xml field)]
+          xml (llm-shape/field->xml field)]
       (is (not (str/includes? xml "fk_target_fully_qualified_name"))))))
 
 (deftest collection->xml-test
   (testing "formats collection with name"
     (let [collection {:name "Finance" :description "Finance reports" :authority_level "official"}
-          xml (llm-rep/collection->xml collection)]
+          xml (llm-shape/collection->xml collection)]
       (is (str/includes? xml "<collection"))
       (is (str/includes? xml "name=\"Finance\""))
       (is (str/includes? xml "authority_level=\"official\""))
@@ -72,7 +72,7 @@
 
   (testing "uses default name for nil"
     (let [collection {:name nil}
-          xml (llm-rep/collection->xml collection)]
+          xml (llm-shape/collection->xml collection)]
       (is (str/includes? xml "name=\"Our analytics\"")))))
 
 (deftest metric->xml-test
@@ -84,7 +84,7 @@
                   :collection {:name "Finance"}
                   :default_time_dimension_field {:name "created_at"}
                   :queryable-dimensions [{:name "date" :field_id "d1" :base-type :type/Date :database_type "DATE"}]}
-          xml (llm-rep/metric->xml metric)]
+          xml (llm-shape/metric->xml metric)]
       (is (str/starts-with? xml "<metric"))
       ;; Python format: id="42", name="Total Revenue"
       (is (str/includes? xml "id=\"42\", name=\"Total Revenue\""))
@@ -100,7 +100,7 @@
 
   (testing "handles metric without dimensions"
     (let [metric {:id 1 :name "Test" :verified false}
-          xml (llm-rep/metric->xml metric)]
+          xml (llm-shape/metric->xml metric)]
       (is (str/includes? xml "is_verified=\"false\""))
       (is (not (str/includes? xml "### Dimensions"))))))
 
@@ -112,7 +112,7 @@
                    :description "Sum of all revenue"
                    :definition {:database 1 :type :query :query {:source-table 5 :aggregation [[:sum [:field 10 nil]]]}}
                    :definition-description "Sum of Price"}
-          xml (llm-rep/measure->xml measure)]
+          xml (llm-shape/measure->xml measure)]
       (is (str/starts-with? xml "<measure"))
       (is (str/includes? xml "measure_id=\"1\""))
       (is (str/includes? xml "name=\"total_revenue\""))
@@ -125,7 +125,7 @@
 
   (testing "handles measure without description or definition"
     (let [measure {:id 2 :name "count_orders"}
-          xml (llm-rep/measure->xml measure)]
+          xml (llm-shape/measure->xml measure)]
       (is (str/includes? xml "measure_id=\"2\""))
       (is (str/includes? xml "name=\"count_orders\""))
       (is (str/includes? xml "display_name=\"count_orders\""))
@@ -135,7 +135,7 @@
 
   (testing "uses name as display_name fallback"
     (let [measure {:id 3 :name "avg_price" :display-name nil}
-          xml (llm-rep/measure->xml measure)]
+          xml (llm-shape/measure->xml measure)]
       (is (str/includes? xml "display_name=\"avg_price\"")))))
 
 (deftest segment->xml-test
@@ -146,7 +146,7 @@
                    :description "Customers who made a purchase in the last 30 days"
                    :definition {:database 1 :type :query :query {:source-table 5 :filter [:> [:field 10 nil] 0]}}
                    :definition-description "Price is greater than 0"}
-          xml (llm-rep/segment->xml segment)]
+          xml (llm-shape/segment->xml segment)]
       (is (str/starts-with? xml "<segment"))
       (is (str/includes? xml "segment_id=\"1\""))
       (is (str/includes? xml "name=\"active_customers\""))
@@ -159,7 +159,7 @@
 
   (testing "handles segment without description or definition-description"
     (let [segment {:id 2 :name "new_users"}
-          xml (llm-rep/segment->xml segment)]
+          xml (llm-shape/segment->xml segment)]
       (is (str/includes? xml "segment_id=\"2\""))
       (is (str/includes? xml "name=\"new_users\""))
       (is (not (str/includes? xml "<definition>")))
@@ -168,7 +168,7 @@
 
   (testing "uses name as display_name fallback"
     (let [segment {:id 3 :name "q4_orders" :display-name nil}
-          xml (llm-rep/segment->xml segment)]
+          xml (llm-shape/segment->xml segment)]
       (is (str/includes? xml "display_name=\"q4_orders\"")))))
 
 (deftest table->xml-test
@@ -183,7 +183,7 @@
                  :fields [{:name "id" :field_id "f1" :base-type :type/Integer :database_type "INTEGER"}]
                  :related_tables [{:id 20 :name "orders" :fully_qualified_name "public.orders"
                                    :related_by "user_id" :fields []}]}
-          xml (llm-rep/table->xml table)]
+          xml (llm-shape/table->xml table)]
       (is (str/starts-with? xml "<table"))
       ;; Python format: id="10", name="users"
       (is (str/includes? xml "id=\"10\", name=\"users\""))
@@ -210,7 +210,7 @@
                              :description "Average value of orders"}]
                  :segments [{:id 2 :name "q4_orders" :display-name "Q4 Orders"
                              :description "Orders placed in Q4"}]}
-          xml (llm-rep/table->xml table)]
+          xml (llm-shape/table->xml table)]
       (is (str/includes? xml "### Measures (Pre-defined Aggregation Formulas)"))
       (is (str/includes? xml "MEASURES (NOT metrics!)"))
       (is (str/includes? xml "<measure measure_id=\"1\""))
@@ -221,7 +221,7 @@
 
   (testing "omits measures and segments sections when empty"
     (let [table {:id 10 :name "users" :database_id 1 :database_engine "postgres"}
-          xml (llm-rep/table->xml table)]
+          xml (llm-shape/table->xml table)]
       (is (not (str/includes? xml "### Measures")))
       (is (not (str/includes? xml "### Segments"))))))
 
@@ -234,7 +234,7 @@
                  :database_id 1
                  :database_engine "postgres"
                  :fields [{:name "revenue" :field_id "r1" :base-type :type/Float :database_type "DOUBLE"}]}
-          xml (llm-rep/model->xml model)]
+          xml (llm-shape/model->xml model)]
       ;; Python uses <metabase-model> tag
       (is (str/starts-with? xml "<metabase-model"))
       (is (str/includes? xml "id=\"5\""))
@@ -260,7 +260,7 @@
                              :description "Net revenue after returns"}]
                  :segments [{:id 1 :name "new_customers" :display-name "New Customers"
                              :description "First-time buyers"}]}
-          xml (llm-rep/model->xml model)]
+          xml (llm-shape/model->xml model)]
       (is (str/includes? xml "### Measures (Pre-defined Aggregation Formulas)"))
       (is (str/includes? xml "MEASURES (NOT metrics!)"))
       (is (str/includes? xml "<measure measure_id=\"1\""))
@@ -271,19 +271,19 @@
 
   (testing "omits measures and segments sections when empty"
     (let [model {:id 5 :name "Empty Model" :database_id 1 :database_engine "postgres"}
-          xml (llm-rep/model->xml model)]
+          xml (llm-shape/model->xml model)]
       (is (not (str/includes? xml "### Measures")))
       (is (not (str/includes? xml "### Segments")))))
 
   (testing "includes portable_entity_id when present (for `source-card:` lookups)"
     (let [model {:id 6 :name "Portable Model" :database_id 1 :database_engine "postgres"
                  :portable_entity_id "bw41Vx2d-9d7sOScnaKlf"}
-          xml (llm-rep/model->xml model)]
+          xml (llm-shape/model->xml model)]
       (is (str/includes? xml "portable_entity_id=\"bw41Vx2d-9d7sOScnaKlf\""))))
 
   (testing "omits portable_entity_id when absent"
     (let [model {:id 7 :name "No EID Model" :database_id 1 :database_engine "postgres"}
-          xml (llm-rep/model->xml model)]
+          xml (llm-shape/model->xml model)]
       (is (not (str/includes? xml "portable_entity_id"))))))
 
 (deftest query->xml-test
@@ -294,7 +294,7 @@
                  :query-content "SELECT * FROM users"
                  :result {:result_columns [{:name "id" :display_name "ID" :type "number"}]
                           :rows [[1] [2]]}}
-          xml (llm-rep/query->xml query)]
+          xml (llm-shape/query->xml query)]
       (is (str/starts-with? xml "<query"))
       (is (str/includes? xml "type=\"sql\""))
       (is (str/includes? xml "id=\"q123\""))
@@ -307,7 +307,7 @@
 
   (testing "handles query with no result"
     (let [query {:query-type :notebook :query-id "m1" :database_id 1}
-          xml (llm-rep/query->xml query)]
+          xml (llm-shape/query->xml query)]
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
@@ -316,7 +316,7 @@
     (let [chart {:chart-id "ch-abc-123"
                  :query-id "q1"
                  :chart-type :bar}
-          xml (llm-rep/chart->xml chart)]
+          xml (llm-shape/chart->xml chart)]
       (is (str/starts-with? xml "<chart"))
       (is (str/includes? xml "id=\"ch-abc-123\""))
       (is (str/includes? xml "type=\"bar\""))
@@ -326,7 +326,7 @@
 
   (testing "handles nil chart-type"
     (let [chart {:chart-id "c1" :query-id "q1" :chart-type nil}
-          xml (llm-rep/chart->xml chart)]
+          xml (llm-shape/chart->xml chart)]
       (is (str/includes? xml "type=\"table\"")))))
 
 (deftest visualization->xml-test
@@ -334,7 +334,7 @@
     (let [viz {:chart-id "v1"
                :queries [{:query-type :sql :query-id "q1" :database_id 1 :query-content "SELECT 1"}]
                :visualization_settings {:chart_type "bar"}}
-          xml (llm-rep/visualization->xml viz)]
+          xml (llm-shape/visualization->xml viz)]
       (is (str/starts-with? xml "<chart"))
       (is (str/includes? xml "id=\"v1\""))
       (is (str/includes? xml "The chart is powered by the following queries"))
@@ -348,7 +348,7 @@
                     :description "Monthly revenue breakdown"
                     :verified true
                     :collection {:name "Finance"}}
-          xml (llm-rep/question->xml question)]
+          xml (llm-shape/question->xml question)]
       (is (str/starts-with? xml "<metabase_question"))
       (is (str/includes? xml "id=\"100\""))
       (is (str/includes? xml "is_verified=\"true\""))
@@ -360,22 +360,22 @@
     (let [question {:id 101
                     :name "Pie Chart"
                     :display :pie}
-          xml (llm-rep/question->xml question)]
+          xml (llm-shape/question->xml question)]
       (is (str/includes? xml "display_type=\"pie\""))))
   (testing "omits display_type when not present"
     (let [question {:id 102
                     :name "No Display"}
-          xml (llm-rep/question->xml question)]
+          xml (llm-shape/question->xml question)]
       (is (not (str/includes? xml "display_type")))))
   (testing "includes portable_entity_id when present (for `source-card:` lookups)"
     (let [question {:id 103
                     :name "Portable Q"
                     :portable_entity_id "dh9P5mz7vhpqYUPosLPqL"}
-          xml (llm-rep/question->xml question)]
+          xml (llm-shape/question->xml question)]
       (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\""))))
   (testing "omits portable_entity_id when absent"
     (let [question {:id 104 :name "No EID"}
-          xml (llm-rep/question->xml question)]
+          xml (llm-shape/question->xml question)]
       (is (not (str/includes? xml "portable_entity_id"))))))
 
 (deftest dashboard->xml-test
@@ -387,7 +387,7 @@
                      :collection {:name "Sales"}
                      :dashcards [{:id 1 :type :text :order 1 :width 6 :height 2
                                   :dashboard_tab_id 0 :row 0 :col 0 :text "Welcome"}]}
-          xml (llm-rep/dashboard->xml dashboard)]
+          xml (llm-shape/dashboard->xml dashboard)]
       (is (str/starts-with? xml "<dashboard"))
       (is (str/includes? xml "id=\"50\""))
       (is (str/includes? xml "is_verified=\"true\""))
@@ -405,7 +405,7 @@
                 :name "John Doe"
                 :email "john@example.com"
                 :glossary {"ARR" "Annual Recurring Revenue"}}
-          xml (llm-rep/user->xml user)]
+          xml (llm-shape/user->xml user)]
       (is (str/starts-with? xml "<user>"))
       (is (str/includes? xml "### User Info"))
       (is (str/includes? xml "- Name: John Doe"))
@@ -423,7 +423,7 @@
                   :description "Total revenue calculation"
                   :verified true
                   :collection {:name "Finance"}}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<metric"))
       (is (str/includes? xml "id=\"100\""))
       (is (str/includes? xml "name=\"Revenue Metric\""))
@@ -439,7 +439,7 @@
                   :database_id 2
                   :database_engine :postgres
                   :database_schema "shopify_data"}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<table"))
       (is (str/includes? xml "id=\"133\""))
       (is (str/includes? xml "name=\"order\""))
@@ -453,7 +453,7 @@
                   :name "users"
                   :database_id 1
                   :database_engine :h2}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (str/includes? xml "fully_qualified_name=\"users\""))
       (is (str/includes? xml "database_engine=\"h2\""))))
 
@@ -464,7 +464,7 @@
                   :database_id 1
                   :database_engine :postgres
                   :verified true}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<model"))
       (is (str/includes? xml "database_id=\"1\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
@@ -478,7 +478,7 @@
                   :database_id 1
                   :database_engine "h2"
                   :portable_entity_id "dh9P5mz7vhpqYUPosLPqL"}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<question"))
       (is (str/includes? xml "id=\"175\""))
       (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\""))))
@@ -491,20 +491,20 @@
                   :database_id 1
                   :database_engine "postgres"
                   :portable_entity_id "AbCdEfGhIjKlMnOpQrStU"}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (str/includes? xml "portable_entity_id=\"AbCdEfGhIjKlMnOpQrStU\""))))
 
   (testing "search result without portable_entity_id simply omits the attribute"
     (let [result {:id 99 :type "question" :name "Legacy"
                   :verified false :database_id 1 :database_engine "h2"}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id")))))
 
   (testing "table search result never carries portable_entity_id"
     (let [result {:id 10 :type "table" :name "ORDERS"
                   :verified false :database_id 1 :database_engine "h2"
                   :database_schema "PUBLIC"}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id")))))
 
   (testing "non-table/model search results omit table-specific attributes"
@@ -512,25 +512,25 @@
                   :type :dashboard
                   :name "Sales Dashboard"
                   :database_id nil}
-          xml (llm-rep/search-result->xml result)]
+          xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "fully_qualified_name")))
       (is (not (str/includes? xml "database_id")))
       (is (not (str/includes? xml "database_engine")))))
 
   (testing "uses correct tag names for different types"
-    (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :table :name "t"}) "<table"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :table :name "t"}) "<table"))
     ;; Model uses <metabase-model> tag
-    (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :model :name "m"}) "<metabase-model"))
-    (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :dashboard :name "d"}) "<dashboard"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :model :name "m"}) "<metabase-model"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dashboard :name "d"}) "<dashboard"))
     ;; Card/question uses <metabase_question> tag
-    (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
-    (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
 
 (deftest search-results->xml-test
   (testing "formats multiple search results"
     (let [results [{:id 1 :type :metric :name "Metric 1"}
                    {:id 2 :type :table :name "Table 1"}]
-          xml (llm-rep/search-results->xml results)]
+          xml (llm-shape/search-results->xml results)]
       (is (str/includes? xml "Here are the search results:"))
       (is (str/includes? xml "<search-results>"))
       (is (str/includes? xml "<metric id=\"1\""))
@@ -538,7 +538,7 @@
       (is (str/includes? xml "</search-results>"))))
 
   (testing "handles empty results"
-    (let [xml (llm-rep/search-results->xml [])]
+    (let [xml (llm-shape/search-results->xml [])]
       (is (str/includes? xml "<search-results>"))
       (is (str/includes? xml "</search-results>")))))
 
@@ -547,7 +547,7 @@
     (let [metadata {:field_values ["US" "DE" "FR"]
                     :statistics {:sample_distinct_count 3
                                  :sample_percent_null 0.05}}
-          xml (llm-rep/field-values-metadata->xml metadata)]
+          xml (llm-shape/field-values-metadata->xml metadata)]
       (is (str/includes? xml "**Sample Values (for understanding format pattern)**"))
       (is (str/includes? xml "| Value |"))
       (is (str/includes? xml "| US |"))
@@ -556,20 +556,20 @@
 
   (testing "handles empty field values"
     (let [metadata {:field_values []}
-          xml (llm-rep/field-values-metadata->xml metadata)]
+          xml (llm-shape/field-values-metadata->xml metadata)]
       (is (str/includes? xml "This field hasn't been sampled yet")))))
 
 (deftest field-metadata->xml-test
   (testing "formats field metadata"
     (let [metadata {:field_id "f1"
                     :value_metadata {:field_values ["A" "B"]}}
-          xml (llm-rep/field-metadata->xml metadata)]
+          xml (llm-shape/field-metadata->xml metadata)]
       (is (str/includes? xml "<field-metadata field_id=\"f1\">"))
       (is (str/includes? xml "**Sample Values"))))
 
   (testing "handles nil value_metadata"
     (let [metadata {:field_id "f1" :value_metadata nil}
-          xml (llm-rep/field-metadata->xml metadata)]
+          xml (llm-shape/field-metadata->xml metadata)]
       (is (str/includes? xml "No metadata available to display")))))
 
 (deftest get-metadata-result->xml-test
@@ -577,7 +577,7 @@
     (let [result {:metrics [{:id 1 :name "M1" :description "Metric 1"}]
                   :tables [{:id 2 :name "T1" :database_id 1 :description "Table 1"}]
                   :models [{:id 3 :name "Mo1" :description "Model 1"}]}
-          xml (llm-rep/get-metadata-result->xml result)]
+          xml (llm-shape/get-metadata-result->xml result)]
       (is (str/includes? xml "<metrics>"))
       (is (str/includes? xml "</metrics>"))
       (is (str/includes? xml "<tables>"))
@@ -588,26 +588,26 @@
 
   (testing "handles no metadata"
     (let [result {:metrics [] :tables [] :models []}
-          xml (llm-rep/get-metadata-result->xml result)]
+          xml (llm-shape/get-metadata-result->xml result)]
       (is (str/includes? xml "No metadata was returned"))))
 
   (testing "includes errors"
     (let [result {:metrics [] :tables [] :models [] :errors ["Error 1"]}
-          xml (llm-rep/get-metadata-result->xml result)]
+          xml (llm-shape/get-metadata-result->xml result)]
       (is (str/includes? xml "<errors>"))
       (is (str/includes? xml "Error 1")))))
 
 (deftest entity->xml-test
   (testing "dispatches to correct formatter based on type"
-    (is (str/starts-with? (llm-rep/entity->xml {:type :metric :id 1 :name "m"}) "<metric"))
-    (is (str/starts-with? (llm-rep/entity->xml {:type :table :id 1 :name "t" :database_id 1}) "<table"))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :metric :id 1 :name "m"}) "<metric"))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :table :id 1 :name "t" :database_id 1}) "<table"))
     ;; Model uses <metabase-model>
-    (is (str/starts-with? (llm-rep/entity->xml {:type :model :id 1 :name "m"}) "<metabase-model"))
-    (is (str/starts-with? (llm-rep/entity->xml {:type :question :id 1 :name "q"}) "<metabase_question"))
-    (is (str/starts-with? (llm-rep/entity->xml {:type :dashboard :id 1 :name "d"}) "<dashboard"))
-    (is (str/starts-with? (llm-rep/entity->xml {:type :user :id 1 :name "u" :email "u@test.com"}) "<user"))
-    (is (str/starts-with? (llm-rep/entity->xml {:type :collection :name "c"}) "<collection")))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :model :id 1 :name "m"}) "<metabase-model"))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :question :id 1 :name "q"}) "<metabase_question"))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :dashboard :id 1 :name "d"}) "<dashboard"))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :user :id 1 :name "u" :email "u@test.com"}) "<user"))
+    (is (str/starts-with? (llm-shape/entity->xml {:type :collection :name "c"}) "<collection")))
 
   (testing "falls back to pr-str for unknown types"
-    (let [result (llm-rep/entity->xml {:type :unknown :data "test"})]
+    (let [result (llm-shape/entity->xml {:type :unknown :data "test"})]
       (is (str/includes? result ":type")))))
