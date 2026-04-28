@@ -1,6 +1,42 @@
 (ns metabase-enterprise.workspaces.core
   "Programmatic API for workspaces.
 
+   ## Parent / child instance contract
+
+   A workspace flow spans two Metabase instances:
+
+   - **Parent** — the shared/production instance. Owns workspace creation,
+     provisioning attempts, `config.yml` emission, and the parent-side UI.
+   - **Child** — the local/development instance. Bootstraps from `config.yml`
+     and runs in workspace mode (table remapping, transform redirection, sync
+     rewiring).
+
+   This subproject (and the `metabase-enterprise.workspaces.*` namespace tree)
+   owns essentially everything that runs **on the child instance**:
+
+     1. Loading the workspace config from `config.yml`
+        (`metabase-enterprise.advanced-config.file.workspace`).
+     2. Checking workspace-active status when running transforms
+        (`db-workspace-schema` consulted via `transforms.execute/execute!`).
+     3. Inserting new table remappings
+        (`metabase-enterprise.workspaces.table-remapping/add-schema+table-mapping!`).
+     4. The table remapping CRUD interface
+        (`metabase-enterprise.workspaces.table-remapping`).
+     5. Rewiring the QP to respect table remappings
+        (`metabase-enterprise.workspaces.query-processor.middleware`).
+     6. Rewiring sync to respect table remappings
+        (`workspace-remap-schema+name` hook in `src/metabase/sync/fetch_metadata.clj`).
+     7. The HTTP API the child UI uses to surface what's happening
+        (`/api/ee/workspace/...`).
+     8. The child UI itself
+        (`enterprise/frontend/src/metabase-enterprise/workspaces`).
+
+   workspace-manager owns the parent-side surface (workspace creation,
+   provisioning attempts, `config.yml` emission, parent UI). Items 1–8 above
+   are the line.
+
+   ## Per-database lifecycle (parent side)
+
    Per-database status transitions:
 
                      provision!
