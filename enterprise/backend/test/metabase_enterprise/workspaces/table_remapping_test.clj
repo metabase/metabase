@@ -5,7 +5,8 @@
    and `record-remapping!`."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace]
+   [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -21,13 +22,27 @@
   (try (f)
        (finally (ws.table-remapping/clear-mappings-for-db! db-id))))
 
-(defn- with-workspace-config
-  "Install a fake workspace config for the duration of `f`, restoring the prior value afterward."
-  [config f]
-  (let [prev (ws/get-config)]
-    (ws/set-config! config)
-    (try (f)
-         (finally (ws/set-config! prev)))))
+(defn- with-provisioned-workspace-db
+  "Insert a `:provisioned` :model/WorkspaceDatabase row pointing at `db-id` with
+   `output-schema`, run `f`, then delete the row and its parent workspace.
+   While `f` runs, `metabase-enterprise.workspaces.core/db-workspace-schema`
+   resolves to `output-schema` for `db-id` — the new home of what was formerly
+   a singleton config atom."
+  [db-id output-schema f]
+  (let [ws-id (t2/insert-returning-pk! :model/Workspace
+                                       {:name (str "table-remapping-test-ws-" (random-uuid))})]
+    (try
+      (t2/insert! :model/WorkspaceDatabase
+                  {:workspace_id     ws-id
+                   :database_id      db-id
+                   :database_details {}
+                   :output_schema    output-schema
+                   :input_schemas    []
+                   :status           :provisioned})
+      (f)
+      (finally
+        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+        (t2/delete! :model/Workspace :id ws-id)))))
 
 (deftest remap-table-returns-nil-when-no-mapping-test
   (clean-db-fixture
@@ -97,9 +112,8 @@
     (clean-db-fixture
      (mt/id)
      (fn []
-       (with-workspace-config
-         {:name "test-ws"
-          :databases {(mt/id) {:output_schema "ws_fresh"}}}
+       (with-provisioned-workspace-db
+         (mt/id) "ws_fresh"
          (fn []
            (ws.table-remapping/record-remapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
            (is (= ["ws_fresh" "orders_copy"]
@@ -110,9 +124,8 @@
     (clean-db-fixture
      (mt/id)
      (fn []
-       (with-workspace-config
-         {:name "test-ws"
-          :databases {(mt/id) {:output_schema "ws_idem"}}}
+       (with-provisioned-workspace-db
+         (mt/id) "ws_idem"
          (fn []
            (ws.table-remapping/record-remapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
            (ws.table-remapping/record-remapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
@@ -171,15 +184,17 @@
 
 (deftest record-remapping!-requires-workspaced-db-test
   (testing "throws with a clear error when db is not workspaced (db-workspace-schema returns nil)"
-    (with-workspace-config
-      {:name "test-ws" :databases {}}
-      (fn []
-        (let [ex (try
-                   (ws.table-remapping/record-remapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
-                   nil
-                   (catch clojure.lang.ExceptionInfo e e))]
-          (is (some? ex) "record-remapping! must throw when the db is not workspaced")
-          (is (re-find #"not workspaced" (ex-message ex)))
-          (is (= (mt/id) (:db-id (ex-data ex)))))
-        (testing "no app-db row was written"
-          (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))))
+    ;; Defensive: ensure no provisioned WorkspaceDatabase row leaks in from another test.
+    (t2/delete! :model/WorkspaceDatabase :database_id (mt/id) :status :provisioned)
+    (clean-db-fixture
+     (mt/id)
+     (fn []
+       (let [ex (try
+                  (ws.table-remapping/record-remapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
+                  nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+         (is (some? ex) "record-remapping! must throw when the db is not workspaced")
+         (is (re-find #"not workspaced" (ex-message ex)))
+         (is (= (mt/id) (:db-id (ex-data ex)))))
+       (testing "no app-db row was written"
+         (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))))

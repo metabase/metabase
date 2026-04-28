@@ -192,9 +192,3 @@
   [workspace-id]
   (assert-workspace-exists workspace-id)
   (provisioning/deprovision-workspace! workspace-id))
-
-(defn get-config []
-  (throw (ex-info "not implemented" {})))
-
-(defn set-config! [_config]
-  (throw (ex-info "not implemented" {})))
