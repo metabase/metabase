@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import {
   findRequests,
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
@@ -23,7 +22,6 @@ const GROUPS = [
 const setup = async (settingValues?: Partial<LdapSettings>) => {
   const settings = createMockSettings(settingValues);
   delete settings["ldap-group-membership-filter"]; // not present in OSS
-  setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settings);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);

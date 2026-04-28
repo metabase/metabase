@@ -38,6 +38,7 @@ import { PUT } from "metabase/utils/api";
 import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";
+import { setupDefaultAppEndpoints } from "./server-mocks/defaults";
 
 type ReducerValue = ReducerObject | Reducer;
 
@@ -58,6 +59,14 @@ export interface RenderWithProvidersOptions {
   withUndos?: boolean;
   customReducers?: ReducerObject;
   theme?: MantineThemeOverride;
+  /**
+   * When true (default), registers sensible empty/no-op responses for
+   * app-shell endpoints (bookmarks, recents, search, session/properties,
+   * etc.) so tests don't need to mock them explicitly. Test-specific
+   * `setupX` calls always win because they register first. Pass `false`
+   * to opt out.
+   */
+  defaultEndpoints?: boolean;
 }
 
 /**
@@ -77,6 +86,7 @@ export function renderWithProviders(
     withUndos = false,
     customReducers,
     theme,
+    defaultEndpoints = true,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
@@ -91,6 +101,10 @@ export function renderWithProviders(
     customReducers,
     theme,
   });
+
+  if (defaultEndpoints) {
+    setupDefaultAppEndpoints();
+  }
 
   const utils = testingLibraryRender(ui, {
     wrapper,
@@ -116,6 +130,7 @@ export function renderHookWithProviders<TProps, TResult>(
     withUndos = false,
     customReducers,
     theme,
+    defaultEndpoints = true,
     ...renderHookOptions
   }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
 ) {
@@ -134,6 +149,10 @@ export function renderHookWithProviders<TProps, TResult>(
     customReducers,
     theme,
   });
+
+  if (defaultEndpoints) {
+    setupDefaultAppEndpoints();
+  }
 
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (

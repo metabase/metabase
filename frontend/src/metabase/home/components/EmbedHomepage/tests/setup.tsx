@@ -2,10 +2,6 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettingsState,
@@ -13,7 +9,6 @@ import {
 } from "metabase/redux/store/mocks";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
-  createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -37,8 +32,6 @@ export async function setup({
 
   fetchMock.put("path:/api/setting/embedding-homepage", 200);
   fetchMock.post("path:/api/product-feedback", 200);
-  setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(createMockSettings());
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),

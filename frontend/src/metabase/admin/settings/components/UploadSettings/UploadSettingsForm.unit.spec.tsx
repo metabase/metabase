@@ -5,7 +5,6 @@ import {
   setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
   setupSchemaEndpoints,
-  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -123,7 +122,6 @@ async function setupOuter({
   });
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupDatabaseListEndpoint(databases);
 

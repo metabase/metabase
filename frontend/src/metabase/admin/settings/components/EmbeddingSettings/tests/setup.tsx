@@ -2,7 +2,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
@@ -62,7 +61,6 @@ export async function setup({
   }
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
   setupUpsellEndpoints();

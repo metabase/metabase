@@ -2,10 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
-import {
-  setupLastDownloadFormatEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   screen,
   waitFor,
@@ -97,7 +94,6 @@ describe("QueryBuilder", () => {
 
       beforeEach(() => {
         fetchMock.put("path:/api/setting/non-table-chart-generated", 200);
-        setupSettingsEndpoints([]);
       });
 
       it.each(cards)(

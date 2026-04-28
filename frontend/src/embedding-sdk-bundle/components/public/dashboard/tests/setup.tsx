@@ -5,7 +5,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupAlertsEndpoints,
-  setupBookmarksEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -198,8 +197,6 @@ export const setupSdkDashboard = async ({
   setupDatabasesEndpoints([createMockDatabase()]);
 
   setupLastDownloadFormatEndpoints();
-
-  setupBookmarksEndpoints([]);
 
   const BOBBY_TEST_COLLECTION = createMockCollection({
     archived: false,

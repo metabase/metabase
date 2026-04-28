@@ -2,7 +2,6 @@ import {
   findRequests,
   setupTokenActivationEndpoint,
   setupTokenStatusEndpoint,
-  setupTokenStatusEndpointEmpty,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -71,7 +70,6 @@ const setupContainer = ({
     }),
     currentUser: createMockUser(currentUser),
   });
-  setupTokenStatusEndpointEmpty();
   setupTokenActivationEndpoint({
     success: tokenActivation,
   });

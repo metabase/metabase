@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
@@ -119,8 +118,6 @@ const setup = ({
   isAnalyticsDashboard: boolean;
   isAdmin: boolean;
 }>) => {
-  setupBookmarksEndpoints([]);
-
   const MOCK_DATABASE = createMockDatabase({
     settings: {
       "database-enable-actions": hasModelActionsEnabled,

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
@@ -27,7 +26,6 @@ function setup({
     "metabot-enabled?": isMetabotEnabled,
   });
 
-  setupUserMetabotPermissionsEndpoint();
   setupEnterprisePlugins();
 
   const metabotState = getMetabotInitialState();

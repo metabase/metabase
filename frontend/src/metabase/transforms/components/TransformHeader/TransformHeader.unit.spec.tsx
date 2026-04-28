@@ -1,10 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
@@ -22,7 +19,6 @@ type SetupOpts = {
 function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
   const transform = createMockTransform({ id: 1, name: "Test Transform" });
 
-  setupUserMetabotPermissionsEndpoint();
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });

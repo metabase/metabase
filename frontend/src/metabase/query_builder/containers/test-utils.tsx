@@ -7,7 +7,6 @@ import { IndexRoute, Route } from "react-router";
 import {
   setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
-  setupBookmarksEndpoints,
   setupCardDataset,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -18,12 +17,7 @@ import {
   setupFieldValuesEndpoint,
   setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
-  setupPropertiesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupRecentViewsEndpoints,
   setupSearchEndpoints,
-  setupTimelinesEndpoints,
-  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -51,7 +45,6 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -243,20 +236,14 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
-  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
-  setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
-  setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
-  setupRecentViewsEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([]);
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",

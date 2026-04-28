@@ -7,7 +7,6 @@ import {
   setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
   setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
@@ -64,7 +63,6 @@ export const setup = async ({
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
     collections: [personalCollection, rootCollection],
   });

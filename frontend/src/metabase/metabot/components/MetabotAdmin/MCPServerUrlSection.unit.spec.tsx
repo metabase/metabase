@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -20,7 +19,6 @@ function setup({ siteUrl = SITE_URL }: { siteUrl?: string | undefined } = {}) {
   const settings = createMockSettings({ "site-url": siteUrl });
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
 
   renderWithProviders(

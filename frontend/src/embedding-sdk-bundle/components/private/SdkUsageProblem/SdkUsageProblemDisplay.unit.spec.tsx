@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { screen, waitFor, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
@@ -63,7 +60,6 @@ const setup = ({ hasExpirationClaim = true, ...options }: Options) => {
     }),
   });
 
-  setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValues);
 
   return renderWithSDKProviders(<div>hello!</div>, {

@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -154,8 +153,6 @@ export async function setup({
     settingKey: "version-info",
     settingValue: {},
   });
-
-  fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
     setupCardsEndpoints([openQuestionCard]);

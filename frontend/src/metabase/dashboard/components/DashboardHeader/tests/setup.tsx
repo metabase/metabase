@@ -2,7 +2,6 @@ import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
-  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -59,7 +58,6 @@ export const setup = async ({
 }) => {
   setupCollectionsEndpoints({ collections });
   setupCollectionByIdEndpoint({ collections });
-  setupBookmarksEndpoints([]);
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),

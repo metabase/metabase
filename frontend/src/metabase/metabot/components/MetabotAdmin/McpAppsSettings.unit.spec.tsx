@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   findRequests,
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -29,7 +28,6 @@ const setup = async ({
   });
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
 
   renderWithProviders(<McpAppsSettings />, {

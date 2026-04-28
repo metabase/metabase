@@ -4,7 +4,6 @@ import { Route } from "react-router";
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
-  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockSetupState } from "metabase/redux/store/mocks";
@@ -42,7 +41,6 @@ const setup = ({
     .map((model) => createMockRecentModel(model));
   const models = mockModelResults.slice(0, modelCount);
   setupSearchEndpoints(models.map((model) => createMockSearchResult(model)));
-  setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
   return renderWithProviders(
     <>

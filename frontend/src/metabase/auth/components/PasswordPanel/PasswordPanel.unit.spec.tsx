@@ -5,7 +5,6 @@ import fetchMock from "fetch-mock";
 import {
   setupCurrentUserEndpoint,
   setupLoginEndpoint,
-  setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
@@ -13,7 +12,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { PasswordPanel } from "./PasswordPanel";
 
@@ -35,7 +34,6 @@ const setup = ({ isGoogleAuthEnabled = false }: SetupOpts = {}) => {
 
   setupLoginEndpoint();
   setupCurrentUserEndpoint(createMockUser());
-  setupPropertiesEndpoints(createMockSettings());
   renderWithProviders(<PasswordPanel />, { storeInitialState: state });
 };
 

@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
@@ -17,7 +14,6 @@ const setup = async (props: { emailEnabled?: boolean }) => {
   });
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
 
   renderWithProviders(
     <div>

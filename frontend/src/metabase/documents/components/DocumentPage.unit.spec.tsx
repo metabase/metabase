@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
-  setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
 } from "__support__/server-mocks";
@@ -12,7 +11,6 @@ import { createMockDocument } from "metabase-types/api/mocks";
 import { DocumentPage } from "./DocumentPage";
 
 const setup = () => {
-  setupBookmarksEndpoints([]);
   setupDocumentEndpoints(
     createMockDocument({
       name: "Ends with whitespace ",

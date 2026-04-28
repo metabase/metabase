@@ -1,15 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupSettingsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingDefinition,
-  createMockSettings,
-} from "metabase-types/api/mocks";
+import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import { LegaleseStep } from "./LegaleseStep";
 
@@ -22,8 +16,6 @@ const setup = () => {
       value: true,
     }),
   ]);
-
-  setupPropertiesEndpoints(createMockSettings());
 
   renderWithProviders(<LegaleseStep goToNextStep={goToNextStep} />);
 

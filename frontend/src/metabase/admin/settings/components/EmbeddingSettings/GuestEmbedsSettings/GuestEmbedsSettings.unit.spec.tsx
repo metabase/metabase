@@ -2,7 +2,6 @@ import {
   setupEmbeddableEntitiesEndpoints,
   setupGenerateRandomTokenEndpoint,
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
   setupUpsellEndpoints,
   setupUserKeyValueEndpoints,
@@ -20,7 +19,6 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
   const settings = createMockSettings({ "enable-embedding-static": enabled });
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupUpsellEndpoints();
   setupEmbeddableEntitiesEndpoints({

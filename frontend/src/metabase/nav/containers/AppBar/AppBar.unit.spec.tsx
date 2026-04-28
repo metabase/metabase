@@ -7,7 +7,6 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
-  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
@@ -278,7 +277,6 @@ function setup({
   // Need to set the location because CollectionBreadcrumbs uses the useLocation()
   window.history.pushState({}, "", initialRoute);
 
-  setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({
     collections: [FOO_COLLECTION],
   });

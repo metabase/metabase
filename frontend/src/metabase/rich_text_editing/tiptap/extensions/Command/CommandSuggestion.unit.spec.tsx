@@ -343,9 +343,7 @@ describe("CommandSuggestion", () => {
   });
 
   it("should auto-open the Browse all modal when clicking Chart with no recent items and no New Question", async () => {
-    // Setup with empty recent items to reproduce the bug
     setupSearchEndpoints(SEARCH_ITEMS);
-    setupRecentViewsEndpoints([]);
     setupCollectionByIdEndpoint({ collections: [] });
     setupCollectionItemsEndpoint({
       collection: { id: "root" },
@@ -390,9 +388,7 @@ describe("CommandSuggestion", () => {
   });
 
   it("should not show redundant divider when no recent items exist", async () => {
-    // Setup with empty recent items to reproduce the bug
     setupSearchEndpoints(SEARCH_ITEMS);
-    setupRecentViewsEndpoints([]);
     setupCollectionByIdEndpoint({ collections: [] });
     setupCollectionItemsEndpoint({
       collection: { id: "root" },

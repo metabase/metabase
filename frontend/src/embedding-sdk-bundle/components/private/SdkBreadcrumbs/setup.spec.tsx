@@ -15,7 +15,6 @@ import {
   setupDatabaseListEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
@@ -193,8 +192,6 @@ export const setup = async () => {
   setupDatabaseEndpoints(TEST_DATABASE);
   setupDatabaseListEndpoint([TEST_DATABASE]);
   setupTableEndpoints(TEST_TABLE);
-
-  setupNotificationChannelsEndpoints({});
 
   const state = setupSdkState({ currentUser: createMockUser() });
 

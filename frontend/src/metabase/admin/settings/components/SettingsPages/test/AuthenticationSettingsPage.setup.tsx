@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 import {
   setupApiKeyEndpoints,
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -82,7 +81,6 @@ export const setup = async (
   });
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
-  setupSettingsEndpoints([]);
   setupApiKeyEndpoints(testApiKeys);
   setupTokenStatusEndpoint({ valid: isEnterprise });
   fetchMock.get("path:/api/ee/sso/oidc", []);

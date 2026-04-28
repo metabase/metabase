@@ -5,11 +5,10 @@ import {
   setupCurrentUserEndpoint,
   setupPasswordCheckEndpoint,
   setupPasswordResetTokenEndpoint,
-  setupPropertiesEndpoints,
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { ResetPassword } from "./ResetPassword";
 
@@ -22,7 +21,6 @@ const setup = ({ isTokenValid = true }: SetupOpts = {}) => {
   setupResetPasswordEndpoint();
   setupPasswordCheckEndpoint();
   setupCurrentUserEndpoint(createMockUser());
-  setupPropertiesEndpoints(createMockSettings());
 
   return renderWithProviders(
     <>

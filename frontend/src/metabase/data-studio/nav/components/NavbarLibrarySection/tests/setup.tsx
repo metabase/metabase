@@ -2,10 +2,7 @@ import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
@@ -79,8 +76,6 @@ export const setup = ({
       currentUser: createMockUser({ is_superuser: true }),
     });
   }
-
-  setupSettingsEndpoints([]);
 
   return renderWithProviders(
     <Route

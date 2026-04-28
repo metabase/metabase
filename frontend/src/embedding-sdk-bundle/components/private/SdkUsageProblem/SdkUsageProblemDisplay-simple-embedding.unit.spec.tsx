@@ -1,9 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { screen, within } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -66,7 +63,6 @@ const setup = (options: Options) => {
     }),
   });
 
-  setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValues);
 
   return renderWithSDKProviders(<div>hello!</div>, {

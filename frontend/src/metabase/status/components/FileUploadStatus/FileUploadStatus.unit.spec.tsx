@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
-  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -11,7 +10,6 @@ import {
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
-  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -68,10 +66,8 @@ const uploadedModel2 = createMockCollectionItem({
 });
 
 async function setupCollectionContent(overrides = {}) {
-  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
   setupSearchEndpoints([]);
-  setupBookmarksEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
   setupDashboardQuestionCandidatesEndpoint([]);
 

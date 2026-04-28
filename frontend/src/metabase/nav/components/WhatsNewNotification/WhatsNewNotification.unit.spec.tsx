@@ -1,18 +1,13 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupPropertiesEndpoints,
-  setupSettingEndpoint,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupSettingEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo
 import {
-  createMockSettings,
   createMockTokenFeatures,
   createMockVersion,
   createMockVersionInfo,
@@ -59,8 +54,6 @@ const setup = ({
   const versionInfo: VersionInfo = createMockVersionInfo({ latest, older });
 
   // Mock the API endpoint for version-info
-  setupPropertiesEndpoints(createMockSettings());
-  setupSettingsEndpoints([]);
   setupSettingEndpoint({
     settingKey: "version-info",
     settingValue: versionInfo,

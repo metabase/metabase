@@ -6,7 +6,6 @@ import {
   setupCardQueryEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
-  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -249,7 +248,6 @@ export function setup({
   const metrics = mockMetricResults.slice(0, metricCount);
   const recentMetrics = mockRecentMetrics.slice(0, recentMetricCount);
 
-  setupSettingsEndpoints([]);
   setupSearchEndpoints(metrics.map(createMockSearchResult));
   setupRecentViewsEndpoints(recentMetrics);
 

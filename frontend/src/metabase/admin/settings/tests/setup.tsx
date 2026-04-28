@@ -12,7 +12,6 @@ import {
   setupGroupsEndpoint,
   setupPropertiesEndpoints,
   setupSettingEndpoint,
-  setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
   setupTokenStatusEndpoint,
@@ -135,7 +134,6 @@ export const setup = async ({
     settingValue: settings["version-info"],
   });
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupEmailEndpoints();
   setupWebhookChannelsEndpoint();
   setupApiKeyEndpoints([]);

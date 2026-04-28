@@ -3,8 +3,6 @@ import { Route } from "react-router";
 import {
   setupDashboardEndpoints,
   setupDatabasesEndpoints,
-  setupPopularItemsEndpoints,
-  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -33,8 +31,6 @@ const setup = async ({ dashboardId }: SetupOpts = {}) => {
 
   setupDatabasesEndpoints([]);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
-  setupPopularItemsEndpoints([]);
   if (dashboardId !== undefined) {
     setupDashboardEndpoints(createMockDashboard({ id: dashboardId }));
   }

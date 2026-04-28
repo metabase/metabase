@@ -6,7 +6,6 @@ import {
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
-  setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -172,7 +171,6 @@ export const setup = ({
     transforms: remoteSyncTransforms,
   };
 
-  setupSettingsEndpoints([]);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);

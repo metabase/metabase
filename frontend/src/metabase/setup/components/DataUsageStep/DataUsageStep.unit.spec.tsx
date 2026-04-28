@@ -1,17 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import type { SetupStep } from "metabase/setup/types";
-import { createMockSettings } from "metabase-types/api/mocks";
 
 import { DataUsageStep } from "./DataUsageStep";
 
@@ -27,9 +22,6 @@ const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
       step,
     }),
   });
-
-  setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(createMockSettings());
 
   renderWithProviders(<DataUsageStep stepLabel={0} />, {
     storeInitialState: state,

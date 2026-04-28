@@ -4,7 +4,6 @@ import {
   setupPropertiesEndpoints,
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
-  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -34,8 +33,6 @@ const setup = ({
   isAdmin?: boolean;
   isStoreUser?: boolean;
 } = {}) => {
-  setupUserMetabotPermissionsEndpoint();
-
   const storeUserEmail = "store-user@example.com";
   const currentUser = createMockUser({ is_superuser: isAdmin });
   if (isStoreUser) {

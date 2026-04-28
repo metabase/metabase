@@ -1,4 +1,3 @@
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import {
   createMockMediaQueryList,
   renderWithProviders,
@@ -27,7 +26,6 @@ describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    setupUserMetabotPermissionsEndpoint();
     matchMediaSpy = jest.spyOn(window, "matchMedia");
   });
 

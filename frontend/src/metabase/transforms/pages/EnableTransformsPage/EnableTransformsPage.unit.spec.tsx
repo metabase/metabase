@@ -1,16 +1,11 @@
 import { Route } from "react-router";
 
-import {
-  setupDatabaseListEndpoint,
-  setupPropertiesEndpoints,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {
-  createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -23,8 +18,6 @@ type SetupOpts = {
 };
 
 const setup = ({ isAdmin = true, tokenFeatures = {} }: SetupOpts = {}) => {
-  setupPropertiesEndpoints(createMockSettings());
-  setupUserMetabotPermissionsEndpoint();
   setupDatabaseListEndpoint([]);
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),

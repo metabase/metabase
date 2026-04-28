@@ -5,7 +5,6 @@ import { Route } from "react-router";
 import { callMockEvent } from "__support__/events";
 import {
   setupActionsEndpoints,
-  setupBookmarksEndpoints,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -15,7 +14,6 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -64,8 +62,6 @@ async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
-  setupNotificationChannelsEndpoints({});
-
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
   setupDashboardQueryMetadataEndpoint(
@@ -83,7 +79,6 @@ async function setup({ dashboard }: Options = {}) {
   setupCardsEndpoints([TEST_CARD]);
   setupTableEndpoints(TEST_TABLE);
 
-  setupBookmarksEndpoints([]);
   setupActionsEndpoints([]);
 
   const mockEventListener = jest.spyOn(window, "addEventListener");

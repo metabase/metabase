@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   findRequests,
   setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
   setupSlackSettingsEndpoint,
@@ -32,7 +31,6 @@ const setup = async ({
   });
 
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupSlackSettingsEndpoint();
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();

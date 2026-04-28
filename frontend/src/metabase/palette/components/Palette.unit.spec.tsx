@@ -4,7 +4,6 @@ import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -28,7 +27,6 @@ const setup = ({
 } = {}) => {
   setupDatabasesEndpoints([]);
   setupSearchEndpoints(searchResults, searchResultsDelay);
-  setupRecentViewsEndpoints([]);
   renderWithProviders(<Route path="/" component={Palette} {...routeProps} />, {
     withKBar: true,
     withRouter: true,

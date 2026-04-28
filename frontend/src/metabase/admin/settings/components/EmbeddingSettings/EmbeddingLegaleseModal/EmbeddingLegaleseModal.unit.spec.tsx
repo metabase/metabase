@@ -2,12 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettings } from "metabase-types/api/mocks";
 
 import { EmbeddingLegaleseModal } from "./EmbeddingLegaleseModal";
 
@@ -16,8 +13,6 @@ type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
 const setup = (setting: SettingKey = "enable-embedding-sdk") => {
   const onClose = jest.fn();
 
-  setupPropertiesEndpoints(createMockSettings());
-  setupSettingsEndpoints([]);
   setupUpdateSettingsEndpoint();
 
   renderWithProviders(

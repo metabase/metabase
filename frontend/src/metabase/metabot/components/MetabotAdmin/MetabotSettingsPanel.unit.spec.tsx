@@ -9,7 +9,6 @@ import {
   setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
-  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -96,7 +95,6 @@ const setup = async (
 ) => {
   mockGetBoundingClientRect();
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
   setupMetabotsEndpoints(metabots);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),

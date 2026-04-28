@@ -1,7 +1,4 @@
-import {
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
@@ -28,7 +25,6 @@ const setup = ({
 }: {
   searchItems?: Parameters<typeof setupSearchEndpoints>[0];
 } = {}) => {
-  setupRecentViewsEndpoints([]);
   setupSearchEndpoints(searchItems);
 
   const storeInitialState = createMockState({
