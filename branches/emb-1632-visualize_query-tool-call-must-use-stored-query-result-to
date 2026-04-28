@@ -1,6 +1,6 @@
 {
   "base": {
-    "name": "emb-1586-prototype-interactivity-improvements-for-mcp-apps",
+    "name": "emb-1650-trigger-new-charts-thru-drills-and-show-title-without-time",
     "hash": "7ff9f4d0266edccddde3312be20eb13518b9e803"
   },
   "upstream": {
