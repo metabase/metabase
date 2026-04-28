@@ -33,10 +33,12 @@ const DIMENSION_ITEM_HEIGHT = 36;
 export interface AddMetricsModalProps {
   opened: boolean;
   onClose: () => void;
-  metrics: MetricOrMeasure[];
-  setMetrics: (metrics: MetricOrMeasure[]) => void;
-  dimensions: MetricDimension[];
-  setDimensions: (dimensions: MetricDimension[]) => void;
+  selectedMetrics: MetricOrMeasure[];
+  selectedDimensions: MetricDimension[];
+  onSelectedItemsChange: (
+    newMetrics: MetricOrMeasure[],
+    newDimensions: MetricDimension[],
+  ) => void;
 }
 
 function toMetricOrMeasure(metric: Metric): MetricOrMeasure {
@@ -119,14 +121,36 @@ function useFullMetrics(opened: boolean) {
 export function AddMetricsModal({
   opened,
   onClose,
-  metrics,
-  setMetrics,
-  dimensions,
-  setDimensions,
+  selectedMetrics,
+  selectedDimensions,
+  onSelectedItemsChange,
 }: AddMetricsModalProps) {
   const { metrics: rawMetrics, isLoading, error } = useFullMetrics(opened);
 
   const [search, setSearch] = useState("");
+
+  // Draft selection — committed to the parent only on Done.
+  const [draftMetrics, setDraftMetrics] =
+    useState<MetricOrMeasure[]>(selectedMetrics);
+  const [draftDimensions, setDraftDimensions] =
+    useState<MetricDimension[]>(selectedDimensions);
+
+  // Reset the draft from props whenever the modal opens.
+  useEffect(() => {
+    if (opened) {
+      setDraftMetrics(selectedMetrics);
+      setDraftDimensions(selectedDimensions);
+      setSearch("");
+    }
+    // We intentionally only re-seed on `opened` transitions, not on every
+    // parent change, so the user's in-flight edits aren't clobbered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+
+  const handleDone = useCallback(() => {
+    onSelectedItemsChange(draftMetrics, draftDimensions);
+    onClose();
+  }, [draftMetrics, draftDimensions, onSelectedItemsChange, onClose]);
 
   const allMetrics = useMemo(
     () => rawMetrics.map(toMetricOrMeasure),
@@ -134,13 +158,13 @@ export function AddMetricsModal({
   );
 
   const selectedMetricIds = useMemo(
-    () => new Set(metrics.map((m) => m.id)),
-    [metrics],
+    () => new Set(draftMetrics.map((m) => m.id)),
+    [draftMetrics],
   );
 
   const selectedDimensionIds = useMemo(
-    () => new Set(dimensions.map((d) => d.id)),
-    [dimensions],
+    () => new Set(draftDimensions.map((d) => d.id)),
+    [draftDimensions],
   );
 
   const filteredMetrics = useMemo(() => {
@@ -180,8 +204,8 @@ export function AddMetricsModal({
   const toggleMetric = useCallback(
     (metric: MetricOrMeasure) => {
       if (selectedMetricIds.has(metric.id)) {
-        const nextMetrics = metrics.filter((m) => m.id !== metric.id);
-        setMetrics(nextMetrics);
+        const nextMetrics = draftMetrics.filter((m) => m.id !== metric.id);
+        setDraftMetrics(nextMetrics);
         const stillUsedDimIds = new Set<DimensionId>();
         for (const m of nextMetrics) {
           for (const d of m.dimensions) {
@@ -189,27 +213,27 @@ export function AddMetricsModal({
           }
         }
         const removedDimIds = new Set(metric.dimensions.map((d) => d.id));
-        const nextDimensions = dimensions.filter(
+        const nextDimensions = draftDimensions.filter(
           (d) => !removedDimIds.has(d.id) || stillUsedDimIds.has(d.id),
         );
-        if (nextDimensions.length !== dimensions.length) {
-          setDimensions(nextDimensions);
+        if (nextDimensions.length !== draftDimensions.length) {
+          setDraftDimensions(nextDimensions);
         }
       } else {
-        setMetrics([...metrics, metric]);
-        const have = new Set(dimensions.map((d) => d.id));
-        const merged = [...dimensions];
+        setDraftMetrics([...draftMetrics, metric]);
+        const have = new Set(draftDimensions.map((d) => d.id));
+        const merged = [...draftDimensions];
         for (const dimension of metric.dimensions) {
           if (!have.has(dimension.id)) {
             merged.push(dimension);
           }
         }
-        if (merged.length !== dimensions.length) {
-          setDimensions(merged);
+        if (merged.length !== draftDimensions.length) {
+          setDraftDimensions(merged);
         }
       }
     },
-    [dimensions, metrics, selectedMetricIds, setDimensions, setMetrics],
+    [draftDimensions, draftMetrics, selectedMetricIds],
   );
 
   const isDimensionSelected = useCallback(
@@ -221,35 +245,37 @@ export function AddMetricsModal({
     (dimension: MetricDimension) => {
       const connected = metricsByDimension.get(dimension.id) ?? [];
       if (selectedDimensionIds.has(dimension.id)) {
-        setDimensions(dimensions.filter((d) => d.id !== dimension.id));
-        const removeIds = new Set(connected.map((m) => m.id));
-        if (removeIds.size > 0) {
-          setMetrics(metrics.filter((m) => !removeIds.has(m.id)));
+        const nextDimensions = draftDimensions.filter(
+          (d) => d.id !== dimension.id,
+        );
+        setDraftDimensions(nextDimensions);
+        const remainingDimIds = new Set(nextDimensions.map((d) => d.id));
+        // Only drop a connected metric if none of its dimensions are still selected.
+        const orphanedIds = new Set(
+          connected
+            .filter((m) => !m.dimensions.some((d) => remainingDimIds.has(d.id)))
+            .map((m) => m.id),
+        );
+        if (orphanedIds.size > 0) {
+          setDraftMetrics(draftMetrics.filter((m) => !orphanedIds.has(m.id)));
         }
       } else {
-        setDimensions([...dimensions, dimension]);
+        setDraftDimensions([...draftDimensions, dimension]);
         if (connected.length > 0) {
-          const have = new Set(metrics.map((m) => m.id));
-          const merged = [...metrics];
+          const have = new Set(draftMetrics.map((m) => m.id));
+          const merged = [...draftMetrics];
           for (const metric of connected) {
             if (!have.has(metric.id)) {
               merged.push(metric);
             }
           }
-          if (merged.length !== metrics.length) {
-            setMetrics(merged);
+          if (merged.length !== draftMetrics.length) {
+            setDraftMetrics(merged);
           }
         }
       }
     },
-    [
-      dimensions,
-      metrics,
-      metricsByDimension,
-      selectedDimensionIds,
-      setDimensions,
-      setMetrics,
-    ],
+    [draftDimensions, draftMetrics, metricsByDimension, selectedDimensionIds],
   );
 
   return (
@@ -289,7 +315,7 @@ export function AddMetricsModal({
             </Flex>
           </LoadingAndErrorWrapper>
           <Flex justify="flex-end" mt="lg">
-            <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
+            <Button variant="filled" onClick={handleDone}>{t`Done`}</Button>
           </Flex>
         </Modal.Body>
       </Modal.Content>

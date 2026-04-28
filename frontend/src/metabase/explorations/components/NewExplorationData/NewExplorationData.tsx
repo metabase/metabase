@@ -125,10 +125,12 @@ export function NewExplorationData({
       <AddMetricsModal
         opened={isAddMetricsModalOpen}
         onClose={() => setIsAddMetricsModalOpen(false)}
-        metrics={metrics}
-        setMetrics={setMetrics}
-        dimensions={dimensions}
-        setDimensions={setDimensions}
+        selectedMetrics={metrics}
+        selectedDimensions={dimensions}
+        onSelectedItemsChange={(newMetrics, newDimensions) => {
+          setMetrics(newMetrics);
+          setDimensions(newDimensions);
+        }}
       />
       <AddTimelinesModal
         opened={isAddTimelinesModalOpen}

@@ -45,6 +45,21 @@ const metricChurn = createMockMetric({
   dimensions: [dimChurn, dimShared],
 });
 
+const revenueAsMetric: MetricOrMeasure = {
+  type: "metric",
+  id: metricRevenue.id,
+  name: metricRevenue.name,
+  description: metricRevenue.description,
+  dimensions: metricRevenue.dimensions,
+};
+const churnAsMetric: MetricOrMeasure = {
+  type: "metric",
+  id: metricChurn.id,
+  name: metricChurn.name,
+  description: metricChurn.description,
+  dimensions: metricChurn.dimensions,
+};
+
 interface SetupOpts {
   initialMetrics?: MetricOrMeasure[];
   initialDimensions?: MetricDimension[];
@@ -56,22 +71,24 @@ function setup({
 }: SetupOpts = {}) {
   setupMetricsEndpoints([metricRevenue, metricChurn]);
 
-  const setMetrics = jest.fn();
-  const setDimensions = jest.fn();
+  const onSelectedItemsChange = jest.fn();
   const onClose = jest.fn();
 
   renderWithProviders(
     <AddMetricsModal
       opened
       onClose={onClose}
-      metrics={initialMetrics}
-      setMetrics={setMetrics}
-      dimensions={initialDimensions}
-      setDimensions={setDimensions}
+      selectedMetrics={initialMetrics}
+      selectedDimensions={initialDimensions}
+      onSelectedItemsChange={onSelectedItemsChange}
     />,
   );
 
-  return { setMetrics, setDimensions, onClose };
+  return { onSelectedItemsChange, onClose };
+}
+
+async function clickDone() {
+  await userEvent.click(screen.getByRole("button", { name: "Done" }));
 }
 
 describe("AddMetricsModal", () => {
@@ -96,118 +113,127 @@ describe("AddMetricsModal", () => {
     expect(screen.getByText("Country")).toBeInTheDocument();
   });
 
-  it("checking a metric adds it and its dimensions", async () => {
-    const { setMetrics, setDimensions } = setup();
+  it("toggles do not call onSelectedItemsChange until Done is clicked", async () => {
+    const { onSelectedItemsChange } = setup();
 
     const checkbox = await screen.findByRole("checkbox", {
       name: "Monthly recurring revenue",
     });
     await userEvent.click(checkbox);
+    await userEvent.click(screen.getByText("Plan"));
 
-    expect(setMetrics).toHaveBeenCalledTimes(1);
-    expect(setMetrics.mock.calls[0][0]).toEqual([
+    expect(onSelectedItemsChange).not.toHaveBeenCalled();
+  });
+
+  it("Done commits checked metric and its dimensions", async () => {
+    const { onSelectedItemsChange, onClose } = setup();
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Monthly recurring revenue",
+    });
+    await userEvent.click(checkbox);
+    await clickDone();
+
+    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
+    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
+    expect(nextMetrics).toEqual([
       expect.objectContaining({ id: metricRevenue.id, type: "metric" }),
     ]);
-    expect(setDimensions).toHaveBeenCalledTimes(1);
-    expect(setDimensions.mock.calls[0][0]).toEqual(
+    expect(nextDimensions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: dimRevenue.id }),
         expect.objectContaining({ id: dimShared.id }),
       ]),
     );
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("unchecking a metric removes its dimensions that no other selected metric uses", async () => {
-    const initialMetrics: MetricOrMeasure[] = [
-      {
-        type: "metric",
-        id: metricRevenue.id,
-        name: metricRevenue.name,
-        description: metricRevenue.description,
-        dimensions: metricRevenue.dimensions,
-      },
-      {
-        type: "metric",
-        id: metricChurn.id,
-        name: metricChurn.name,
-        description: metricChurn.description,
-        dimensions: metricChurn.dimensions,
-      },
-    ];
-    const initialDimensions: MetricDimension[] = [
-      dimRevenue,
-      dimChurn,
-      dimShared,
-    ];
-    const { setMetrics, setDimensions } = setup({
-      initialMetrics,
-      initialDimensions,
+  it("Done commits removal of an unchecked metric and dimensions no other selected metric uses", async () => {
+    const { onSelectedItemsChange } = setup({
+      initialMetrics: [revenueAsMetric, churnAsMetric],
+      initialDimensions: [dimRevenue, dimChurn, dimShared],
     });
 
     const checkbox = await screen.findByRole("checkbox", {
       name: "Monthly recurring revenue",
     });
     await userEvent.click(checkbox);
+    await clickDone();
 
-    expect(setMetrics).toHaveBeenCalledTimes(1);
-    expect(setMetrics.mock.calls[0][0]).toEqual([
+    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
+    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock
+      .calls[0] as [MetricOrMeasure[], MetricDimension[]];
+    expect(nextMetrics).toEqual([
       expect.objectContaining({ id: metricChurn.id }),
     ]);
-    expect(setDimensions).toHaveBeenCalledTimes(1);
-    const nextDims = setDimensions.mock.calls[0][0] as MetricDimension[];
-    expect(nextDims.map((d) => d.id).sort()).toEqual(
+    expect(nextDimensions.map((d) => d.id).sort()).toEqual(
       [dimChurn.id, dimShared.id].sort(),
     );
   });
 
-  it("clicking an unselected dimension adds that dimension and its connected metrics", async () => {
-    const { setMetrics, setDimensions } = setup();
+  it("Done commits the dimension click and its connected metrics", async () => {
+    const { onSelectedItemsChange } = setup();
 
     await screen.findByText("Country");
     await userEvent.click(screen.getByText("Country"));
+    await clickDone();
 
-    expect(setDimensions).toHaveBeenCalledTimes(1);
-    expect(setDimensions.mock.calls[0][0]).toEqual([
+    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
+    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock
+      .calls[0] as [MetricOrMeasure[], MetricDimension[]];
+    expect(nextDimensions).toEqual([
       expect.objectContaining({ id: dimShared.id }),
     ]);
-
-    expect(setMetrics).toHaveBeenCalledTimes(1);
-    const nextMetrics = setMetrics.mock.calls[0][0] as MetricOrMeasure[];
     expect(nextMetrics.map((m) => m.id).sort()).toEqual(
       [metricRevenue.id, metricChurn.id].sort(),
     );
   });
 
-  it("clicking a selected dimension removes it and its connected metrics", async () => {
-    const initialMetrics: MetricOrMeasure[] = [
-      {
-        type: "metric",
-        id: metricRevenue.id,
-        name: metricRevenue.name,
-        description: metricRevenue.description,
-        dimensions: metricRevenue.dimensions,
-      },
-      {
-        type: "metric",
-        id: metricChurn.id,
-        name: metricChurn.name,
-        description: metricChurn.description,
-        dimensions: metricChurn.dimensions,
-      },
-    ];
-    const initialDimensions: MetricDimension[] = [dimShared];
-    const { setMetrics, setDimensions } = setup({
-      initialMetrics,
-      initialDimensions,
+  it("Done commits a deselected dimension and only orphaned metrics", async () => {
+    const { onSelectedItemsChange } = setup({
+      initialMetrics: [revenueAsMetric, churnAsMetric],
+      initialDimensions: [dimShared],
     });
 
     await screen.findByText("Country");
     await userEvent.click(screen.getByText("Country"));
+    await clickDone();
 
-    expect(setDimensions).toHaveBeenCalledTimes(1);
-    expect(setDimensions.mock.calls[0][0]).toEqual([]);
-    expect(setMetrics).toHaveBeenCalledTimes(1);
-    expect(setMetrics.mock.calls[0][0]).toEqual([]);
+    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
+    expect(onSelectedItemsChange.mock.calls[0]).toEqual([[], []]);
+  });
+
+  it("Done keeps a metric whose other dimension is still selected", async () => {
+    const { onSelectedItemsChange } = setup({
+      initialMetrics: [revenueAsMetric, churnAsMetric],
+      initialDimensions: [dimRevenue, dimShared],
+    });
+
+    await screen.findByText("Country");
+    await userEvent.click(screen.getByText("Country"));
+    await clickDone();
+
+    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
+    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
+    expect(nextDimensions).toEqual([
+      expect.objectContaining({ id: dimRevenue.id }),
+    ]);
+    expect(nextMetrics).toEqual([
+      expect.objectContaining({ id: metricRevenue.id }),
+    ]);
+  });
+
+  it("closing without Done discards in-flight edits", async () => {
+    const { onSelectedItemsChange, onClose } = setup();
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Monthly recurring revenue",
+    });
+    await userEvent.click(checkbox);
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(onSelectedItemsChange).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("filters metrics and the derived dimension list by search query", async () => {
@@ -236,7 +262,7 @@ describe("AddMetricsModal", () => {
     const { onClose } = setup();
 
     await screen.findByText("Monthly recurring revenue");
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    await clickDone();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
