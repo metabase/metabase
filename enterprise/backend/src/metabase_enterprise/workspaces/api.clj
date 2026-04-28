@@ -156,7 +156,7 @@
    [:remappings_count ms/IntGreaterThanOrEqualToZero]])
 
 (api.macros/defendpoint :get "/current" :- [:maybe WorkspaceInstance]
-  "Read-only summary of the workspace loaded on this (child) instance.
+  "Read-only summary of the workspace loaded on this instance.
 
    Returns the most-recently-created workspace + its databases (keyed by
    `:model/Database.id`) plus the count of `:model/TableRemapping` rows currently

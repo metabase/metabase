@@ -1,16 +1,25 @@
 (ns metabase-enterprise.workspaces.core
   "Programmatic API for workspaces.
 
-   ## Parent and child instances
+   ## Parent and child instance roles
 
-   A workspace flow spans two Metabase instances:
+   A workspace flow involves two Metabase instances playing different
+   operational roles:
 
-   - **Parent** — the shared instance. Workspace creation, provisioning, and
-     `config.yml` emission happen here.
-   - **Child** — the local instance. Bootstraps from `config.yml` and runs in
-     workspace mode: table remapping, transform redirection, sync rewiring.
+   - **Parent** — the shared instance. Workspace creation, per-database
+     provisioning attempts, and `config.yml` emission happen here.
+   - **Child** — the local instance. Bootstraps from `config.yml` and is
+     in workspace mode: table remapping, transform redirection, sync
+     rewiring all engage.
 
-   Code in `metabase-enterprise.workspaces.*` runs on the child:
+   The same `metabase-enterprise.workspaces.*` code is compiled into both
+   builds. The runtime difference is whether `(active?)` and
+   `db-workspace-schema` return non-nil for a given database — they do
+   when the local app-DB has a `:provisioned` `WorkspaceDatabase` row, they
+   don't otherwise. So the operational role (parent vs child) is determined
+   by data, not by code distribution.
+
+   The pieces this code provides:
 
      1. Loading the workspace config from `config.yml`
         (`metabase-enterprise.advanced-config.file.workspace`).
