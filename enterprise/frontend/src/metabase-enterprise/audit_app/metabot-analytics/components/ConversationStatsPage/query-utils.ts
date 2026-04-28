@@ -138,18 +138,13 @@ function findJoinableColumn(
 
 export function joinGroupMembers(
   query: Query,
-  groupMembersTable: TableMetadata | CardMetadata | null | undefined,
+  groupMembersTable: TableMetadata | CardMetadata,
   sourceUserIdColumn = "user_id",
 ): Query {
-  if (!groupMembersTable) {
-    return query;
-  }
-
   const lhsColumns = Lib.joinConditionLHSColumns(query, 0, groupMembersTable);
   const lhsUserId = findJoinableColumn(lhsColumns, query, sourceUserIdColumn);
   const rhsColumns = Lib.joinConditionRHSColumns(query, 0, groupMembersTable);
   const rhsUserId = findJoinableColumn(rhsColumns, query, "user_id");
-
   if (!lhsUserId || !rhsUserId) {
     return query;
   }
@@ -170,24 +165,6 @@ export function joinGroupMembers(
       [Lib.joinConditionClause("=", lhsUserId, rhsUserId)],
       innerJoin,
     ),
-  );
-}
-
-export function applyGroupIdFilter(
-  query: Query,
-  groupId: number | undefined,
-): Query {
-  if (groupId == null) {
-    return query;
-  }
-  const col = findColumn(query, "group_id", Lib.filterableColumns);
-  if (!col) {
-    return query;
-  }
-  return Lib.filter(
-    query,
-    0,
-    Lib.numberFilterClause({ operator: "=", column: col, values: [groupId] }),
   );
 }
 
@@ -277,7 +254,7 @@ export function buildSourceBreakoutQuery({
   q = applyIdFilter(q, "user_id", userId);
   q = applyIdFilter(q, "tenant_id", tenantId);
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
+  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, breakoutColumn);
   q = applyMetricOrderBy(q, metric);

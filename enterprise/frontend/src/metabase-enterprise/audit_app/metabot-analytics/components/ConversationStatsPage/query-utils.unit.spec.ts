@@ -4,12 +4,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { isSingleDayFilter } from "./ConversationsByDayChart";
 import { excludeAllUsersGroup } from "./ConversationsByGroupChart";
-import {
-  applyGroupIdFilter,
-  applyIdFilter,
-  getMetricSeriesSettings,
-  joinGroupMembers,
-} from "./query-utils";
+import { applyIdFilter, getMetricSeriesSettings } from "./query-utils";
 
 describe("getMetricSeriesSettings", () => {
   const getColor = (name: string) => `#${name}`;
@@ -194,31 +189,6 @@ describe("applyIdFilter", () => {
   });
 });
 
-describe("joinGroupMembers", () => {
-  const baseQuery = () =>
-    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-
-  it("is a no-op when the groupMembersTable is null (still loading)", () => {
-    const result = joinGroupMembers(baseQuery(), null);
-    expect(Lib.joins(result, 0)).toHaveLength(0);
-  });
-});
-
-describe("applyGroupIdFilter", () => {
-  const baseQuery = () =>
-    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-
-  it("is a no-op when groupId is undefined", () => {
-    const result = applyGroupIdFilter(baseQuery(), undefined);
-    expect(Lib.filters(result, 0)).toHaveLength(0);
-  });
-
-  it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
-    const result = applyGroupIdFilter(baseQuery(), 7);
-    expect(Lib.filters(result, 0)).toHaveLength(0);
-  });
-});
-
 describe("excludeAllUsersGroup", () => {
   const baseQuery = () =>
     Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -226,5 +196,20 @@ describe("excludeAllUsersGroup", () => {
   it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
     const result = excludeAllUsersGroup(baseQuery());
     expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("adds a != 1 filter on group_id when the column is present", () => {
+    const queryWithGroupId = Lib.expression(
+      baseQuery(),
+      0,
+      "group_id",
+      Lib.expressionClause(1),
+    );
+    const result = excludeAllUsersGroup(queryWithGroupId);
+    const [clause, ...rest] = Lib.filters(result, 0);
+    expect(rest).toHaveLength(0);
+    const parts = Lib.numberFilterParts(result, 0, clause);
+    expect(parts?.operator).toBe("!=");
+    expect(parts?.values).toEqual([1]);
   });
 });

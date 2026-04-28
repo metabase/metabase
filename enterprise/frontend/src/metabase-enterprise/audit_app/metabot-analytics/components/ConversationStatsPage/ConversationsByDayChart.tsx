@@ -15,7 +15,6 @@ import {
   type StatsFilters,
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupIdFilter,
   applyIdFilter,
   applyUsageStatsAggregation,
   findColumn,
@@ -168,7 +167,7 @@ function buildTimeseriesBreakoutQuery({
   q = applyIdFilter(q, "user_id", userId);
   q = applyIdFilter(q, "tenant_id", tenantId);
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
+  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByCreatedAtBucket(q, bucketName);
   return q;
@@ -198,24 +197,30 @@ function toTimeseriesRawSeries(
   if (!data?.data || !jsQuery) {
     return null;
   }
+
   const aggregationColumnNames = data.data.cols
     .filter((c) => c.source === "aggregation")
     .map((c) => c.name);
   const isMultiSeriesTokens =
     metric === "tokens" && aggregationColumnNames.length === 2;
-  const card = {
-    dataset_query: jsQuery,
-    display: isMultiSeriesTokens ? "line" : "area",
-    visualization_settings: {
-      "graph.x_axis.scale": "timeseries",
-      "graph.x_axis.title_text": "",
-      "graph.y_axis.title_text": "",
-      "line.interpolate": "cardinal",
-      "line.marker_enabled": false,
-      ...getMetricSeriesSettings(metric, getColor, aggregationColumnNames, {
-        dualAxis: true,
-      }),
+
+  return [
+    {
+      data: data.data,
+      card: {
+        dataset_query: jsQuery,
+        display: isMultiSeriesTokens ? "line" : "area",
+        visualization_settings: {
+          "graph.x_axis.scale": "timeseries",
+          "graph.x_axis.title_text": "",
+          "graph.y_axis.title_text": "",
+          "line.interpolate": "cardinal",
+          "line.marker_enabled": false,
+          ...getMetricSeriesSettings(metric, getColor, aggregationColumnNames, {
+            dualAxis: true,
+          }),
+        },
+      },
     },
-  };
-  return [{ card, data: data.data }];
+  ];
 }

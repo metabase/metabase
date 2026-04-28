@@ -16,7 +16,6 @@ import {
   type StatsFilters,
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupIdFilter,
   applyIdFilter,
   applyMetricOrderBy,
   applyUsageStatsAggregation,
@@ -169,7 +168,7 @@ function buildTenantBreakoutQuery({
   q = applyIdFilter(q, "tenant_id", tenantId);
   q = applyTenantNotNullFilter(q);
   q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
+  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, "tenant_id");
   q = applyMetricOrderBy(q, metric);

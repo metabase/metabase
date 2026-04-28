@@ -12,7 +12,6 @@ import { toBreakoutRawSeries } from "./breakout-raw-series";
 import {
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupIdFilter,
   applyIdFilter,
   applyMetricOrderBy,
   applyUsageStatsAggregation,
@@ -93,7 +92,7 @@ function ConversationsByGroupChartInner({
     q = applyIdFilter(q, "tenant_id", tenantId);
     q = joinGroupMembers(q, groupMembersTable);
     q = excludeAllUsersGroup(q);
-    q = applyGroupIdFilter(q, groupId);
+    q = applyIdFilter(q, "group_id", groupId);
     q = applyUsageStatsAggregation(q, metric);
     q = breakoutByJoinedGroupName(q);
     q = applyMetricOrderBy(q, metric);

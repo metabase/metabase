@@ -253,7 +253,7 @@
         (testing "group-id narrows to conversations owned by group members"
           (is (= #{convo-1 convo-2} (request-ids (str "group-id=" group-id)))))
         (testing "group-id=1 (All Users) is treated as no-filter"
-          (is (= seeded (request-ids "group-id=1"))))
+          (is (= #{convo-1 convo-2 convo-3} (request-ids "group-id=1"))))
         (testing "tenant-id narrows to conversations owned by users in that tenant"
           (is (= #{convo-1 convo-2} (request-ids (str "tenant-id=" tenant-a-id)))))
         (testing "filters compose: group-id + user-id + date narrow cumulatively"
