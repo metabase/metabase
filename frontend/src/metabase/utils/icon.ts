@@ -64,4 +64,5 @@ export type IconData = {
   name: IconName;
   color?: ColorName;
   iconUrl?: string;
+  tooltip?: string;
 };

@@ -48,8 +48,13 @@
 
   embedding-context?
   embedding-mw
+  extract-hostname
+  extract-path
   include-sdk-info
+  pii-request-info
+  with-auth-method! get-auth-method
   with-client! get-client
+  get-route
   with-version! get-version]
 
  [metabase.analytics.settings
