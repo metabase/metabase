@@ -18,57 +18,39 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- {description: null, display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Entity Qualified ID, fk_target_field_id: null, name: entity_qualified_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Entity Type, fk_target_field_id: null, name: entity_type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Created At, fk_target_field_id: null, name: created_at, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Updated At, fk_target_field_id: null, name: updated_at, semantic_type: type/UpdatedTimestamp, settings: null, visibility_type: normal}
-- description: null
-  display_name: Creator ID
+- {display_name: Entity ID, name: entity_id, semantic_type: type/PK, visibility_type: normal}
+- {display_name: Entity Qualified ID, name: entity_qualified_id, semantic_type: type/PK, visibility_type: normal}
+- {display_name: Entity Type, name: entity_type, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Created At, name: created_at, semantic_type: type/CreationTimestamp, visibility_type: normal}
+- {display_name: Updated At, name: updated_at, semantic_type: type/UpdatedTimestamp, visibility_type: normal}
+- display_name: Creator ID
   fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
   name: creator_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Name, fk_target_field_id: null, name: name, semantic_type: type/Name, settings: null, visibility_type: normal}
-- {description: null, display_name: Description, fk_target_field_id: null, name: description, semantic_type: type/Description, settings: null, visibility_type: normal}
-- description: null
-  display_name: Collection ID
-  fk_target_field_id: [Internal Metabase Database, public, v_content, event_timestamp]
-  name: collection_id
-  semantic_type: null
-  settings: null
-  visibility_type: normal
-- description: null
-  display_name: Made Public By User
+- {display_name: Name, name: name, semantic_type: type/Name, visibility_type: normal}
+- {display_name: Description, name: description, semantic_type: type/Description, visibility_type: normal}
+- {display_name: Collection ID, name: collection_id, visibility_type: normal}
+- display_name: Made Public By User
   fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
   name: made_public_by_user
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Is Embedding Enabled, fk_target_field_id: null, name: is_embedding_enabled, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Verified, fk_target_field_id: null, name: is_verified, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Archived, fk_target_field_id: null, name: archived, semantic_type: type/Enum, settings: null, visibility_type: normal}
-- {description: null, display_name: Action Type, fk_target_field_id: null, name: action_type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- description: null
-  display_name: Action Model ID
-  fk_target_field_id: [Internal Metabase Database, public, v_content, event_timestamp]
-  name: action_model_id
-  semantic_type: null
-  settings: null
-  visibility_type: normal
-- {description: null, display_name: Collection Is Official, fk_target_field_id: null, name: collection_is_official, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Collection Is Personal, fk_target_field_id: null, name: collection_is_personal, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Question Viz Type, fk_target_field_id: null, name: question_viz_type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- description: null
-  display_name: Question Database ID
+- {display_name: Is Embedding Enabled, name: is_embedding_enabled, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Is Verified, name: is_verified, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Archived, name: archived, semantic_type: type/Enum, visibility_type: normal}
+- {display_name: Action Type, name: action_type, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Action Model ID, name: action_model_id, visibility_type: normal}
+- {display_name: Collection Is Official, name: collection_is_official, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Collection Is Personal, name: collection_is_personal, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Question Viz Type, name: question_viz_type, semantic_type: type/Category, visibility_type: normal}
+- display_name: Question Database ID
   fk_target_field_id: [Internal Metabase Database, public, v_databases, entity_qualified_id]
   name: question_database_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Question Is Native, fk_target_field_id: null, name: question_is_native, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Event Timestamp, fk_target_field_id: null, name: event_timestamp, semantic_type: null, settings: null, visibility_type: normal}
+- {display_name: Question Is Native, name: question_is_native, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Event Timestamp, name: event_timestamp, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: event_timestamp, table.pivot_column: action_type}
 card_schema: 23
 serdes/meta:

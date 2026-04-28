@@ -18,27 +18,26 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- {description: null, display_name: User ID, fk_target_field_id: null, name: user_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Entity Qualified ID, fk_target_field_id: null, name: entity_qualified_id, semantic_type: null, settings: null, visibility_type: normal}
-- {description: '', display_name: Type, fk_target_field_id: null, name: type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Email, fk_target_field_id: null, name: email, semantic_type: type/Name, settings: null, visibility_type: normal}
-- {description: null, display_name: First Name, fk_target_field_id: null, name: first_name, semantic_type: type/Name, settings: null, visibility_type: normal}
-- {description: null, display_name: Last Name, fk_target_field_id: null, name: last_name, semantic_type: type/Name, settings: null, visibility_type: normal}
-- {description: null, display_name: Full Name, fk_target_field_id: null, name: full_name, semantic_type: type/Name, settings: null, visibility_type: normal}
-- {description: null, display_name: Date Joined, fk_target_field_id: null, name: date_joined, semantic_type: type/JoinTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Last Login, fk_target_field_id: null, name: last_login, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Updated At, fk_target_field_id: null, name: updated_at, semantic_type: type/UpdatedTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Admin, fk_target_field_id: null, name: is_admin, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Active, fk_target_field_id: null, name: is_active, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Sso Source, fk_target_field_id: null, name: sso_source, semantic_type: type/Source, settings: null, visibility_type: normal}
-- {description: null, display_name: Locale, fk_target_field_id: null, name: locale, semantic_type: null, settings: null, visibility_type: normal}
-- description: null
-  display_name: Tenant ID
+- {display_name: User ID, name: user_id, semantic_type: type/PK, visibility_type: normal}
+- {display_name: Entity Qualified ID, name: entity_qualified_id, visibility_type: normal}
+- {description: '', display_name: Type, name: type, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Email, name: email, semantic_type: type/Name, visibility_type: normal}
+- {display_name: First Name, name: first_name, semantic_type: type/Name, visibility_type: normal}
+- {display_name: Last Name, name: last_name, semantic_type: type/Name, visibility_type: normal}
+- {display_name: Full Name, name: full_name, semantic_type: type/Name, visibility_type: normal}
+- {display_name: Date Joined, name: date_joined, semantic_type: type/JoinTimestamp, visibility_type: normal}
+- {display_name: Last Login, name: last_login, visibility_type: normal}
+- {display_name: Updated At, name: updated_at, semantic_type: type/UpdatedTimestamp, visibility_type: normal}
+- {display_name: Is Admin, name: is_admin, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Is Active, name: is_active, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Sso Source, name: sso_source, semantic_type: type/Source, visibility_type: normal}
+- {display_name: Locale, name: locale, visibility_type: normal}
+- display_name: Tenant ID
   fk_target_field_id: [Internal Metabase Database, public, v_tenants, tenant_id]
   name: tenant_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
+- {display_name: Tenant Qualified ID, name: tenant_qualified_id, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: locale, table.pivot_column: sso_source}
 card_schema: 23
 serdes/meta:

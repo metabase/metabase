@@ -39,7 +39,6 @@ result_metadata:
 - {display_name: View Count, name: view_count, semantic_type: type/Quantity, visibility_type: normal}
 - {display_name: Owner Email, name: owner_email, semantic_type: type/Owner, visibility_type: normal}
 - {display_name: Owner User ID, name: owner_user_id, semantic_type: type/Owner, visibility_type: normal}
-- {display_name: Database ID, name: name_2, semantic_type: type/Name, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: schema, table.pivot_column: is_upload}
 card_schema: 23
 serdes/meta:

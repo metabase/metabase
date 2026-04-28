@@ -17,30 +17,26 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- {description: null, display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Entity Qualified ID, fk_target_field_id: null, name: entity_qualified_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Created At, fk_target_field_id: null, name: created_at, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Updated At, fk_target_field_id: null, name: updated_at, semantic_type: type/UpdatedTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Name, fk_target_field_id: null, name: name, semantic_type: type/Name, settings: null, visibility_type: normal}
-- {description: null, display_name: Display Name, fk_target_field_id: null, name: display_name, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Description, fk_target_field_id: null, name: description, semantic_type: type/Description, settings: null, visibility_type: normal}
-- {description: null, display_name: Base Type, fk_target_field_id: null, name: base_type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Visibility Type, fk_target_field_id: null, name: visibility_type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- description: null
-  display_name: Fk Target Field ID
+- {display_name: Entity ID, name: entity_id, semantic_type: type/PK, visibility_type: normal}
+- {display_name: Entity Qualified ID, name: entity_qualified_id, semantic_type: type/PK, visibility_type: normal}
+- {display_name: Created At, name: created_at, semantic_type: type/CreationTimestamp, visibility_type: normal}
+- {display_name: Updated At, name: updated_at, semantic_type: type/UpdatedTimestamp, visibility_type: normal}
+- {display_name: Name, name: name, semantic_type: type/Name, visibility_type: normal}
+- {display_name: Display Name, name: display_name, visibility_type: normal}
+- {display_name: Description, name: description, semantic_type: type/Description, visibility_type: normal}
+- {display_name: Base Type, name: base_type, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Visibility Type, name: visibility_type, semantic_type: type/Category, visibility_type: normal}
+- display_name: Fk Target Field ID
   fk_target_field_id: [Internal Metabase Database, public, v_fields, entity_id]
   name: fk_target_field_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Has Field Values, fk_target_field_id: null, name: has_field_values, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Active, fk_target_field_id: null, name: active, semantic_type: type/Category, settings: null, visibility_type: normal}
-- description: null
-  display_name: Table ID
+- {display_name: Has Field Values, name: has_field_values, visibility_type: normal}
+- {display_name: Active, name: active, semantic_type: type/Category, visibility_type: normal}
+- display_name: Table ID
   fk_target_field_id: [Internal Metabase Database, public, v_tables, entity_id]
   name: table_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
 visualization_settings: {column_settings: null, table.cell_column: table_id, table.pivot_column: visibility_type}
 card_schema: 23

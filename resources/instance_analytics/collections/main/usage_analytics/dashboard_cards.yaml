@@ -46,27 +46,23 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- {description: null, display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Entity Qualified ID, fk_target_field_id: null, name: entity_qualified_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- description: null
-  display_name: Dashboard Qualified ID
+- {display_name: Entity ID, name: entity_id, semantic_type: type/PK, visibility_type: normal}
+- {display_name: Entity Qualified ID, name: entity_qualified_id, semantic_type: type/PK, visibility_type: normal}
+- display_name: Dashboard Qualified ID
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
   name: dashboard_qualified_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Dashboardtab ID, fk_target_field_id: null, name: dashboardtab_id, semantic_type: null, settings: null, visibility_type: normal}
-- description: null
-  display_name: Card Qualified ID
+- {display_name: Dashboardtab ID, name: dashboardtab_id, semantic_type: type/Category, visibility_type: normal}
+- display_name: Card Qualified ID
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
   name: card_qualified_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Created At, fk_target_field_id: null, name: created_at, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Updated At, fk_target_field_id: null, name: updated_at, semantic_type: type/UpdatedTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Visualization Settings, fk_target_field_id: null, name: visualization_settings, semantic_type: type/SerializedJSON, settings: null, visibility_type: normal}
-- {description: null, display_name: Parameter Mappings, fk_target_field_id: null, name: parameter_mappings, semantic_type: type/SerializedJSON, settings: null, visibility_type: normal}
+- {display_name: Created At, name: created_at, semantic_type: type/CreationTimestamp, visibility_type: normal}
+- {display_name: Updated At, name: updated_at, semantic_type: type/UpdatedTimestamp, visibility_type: normal}
+- {display_name: Visualization Settings, name: visualization_settings, semantic_type: type/SerializedJSON, visibility_type: normal}
+- {display_name: Parameter Mappings, name: parameter_mappings, semantic_type: type/SerializedJSON, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: size_x, table.pivot_column: dashboardtab_id}
 card_schema: 23
 serdes/meta:

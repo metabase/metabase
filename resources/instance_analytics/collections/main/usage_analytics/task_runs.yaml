@@ -27,10 +27,10 @@ result_metadata:
 - {display_name: ID, name: id, semantic_type: type/PK, visibility_type: normal}
 - {display_name: Run Type, name: run_type, semantic_type: type/Category, visibility_type: normal}
 - {display_name: Entity Type, name: entity_type, semantic_type: type/Category, visibility_type: normal}
-- {display_name: Entity ID, name: entity_id, semantic_type: null, visibility_type: normal}
+- {display_name: Entity ID, name: entity_id, visibility_type: normal}
 - {display_name: Entity Qualified ID, name: entity_qualified_id, semantic_type: type/Category, visibility_type: normal}
 - {display_name: Started At, name: started_at, semantic_type: type/CreationTimestamp, visibility_type: normal}
-- {display_name: Ended At, name: ended_at, semantic_type: null, visibility_type: normal}
+- {display_name: Ended At, name: ended_at, visibility_type: normal}
 - {display_name: Duration Seconds, name: duration_seconds, semantic_type: type/Duration, visibility_type: normal}
 - {display_name: Status, name: status, semantic_type: type/Category, visibility_type: normal}
 - {display_name: Process UUID, name: process_uuid, semantic_type: type/Category, visibility_type: normal}

@@ -79,42 +79,37 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- {description: 'View ID, each question, dashboard, model, collection view generated one new sequential ID.', display_name: ID, fk_target_field_id: null, name: id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: When the view happened, display_name: Timestamp, fk_target_field_id: null, name: timestamp, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
+- {description: 'View ID, each question, dashboard, model, collection view generated one new sequential ID.', display_name: ID, name: id, semantic_type: type/PK, visibility_type: normal}
+- {description: When the view happened, display_name: Timestamp, name: timestamp, semantic_type: type/CreationTimestamp, visibility_type: normal}
 - description: Who viewed the content
   display_name: User ID
   fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
   name: user_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: 'card (question, model, metric), table, dashboard or collection', display_name: Entity Type, fk_target_field_id: null, name: entity_type, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: 'The sequential ID of the card, dashboard, collection', display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: null, settings: null, visibility_type: normal}
-- description: null
-  display_name: Entity Qualified ID
+- {description: 'card (question, model, metric), table, dashboard or collection', display_name: Entity Type, name: entity_type, semantic_type: type/Category, visibility_type: normal}
+- {description: 'The sequential ID of the card, dashboard, collection', display_name: Entity ID, name: entity_id, visibility_type: normal}
+- display_name: Entity Qualified ID
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Embedding Client, fk_target_field_id: null, name: embedding_client, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Auth Method, fk_target_field_id: null, name: auth_method, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Preview, fk_target_field_id: null, name: is_preview, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Metabase Version, fk_target_field_id: null, name: metabase_version, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Embedding SDK Package Version, fk_target_field_id: null, name: embedding_sdk_version, semantic_type: type/Category, settings: null, visibility_type: normal}
-- description: null
-  display_name: Tenant ID
+- {display_name: Embedding Client, name: embedding_client, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Auth Method, name: auth_method, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Is Preview, name: is_preview, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Metabase Version, name: metabase_version, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Embedding SDK Package Version, name: embedding_sdk_version, semantic_type: type/Category, visibility_type: normal}
+- display_name: Tenant ID
   fk_target_field_id: [Internal Metabase Database, public, v_tenants, tenant_id]
   name: tenant_id
   semantic_type: type/FK
-  settings: null
   visibility_type: normal
-- {description: null, display_name: Embedding Hostname, fk_target_field_id: null, name: embedding_hostname, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Embedding Path, fk_target_field_id: null, name: embedding_path, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: User Agent, fk_target_field_id: null, name: user_agent, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Sanitized User Agent, fk_target_field_id: null, name: sanitized_user_agent, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: IP Address, fk_target_field_id: null, name: ip_address, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: 'Context the view happened in (dashboard, collection, etc.). Use to filter out dashcards from top-viewed content.', display_name: Context, fk_target_field_id: null, name: context, semantic_type: type/Category, settings: null, visibility_type: normal}
+- {display_name: Embedding Hostname, name: embedding_hostname, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Embedding Path, name: embedding_path, semantic_type: type/Category, visibility_type: normal}
+- {display_name: User Agent, name: user_agent, semantic_type: type/Category, visibility_type: normal}
+- {display_name: Sanitized User Agent, name: sanitized_user_agent, semantic_type: type/Category, visibility_type: normal}
+- {display_name: IP Address, name: ip_address, semantic_type: type/Category, visibility_type: normal}
+- {description: 'Context the view happened in (dashboard, collection, etc.). Use to filter out dashcards from top-viewed content.', display_name: Context, name: context, semantic_type: type/Category, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: user_id, table.pivot_column: details}
 card_schema: 23
 serdes/meta:

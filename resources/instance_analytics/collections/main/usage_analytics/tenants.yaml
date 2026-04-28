@@ -25,7 +25,7 @@ result_metadata:
 - {display_name: Attributes, name: attributes, semantic_type: type/SerializedJSON, visibility_type: normal}
 - {display_name: Created At, name: created_at, semantic_type: type/CreationTimestamp, visibility_type: normal}
 - {display_name: Updated At, name: updated_at, semantic_type: type/UpdatedTimestamp, visibility_type: normal}
-- {display_name: Tenant Collection ID, name: tenant_collection_id, semantic_type: null, visibility_type: normal}
+- {display_name: Tenant Collection ID, name: tenant_collection_id, visibility_type: normal}
 - {display_name: Tenant Collection Qualified ID, name: tenant_collection_qualified_id, semantic_type: type/Category, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: tenant_collection_qualified_id, table.pivot_column: is_active}
 card_schema: 23
