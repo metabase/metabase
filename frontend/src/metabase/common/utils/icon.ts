@@ -70,41 +70,59 @@ export type IconData = {
   tooltip?: string;
 };
 
-/** get an Icon for any entity object, doesn't depend on the entity system */
-export const getIconBase = (item: ObjectWithModel): IconData => {
-  if (item.model === "card" && item.display) {
-    return { name: getIconForVisualizationType(item.display) };
+const getCollectionIcon = (item: ObjectWithModel): IconData | void => {
+  if (item.model !== "collection") {
+    return;
   }
 
-  if (item.model === "collection" && item.id === PERSONAL_COLLECTIONS.id) {
+  if (item.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
 
-  if (
-    item.model === "collection" &&
-    item.is_personal &&
-    item.location === "/"
-  ) {
+  if (item.is_personal && item.location === "/") {
     return { name: "person" };
   }
 
-  if (item.model === "collection" && item.id === "databases") {
+  if (item.id === "databases") {
     return { name: "database" };
   }
 
+  switch (getLibraryCollectionType(item.type as CollectionType)) {
+    case "root":
+      return { name: "repository" };
+    case "data":
+      return { name: "table" };
+    case "metrics":
+      return { name: "metric" };
+  }
+};
+
+const getModelIcon = (model: IconModel): IconData => {
+  return {
+    name: modelIconMap[model] ?? "unknown",
+  };
+};
+
+/**
+ * Get an Icon for any entity object, doesn't depend on the entity system.
+ */
+export const getIconBase = (item: ObjectWithModel): IconData => {
+  if (item.model === "card" && item.display) {
+    return {
+      name: getIconForVisualizationType(item.display),
+    };
+  }
+
   if (item.model === "collection") {
-    switch (getLibraryCollectionType(item.type as CollectionType)) {
-      case "root":
-        return { name: "repository" };
-      case "data":
-        return { name: "table" };
-      case "metrics":
-        return { name: "metric" };
+    const data = getCollectionIcon(item);
+    if (data) {
+      return data;
     }
   }
 
-  return { name: modelIconMap?.[item.model] ?? "unknown" };
+  return getModelIcon(item.model);
 };
+
 /**
  * relies mainly on the `model` property to determine the icon to return
  * also handle special collection icons and visualization types for cards
