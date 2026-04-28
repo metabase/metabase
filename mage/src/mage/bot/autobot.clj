@@ -10,6 +10,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- shell-quote
+  "POSIX shell-quote a single argument by wrapping in single quotes and
+   escaping any embedded single quotes. Safe for inclusion in a command
+   line that will be parsed by /bin/sh."
+  [s]
+  (str "'" (str/replace (str s) "'" "'\\''") "'"))
+
+(defn- shell-join
+  "Shell-quote each argv element and join with spaces. Result is a single
+   command string that, when parsed by a shell, expands back to the
+   original argv (no expansion or substitution of user input)."
+  [argv]
+  (str/join " " (map shell-quote argv)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session naming and lookup
 
@@ -199,10 +213,7 @@
       ;; branch-ref is either the local branch name or origin/<name> — workmux
       ;; add will check it out either way. No --base needed since the branch
       ;; already exists (autobot refuses to create new branches).
-      (let [ref         (or branch-ref branch-name)
-            workmux-cmd (str "workmux add " ref
-                             " --name " session-name
-                             " -P " prompt-file)]
+      (let [ref (or branch-ref branch-name)]
         (if in-tmux?
           ;; Already inside tmux — run workmux directly; it creates a new window
           ;; in the current session.
@@ -217,14 +228,30 @@
           ;; to appear (any window index != 0) and then kills window 0, so the
           ;; user lands directly on the bot window when they attach.
           ;;
+          ;; Each tmux step runs as its own argv invocation (no `bash -c`
+          ;; concatenation of user-controlled values). The workmux command
+          ;; line we type into the shell via `send-keys -l` is built from
+          ;; shell-quoted args, so a branch name containing $(...) or `...`
+          ;; can't trigger command substitution.
+          ;;
           ;; Why not simpler alternatives:
           ;;   1. `workmux add --session` hangs when run from a non-interactive
           ;;      subprocess (it tries to attach and has no tty).
-          ;;   2. Appending `; exit` to the workmux-cmd so window 0 self-destructs
-          ;;      is racy: window 0 can exit before workmux has fully registered
-          ;;      its new window, and tmux tears down the whole session.
+          ;;   2. Appending `; exit` to the workmux command so window 0
+          ;;      self-destructs is racy: window 0 can exit before workmux
+          ;;      has fully registered its new window, and tmux tears down
+          ;;      the whole session.
           (do
             (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
+            (shell/sh "tmux" "new-session" "-d" "-s" session-name)
+            (let [typed-cmd (shell-join ["workmux" "add" ref
+                                         "--name" session-name
+                                         "-P" prompt-file])]
+              (shell/sh "tmux" "send-keys" "-t" session-name "-l" typed-cmd)
+              (shell/sh "tmux" "send-keys" "-t" session-name "Enter"))
+            ;; Background cleanup loop. session-name is sanitized to
+            ;; [a-z0-9-] by branch-to-session-name, so it's safe to
+            ;; interpolate into this shell snippet.
             (let [cleanup-cmd (str
                                "for i in $(seq 1 60); do "
                                "  if tmux list-windows -t " session-name
@@ -236,10 +263,7 @@
                                "  sleep 1; "
                                "done")]
               (shell/sh "nohup" "bash" "-c"
-                        (str "tmux new-session -d -s " session-name
-                             " && tmux send-keys -t " session-name
-                             " " (pr-str workmux-cmd) " Enter"
-                             " && (" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
+                        (str "(" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
             (println)
             (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
             (println)
@@ -298,6 +322,17 @@
         (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session-name)
         ;; See the launch path for why we need a background cleanup loop to
         ;; kill the bootstrap window (index 0) once workmux's window appears.
+        ;;
+        ;; All user-controlled values (wt-path, session-name) flow into
+        ;; tmux as argv (-c, -t, -s) — never concatenated into a shell
+        ;; string. The "workmux open ..." line typed via send-keys -l is
+        ;; shell-quoted.
+        (shell/sh "tmux" "new-session" "-d" "-s" session-name "-c" wt-path)
+        (let [typed-cmd (shell-join ["workmux" "open" session-name
+                                     "--run-hooks" "-P" "prompt.md"])]
+          (shell/sh "tmux" "send-keys" "-t" session-name "-l" typed-cmd)
+          (shell/sh "tmux" "send-keys" "-t" session-name "Enter"))
+        ;; session-name is sanitized to [a-z0-9-] so safe to interpolate.
         (let [cleanup-cmd (str
                            "for i in $(seq 1 60); do "
                            "  if tmux list-windows -t " session-name
@@ -309,12 +344,7 @@
                            "  sleep 1; "
                            "done")]
           (shell/sh "nohup" "bash" "-c"
-                    (str "cd " wt-path
-                         " && tmux new-session -d -s " session-name
-                         " && tmux send-keys -t " session-name
-                         " 'workmux open " session-name " --run-hooks"
-                         " -P prompt.md' Enter"
-                         " && (" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
+                    (str "(" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
         (println)
         (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
         (println)
