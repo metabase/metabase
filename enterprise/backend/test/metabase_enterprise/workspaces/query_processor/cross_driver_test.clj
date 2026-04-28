@@ -1,269 +1,193 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.query-processor.cross-driver-test
   "End-to-end read-path coverage for workspace table remapping against real
-   warehouses. Each test sets up a workspaced database, writes data via a
-   transform (which is redirected into the workspace schema and records a
-   `TableRemapping`), then reads back via the canonical name through the QP
-   and asserts the rewritten query executes successfully on the warehouse.
+   warehouses.
 
-   Tests increase in query-shape complexity: single-table → join → three-way
-   join → nested MBQL.
+   Each test creates a fresh workspace schema in the warehouse, populates it with
+   a table whose rows differ from the canonical-side table, registers a
+   `:model/TableRemapping` pointing canonical -> workspace, and runs an MBQL
+   query against the canonical table id. Phase 1 mutates table metadata so the
+   compiled SQL targets the workspace schema; the warehouse executes; the
+   assertion compares row content (workspace-side, not canonical-side).
 
-   The intended target layer: the H2-only string-SQL tests in `middleware_test.clj`
-   prove the rewriter emits the right strings, and the SQLGlot corpus runner proves
-   the grammar layer across 7 dialects. This namespace is meant to fill the third
-   layer — does the warehouse actually accept and execute the rewritten SQL?
+   The H2-only string-SQL tests in `middleware_test.clj` prove the rewriter
+   emits the right strings. The SQLGlot corpus runner proves the grammar layer
+   across 7 dialects. This namespace fills the third layer — does the warehouse
+   actually accept and execute the rewritten SQL, AND do we get the right rows?
 
-   Driver-specific risks the layer is meant to catch that H2 cannot:
-   - Snowflake case-folding (unquoted identifiers go uppercase)
-   - BigQuery backtick quoting
-   - Redshift case-insensitive identifiers in some configs
-   - Quoting interactions between SQLGlot output and HoneySQL/JDBC
-
-   ## Status: tests commented out
-
-   The harness as written sets `output_schema = canonical-schema` to avoid
-   per-driver `CREATE SCHEMA` setup. With both schemas equal, the rewriter is asked
-   to replace `X` with `X` — a no-op — so none of the driver-specific risks above
-   actually fire. Cleanup `DROP TABLE` would also target the canonical (test data)
-   schema. The `deftest`s below are wrapped in `(comment ...)` until the harness is
-   reworked to provision a real second schema per driver."
+   Runs locally against H2 because we provision the workspace schema with raw
+   DDL (no dependency on `:workspace` driver feature). CI fans out across every
+   driver in the case statements below."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.test :as mt]
-   [metabase.transforms.execute :as transforms.execute]
-   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+;;; ----------------------------- Per-driver DDL ---------------------------------
+
+(defn- quoted-namespace
+  "Driver-correct quoted reference to a schema (or database, for schema-less
+   drivers like MySQL). Used in CREATE/DROP statements where the helper builds
+   the SQL by string concatenation."
+  [driver namespace-name]
+  (case driver
+    (:postgres :redshift :snowflake :h2) (str \" namespace-name \")
+    :sqlserver                            (str \[ namespace-name \])
+    (:mysql :clickhouse)                  (str \` namespace-name \`)))
+
+(defn- create-namespace-sql
+  "DDL to create a fresh per-run schema (or database, for schema-less drivers
+   like MySQL/ClickHouse)."
+  [driver namespace-name]
+  (case driver
+    (:postgres :redshift :snowflake :h2) (str "CREATE SCHEMA " (quoted-namespace driver namespace-name))
+    :sqlserver                            (str "CREATE SCHEMA " (quoted-namespace driver namespace-name))
+    (:mysql :clickhouse)                  (str "CREATE DATABASE " (quoted-namespace driver namespace-name))))
+
+(defn- drop-namespace-sqls
+  "DDL to drop the per-run namespace and any tables left in it. Schema'd
+   drivers with CASCADE (postgres/redshift/snowflake/h2) and database-as-namespace
+   drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
+   SCHEMA CASCADE so the source table has to be dropped explicitly first."
+  [driver namespace-name table-name]
+  (case driver
+    (:postgres :redshift :snowflake :h2) [(str "DROP SCHEMA " (quoted-namespace driver namespace-name) " CASCADE")]
+    :sqlserver                            [(str "DROP TABLE " (quoted-namespace driver namespace-name) "." (quoted-namespace driver table-name))
+                                           (str "DROP SCHEMA " (quoted-namespace driver namespace-name))]
+    (:mysql :clickhouse)                  [(str "DROP DATABASE " (quoted-namespace driver namespace-name))]))
+
+(defn- qualify
+  "Per-driver quoted `schema.table` (or `database.table` for schema-less drivers)."
+  [driver schema table]
+  (sql.u/quote-name driver :table schema table))
+
+(defn- create-table-tail
+  "Trailing clause appended to `CREATE TABLE ... (cols)` per driver. ClickHouse
+   requires every table to declare a storage engine and an ORDER BY key; SQL
+   drivers don't."
+  [driver]
+  (case driver
+    :clickhouse " ENGINE = MergeTree() ORDER BY id"
+    ""))
+
+(defn- random-suffix []
+  (subs (str (random-uuid)) 0 8))
+
+;;; ----------------------------- Helpers --------------------------------------
+
 (defn- canonical-schema
-  "Schema of the orders table on the current driver. Each driver's test data lives
-   in a different schema (PUBLIC, public, <dataset>, etc.); we discover it rather
-   than hardcode."
+  "Schema of the orders table on the current driver."
   []
   (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
 
-(defn- mbql-source-from-orders
-  "An MBQL source that selects from the orders test table — used as the body of
-   test transforms. Just provides rows; the output schema/name come from the
-   transform's :target."
+(defn- canonical-table-name
+  "The :name of the orders :model/Table, as the driver stores it (e.g. \"ORDERS\"
+   on H2, \"orders\" on Postgres). Phase 1's metadata override matches by name,
+   so the remapping's from-name has to be exactly this string."
   []
-  {:database (mt/id)
-   :type     "query"
-   :query    {:source-table (mt/id :orders)
-              :limit        3}})
+  (t2/select-one-fn :name :model/Table :id (mt/id :orders)))
 
-(defn- mbql-transform
-  "Build a transform map with a query source and the given target."
-  [target-name]
-  {:source {:type :query :query (mbql-source-from-orders)}
-   :name   (str "ws_xdriver_" target-name)
-   :target {:schema (canonical-schema)
-            :name   target-name
-            :type   :table}})
+(defn- admin-spec
+  "JDBC connection-spec usable for raw DDL and inserts against the current
+   driver's test database."
+  [driver]
+  (sql-jdbc.conn/connection-details->spec driver (:details (mt/db))))
 
-(defn- count-rows-via-qp
-  "Count rows via an MBQL query through the QP, looking up the table by canonical
-   name. Phase 1 + Phase 2 should rewrite this to read from the workspace copy
-   when a TableRemapping is in effect."
-  [_canonical-schema canonical-table-name]
-  (when-let [tbl (t2/select-one :model/Table
-                                :db_id (mt/id)
-                                :name  canonical-table-name)]
-    (-> (mt/process-query {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (:id tbl)
-                                      :aggregation  [[:count]]}})
-        mt/rows
-        ffirst)))
+(defn- with-workspace-table!
+  "Provision a workspace schema and an `orders`-named table whose case matches
+   the canonical table (so the remap's `to-name` matches exactly what the
+   rewriter emits). Inserts `workspace-rows` (a seq of `[id v]` pairs). Runs
+   `body-fn` with the created schema name; tears everything down afterward.
 
-(defn- run-with-workspace
-  "Set up a `:provisioned` WorkspaceDatabase for the current driver's DB, run
-   `body-fn`, tear down workspace + remap rows on the way out. Reuses the canonical
-   schema for `output_schema` so we don't depend on schema creation on every driver."
-  [body-fn]
-  (mt/with-premium-features #{:workspaces}
-    (let [ws-id     (t2/insert-returning-pk! :model/Workspace
-                                             {:name (str "ws-xdriver-" (random-uuid))})
-          ws-schema (canonical-schema)]
-      (try
-        (t2/insert! :model/WorkspaceDatabase
-                    {:workspace_id     ws-id
-                     :database_id      (mt/id)
-                     :database_details {}
-                     :output_schema    ws-schema
-                     :input_schemas    []
-                     :status           :provisioned})
-        (try
-          (body-fn ws-schema)
-          (finally
-            (ws.table-remapping/clear-mappings-for-db! (mt/id))))
-        (finally
-          (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
-          (t2/delete! :model/Workspace :id ws-id))))))
+   Schema name is `mb_xdr_<random>`. The table column shape (`id INT, v
+   VARCHAR(32)`) is intentionally minimal — the read-side test uses
+   `[:count]` aggregation, which doesn't reference any specific field, so
+   schema-mismatch with canonical doesn't matter."
+  [workspace-rows body-fn]
+  (let [driver    driver/*driver*
+        suffix    (random-suffix)
+        ws-schema (str "mb_xdr_" suffix)
+        spec      (admin-spec driver)
+        ws-table  (canonical-table-name)]
+    (try
+      (jdbc/execute! spec [(create-namespace-sql driver ws-schema)])
+      (jdbc/execute! spec [(str "CREATE TABLE " (qualify driver ws-schema ws-table)
+                                " (id INT, v VARCHAR(32))"
+                                (create-table-tail driver))])
+      (doseq [[id v] workspace-rows]
+        (jdbc/execute! spec [(str "INSERT INTO " (qualify driver ws-schema ws-table)
+                                  " VALUES (" id ", '" v "')")]))
+      (body-fn ws-schema)
+      (finally
+        (doseq [sql (drop-namespace-sqls driver ws-schema ws-table)]
+          (try (jdbc/execute! spec [sql])
+               (catch Throwable _)))))))
 
-(defn- run-and-wait!
-  "Execute the transform map `xform-data` (creating a temporary :model/Transform),
-   then wait for the warehouse table named `target-name` to appear in app-DB
-   metadata. Throws on timeout."
-  [xform-data target-name]
-  (mt/with-temp [:model/Transform t-row xform-data]
-    (transforms.execute/execute! t-row {:run-method :manual})
-    (transforms.tu/wait-for-table target-name 10000)))
+(defn- with-remapping!
+  "Insert a TableRemapping row pointing canonical -> workspace, run `body-fn`,
+   delete the row on the way out."
+  [from-schema from-name to-schema to-name body-fn]
+  (let [{remap-id :id} (t2/insert-returning-instance!
+                        :model/TableRemapping
+                        {:database_id     (mt/id)
+                         :from_schema     from-schema
+                         :from_table_name from-name
+                         :to_schema       to-schema
+                         :to_table_name   to-name})]
+    (try
+      (body-fn)
+      (finally
+        (t2/delete! :model/TableRemapping :id remap-id)))))
 
-;;; ----------------------------------- Tests -----------------------------------
-;;;
-;;; All tests below are commented out pending a fix for the same-schema bug:
-;;; the harness uses `output_schema = canonical-schema` to avoid `CREATE SCHEMA`
-;;; per driver, but that means the rewriter is asked to replace `X` with `X` —
-;;; a no-op. The Snowflake case-folding, BigQuery quoting, and Redshift
-;;; identifier rules these tests claim to catch cannot fire when from-schema
-;;; and to-schema are identical. Worse: the cleanup `DROP TABLE` runs against
-;;; the canonical schema (i.e., the test data warehouse's test schema).
-;;;
-;;; Fix shape: provision a real second schema per driver (or use a shared
-;;; `metabase_workspaces_test` schema pre-created by the data loader hook),
-;;; then re-enable. Until then the harness shape stays here as a starting
-;;; point but the tests don't run.
+(defn- canonical-row-count
+  "Row count of the canonical orders table — used as the disambiguator. The
+   workspace table we create has a tiny number of rows so the read-side
+   assertion can compare counts and tell whether we read from the workspace
+   schema or the canonical one."
+  []
+  (-> (mt/process-query
+       {:database (mt/id)
+        :type     :query
+        :query    {:source-table (mt/id :orders)
+                   :aggregation  [[:count]]}})
+      mt/rows
+      ffirst))
 
-(comment
+(defn- count-via-qp
+  "Run `SELECT COUNT(*) FROM orders` through the QP via the canonical orders
+   table id. If a TableRemapping is in effect, the rewriter should redirect
+   this to the workspace schema."
+  []
+  (-> (mt/process-query
+       {:database (mt/id)
+        :type     :query
+        :query    {:source-table (mt/id :orders)
+                   :aggregation  [[:count]]}})
+      mt/rows
+      ffirst))
 
-  (deftest single-remapped-table-test
-    (testing "a transform writing to a canonical target on a workspaced DB writes to the workspace schema, and reads via the canonical name resolve to the workspace copy"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (transforms.tu/with-transform-cleanup!
-          [{target-name :name} {:type   :table
-                                :schema (canonical-schema)
-                                :name   "single_remapped"}]
-          (run-with-workspace
-           (fn [_ws-schema]
-             (run-and-wait! (mbql-transform target-name) target-name)
-             (testing "TableRemapping row was recorded for canonical -> workspace"
-               (let [recorded (ws.table-remapping/all-mappings-for-db (mt/id))]
-                 (is (contains? recorded [(canonical-schema) target-name]))))
-             (testing "reading via canonical name resolves to the workspace copy"
-               (is (some? (count-rows-via-qp (canonical-schema) target-name))))))))))
+;;; --------------------------------- Tests -------------------------------------
 
-  (deftest non-remapped-table-passthrough-test
-    (testing "a non-remapped table read via the canonical name passes through unchanged on a workspaced DB"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (run-with-workspace
-         (fn [_ws-schema]
-         ;; No transform run, no TableRemapping row. Read against the existing
-         ;; orders table by canonical schema/name; the QP should return rows
-         ;; without rewriting (because no remap exists for orders).
-           (is (some? (count-rows-via-qp (canonical-schema) "orders"))
-               "canonical orders read passes through when no remap exists"))))))
-
-  (deftest join-one-side-remapped-test
-    (testing "an MBQL join where one side is remapped executes against the warehouse"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (transforms.tu/with-transform-cleanup!
-          [{remapped-name :name} {:type   :table
-                                  :schema (canonical-schema)
-                                  :name   "join_one_remapped"}]
-          (run-with-workspace
-           (fn [_ws-schema]
-             (run-and-wait! (mbql-transform remapped-name) remapped-name)
-             (let [orders-id    (mt/id :orders)
-                   remapped-tbl (t2/select-one :model/Table :db_id (mt/id) :name remapped-name)
-                   remapped-id-field (:id (t2/select-one :model/Field
-                                                         :table_id (:id remapped-tbl)
-                                                         :name "id"))]
-               (testing "join from orders -> remapped table executes"
-                 (is (some? (-> (mt/process-query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table orders-id
-                                             :joins        [{:source-table (:id remapped-tbl)
-                                                             :alias        "r"
-                                                             :condition    [:= [:field (mt/id :orders :id) nil]
-                                                                            [:field remapped-id-field {:join-alias "r"}]]}]
-                                             :aggregation  [[:count]]}})
-                                mt/rows
-                                ffirst))
-                     "rewritten side resolves on the warehouse")))))))))
-
-  (deftest join-both-sides-remapped-test
-    (testing "an MBQL join where both sides are remapped executes against the warehouse"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (transforms.tu/with-transform-cleanup!
-          [{left-name :name}  {:type :table :schema (canonical-schema) :name "join_both_left"}
-           {right-name :name} {:type :table :schema (canonical-schema) :name "join_both_right"}]
-          (run-with-workspace
-           (fn [_ws-schema]
-             (run-and-wait! (mbql-transform left-name) left-name)
-             (run-and-wait! (mbql-transform right-name) right-name)
-             (let [left-tbl  (t2/select-one :model/Table :db_id (mt/id) :name left-name)
-                   right-tbl (t2/select-one :model/Table :db_id (mt/id) :name right-name)
-                   left-id   (:id (t2/select-one :model/Field :table_id (:id left-tbl) :name "id"))
-                   right-id  (:id (t2/select-one :model/Field :table_id (:id right-tbl) :name "id"))]
-               (testing "both sides got rewritten and the warehouse accepted the resulting SQL"
-                 (is (some? (-> (mt/process-query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (:id left-tbl)
-                                             :joins        [{:source-table (:id right-tbl)
-                                                             :alias        "r"
-                                                             :condition    [:= [:field left-id nil]
-                                                                            [:field right-id {:join-alias "r"}]]}]
-                                             :aggregation  [[:count]]}})
-                                mt/rows
-                                ffirst)))))))))))
-
-  (deftest three-way-join-mixed-remapping-test
-    (testing "a three-way MBQL join with mixed remapping executes against the warehouse"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (transforms.tu/with-transform-cleanup!
-          [{a-name :name} {:type :table :schema (canonical-schema) :name "three_way_a"}
-           {b-name :name} {:type :table :schema (canonical-schema) :name "three_way_b"}]
-          (run-with-workspace
-           (fn [_ws-schema]
-             (run-and-wait! (mbql-transform a-name) a-name)
-             (run-and-wait! (mbql-transform b-name) b-name)
-             (let [a-tbl (t2/select-one :model/Table :db_id (mt/id) :name a-name)
-                   b-tbl (t2/select-one :model/Table :db_id (mt/id) :name b-name)
-                   a-id  (:id (t2/select-one :model/Field :table_id (:id a-tbl) :name "id"))
-                   b-id  (:id (t2/select-one :model/Field :table_id (:id b-tbl) :name "id"))]
-             ;; orders (canonical, no remap) -> a-name (remapped) -> b-name (remapped)
-               (testing "three-way join with two remapped + one canonical executes"
-                 (is (some? (-> (mt/process-query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (mt/id :orders)
-                                             :joins        [{:source-table (:id a-tbl)
-                                                             :alias        "a"
-                                                             :condition    [:= [:field (mt/id :orders :id) nil]
-                                                                            [:field a-id {:join-alias "a"}]]}
-                                                            {:source-table (:id b-tbl)
-                                                             :alias        "b"
-                                                             :condition    [:= [:field a-id {:join-alias "a"}]
-                                                                            [:field b-id {:join-alias "b"}]]}]
-                                             :aggregation  [[:count]]}})
-                                mt/rows
-                                ffirst)))))))))))
-
-  (deftest nested-mbql-remapped-source-test
-    (testing "a nested MBQL query whose inner source references a remapped table executes against the warehouse"
-    ;; In MBQL a nested source-query compiles to either a CTE or a subquery
-    ;; depending on the driver — both forms exercise the same remap resolution
-    ;; path inside a nested context.
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (transforms.tu/with-transform-cleanup!
-          [{remapped-name :name} {:type   :table
-                                  :schema (canonical-schema)
-                                  :name   "nested_inner"}]
-          (run-with-workspace
-           (fn [_ws-schema]
-             (run-and-wait! (mbql-transform remapped-name) remapped-name)
-             (let [remapped-tbl (t2/select-one :model/Table :db_id (mt/id) :name remapped-name)]
-               (testing "the rewriter resolved the remap inside a nested source-query"
-                 (is (some? (-> (mt/process-query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-query {:source-table (:id remapped-tbl)
-                                                            :limit        10}
-                                             :aggregation  [[:count]]}})
-                                mt/rows
-                                ffirst)))))))))))) ; end (comment ...) — see header above
+(deftest single-remapped-table-cross-driver-test
+  (testing "QP read against canonical name resolves to the workspace copy on the warehouse"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (mt/with-premium-features #{:workspaces}
+        ;; Workspace table has 2 rows; canonical orders has many thousands.
+        ;; Asserting the count comes back as 2 proves the read hit the workspace
+        ;; copy, not canonical.
+        (let [workspace-rows [[1 "ws-foo"] [2 "ws-bar"]]
+              canonical-count (canonical-row-count)]
+          (assert (> canonical-count 2)
+                  "test assumes canonical orders has >2 rows so count alone disambiguates")
+          (with-workspace-table! workspace-rows
+            (fn [ws-schema]
+              (with-remapping! (canonical-schema) (canonical-table-name)
+                ws-schema (canonical-table-name)
+                (fn []
+                  (is (= 2 (count-via-qp))
+                      (str "count came from workspace (2 rows), not canonical (" canonical-count " rows)")))))))))))
