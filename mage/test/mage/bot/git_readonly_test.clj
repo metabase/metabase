@@ -124,6 +124,9 @@
     (is (contains? (parse-args ["-c" "core.sshCommand=evil" "fetch"]) :error))
     (is (contains? (parse-args ["-c" "core.gitProxy=evil" "fetch"]) :error))
     (is (contains? (parse-args ["-c" "protocol.ext.allow=always" "fetch"]) :error)))
+  (testing "-c=key=value (single-arg form) is also rejected"
+    (is (contains? (parse-args ["-c=core.sshCommand=evil" "fetch"]) :error))
+    (is (contains? (parse-args ["-c=protocol.ext.allow=always" "fetch"]) :error)))
   (testing "unknown global flags are rejected"
     (is (contains? (parse-args ["--exec-path=/evil" "log"]) :error))
     (is (contains? (parse-args ["--unknown-flag" "log"]) :error)))

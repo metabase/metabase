@@ -670,9 +670,9 @@
   ;;; Unified autobot session management
 
   -autobot-go
-  {:doc "Launch a bot in a autobot session with its own worktree, backend, and frontend (or remote PR env)"
+  {:doc "Launch a bot in an autobot session with its own worktree, backend, and frontend (or remote PR env)"
    :examples [["./bin/mage -autobot-go master --bot qabot --command /qabot"
-               "Launch qabot in a autobot session"]
+               "Launch qabot in an autobot session"]
               ["./bin/mage -autobot-go my-branch --bot fixbot --command '/fixbot MB-12345' --app-db mysql"
                "Launch fixbot with MySQL"]
               ["./bin/mage -autobot-go uxw-291 --bot qabot --command /qabot --pr-env-url https://pr383713.coredev.metabase.com"
@@ -696,9 +696,9 @@
    :task (task! (pr-env/setup! parsed))}
 
   -autobot-stop
-  {:doc "Stop a autobot session (kill tmux + dev env, keep worktree). No args = stop current session."
+  {:doc "Stop an autobot session (kill tmux + dev env, keep worktree). No args = stop current session."
    :examples [["./bin/mage -autobot-stop qabot-master" "Stop named session"]
-              ["./bin/mage -autobot-stop" "Stop current session (from inside a autobot session)"]]
+              ["./bin/mage -autobot-stop" "Stop current session (from inside an autobot session)"]]
    :requires [[mage.bot.autobot :as autobot]]
    :arg-schema [:? [:string {:name "name-or-id"}]]
    :task (task! (autobot/stop! parsed))}
@@ -718,9 +718,9 @@
    :task (task! (autobot/result! parsed))}
 
   -autobot-quit
-  {:doc "Tear down and remove a autobot session. No args = remove current session."
+  {:doc "Tear down and remove an autobot session. No args = remove current session."
    :examples [["./bin/mage -autobot-quit qabot-master" "Remove named session"]
-              ["./bin/mage -autobot-quit" "Remove current session (from inside a autobot session)"]]
+              ["./bin/mage -autobot-quit" "Remove current session (from inside an autobot session)"]]
    :requires [[mage.bot.autobot :as autobot]]
    :arg-schema [:? [:string {:name "name-or-id"}]]
    :task (task! (autobot/quit! parsed))}
