@@ -15,6 +15,7 @@
        :threshold  0.80
        :top-n      10             ; detailed stats for the N largest clusters
        :output     \"enterprise/backend/test_resources/semantic_layer/analysis/clusters_library_names_L_080.edn\"})"
+  (:refer-clojure :exclude [run!])
   (:require
    [clojure.pprint :as pprint]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]

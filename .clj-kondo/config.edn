@@ -321,8 +321,7 @@
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
-   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
-   }
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -755,7 +754,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^semantic-layer\\.analysis\\..*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
@@ -833,13 +832,16 @@
 
   printable-namespaces
   {:linters
-   {:main-without-gen-class {:level :off}
-    :discouraged-var        {clojure.pprint/pprint     {:level :off}
-                             clojure.core/print        {:level :off}
-                             clojure.core/printf       {:level :off}
-                             clojure.core/println      {:level :off}
-                             clojure.string/lower-case {:level :off}
-                             clojure.string/upper-case {:level :off}}}}
+   {:main-without-gen-class             {:level :off}
+    :missing-docstring                  {:level :off}
+    :warn-on-reflection                 {:level :off}
+    :metabase/discourage-millis-duration {:level :off}
+    :discouraged-var                    {clojure.pprint/pprint     {:level :off}
+                                         clojure.core/print        {:level :off}
+                                         clojure.core/printf       {:level :off}
+                                         clojure.core/println      {:level :off}
+                                         clojure.string/lower-case {:level :off}
+                                         clojure.string/upper-case {:level :off}}}}
 
   ;; enable all the extra linters we haven't enabled in the core app yet in Lib. It's all new code so we can adhere
   ;; to the new stricter rules from day 1
