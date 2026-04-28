@@ -11,6 +11,10 @@
       "pr": {
         "number": 73020,
         "gqlID": "PR_kwDOAczgH87Uh6Xw"
+      },
+      "comment": {
+        "gqlID": "IC_kwDOAczgH88AAAABAkLmsg",
+        "url": "https://github.com/metabase/metabase/pull/73020#issuecomment-4332906162"
       }
     }
   }
