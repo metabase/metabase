@@ -135,8 +135,8 @@ export function NewExplorationData({
       <AddTimelinesModal
         opened={isAddTimelinesModalOpen}
         onClose={() => setIsAddTimelinesModalOpen(false)}
-        timelines={timelines}
-        setTimelines={setTimelines}
+        selectedTimelines={timelines}
+        onSelectedItemsChange={setTimelines}
       />
     </>
   );

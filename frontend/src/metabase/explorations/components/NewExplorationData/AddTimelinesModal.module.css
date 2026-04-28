@@ -1,0 +1,25 @@
+.scrollContainer {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.timelineItem {
+  width: 100%;
+  min-height: 4.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  background: var(--mb-color-background);
+}
+
+.timelineItem:hover {
+  background: var(--mb-color-background-hover);
+}
+
+.timelineItemSelected {
+  border-color: var(--mb-color-brand);
+}
