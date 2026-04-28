@@ -5,5 +5,17 @@
   },
   "upstream": {
     "branch": "feat/builtin-mcp-ui"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 71001,
+        "gqlID": "PR_kwDOAczgH87LNVD3"
+      },
+      "comment": {
+        "gqlID": "IC_kwDOAczgH873jrDr",
+        "url": "https://github.com/metabase/metabase/pull/71001#issuecomment-4153323755"
+      }
+    }
   }
 }
