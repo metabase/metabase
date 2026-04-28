@@ -1,8 +1,8 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { getIcon } from "metabase/common/utils/icon";
 import type { IconName } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import { isNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
