@@ -103,6 +103,7 @@ function DatabaseMappingForm({
   onClose,
 }: DatabaseMappingFormProps) {
   const isNew = mapping == null;
+  const initialValues = useMemo(() => getInitialValues(mapping), [mapping]);
   const validationSchema = useMemo(
     () => getValidationSchema(databases),
     [databases],
@@ -122,7 +123,7 @@ function DatabaseMappingForm({
 
   return (
     <FormProvider
-      initialValues={getInitialValues(mapping)}
+      initialValues={initialValues}
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
