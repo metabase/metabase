@@ -37,9 +37,30 @@
         (is (= 1 (count (:dimensions thread))))
         (is (= 1 (count (:timelines thread))))
         (is (= 1 (count (:queries thread))))
-        (is (= ["d1"] (:dimension_ids q)))
+        (is (= "d1" (:dimension_id q)))
+        (is (= "pending" (:status q)))
         (is (= [["field" {} 1]] (-> q :dataset_query :query :breakout))
             "snapshot MBQL adds a breakout from the dimension's target")))))
+
+(deftest exploration-create-materializes-metric-x-dimension-matrix-test
+  (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
+    (mt/with-temp [:model/User u {:email "matrix@example.com"}
+                   :model/Card m1 (valid-metric-card (:id u))
+                   :model/Card m2 (valid-metric-card (:id u))]
+      (let [mapping  [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}
+                      {:dimension_id "d2" :table_id 1 :target ["field" {} 2]}]
+            body     {:name "matrix"
+                      :metrics [{:card_id (:id m1) :dimension_mappings mapping}
+                                {:card_id (:id m2) :dimension_mappings mapping}]
+                      :dimensions [{:dimension_id "d1"}
+                                   {:dimension_id "d2"}]}
+            resp     (mt/user-http-request u :post 200 "exploration" body)
+            queries  (-> resp :threads first :queries)]
+        (is (= 4 (count queries)) "2 metrics × 2 dimensions = 4 queries")
+        (is (= #{[(:id m1) "d1"] [(:id m1) "d2"]
+                 [(:id m2) "d1"] [(:id m2) "d2"]}
+               (set (map (juxt :card_id :dimension_id) queries))))
+        (is (every? #(= "pending" (:status %)) queries))))))
 
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"

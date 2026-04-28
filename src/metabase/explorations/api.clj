@@ -39,20 +39,25 @@
       (seq breakouts) (assoc-in [:query :breakout] breakouts))))
 
 (defn- generate-queries!
-  "For each selected metric on a thread, snapshot a query row using the thread's dimensions."
-  [thread-id metrics dim-ids]
-  (when (seq metrics)
-    (let [cards (t2/select-pk->fn identity [:model/Card :id :dataset_query :card_schema]
-                                  :id [:in (distinct (map :card_id metrics))])
-          rows  (for [[i metric] (map-indexed vector metrics)
-                      :let [card-q   (some-> (get cards (:card_id metric)) :dataset_query)
-                            snapshot (when card-q
-                                       (build-snapshot-mbql card-q dim-ids (:dimension_mappings metric)))]]
-                  {:exploration_thread_id thread-id
-                   :card_id               (:card_id metric)
-                   :dimension_ids         dim-ids
-                   :dataset_query         (or snapshot {})
-                   :position              i})]
+  "Materialize the (metric × dimension) matrix as one `exploration_query` row per pair, each
+  ready for the worker to execute."
+  [thread-id metrics dimensions]
+  (when (and (seq metrics) (seq dimensions))
+    (let [cards   (t2/select-pk->fn identity [:model/Card :id :dataset_query :card_schema]
+                                    :id [:in (distinct (map :card_id metrics))])
+          dim-cnt (count dimensions)
+          rows    (for [[i metric] (map-indexed vector metrics)
+                        [j dim]    (map-indexed vector dimensions)
+                        :let [card-q   (some-> (get cards (:card_id metric)) :dataset_query)
+                              dim-id   (:dimension_id dim)
+                              snapshot (when card-q
+                                         (build-snapshot-mbql card-q [dim-id] (:dimension_mappings metric)))]]
+                    {:exploration_thread_id thread-id
+                     :card_id               (:card_id metric)
+                     :dimension_id          dim-id
+                     :dataset_query         (or snapshot {})
+                     :status                "pending"
+                     :position              (+ (* i dim-cnt) j)})]
       (t2/insert! :model/ExplorationQuery rows))))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
@@ -82,8 +87,9 @@
 
 (api.macros/defendpoint :post "/"
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
-  and timelines, and materialize one `exploration_query` per selected metric (using the thread's
-  dimensions as breakouts). This is the single \"Start exploration\" call from the UI."
+  and timelines, and materialize one `exploration_query` per (metric, dimension) pair. The query
+  rows are inserted with status='pending' for the worker to execute. This is the single
+  \"Start exploration\" call from the UI."
   [_route-params
    _query-params
    {:keys [name description prompt metrics dimensions timeline_ids]} :- CreateExploration]
@@ -104,8 +110,7 @@
                                         (assoc m
                                                :exploration_thread_id tid
                                                :position i))
-                                      metrics)))
-          dim-ids     (mapv :dimension_id dimensions)]
+                                      metrics)))]
       (when (seq dimensions)
         (t2/insert! :model/ExplorationThreadDimension
                     (map-indexed (fn [i d]
@@ -120,7 +125,7 @@
                                     :timeline_id           tl-id
                                     :position              i})
                                  timeline_ids)))
-      (generate-queries! tid metric-rows dim-ids)
+      (generate-queries! tid metric-rows dimensions)
       (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
       (hydrate-exploration (t2/select-one :model/Exploration :id (:id exploration))))))
 

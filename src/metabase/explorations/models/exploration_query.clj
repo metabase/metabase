@@ -12,6 +12,5 @@
   (derive :hook/entity-id))
 
 (t2/deftransforms :model/ExplorationQuery
-  {:dimension_ids          mi/transform-json
-   :visualization_settings mi/transform-json
+  {:visualization_settings mi/transform-json
    :dataset_query          mi/transform-json})

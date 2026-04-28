@@ -495,9 +495,9 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: dimension_ids
+                  name: dimension_id
                   type: ${text.type}
-                  remarks: JSON array of virtual dimension IDs used for this chart
+                  remarks: Virtual dimension ID used as the breakout for this chart
                   constraints:
                     nullable: false
               - column:
@@ -525,6 +525,31 @@ databaseChangeLog:
                   remarks: Ordering of queries within a thread
                   constraints:
                     nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  defaultValue: pending
+                  remarks: Worker state machine; one of pending, running, done, error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: Error message captured when the worker fails to execute the query
+                  constraints:
+                    nullable: true
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the worker started executing this query
+                  constraints:
+                    nullable: true
+              - column:
+                  name: finished_at
+                  type: ${timestamp_type}
+                  remarks: When the worker finished executing this query (success or error)
+                  constraints:
+                    nullable: true
               - column:
                   name: entity_id
                   type: char(21)
@@ -584,3 +609,75 @@ databaseChangeLog:
             columns:
               - column:
                   name: exploration_thread_id
+
+  - changeSet:
+      id: v62.qstatusidx
+      author: nvoxland
+      comment: Index on exploration_query.status for the worker poll
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_status
+            columns:
+              - column:
+                  name: status
+
+  - changeSet:
+      id: v62.qrescreate
+      author: nvoxland
+      comment: Create exploration_query_result table
+      changes:
+        - createTable:
+            tableName: exploration_query_result
+            remarks: Serialized query results produced by the exploration worker, keyed 1:1 to exploration_query.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_query_id
+                  type: int
+                  remarks: The exploration_query this result belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result_data
+                  type: ${blob.type}
+                  remarks: gzipped+nippy serialized query result bytes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the result was written
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.qresuq
+      author: nvoxland
+      comment: Unique constraint on exploration_query_result.exploration_query_id (1:1)
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_query_result
+            columnNames: exploration_query_id
+            constraintName: uq_exploration_query_result_query_id
+
+  - changeSet:
+      id: v62.qresfk
+      author: nvoxland
+      comment: FK exploration_query_result.exploration_query_id -> exploration_query.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query_result
+            baseColumnNames: exploration_query_id
+            referencedTableName: exploration_query
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_result_query_id
+            onDelete: CASCADE

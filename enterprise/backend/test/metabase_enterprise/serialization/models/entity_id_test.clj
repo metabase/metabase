@@ -54,6 +54,7 @@
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/ExplorationQueryResult
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory

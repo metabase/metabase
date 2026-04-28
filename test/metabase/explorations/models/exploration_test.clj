@@ -53,14 +53,14 @@
                                                                          :target ["field" {} 1]}]}
                  :model/ExplorationQuery q {:exploration_thread_id (:id t)
                                             :card_id (:id metric)
-                                            :dimension_ids ["d1"]
+                                            :dimension_id "d1"
                                             :dataset_query {:database 1 :type :query}}]
     (testing "ExplorationThreadMetric.dimension_mappings round-trips through JSON"
       (let [reread (t2/select-one :model/ExplorationThreadMetric :id (:id m))]
         (is (= "d1" (-> reread :dimension_mappings first :dimension_id)))))
     (testing "ExplorationQuery transforms"
       (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
-        (is (= ["d1"] (:dimension_ids reread)))
+        (is (= "d1" (:dimension_id reread)))
         (is (= 1 (-> reread :dataset_query :database)))))))
 
 (deftest hydrate-threads-on-exploration-test
