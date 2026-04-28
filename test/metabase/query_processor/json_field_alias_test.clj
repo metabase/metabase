@@ -9,7 +9,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.test.data.env :as tx.env]))
 
 (defn- drivers-with-nested-field-support
@@ -54,7 +53,7 @@
                :database-id   1
                :dataset-query (lib/query base (lib.metadata/table base 1))}]})))
 
-(deftest ^:parallel json-breakout-from-joined-slashed-model-test
+(deftest json-breakout-from-joined-slashed-model-test
   (testing "Breakout on a JSON-unfolded field from a joined model whose name contains `/` (#70445)"
     ;; Iterate drivers directly instead of `mt/test-drivers`: that macro loads each driver's
     ;; test-data extensions namespace, which isn't needed for a pure compile test and may not be
@@ -82,7 +81,21 @@
                 query      (-> joined
                                (lib/aggregate (lib/count))
                                (lib/breakout json-ref))
-                sql        (binding [qp.i/*skip-middleware-because-app-db-access* true]
-                             (:query (qp.compile/compile query)))]
+                ;; Stub the two pre-processing middleware that hit the app-db (impersonation
+                ;; and database routing). The mock metadata provider has no real Database row,
+                ;; so letting them run would fail. master uses the
+                ;; `*skip-middleware-because-app-db-access*` dynamic var (#71775) for this; we
+                ;; avoid backporting that var here because it's slated to be replaced by an
+                ;; app-db protocol (QUE2-488). Resolved at runtime so the test still loads in
+                ;; OSS builds where these enterprise namespaces aren't on the classpath.
+                ee-stubs   (into {} (keep (fn [sym]
+                                            (try
+                                              (when-let [v (requiring-resolve sym)]
+                                                [v identity])
+                                              (catch java.io.FileNotFoundException _ nil)))
+                                          '[metabase-enterprise.database-routing.middleware/attach-destination-db-middleware
+                                            metabase-enterprise.impersonation.middleware/apply-impersonation]))
+                sql        (with-redefs-fn ee-stubs
+                             (fn [] (:query (qp.compile/compile query))))]
             (testing (str "generated SQL must not split the slash in the join alias:\n" sql)
               (is (not (re-find #"test[\"`]\.[\"`]Model" sql))))))))))
