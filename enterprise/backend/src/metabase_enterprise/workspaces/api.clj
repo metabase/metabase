@@ -6,7 +6,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.yaml :as yaml]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -158,6 +159,21 @@
   []
   (api/check-superuser)
   (ws/list-remappings))
+
+(api.macros/defendpoint :get "/:id/config/yaml"
+  :- [:map
+      [:status  [:= 200]]
+      [:headers [:map-of :string :string]]
+      [:body    :string]]
+  "Download the workspace's developer-instance config as a YAML file."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [workspace (api/check-404 (ws/get-workspace id))]
+    {:status  200
+     :headers {"Content-Type"        "application/x-yaml"
+               "Content-Disposition" "attachment; filename=\"config.yml\""}
+     :body    (yaml/generate-string
+               {:name (:name workspace)})}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"

@@ -65,6 +65,7 @@ function WorkspaceListPageBody({
           onChange={(event) => setSearchQuery(event.currentTarget.value)}
         />
         <Button
+          variant={workspaces.length === 0 ? "filled" : "default"}
           leftSection={<Icon name="add" />}
           component={ForwardRefLink}
           to={Urls.adminNewWorkspace()}

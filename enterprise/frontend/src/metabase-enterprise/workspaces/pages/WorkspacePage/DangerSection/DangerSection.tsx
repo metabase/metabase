@@ -60,8 +60,6 @@ export function DangerSection({ workspace }: DangerSectionProps) {
           openDelay={TOOLTIP_OPEN_DELAY}
         >
           <Button
-            variant="filled"
-            color="error"
             disabled={!isUnprovisioned}
             onClick={handleDelete}
           >{t`Delete workspace`}</Button>

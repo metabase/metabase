@@ -94,7 +94,11 @@ export function DatabaseMappingSection({
             disabled={canAddMapping}
             openDelay={TOOLTIP_OPEN_DELAY}
           >
-            <Button disabled={!canAddMapping} onClick={handleOpenCreate}>
+            <Button
+              variant={mappings.length === 0 ? "filled" : "default"}
+              disabled={!canAddMapping}
+              onClick={handleOpenCreate}
+            >
               {t`Add database`}
             </Button>
           </Tooltip>
