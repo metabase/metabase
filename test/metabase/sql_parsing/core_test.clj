@@ -449,6 +449,52 @@
                      "\n  Expected: " (pr-str (normalize-fields expected))
                      "\n  Actual:   " (pr-str (normalize-fields actual))))))))))
 
+;;; ----------------------------------------- Large VALUES stripping tests -----------------------------------------
+
+(deftest ^:parallel strip-large-values-test
+  (testing "Small VALUES clauses are preserved"
+    (let [sql "SELECT * FROM (VALUES (1, 'a'), (2, 'b'), (3, 'c')) AS t(id, name)"]
+      (is (= sql (sql-parsing/strip-large-values sql)))))
+
+  (testing "No VALUES keyword returns SQL unchanged"
+    (let [sql "SELECT * FROM users WHERE id = 1"]
+      (is (= sql (sql-parsing/strip-large-values sql)))))
+
+  (testing "Large VALUES clause is replaced with NULLs preserving column count"
+    (let [tuples (clojure.string/join ", " (map #(format "(%d, '%s', %d)" % (str "name" %) (* % 10))
+                                                (range 200)))
+          sql    (str "SELECT * FROM (VALUES " tuples ") AS t(id, name, score)")
+          result (sql-parsing/strip-large-values sql)]
+      (is (clojure.string/includes? result "VALUES (NULL, NULL, NULL)"))
+      (is (clojure.string/includes? result "AS t(id, name, score)"))
+      (is (not (clojure.string/includes? result "name0")))))
+
+  (testing "Multiple large VALUES clauses are all stripped"
+    (let [tuples1 (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
+          tuples2 (clojure.string/join ", " (map #(format "(%d, %d)" % (* % 2)) (range 200)))
+          sql     (str "WITH a AS (SELECT * FROM (VALUES " tuples1 ") AS t(x)), "
+                       "b AS (SELECT * FROM (VALUES " tuples2 ") AS t(y, z)) "
+                       "SELECT * FROM a JOIN b ON a.x = b.y")
+          result  (sql-parsing/strip-large-values sql)]
+      (is (clojure.string/includes? result "VALUES (NULL)"))
+      (is (clojure.string/includes? result "VALUES (NULL, NULL)"))))
+
+  (testing "VALUES keyword casing is preserved"
+    (let [tuples (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
+          sql    (str "select * from (values " tuples ") as t(x)")
+          result (sql-parsing/strip-large-values sql)]
+      (is (clojure.string/includes? result "values (NULL)")))))
+
+(deftest ^:parallel large-values-referenced-tables-test
+  (testing "referenced-tables works on queries with massive VALUES clauses"
+    (let [tuples (clojure.string/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))
+          sql    (str "WITH lookup AS (SELECT * FROM (VALUES " tuples
+                      ") AS v(id, score)) "
+                      "SELECT a.name, l.score FROM accounts a "
+                      "JOIN lookup l ON l.id = a.id")
+          result (sql-parsing/referenced-tables "postgres" sql)]
+      (is (= [[nil nil "accounts"]] result)))))
+
 (deftest ^:parallel referenced-fields-dialect-support-test
   (testing "Referenced fields works across different SQL dialects"
     (doseq [dialect ["postgres" "mysql" "snowflake" "bigquery" "redshift" "duckdb"]]

@@ -29,6 +29,63 @@ _VALUES_KEYWORD_RE = re.compile(
     re.IGNORECASE
 )
 
+def _skip_tuple(sql: str, pos: int, n: int) -> int:
+    """Skip past a balanced parenthesized tuple, respecting string literals.
+
+    Args:
+        sql: Full SQL string
+        pos: Position of the opening '('
+        n: Length of sql
+
+    Returns:
+        Position immediately after the closing ')'
+    """
+    depth = 0
+    in_string = False
+    string_char = None
+    while pos < n:
+        ch = sql[pos]
+        if in_string:
+            if ch == string_char:
+                if pos + 1 < n and sql[pos + 1] == string_char:
+                    pos += 1  # skip escaped (doubled) quote
+                else:
+                    in_string = False
+        elif ch == "'" or ch == '"':
+            in_string = True
+            string_char = ch
+        elif ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+            if depth == 0:
+                return pos + 1
+        pos += 1
+    return pos
+
+
+def _count_columns(tuple_content: str) -> int:
+    """Count the number of top-level comma-separated items in a tuple's inner content."""
+    col_count = 1
+    depth = 0
+    in_str = False
+    str_ch = None
+    for ch in tuple_content:
+        if in_str:
+            if ch == str_ch:
+                in_str = False
+        elif ch == "'" or ch == '"':
+            in_str = True
+            str_ch = ch
+        elif ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            col_count += 1
+    return col_count
+
+
 def _strip_large_values(sql: str) -> str:
     """Replace large VALUES clauses with a single-row placeholder.
 
@@ -64,99 +121,40 @@ def _strip_large_values(sql: str) -> str:
 
         # Parse the tuples after VALUES
         # m.end() points right after "VALUES ("
-        tuples_start = m.start()
+        values_start = m.start()
         pos = m.end() - 1  # back up to the opening paren
 
-        tuples = []
-        first_tuple_content = None
+        # Parse first tuple to capture its content for column counting
+        first_tuple_start = pos
+        first_tuple_end = _skip_tuple(sql, pos, n)
+        first_tuple_content = sql[first_tuple_start + 1:first_tuple_end - 1] if first_tuple_end > first_tuple_start + 1 else ""
+        pos = first_tuple_end
+        tuple_count = 1
 
+        # Count and skip remaining tuples (don't store their text)
         while pos < n:
             # Skip whitespace
             while pos < n and sql[pos] in ' \t\r\n':
                 pos += 1
-
-            if pos >= n or sql[pos] != '(':
+            if pos >= n or sql[pos] != ',':
                 break
-
-            # Find matching closing paren, respecting string literals
-            depth = 0
-            tuple_start = pos
-            in_string = False
-            string_char = None
-
-            while pos < n:
-                ch = sql[pos]
-                if in_string:
-                    if ch == string_char:
-                        # Check for escaped quote (doubled)
-                        if pos + 1 < n and sql[pos + 1] == string_char:
-                            pos += 1  # skip escaped quote
-                        else:
-                            in_string = False
-                elif ch == "'" or ch == '"':
-                    in_string = True
-                    string_char = ch
-                elif ch == '(':
-                    depth += 1
-                elif ch == ')':
-                    depth -= 1
-                    if depth == 0:
-                        pos += 1
-                        break
-                pos += 1
-
-            tuple_text = sql[tuple_start:pos]
-            tuples.append(tuple_text)
-
-            if first_tuple_content is None:
-                # Extract content between parens to count columns
-                inner = tuple_text[1:-1] if len(tuple_text) >= 2 else ""
-                first_tuple_content = inner
-
-            # Skip comma and whitespace between tuples
-            saved_pos = pos
+            pos += 1  # skip comma
             while pos < n and sql[pos] in ' \t\r\n':
                 pos += 1
-            if pos < n and sql[pos] == ',':
-                pos += 1
-                while pos < n and sql[pos] in ' \t\r\n':
-                    pos += 1
-            else:
-                # No comma — end of VALUES list
+            if pos >= n or sql[pos] != '(':
                 break
+            pos = _skip_tuple(sql, pos, n)
+            tuple_count += 1
 
-            # Safety: if next char isn't '(' we're done with tuples
-            if pos < n and sql[pos] != '(':
-                pos = saved_pos
-                break
-
-        if len(tuples) > _VALUES_STRIP_THRESHOLD and first_tuple_content is not None:
-            # Count columns by counting top-level commas in first tuple
-            col_count = 1
-            depth = 0
-            in_str = False
-            str_ch = None
-            for ch in first_tuple_content:
-                if in_str:
-                    if ch == str_ch:
-                        in_str = False
-                elif ch == "'" or ch == '"':
-                    in_str = True
-                    str_ch = ch
-                elif ch == '(':
-                    depth += 1
-                elif ch == ')':
-                    depth -= 1
-                elif ch == ',' and depth == 0:
-                    col_count += 1
-
+        if tuple_count > _VALUES_STRIP_THRESHOLD:
+            col_count = _count_columns(first_tuple_content)
             nulls = ", ".join(["NULL"] * col_count)
             # Preserve original keyword casing (e.g., "values" vs "VALUES")
             values_keyword = sql[m.start():m.end()].rstrip().rstrip('(').rstrip()
             result.append(f"{values_keyword} ({nulls})")
         else:
             # Below threshold, keep original
-            result.append(sql[tuples_start:pos])
+            result.append(sql[values_start:pos])
 
         i = pos
 
