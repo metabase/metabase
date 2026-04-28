@@ -18,7 +18,7 @@
               response   (mt/user-http-request :crowberto :post 200 "embed-theme"
                                                {:name     theme-name
                                                 :settings settings})]
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :color_harmony :created_at :updated_at}
                  (set (keys response))))
           (is (= theme-name (:name response)))
           (is (= settings (:settings response)))
@@ -39,7 +39,27 @@
       (is (=? {:errors {:settings string?}}
               (mt/user-http-request :crowberto :post 400 "embed-theme"
                                     {:name     "Test Theme"
-                                     :settings "not a map"}))))))
+                                     :settings "not a map"}))))
+    (testing "color_harmony defaults to 'off' when not provided"
+      (mt/with-empty-h2-app-db!
+        (let [response (mt/user-http-request :crowberto :post 200 "embed-theme"
+                                             {:name     "Default Harmony"
+                                              :settings {}})]
+          (is (= "off" (:color_harmony response))))))
+    (testing "accepts a color_harmony value"
+      (mt/with-empty-h2-app-db!
+        (doseq [mode ["off" "octagonal" "square"]]
+          (let [response (mt/user-http-request :crowberto :post 200 "embed-theme"
+                                               {:name          (str "Theme " mode)
+                                                :settings      {}
+                                                :color_harmony mode})]
+            (is (= mode (:color_harmony response)))))))
+    (testing "rejects an unknown color_harmony value"
+      (is (=? {:errors {:color_harmony string?}}
+              (mt/user-http-request :crowberto :post 400 "embed-theme"
+                                    {:name          "Bad Harmony"
+                                     :settings      {}
+                                     :color_harmony "rhombus"}))))))
 
 (deftest list-themes-test
   (testing "GET /api/embed-theme"
@@ -55,11 +75,13 @@
         (let [themes (mt/user-http-request :crowberto :get 200 "embed-theme")]
           (is (= 2 (count themes)))
           ; settings is used for theme card previews
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :color_harmony :created_at :updated_at}
                  (set (keys (first themes)))))
           (testing "themes are ordered by oldest first"
             (is (= ["Theme 1" "Theme 2"]
-                   (map :name themes)))))))
+                   (map :name themes))))
+          (testing "themes default to color_harmony 'off'"
+            (is (every? #(= "off" (:color_harmony %)) themes))))))
     (testing "requires superuser permissions"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "embed-theme"))))))
@@ -74,7 +96,7 @@
                                               :settings settings})
               theme-id (:id created)
               response (mt/user-http-request :crowberto :get 200 (format "embed-theme/%s" theme-id))]
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :color_harmony :created_at :updated_at}
                  (set (keys response))))
           (is (= "Test Theme" (:name response)))
           (is (= settings (:settings response))))))
@@ -109,6 +131,17 @@
                                              {:settings {:color {:brand "#00FF00"}}})]
           (is (= "Test Theme" (:name response)))
           (is (= {:color {:brand "#00FF00"}} (:settings response))))))
+    (testing "updates color_harmony"
+      (mt/with-empty-h2-app-db!
+        (let [created  (mt/user-http-request :crowberto :post 200 "embed-theme"
+                                             {:name     "Test Theme"
+                                              :settings {}})
+              theme-id (:id created)]
+          (is (= "off" (:color_harmony created)))
+          (let [response (mt/user-http-request :crowberto :put 200 (format "embed-theme/%s" theme-id)
+                                               {:color_harmony "octagonal"})]
+            (is (= "octagonal" (:color_harmony response)))
+            (is (= "Test Theme" (:name response)))))))
     (testing "returns 404 for non-existent theme"
       (is (= "Not found."
              (mt/user-http-request :crowberto :put 404 "embed-theme/999999"
@@ -153,14 +186,23 @@
                                               :settings original-settings})
               theme-id (:id created)
               response (mt/user-http-request :crowberto :post 200 (format "embed-theme/%s/copy" theme-id))]
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :color_harmony :created_at :updated_at}
                  (set (keys response))))
           (is (= "Copy of My Theme" (:name response)))
           (is (= original-settings (:settings response)))
+          (is (= "off" (:color_harmony response)))
           (is (not= theme-id (:id response)))
           (testing "both themes exist in the database"
             (is (t2/exists? :model/EmbeddingTheme :id theme-id))
             (is (t2/exists? :model/EmbeddingTheme :id (:id response)))))))
+    (testing "preserves color_harmony from the source theme"
+      (mt/with-empty-h2-app-db!
+        (let [created  (mt/user-http-request :crowberto :post 200 "embed-theme"
+                                             {:name          "Octagonal Theme"
+                                              :settings      {}
+                                              :color_harmony "octagonal"})
+              response (mt/user-http-request :crowberto :post 200 (format "embed-theme/%s/copy" (:id created)))]
+          (is (= "octagonal" (:color_harmony response))))))
     (testing "returns 404 for non-existent theme"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "embed-theme/999999/copy"))))

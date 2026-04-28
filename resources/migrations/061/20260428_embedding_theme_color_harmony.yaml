@@ -1,0 +1,21 @@
+## Add color_harmony column to embedding_theme.
+## Editor-only metadata that records whether the theme's filter / summarize / positive / negative /
+## chart colors are derived from the brand color via a color harmony, and which one.
+## Existing rows default to 'off' so their hand-picked colors are preserved.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-04-28T00:00:00
+      author: sfragnaud
+      comment: Add color_harmony column to embedding_theme
+      changes:
+        - addColumn:
+            tableName: embedding_theme
+            columns:
+              - column:
+                  name: color_harmony
+                  type: varchar(16)
+                  remarks: Color harmony mode used by the editor to derive accent and chart colors from the brand color. One of "off", "octagonal", or "square".
+                  defaultValue: "off"
+                  constraints:
+                    nullable: false
