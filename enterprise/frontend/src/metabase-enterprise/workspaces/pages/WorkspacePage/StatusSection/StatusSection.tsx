@@ -23,9 +23,8 @@ type StatusSectionProps = {
 };
 
 export function StatusSection({ workspace }: StatusSectionProps) {
-  const isProvisioned =
-    workspace.databases.length > 0 &&
-    workspace.databases.every(isDatabaseProvisioned);
+  const hasProvisioned = workspace.databases.some(isDatabaseProvisioned);
+  const hasUnprovisioned = workspace.databases.some(isDatabaseUnprovisioned);
 
   return (
     <TitleSection
@@ -37,11 +36,10 @@ export function StatusSection({ workspace }: StatusSectionProps) {
           <StatusIcon workspace={workspace} />
           <Text>{getStatusMessage(workspace)}</Text>
         </Group>
-        {isProvisioned ? (
-          <UnprovisionButton workspace={workspace} />
-        ) : (
-          <ProvisionButton workspace={workspace} />
-        )}
+        <Group gap="sm" wrap="nowrap">
+          {hasUnprovisioned && <ProvisionButton workspace={workspace} />}
+          {hasProvisioned && <UnprovisionButton workspace={workspace} />}
+        </Group>
       </Group>
     </TitleSection>
   );
@@ -79,7 +77,9 @@ function ProvisionButton({ workspace }: { workspace: Workspace }) {
         disabled={isInProgress || !hasDatabases}
         onClick={handleProvision}
       >
-        {getProvisionButtonLabel(workspace)}
+        {workspace.databases.some(isDatabaseProvisioning)
+          ? t`Provisioning…`
+          : t`Provision workspace`}
       </Button>
       {modalContent}
     </>
@@ -117,7 +117,9 @@ function UnprovisionButton({ workspace }: { workspace: Workspace }) {
         disabled={isInProgress}
         onClick={handleUnprovision}
       >
-        {getProvisionButtonLabel(workspace)}
+        {workspace.databases.some(isDatabaseUnprovisioning)
+          ? t`Unprovisioning…`
+          : t`Unprovision workspace`}
       </Button>
       {modalContent}
     </>
@@ -157,20 +159,4 @@ function getStatusMessage(workspace: Workspace): string {
     return t`This workspace is not provisioned yet.`;
   }
   return t`This workspace is partially provisioned.`;
-}
-
-function getProvisionButtonLabel(workspace: Workspace): string {
-  if (workspace.databases.some(isDatabaseProvisioning)) {
-    return t`Provisioning…`;
-  }
-  if (workspace.databases.some(isDatabaseUnprovisioning)) {
-    return t`Unprovisioning…`;
-  }
-  if (
-    workspace.databases.length > 0 &&
-    workspace.databases.every(isDatabaseProvisioned)
-  ) {
-    return t`Unprovision workspace`;
-  }
-  return t`Provision workspace`;
 }

@@ -24,8 +24,25 @@ export function getAvailableDatabases(
   );
 }
 
-export function getAddTooltipLabel(readOnly: boolean): string {
-  return readOnly
-    ? t`Unprovision this workspace before editing.`
-    : t`No available databases that support workspaces.`;
+type AddTooltipParams = {
+  readOnly: boolean;
+  hasSupportedDatabases: boolean;
+  hasAvailableDatabases: boolean;
+};
+
+export function getAddTooltipLabel({
+  readOnly,
+  hasSupportedDatabases,
+  hasAvailableDatabases,
+}: AddTooltipParams): string {
+  if (readOnly) {
+    return t`Unprovision this workspace before editing.`;
+  }
+  if (!hasSupportedDatabases) {
+    return t`No databases support workspaces.`;
+  }
+  if (!hasAvailableDatabases) {
+    return t`All supported databases are already added.`;
+  }
+  return "";
 }
