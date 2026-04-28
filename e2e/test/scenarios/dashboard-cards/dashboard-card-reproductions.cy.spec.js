@@ -1636,11 +1636,13 @@ describe("issue 63416", () => {
         ],
       });
 
+      cy.wrap(dashboard.id).as("dashboardId");
+
       H.visitDashboard(dashboard.id);
     });
   });
 
-  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", function () {
     H.editDashboard();
 
     H.showDashcardVisualizerModalSettings(0, {
@@ -1660,7 +1662,7 @@ describe("issue 63416", () => {
       fileType: "csv",
       isDashboard: true,
       downloadMethod: "POST",
-      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      downloadUrl: `/api/dashboard/${this.dashboardId}/dashcard/*/card/*/query/csv`,
       assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
     });
   });
