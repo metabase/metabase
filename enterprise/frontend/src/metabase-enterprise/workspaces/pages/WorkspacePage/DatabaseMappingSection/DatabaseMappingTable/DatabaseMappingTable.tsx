@@ -10,19 +10,21 @@ import { getColumns, getRows } from "./utils";
 type DatabaseMappingTableProps = {
   mappings: WorkspaceDatabase[];
   databasesById: Map<number, Database>;
+  withStatus: boolean;
   onRowClick: (mapping: WorkspaceDatabase) => void;
 };
 
 export function DatabaseMappingTable({
   mappings,
   databasesById,
+  withStatus,
   onRowClick,
 }: DatabaseMappingTableProps) {
   const rows = useMemo(
     () => getRows(mappings, databasesById),
     [mappings, databasesById],
   );
-  const columns = useMemo(() => getColumns(), []);
+  const columns = useMemo(() => getColumns({ withStatus }), [withStatus]);
 
   const handleRowActivate = (row: Row<DatabaseMappingRow>) => {
     onRowClick(row.original.mapping);

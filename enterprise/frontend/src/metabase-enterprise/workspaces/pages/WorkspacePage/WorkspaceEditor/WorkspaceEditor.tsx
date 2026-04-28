@@ -24,7 +24,7 @@ export function WorkspaceEditor({
     <Stack gap="3.25rem">
       <WorkspaceHeader workspace={workspace} onNameChange={onNameChange} />
       <DatabaseMappingSection
-        databases={workspace.databases}
+        workspace={workspace}
         onChange={onDatabasesChange}
       />
       <ProvisionSection workspace={workspace} />

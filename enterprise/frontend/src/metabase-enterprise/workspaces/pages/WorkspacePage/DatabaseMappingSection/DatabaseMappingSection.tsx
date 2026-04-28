@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -6,6 +7,7 @@ import { Box, Button, Text, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import type { DatabaseId, WorkspaceDatabase } from "metabase-types/api";
 
+import type { WorkspaceInfo } from "../../../types";
 import { isDatabaseProvisioned } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
@@ -18,15 +20,18 @@ import {
 } from "./utils";
 
 type DatabaseMappingSectionProps = {
-  databases: WorkspaceDatabase[];
+  workspace: WorkspaceInfo;
   onChange: (databases: WorkspaceDatabase[]) => void;
 };
 
 export function DatabaseMappingSection({
-  databases: mappings,
+  workspace,
   onChange,
 }: DatabaseMappingSectionProps) {
-  const [isModalOpened, setIsModalOpened] = useState(false);
+  const mappings = workspace.databases;
+  const isNew = workspace.id == null;
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
   const { data: databasesResponse } = useListDatabasesQuery();
 
@@ -43,16 +48,16 @@ export function DatabaseMappingSection({
 
   const handleOpenCreate = () => {
     setSelectedDatabaseId(undefined);
-    setIsModalOpened(true);
+    openModal();
   };
 
   const handleOpenEdit = (mapping: WorkspaceDatabase) => {
     setSelectedDatabaseId(mapping.database_id);
-    setIsModalOpened(true);
+    openModal();
   };
 
   const handleClose = () => {
-    setIsModalOpened(false);
+    closeModal();
     setSelectedDatabaseId(undefined);
   };
 
@@ -103,6 +108,7 @@ export function DatabaseMappingSection({
           <DatabaseMappingTable
             mappings={mappings}
             databasesById={databasesById}
+            withStatus={!isNew}
             onRowClick={handleOpenEdit}
           />
         )}

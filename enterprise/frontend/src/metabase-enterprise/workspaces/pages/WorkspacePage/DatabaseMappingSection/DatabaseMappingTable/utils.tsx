@@ -68,8 +68,16 @@ export function getStatusColumn(): TreeTableColumnDef<DatabaseMappingRow> {
   };
 }
 
-export function getColumns(): TreeTableColumnDef<DatabaseMappingRow>[] {
-  return [getDatabaseColumn(), getSchemasColumn(), getStatusColumn()];
+export function getColumns({
+  withStatus,
+}: {
+  withStatus: boolean;
+}): TreeTableColumnDef<DatabaseMappingRow>[] {
+  return [
+    getDatabaseColumn(),
+    getSchemasColumn(),
+    ...(withStatus ? [getStatusColumn()] : []),
+  ];
 }
 
 function getStatusLabel(mapping: WorkspaceDatabase): string {
