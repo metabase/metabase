@@ -5,5 +5,13 @@
   },
   "upstream": {
     "branch": "emb-1599-extract-the-metric-explorer-bar-from-explore-page-as-a"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 73020,
+        "gqlID": "PR_kwDOAczgH87Uh6Xw"
+      }
+    }
   }
 }
