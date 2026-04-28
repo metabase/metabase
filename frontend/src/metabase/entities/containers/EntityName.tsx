@@ -12,7 +12,7 @@ interface Props {
 /**
  * @deprecated use "metabase/api" instead
  */
-export const EntityName = <Entity, EntityWrapper>({
+export const EntityName = <Entity extends { name?: string }, EntityWrapper>({
   entityType,
   entityId,
 }: Props) => {
@@ -41,5 +41,5 @@ export const EntityName = <Entity, EntityWrapper>({
     return null;
   }
 
-  return <span>{tc((entity as { name?: string })?.name)}</span>;
+  return <span>{tc(entity?.name)}</span>;
 };
