@@ -144,7 +144,7 @@ export function QuestionList({
                 label: S.QuestionListItemLabel,
               }}
               className={S.QuestionListItem}
-              name={item.getName()}
+              name={item.name}
               icon={{
                 name: getIcon(item).name,
                 size: item.model === "dataset" ? 18 : 16,

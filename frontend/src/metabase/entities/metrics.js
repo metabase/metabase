@@ -42,10 +42,6 @@ export const Metrics = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).metric(entityId),
   },
-
-  objectSelectors: {
-    getName: (metric) => metric && metric.name,
-  },
 });
 
 const useGetQuery = ({ id }, options) => {

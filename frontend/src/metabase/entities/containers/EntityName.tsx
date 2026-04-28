@@ -41,5 +41,5 @@ export const EntityName = <Entity, EntityWrapper>({
     return null;
   }
 
-  return <span>{tc(entityDefinition.objectSelectors.getName(entity))}</span>;
+  return <span>{tc((entity as { name?: string })?.name)}</span>;
 };
