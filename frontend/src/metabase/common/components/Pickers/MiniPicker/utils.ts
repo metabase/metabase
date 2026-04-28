@@ -3,8 +3,8 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
-import type { DispatchFn } from "metabase/utils/redux";
-import { useDispatch } from "metabase/utils/redux";
+import type { DispatchFn } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";

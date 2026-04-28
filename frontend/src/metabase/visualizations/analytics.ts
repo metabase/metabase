@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 import type { RegularClickAction } from "./types";
 
@@ -21,4 +21,11 @@ export const trackClickActionPerformed = (action: RegularClickAction) => {
       event_detail: event,
     });
   }
+};
+
+export const trackStackedSeriesEnabled = () => {
+  trackSimpleEvent({
+    event: "stack_series_enabled",
+    triggered_from: "viz_settings",
+  });
 };

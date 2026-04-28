@@ -12,10 +12,9 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { getIsWorkspace } from "metabase/selectors/routing";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { createAsyncThunk } from "metabase/utils/redux";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -39,6 +38,7 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
+  MetabotAgentChartMessage,
   MetabotAgentEditSuggestionChatMessage,
   MetabotAgentId,
   MetabotAgentTodoListChatMessage,
@@ -71,10 +71,15 @@ export const {
   removeSuggestedCodeEdit,
 } = metabot.actions;
 
-type PromptErrorOutcome = {
-  errorMessage: MetabotErrorMessage | false;
-  shouldRetry: boolean;
-};
+type PromptErrorOutcome =
+  | {
+      errorMessage: MetabotErrorMessage;
+      shouldRetry: boolean;
+    }
+  | {
+      errorMessage: false;
+      shouldRetry: boolean;
+    };
 
 const handleResponseError = (
   error: unknown,
@@ -92,6 +97,30 @@ const handleResponseError = (
         errorMessage: {
           type: "alert" as const,
           message: METABOT_ERR_MSG.unauthenticated(metabotName),
+        },
+        shouldRetry: true,
+      }),
+    )
+    .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
+      errorMessage: {
+        type: "locked" as const,
+        message: METABOT_ERR_MSG.locked,
+      },
+      shouldRetry: true,
+    }))
+    .with({ status: P.number, message: P.string }, ({ message }) => ({
+      errorMessage: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(message),
+      },
+      shouldRetry: true,
+    }))
+    .with(
+      { "error-code": "ai_usage_limit_reached", message: P.string },
+      ({ message }) => ({
+        errorMessage: {
+          type: "message" as const,
+          message,
         },
         shouldRetry: true,
       }),
@@ -172,8 +201,20 @@ export type MetabotPromptSubmissionResult =
       shouldRetry?: void;
       data?: SendAgentRequestResult;
     }
-  | { prompt: string; success: false; shouldRetry: false; data?: void }
-  | { prompt: string; success: false; shouldRetry: true; data?: void };
+  | {
+      prompt: string;
+      success: false;
+      shouldRetry: false;
+      errorMessage?: MetabotErrorMessage;
+      data?: void;
+    }
+  | {
+      prompt: string;
+      success: false;
+      shouldRetry: true;
+      errorMessage?: MetabotErrorMessage;
+      data?: void;
+    };
 
 export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
@@ -270,7 +311,15 @@ export const submitInput = createAsyncThunk<
             "shouldRetry" in result.payload &&
             (result.payload?.shouldRetry ?? {})) ??
           false;
-        return { prompt: rawPrompt, success: false, shouldRetry };
+        return {
+          prompt: rawPrompt,
+          success: false,
+          shouldRetry,
+          errorMessage:
+            result.payload?.type === "error"
+              ? result.payload.errorMessage || undefined
+              : undefined,
+        };
       }
 
       return { prompt, success: true, data: result.payload };
@@ -278,7 +327,15 @@ export const submitInput = createAsyncThunk<
       // NOTE: all errors should be caught above, this is is a catch-all
       // to make sure that this async action always resolves to a value
       console.error(error);
-      return { prompt, success: false, shouldRetry: true };
+      return {
+        prompt,
+        success: false,
+        shouldRetry: true,
+        errorMessage: {
+          type: "message",
+          message: METABOT_ERR_MSG.default,
+        },
+      };
     }
   },
 );
@@ -304,12 +361,23 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
       let state = {};
       let error: unknown = undefined;
+      /**
+       * Hold the chart message until the stream finishes so it renders after
+       * the agent's final text. `navigate_to` arrives mid-stream, before the
+       * last message, so inserting it eagerly would show the chart above later
+       * text.
+       *
+       * Last navigate_to wins, matching setNavigateToPath/CurrentChart semantics.
+       * In practice we don't expect more than one navigate_to in a single stream.
+       */
+      let pendingChartMessage:
+        | { type: "chart"; navigateTo: string }
+        | undefined = undefined;
 
       const response = await aiStreamingQuery(
         {
@@ -346,7 +414,20 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbeddingSdk() && !isWorkspace) {
+                if (isEmbeddingSdk()) {
+                  if (pendingChartMessage) {
+                    console.warn("Overwriting pending navigate_to: ", {
+                      previous: pendingChartMessage.navigateTo,
+                      next: part.value,
+                    });
+                  }
+                  pendingChartMessage = {
+                    type: "chart",
+                    navigateTo: part.value,
+                  };
+                }
+
+                if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
@@ -393,6 +474,15 @@ export const sendAgentRequest = createAsyncThunk<
           },
         },
       );
+
+      // Preserve any chart the agent already committed via `navigate_to`,
+      // even if the stream errored or was cancelled before the closing text
+      // arrived.
+      if (pendingChartMessage != null) {
+        const chartMessage: Omit<MetabotAgentChartMessage, "id" | "role"> =
+          pendingChartMessage;
+        dispatch(addAgentMessage({ ...chartMessage, agentId }));
+      }
 
       if (error) {
         throw error;

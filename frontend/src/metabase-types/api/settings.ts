@@ -265,8 +265,10 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabase-store-managed",
+  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -367,7 +369,6 @@ export const tokenFeatures = [
   "library",
   "support-users",
   "tenants",
-  "workspaces",
   "writable_connection",
   "admin_security_center",
   "ai_controls",
@@ -483,6 +484,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
@@ -509,6 +511,7 @@ interface AdminSettings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
   "security-center-email-recipients": NotificationRecipient[] | null;
   "security-center-slack-channel": string | null;
   "store-url": string;
@@ -778,6 +781,7 @@ export interface EnterpriseSettings extends Settings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;

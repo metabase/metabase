@@ -18,8 +18,8 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
+import { connect } from "metabase/redux";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 
 import { SnippetRow } from "./SnippetRow";
 import S from "./SnippetSidebar.module.css";

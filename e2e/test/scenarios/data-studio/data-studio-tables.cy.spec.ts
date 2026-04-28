@@ -8,7 +8,7 @@ describe("scenarios > data studio > library > tables", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   describe("header", () => {

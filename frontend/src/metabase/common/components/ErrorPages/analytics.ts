@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackErrorDiagnosticModalOpened = (
   triggeredFrom: "profile-menu" | "command-palette",

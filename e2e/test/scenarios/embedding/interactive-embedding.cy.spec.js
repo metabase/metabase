@@ -226,7 +226,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.wait("@getCardQuery").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe",
+          "embedding-iframe-full-app",
         );
       });
     });
@@ -1767,7 +1767,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.wait("@getDashboard").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe",
+          "embedding-iframe-full-app",
         );
       });
     });
@@ -1794,7 +1794,7 @@ describe("scenarios > embedding > full app", () => {
 
   describe("documents > comments", () => {
     it("should not display comments in an embedded app", () => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       const DOCUMENT_ID = 1;
       const PARAGRAPH_ID = "b7fa322a-964e-d668-8d30-c772ef4f0022";
 

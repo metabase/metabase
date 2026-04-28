@@ -56,6 +56,7 @@ class MetricIdentity extends RangeValue {
     readonly sourceId: MetricSourceId,
     readonly definition: MetricDefinition | null,
     readonly slotIndex: number | undefined,
+    readonly customName: string | undefined,
   ) {
     super();
   }
@@ -64,7 +65,8 @@ class MetricIdentity extends RangeValue {
     return (
       this.sourceId === other.sourceId &&
       this.definition === other.definition &&
-      this.slotIndex === other.slotIndex
+      this.slotIndex === other.slotIndex &&
+      this.customName === other.customName
     );
   }
 }
@@ -92,11 +94,13 @@ export const metricIdentityField = StateField.define<RangeSet<MetricIdentity>>({
 
     for (const effect of tr.effects) {
       if (effect.is(addMetricIdentity)) {
-        const { from, to, sourceId, definition, slotIndex } = effect.value;
+        const { from, to, sourceId, definition, slotIndex, customName } =
+          effect.value;
         const newRange = new MetricIdentity(
           sourceId,
           definition,
           slotIndex,
+          customName,
         ).range(from, to);
         current = current.update({ add: [newRange] });
       }
@@ -110,10 +114,12 @@ export function identitiesFromEntries(
   entries: MetricIdentityEntry[],
 ): RangeSet<MetricIdentity> {
   const ranges = entries.map((entry) =>
-    new MetricIdentity(entry.sourceId, entry.definition, entry.slotIndex).range(
-      entry.from,
-      entry.to,
-    ),
+    new MetricIdentity(
+      entry.sourceId,
+      entry.definition,
+      entry.slotIndex,
+      entry.customName,
+    ).range(entry.from, entry.to),
   );
   return RangeSet.of(ranges, true);
 }
@@ -129,6 +135,7 @@ export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
       to,
       definition: value.definition,
       slotIndex: value.slotIndex,
+      customName: value.customName,
     });
   });
   return result;

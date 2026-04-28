@@ -66,6 +66,7 @@ export type UseFormulaEditorResult = {
   pendingFocusRef: MutableRefObject<boolean>;
   handleInputFocus: () => void;
   handleInputBlur: () => void;
+  handleEditExpression: (entityIndex: number) => void;
   handleChange: (newText: string) => void;
   handleSelect: (metric: SelectedMetric) => void;
   handleRemoveItem: (itemIndex: number) => void;
@@ -108,6 +109,10 @@ export function useFormulaEditor({
   });
 
   const pendingFocusRef = useRef(false);
+  // When set, overrides the default end-of-doc caret position on focus —
+  // used when the user triggers "Edit" from a specific expression pill so the
+  // caret lands at the end of that expression instead of the full formula.
+  const pendingCaretPositionRef = useRef<number | null>(null);
   // Refs for reading latest values in callbacks without stale closures
   const editTextRef = useRef(editText);
   editTextRef.current = editText;
@@ -190,20 +195,45 @@ export function useFormulaEditor({
     setTimeout(() => {
       const view = editorRef.current?.view;
       if (view) {
-        const endPos = view.state.doc.length;
+        const docLen = view.state.doc.length;
+        const requested = pendingCaretPositionRef.current;
+        pendingCaretPositionRef.current = null;
+        const caretPos =
+          requested != null ? Math.min(Math.max(requested, 0), docLen) : docLen;
         const identities = identitiesFromEntries(initialIdentities);
         view.dispatch({
-          selection: EditorSelection.cursor(endPos),
+          selection: EditorSelection.cursor(caretPos),
           effects: setMetricIdentities.of(identities),
           annotations: isolateHistory.of("full"),
         });
-        const coords = view.coordsAtPos(endPos);
+        const coords = view.coordsAtPos(caretPos);
         if (coords) {
           setAnchorRect({ left: coords.left, top: coords.bottom });
         }
       }
     }, 0);
   }, [editorRef, metricNamesRef]);
+
+  /**
+   * Transition into focused-formula mode and place the caret at the end of
+   * the expression at `entityIndex` within the full formula text.
+   */
+  const handleEditExpression = useCallback(
+    (entityIndex: number) => {
+      const entities = formulaEntitiesRef.current;
+      if (entityIndex < 0 || entityIndex >= entities.length) {
+        return;
+      }
+      const { text } = buildFullTextWithIdentities(
+        entities.slice(0, entityIndex + 1),
+        metricNamesRef.current,
+      );
+      pendingCaretPositionRef.current = text.length;
+      pendingFocusRef.current = true;
+      setIsFocused(true);
+    },
+    [metricNamesRef],
+  );
 
   /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
@@ -313,10 +343,12 @@ export function useFormulaEditor({
       // Extract the word at the cursor for the dropdown search
       const view = editorRef.current?.view;
       const cursorPos = view?.state.selection.main.head ?? newText.length;
+      const identities = view ? readMetricIdentities(view) : [];
       const { word, start: wordStart } = getWordAtCursor(
         newText,
         cursorPos,
         metricNamesRef.current,
+        identities,
       );
       // Anchor the dropdown at the word's left edge / line bottom in the viewport
       if (view) {
@@ -339,10 +371,12 @@ export function useFormulaEditor({
       }
       const docText = view.state.doc.toString();
       const cursorPos = view.state.selection.main.head;
+      const identities = readMetricIdentities(view);
       const { start, end } = getWordAtCursor(
         docText,
         cursorPos,
         metricNamesRef.current,
+        identities,
       );
 
       const metricName = metric.name ?? "";
@@ -514,10 +548,12 @@ export function useFormulaEditor({
     // Re-extract word at the new cursor position after a click
     const cursorPos = view.state.selection.main.head;
     const text = view.state.doc.toString();
+    const identities = readMetricIdentities(view);
     const { word, start: wordStart } = getWordAtCursor(
       text,
       cursorPos,
       metricNamesRef.current,
+      identities,
     );
     // Update the anchor position so the dropdown is correctly placed
     const coords = view.coordsAtPos(wordStart);
@@ -590,6 +626,7 @@ export function useFormulaEditor({
     pendingFocusRef,
     handleInputFocus,
     handleInputBlur,
+    handleEditExpression,
     handleChange,
     handleSelect,
     handleRemoveItem,

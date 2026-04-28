@@ -1,5 +1,5 @@
+import { trackSchemaEvent } from "metabase/analytics";
 import type { ExportFormat } from "metabase/common/types/export";
-import { trackSchemaEvent } from "metabase/utils/analytics";
 
 import type {
   DisplayTheme,

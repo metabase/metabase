@@ -9,13 +9,11 @@ import type {
   TaggedTransform,
   Transform,
   UnsavedTransform,
-  WorkspaceTransform,
 } from "metabase-types/api";
 
 type AnyTransform =
   | Transform
   | TaggedTransform
-  | WorkspaceTransform
   | UnsavedTransform
   | SuggestedTransform;
 

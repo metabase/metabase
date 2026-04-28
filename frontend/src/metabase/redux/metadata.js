@@ -6,11 +6,13 @@ import { Databases } from "metabase/entities/databases";
 import { Fields } from "metabase/entities/fields";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
+import { createThunkAction } from "metabase/redux";
 import { RevisionsApi } from "metabase/services";
-import { entityCompatibleQuery } from "metabase/utils/entities";
-import { createThunkAction, fetchData } from "metabase/utils/redux";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
+
+export * from "metabase/redux/metadata-typed";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
@@ -112,34 +114,15 @@ export const updateFieldDimension = (fieldId, dimension) => {
 };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
-export const fetchRevisions = createThunkAction(
-  FETCH_REVISIONS,
-  (type, id, reload = false) => {
-    return async (dispatch, getState) => {
-      const requestStatePath = ["revisions", type, id];
-      const existingStatePath = ["revisions"];
-      const getData = async () => {
-        return {
-          type,
-          id,
-          revisions: await RevisionsApi.get({
-            id,
-            entity: type === "metric" ? "legacy-metric" : type,
-          }),
-        };
-      };
-
-      return await fetchData({
-        dispatch,
-        getState,
-        requestStatePath,
-        existingStatePath,
-        getData,
-        reload,
-      });
-    };
-  },
-);
+export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id) => {
+  return async () => {
+    const revisions = await RevisionsApi.get({
+      id,
+      entity: type === "metric" ? "legacy-metric" : type,
+    });
+    return { type, id, revisions };
+  };
+});
 
 export const FETCH_SEGMENT_FIELDS = "metabase/metadata/FETCH_SEGMENT_FIELDS";
 export const fetchSegmentFields = createThunkAction(

@@ -1,7 +1,7 @@
 (ns metabase.query-processor.pipeline
   (:require
    [clojure.core.async :as a]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :as i18n]

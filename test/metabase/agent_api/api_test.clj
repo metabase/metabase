@@ -6,6 +6,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -230,6 +231,22 @@
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
 
+(deftest coerce-query-list-test
+  (let [coerce #'agent-api.api/coerce-query-list]
+    (testing "arrays pass through unchanged"
+      (is (= ["orders" "revenue"] (coerce ["orders" "revenue"]))))
+    (testing "nil stays nil"
+      (is (nil? (coerce nil))))
+    (testing "a bare string becomes a single-element list"
+      (is (= ["orders"] (coerce "orders"))))
+    (testing "a JSON-stringified array of strings is unwrapped"
+      (is (= ["orders" "revenue"] (coerce "[\"orders\", \"revenue\"]"))))
+    (testing "JSON arrays with non-string elements are not unwrapped — they fall back to a literal single query so that downstream :sequential NonBlankString validation is never bypassed"
+      (is (= ["[1, 2]"] (coerce "[1, 2]")))
+      (is (= ["[\"\"]"] (coerce "[\"\"]"))))
+    (testing "non-JSON strings become a single-element list"
+      (is (= ["not json ["] (coerce "not json ["))))))
+
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
   [response]
@@ -376,7 +393,7 @@
                   (:measures table))))))))
 
 (deftest combined-query-test
-  (testing "Returns results for a table query"
+  (testing "Returns results for a table query that fits in a single page"
     (let [table-id (mt/id :orders)
           field-id (visible-field-id table-id "ID")
           response (mt/user-http-request :rasta :post 202 "agent/v2/query"
@@ -385,27 +402,29 @@
                                                        ["limit" 5]]})]
       (is (=? {:status             "completed"
                :row_count          5
-               :continuation_token string?
+               :continuation_token nil?
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
 
-  (testing "Continuation token returns next page of results"
-    (let [table-id (mt/id :orders)
-          field-id (visible-field-id table-id "ID")
-          page1    (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["order-by" ["field" field-id]]
-                                                       ["limit" 5]]})
-          page2    (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:continuation_token (:continuation_token page1)})]
-      (is (=? {:row_count          5
+  (testing "Continuation token returns next page of results when the total limit exceeds the page size"
+    (let [table-id   (mt/id :orders)
+          field-id   (visible-field-id table-id "ID")
+          page-size  200
+          total-rows 250
+          page1      (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                           {:source     {:type "table" :id table-id}
+                                            :operations [["order-by" ["field" field-id]]
+                                                         ["limit" total-rows]]})
+          page2      (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                           {:continuation_token (:continuation_token page1)})]
+      (is (=? {:row_count          page-size
                :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+               :data               {:rows (fn [rows] (= page-size (count rows)))}}
               page1))
-      (is (=? {:row_count          5
-               :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+      (is (=? {:row_count          (- total-rows page-size)
+               :continuation_token nil?
+               :data               {:rows (fn [rows] (= (- total-rows page-size) (count rows)))}}
               page2))
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
@@ -418,12 +437,32 @@
                                   {:source     {:type "table" :id (mt/id :orders)}
                                    :operations [["aggregate" ["count"]]]}))))
 
-  (testing "Constraint cap limits results to 200 rows"
+  (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                   {:source     {:type "table" :id (mt/id :orders)}
                                    :operations [["limit" 1000]]})))))
+
+(defn- make-continuation-token [pagination]
+  (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+       :pagination pagination}
+      json/encode
+      u/encode-base64))
+
+(deftest continuation-token-validation-test
+  (testing "Malformed pagination ints in a continuation token produce a 400, not a 500.
+            This is robustness — the token isn't a trust boundary, since a caller can
+            always issue a fresh program."
+    (doseq [[label pagination] [["zero limit"         {:limit 0      :page 1}]
+                                ["negative limit"     {:limit -10    :page 1}]
+                                ["non-integer limit"  {:limit "lots" :page 1}]
+                                ["zero page"          {:limit 200    :page 0}]
+                                ["negative page"      {:limit 200    :page -1}]
+                                ["non-integer page"   {:limit 200    :page "next"}]]]
+      (testing label
+        (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                              {:continuation_token (make-continuation-token pagination)})))))
 
 (deftest combined-query-metric-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
