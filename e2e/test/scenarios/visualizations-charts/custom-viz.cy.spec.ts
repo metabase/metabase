@@ -65,7 +65,7 @@ describe("admin > custom visualizations", () => {
         H.visitCustomVizSettings();
 
         H.main()
-          .findByRole("button", { name: /Enable Custom Visualizations/ })
+          .findByRole("button", { name: /Enable custom visualizations/ })
           .should("be.visible")
           .click();
 
@@ -80,7 +80,7 @@ describe("admin > custom visualizations", () => {
           .findByRole("heading", { name: "Add a new visualization" })
           .should("not.exist");
         H.main()
-          .findByRole("heading", { name: "Build custom visualizations" })
+          .findByRole("heading", { name: "Enable custom visualizations" })
           .should("be.visible");
       });
 
@@ -526,6 +526,11 @@ describe("admin > custom visualizations", () => {
           H.main().findByText("demo-viz").realHover();
           cy.findByRole("button", { name: "Plugin actions" }).click();
           H.popover().findByText("Remove").click();
+
+          H.modal().within(() => {
+            cy.findByText("Remove this visualization?").should("be.visible");
+            cy.findByRole("button", { name: "Remove" }).click();
+          });
 
           H.main()
             .findByText("You don't have any custom visualizations.")

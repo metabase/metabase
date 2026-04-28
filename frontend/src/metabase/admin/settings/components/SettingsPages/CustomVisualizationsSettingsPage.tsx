@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
@@ -6,7 +6,6 @@ import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
-  Alert,
   Button,
   Card,
   Group,
@@ -83,9 +82,7 @@ export function CustomVisualizationsDevelopmentPage() {
 const CUSTOM_VIZ_ENABLED_SETTING = "custom-viz-enabled";
 
 function CustomVizEmptyState() {
-  const { updateSetting, updateSettingResult } = useAdminSetting(
-    CUSTOM_VIZ_ENABLED_SETTING,
-  );
+  const { updateSetting } = useAdminSetting(CUSTOM_VIZ_ENABLED_SETTING);
 
   const handleEnable = async () => {
     await updateSetting({
@@ -102,24 +99,17 @@ function CustomVizEmptyState() {
         <Stack gap="3rem">
           <Stack gap="md">
             <Stack gap="sm">
-              <Title order={3}>{t`Build custom visualizations`}</Title>
+              <Title order={3}>{t`Enable custom visualizations`}</Title>
               <Text c="text-secondary" lh="1.25rem">
-                {t`Extend Metabase with chart types tailored to your data. Build visualization plugins using the Custom Viz SDK and link them from a Git repository.`}
+                {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and link them here from a Git repository.`}
               </Text>
-
-              <Alert
-                color="warning"
-                icon={<Icon name="warning" />}
-                title={t`Risks`}
-              >{jt`Be aware that custom visualizations ${<strong key="arbitrary-code">{t`can execute arbitrary code`}</strong>} and should only be added from trusted sources.`}</Alert>
+              <Text fw="bold" lh="1.25rem">
+                {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
+              </Text>
             </Stack>
             <Group gap="sm">
-              <Button
-                variant="filled"
-                onClick={handleEnable}
-                loading={updateSettingResult.isLoading}
-              >
-                {t`Enable Custom Visualizations`}
+              <Button variant="filled" onClick={handleEnable}>
+                {t`Enable custom visualizations`}
               </Button>
             </Group>
           </Stack>
