@@ -150,7 +150,7 @@ function isInlineEventHandlerName(name: unknown): boolean {
   return typeof name === "string" && /^on/i.test(name);
 }
 
-// URL-bearing attributes — setting `javascript:<code>` here makes the browser
+// URL-valued attributes — setting `javascript:<code>` here makes the browser
 // run <code> in the host realm (outside the membrane) when the element is
 // followed/submitted/loaded.
 const URL_VALUED_ATTRS = new Set([
@@ -165,7 +165,7 @@ const URL_VALUED_ATTRS = new Set([
   "manifest",
 ]);
 
-function isUrlBearingAttr(name: unknown): boolean {
+function isUrlValuedAttr(name: unknown): boolean {
   return typeof name === "string" && URL_VALUED_ATTRS.has(name.toLowerCase());
 }
 
@@ -183,7 +183,7 @@ function setAttributeDistortion(pluginId: string) {
         `[plugin ${pluginId}] blocked setAttribute for inline event handler: ${name}`,
       );
     }
-    if (isUrlBearingAttr(name) && isJavascriptUrl(value)) {
+    if (isUrlValuedAttr(name) && isJavascriptUrl(value)) {
       throw new Error(
         `[plugin ${pluginId}] blocked setAttribute with javascript: URL: ${name}`,
       );
@@ -204,7 +204,7 @@ function setAttributeNSDistortion(pluginId: string) {
         `[plugin ${pluginId}] blocked setAttributeNS for inline event handler: ${qualifiedName}`,
       );
     }
-    if (isUrlBearingAttr(qualifiedName) && isJavascriptUrl(value)) {
+    if (isUrlValuedAttr(qualifiedName) && isJavascriptUrl(value)) {
       throw new Error(
         `[plugin ${pluginId}] blocked setAttributeNS with javascript: URL: ${qualifiedName}`,
       );
