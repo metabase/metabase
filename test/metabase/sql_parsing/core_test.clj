@@ -483,7 +483,26 @@
     (let [tuples (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
           sql    (str "select * from (values " tuples ") as t(x)")
           result (sql-parsing/strip-large-values sql)]
-      (is (clojure.string/includes? result "values (NULL)")))))
+      (is (clojure.string/includes? result "values (NULL)"))))
+
+  (testing "VALUES inside a string literal is not stripped"
+    (let [sql "SELECT 'INSERT INTO foo VALUES (1,2,3)' AS example FROM bar"]
+      (is (= sql (sql-parsing/strip-large-values sql)))))
+
+  (testing "Column named values is not stripped"
+    (let [sql "SELECT values FROM my_table WHERE values > 10"]
+      (is (= sql (sql-parsing/strip-large-values sql)))))
+
+  (testing "VALUES keyword not followed by paren is not stripped"
+    (let [sql "SELECT * FROM t WHERE col IN (SELECT values FROM other)"]
+      (is (= sql (sql-parsing/strip-large-values sql)))))
+
+  (testing "INSERT INTO ... VALUES is stripped when large"
+    (let [tuples (clojure.string/join ", " (map #(format "(%d, 'x')" %) (range 200)))
+          sql    (str "INSERT INTO foo VALUES " tuples)
+          result (sql-parsing/strip-large-values sql)]
+      (is (clojure.string/includes? result "VALUES (NULL, NULL)"))
+      (is (not (clojure.string/includes? result "(0, 'x')"))))))
 
 (deftest ^:parallel large-values-referenced-tables-test
   (testing "referenced-tables works on queries with massive VALUES clauses"

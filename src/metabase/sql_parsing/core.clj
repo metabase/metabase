@@ -157,13 +157,8 @@
       (recur (inc p))
       p)))
 
-(defn strip-large-values
-  "Replace large VALUES clauses with a single-row NULL placeholder.
-
-   Preserves the column count from the first tuple and all surrounding SQL structure.
-   Only triggers when a VALUES clause has more than `values-strip-threshold` tuples.
-
-   This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning)."
+(defn- strip-large-values*
+  "Inner implementation — may throw on malformed input."
   ^String [^String sql]
   (let [matcher (re-matcher values-keyword-pattern sql)
         n       (int (.length sql))]
@@ -182,7 +177,7 @@
                   ;; Parse first tuple to get column count
                   first-tuple-start (dec (int match-end)) ;; back up to '('
                   first-tuple-end   (skip-tuple sql first-tuple-start n)
-                  first-tuple-inner (when (> first-tuple-end (+ first-tuple-start 1))
+                  first-tuple-inner (when (> first-tuple-end (inc first-tuple-start))
                                       (.substring sql (inc first-tuple-start) (dec (int first-tuple-end))))
                   ;; Count and skip remaining tuples
                   [tuple-count end-pos]
@@ -211,6 +206,21 @@
                 (do
                   (.append sb sql (int match-start) (int end-pos))
                   (recur (int end-pos) sb))))))))))
+
+(defn strip-large-values
+  "Replace large VALUES clauses with a single-row NULL placeholder.
+
+   Preserves the column count from the first tuple and all surrounding SQL structure.
+   Only triggers when a VALUES clause has more than `values-strip-threshold` tuples.
+
+   This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
+   On any error, returns the original SQL unchanged so parsing can proceed normally."
+  ^String [^String sql]
+  (try
+    (strip-large-values* sql)
+    (catch Exception e
+      (log/warn e "Error stripping VALUES clauses, passing SQL through unchanged")
+      sql)))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
 
