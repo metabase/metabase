@@ -13,4 +13,5 @@ export * from "./UpsellSSO";
 export * from "./UpsellSessionTimeout";
 export * from "./UpsellUploads";
 export * from "./UpsellWhitelabel";
+export * from "./UpsellWritableConnection";
 export { UpsellDevInstances } from "./UpsellDevInstances";

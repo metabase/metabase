@@ -4,7 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { UpsellDatabaseRouting } from "metabase/admin/upsells";
+import {
+  UpsellDatabaseRouting,
+  UpsellWritableConnection,
+} from "metabase/admin/upsells";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
@@ -120,6 +123,8 @@ function DatabaseEditAppInner({
                   <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
                     database={database}
                   />
+
+                  <UpsellWritableConnection location="database-edit-writable-connection" />
 
                   <DatabaseModelFeaturesSection
                     database={database}
