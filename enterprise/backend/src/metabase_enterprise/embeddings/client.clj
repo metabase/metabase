@@ -27,7 +27,7 @@
        `clean-model-name`) and `get-configured-model` / `process-embeddings-streaming` stay in
        semantic-search — they're search-engine-specific."
   (:require
-   [metabase-enterprise.semantic-search.embedding :as ss.embedding]))
+   [metabase-enterprise.semantic-search.core :as semantic-search]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,4 +41,4 @@
   `texts`           — sequential collection of input strings.
   `opts`            — keyword opts forwarded to the underlying multimethod (e.g. `:type`)."
   [embedding-model texts & opts]
-  (apply ss.embedding/get-embeddings-batch embedding-model texts opts))
+  (apply semantic-search/get-embeddings-batch embedding-model texts opts))
