@@ -93,7 +93,7 @@ This diagram illustrates how an embed gets secured by a signed JWT:
 2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./guest-embedding.md#how-guest-embedding-works). The signed JWT should encode any query [parameters](./static-embedding-parameters.md) you're using to filter your data.
 3. **Response**: your Metabase backend returns data based on the query parameters encoded in the signed JWT.
 4. **Success**: your frontend displays the embedded Metabase page with the correct data.
-5. **(Optional) Refresh / Initialize**: if you've configured a [refresh endpoint](./guest-embedding.md#refreshing-the-jwt), the embed will call it for fresh tokens on expiry, and optionally for the first token. You can also use the endpoint to revoke access by refusing to issue a new token.
+5. **(Optional) Refresh / Initialize**: if you've configured a [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-the-jwt), the embed will call that endpoint you've set up for a fresh token the next time the embed needs to make a data request after the current token has expired (like when someone changes the filter value). The embed won't automatically fetch a new token. The endpoint can also serve the first token on load, so you can use the endpoint to revoke access by refusing to issue a new token.
 
 ### Example: securing data with locked parameters on a guest embed
 

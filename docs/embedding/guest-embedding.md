@@ -103,12 +103,14 @@ Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regeneratin
 
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute            | Description                                                           |
-| -------------------- | --------------------------------------------------------------------- |
-| `token`              | Required. The signed JWT token from your server.                      |
-| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
-| `with-downloads`\*   | Enable or disable downloads. Values: `"true"` or `"false"`.           |
-| `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
+| Attribute               | Description                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `token`                 | Required. The signed JWT token from your server.                                                             |
+| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                       |
+| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                  |
+| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                        |
+| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                           |
+| `custom-context`        | String or JSON forwarded to your [`guestEmbedProviderUri`](#refreshing-the-jwt) endpoint as `customContext`. |
 
 \* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
@@ -255,7 +257,7 @@ Things to keep in mind if you need to make changes to your locked parameters.
 
 ### Include all locked parameters in your JWT
 
-Once you publish a question or dashboard with a locked parameter, you _must_ include the name of the locked parameter in the `params` object when you sign the JWT. If you leave the parameter out, Metabase will refuse the request and log: `You must specify a value for :parameter in the JWT`.
+Once you publish a question or dashboard with a locked parameter, you _must_ include the name of the locked parameter in the `params` object when you sign the JWT. If you leave the parameter out, Metabase will refuse the request and log: `You must specify a value for :<parameter-name> in the JWT`. For example, if your locked parameter is `category`, the error will read `You must specify a value for :category in the JWT`.
 
 ### Pass an empty array to turn off a locked parameter
 
@@ -340,11 +342,11 @@ Request:
 }
 ```
 
-| Field           | Description                                                                       |
-| --------------- | --------------------------------------------------------------------------------- |
-| `entityType`    | `"dashboard"` or `"question"`.                                                    |
-| `entityId`      | The ID of the dashboard or question being embedded.                               |
-| `customContext` | Optional. Whatever string or object you set on the `custom-context` attribute.    |
+| Field           | Description                                                                    |
+| --------------- | ------------------------------------------------------------------------------ |
+| `entityType`    | `"dashboard"` or `"question"`.                                                 |
+| `entityId`      | The ID of the dashboard or question being embedded.                            |
+| `customContext` | Optional. Whatever string or object you set on the `custom-context` attribute. |
 
 Response: a JSON object with a single `jwt` field:
 
