@@ -7,8 +7,12 @@
    (`db-workspace-schema`, the QP middleware, the transform write-redirection hook)
    resolve workspace-mode correctly.
 
-   Idempotent: re-applying the same config skips workspaces and workspace_database rows
-   that already exist for the configured (workspace-name, database-id) pairs."
+   Idempotent on first match: re-applying the same config is a no-op. But re-applying
+   a *different* config — different workspace name, or a different set of databases —
+   throws. There is no rename, no in-place workspace removal: the only legitimate way
+   to mutate a workspace is to deprovision on the parent and re-emit `config.yml` to a
+   fresh child. Silent reconciliation would mask operator errors and leave stale rows
+   pointing at warehouse schemas the parent no longer owns."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
@@ -112,6 +116,48 @@
                                {:name       workspace-name
                                 :creator_id creator-id})))
 
+(defn- assert-no-stale-workspaces!
+  "Refuse to load if any existing `:model/Workspace` row has a name different from
+  the one in the new `config.yml`. There is no rename in this workflow — a
+  divergent name means the operator either pointed the child at a different
+  workspace's config (operator error) or a previous workspace wasn't cleaned up
+  (also operator error, requires fresh child)."
+  [new-name]
+  (let [existing-names (t2/select-fn-set :name :model/Workspace)]
+    (when (seq (disj existing-names new-name))
+      (throw (ex-info (str "config.yml does not match app-DB: workspace(s) "
+                           (pr-str (vec (disj existing-names new-name)))
+                           " exist locally but the new config declares "
+                           (pr-str new-name)
+                           ". Deprovision the workspace on the parent and "
+                           "re-bootstrap the child instance.")
+                      {:existing-workspace-names (vec existing-names)
+                       :new-workspace-name       new-name})))))
+
+(defn- assert-database-set-matches!
+  "If a workspace with `workspace-name` already exists, refuse to load when the
+  set of `database_id`s on its existing `WorkspaceDatabase` rows differs from
+  the new config. First load (no rows yet) passes through.
+
+  `new-db-ids` is the set of resolved DB ids declared in the new config."
+  [workspace-name new-db-ids]
+  (when-let [workspace-id (t2/select-one-pk :model/Workspace :name workspace-name)]
+    (let [existing-db-ids (t2/select-fn-set :database_id :model/WorkspaceDatabase
+                                            :workspace_id workspace-id)]
+      (when (and (seq existing-db-ids)
+                 (not= existing-db-ids new-db-ids))
+        (throw (ex-info (str "config.yml does not match app-DB: workspace "
+                             (pr-str workspace-name)
+                             " exists with database ids "
+                             (pr-str (sort existing-db-ids))
+                             " but the new config declares "
+                             (pr-str (sort new-db-ids))
+                             ". Deprovision the workspace on the parent and "
+                             "re-bootstrap the child instance.")
+                        {:workspace-name  workspace-name
+                         :existing-db-ids existing-db-ids
+                         :new-db-ids      new-db-ids}))))))
+
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
@@ -123,17 +169,28 @@
                   ...}}
 
    For each database entry, resolves the db-name to a `:model/Database` id and
-   inserts (idempotently) a `:provisioned` WorkspaceDatabase row."
+   inserts (idempotently) a `:provisioned` WorkspaceDatabase row.
+
+   Refuses (throws `ex-info`) when the new config diverges from existing app-DB
+   rows: a different workspace name, or a different set of databases for the
+   matching workspace. Idempotent identity-match still passes through unchanged."
   [section-config]
   (let [{:keys [name databases]} (ordered->plain section-config)
-        creator-id   (resolve-creator-id)
-        workspace-id (find-or-create-workspace! name creator-id)]
-    (doseq [[db-name-kw wsd-config] databases]
-      (let [db-name (clojure.core/name db-name-kw)
-            db-id   (resolve-db-id db-name)]
-        (upsert-workspace-database! workspace-id db-id wsd-config)))
-    {:workspace-id workspace-id
-     :database-count (count databases)}))
+        ;; Resolve all referenced databases up-front so unknown-name errors fire
+        ;; before any other validation work.
+        resolved (mapv (fn [[db-name-kw wsd-config]]
+                         {:db-id      (resolve-db-id (clojure.core/name db-name-kw))
+                          :wsd-config wsd-config})
+                       databases)
+        new-db-ids (set (map :db-id resolved))]
+    (assert-no-stale-workspaces! name)
+    (assert-database-set-matches! name new-db-ids)
+    (let [creator-id   (resolve-creator-id)
+          workspace-id (find-or-create-workspace! name creator-id)]
+      (doseq [{:keys [db-id wsd-config]} resolved]
+        (upsert-workspace-database! workspace-id db-id wsd-config))
+      {:workspace-id   workspace-id
+       :database-count (count databases)})))
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]

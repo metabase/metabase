@@ -93,6 +93,51 @@
               (is (= 1 (t2/count :model/Workspace :name "New workspace")))
               (is (= 1 (t2/count :model/WorkspaceDatabase :database_id db-id))))))))))
 
+(deftest re-apply-with-different-workspace-name-throws-test
+  (testing "re-applying with a renamed workspace throws — there is no rename in this workflow"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User     _           {:email "workspace@workspace.local" :is_superuser true}
+                     :model/Database _           {:name "ws-test-db"}]
+        (with-clean-workspace-rows
+          (fn []
+            (let [section  (workspace-section "ws-test-db")
+                  renamed  (assoc section :name "Some Other Name")]
+              (advanced-config.file.workspace/apply-workspace-section! section)
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"config\.yml does not match app-DB"
+                   (advanced-config.file.workspace/apply-workspace-section! renamed))))))))))
+
+(deftest re-apply-with-different-databases-throws-test
+  (testing "re-applying with a different set of databases throws — no in-place workspace edit"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User     _    {:email "workspace@workspace.local" :is_superuser true}
+                     :model/Database _    {:name "ws-test-db"}
+                     :model/Database _    {:name "ws-test-db-2"}]
+        (with-clean-workspace-rows
+          (fn []
+            (let [section-1 (workspace-section "ws-test-db")
+                  section-2 (assoc section-1
+                                   :databases {:ws-test-db-2 {:input_schemas ["public"]
+                                                              :output_schema "mb__isolation_44490_1933"}})]
+              (advanced-config.file.workspace/apply-workspace-section! section-1)
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"config\.yml does not match app-DB"
+                   (advanced-config.file.workspace/apply-workspace-section! section-2))))))))))
+
+(deftest first-load-allows-fresh-rows-test
+  (testing "first load (no existing rows) inserts whatever the config declares"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User     _           {:email "workspace@workspace.local" :is_superuser true}
+                     :model/Database {db-id :id} {:name "ws-test-db"}]
+        (with-clean-workspace-rows
+          (fn []
+            (advanced-config.file.workspace/apply-workspace-section!
+             (workspace-section "ws-test-db"))
+            (is (= 1 (t2/count :model/Workspace :name "New workspace")))
+            (is (= 1 (t2/count :model/WorkspaceDatabase :database_id db-id)))))))))
+
 (deftest unknown-database-name-throws-test
   (testing "referencing a database that doesn't exist in app-db throws ex-info"
     (mt/with-empty-h2-app-db!
