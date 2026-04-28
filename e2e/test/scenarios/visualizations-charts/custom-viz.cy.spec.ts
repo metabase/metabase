@@ -1725,40 +1725,82 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("18,760").should("be.visible");
     });
   });
+});
 
-  describe("sandbox", () => {
-    it("blocks disallowed native APIs called by injected plugin code", () => {
-      H.activateToken("bleeding-edge");
-      H.updateSetting("custom-viz-enabled", true);
-      H.setupCustomVizPlugin();
+describe("sandbox", () => {
+  let sandboxCardId: number;
+  before(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("custom-viz-enabled", true);
+    H.setupCustomVizPlugin();
 
-      H.createQuestion(
-        {
-          name: "Custom Viz Sandbox Test",
-          query: {
-            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          display: H.CUSTOM_VIZ_DISPLAY,
+    H.createQuestion(
+      {
+        name: "Custom Viz Sandbox Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
         },
-        { wrapId: true, idAlias: "sandboxCardId" },
-      );
+        display: H.CUSTOM_VIZ_DISPLAY,
+      },
+      { wrapId: true },
+    ).then((response) => {
+      sandboxCardId = response;
+    });
+  });
 
-      // Canary endpoint the sandboxed plugin must NOT be able to reach.
-      // A request hitting this alias would mean the sandbox failed.
-      cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-        "canary",
-      );
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    cy.wrap(sandboxCardId).as("sandboxCardId");
+  });
 
-      // Prepend a `window.fetch(...)` call to the legitimate bundle. The
-      // bundle is a top-level IIFE, so the injected statement runs the
-      // moment `sandbox.evaluate(text)` is called — the distortion wrapper
-      // should throw "blocked API call: fetch" before fetch ever fires.
+  // Each case prepends `payload` to the legitimate plugin bundle. The bundle
+  // is a top-level IIFE, so the injection runs during `sandbox.evaluate(text)`
+  // and must trip a distortion before the IIFE assigns __customVizPlugin__.
+  const CANARY_URL = "/api/canary-should-be-blocked-by-sandbox";
+  const SANDBOX_CASES: ReadonlyArray<{
+    name: string;
+    payload: string;
+    errorPattern: RegExp;
+  }> = [
+    {
+      name: "window.fetch",
+      payload: `window.fetch(${JSON.stringify(CANARY_URL)});`,
+      errorPattern: /\[plugin \d+\] blocked API call: window\.fetch/,
+    },
+    {
+      name: "document.open",
+      payload: `document.open(${JSON.stringify(CANARY_URL)});`,
+      errorPattern: /\[plugin \d+\] blocked API call: Document\.open/,
+    },
+    {
+      name: "document.cookie getter",
+      payload: "var stolen = document.cookie;",
+      errorPattern: /\[plugin \d+\] blocked API call: Document\.get cookie/,
+    },
+    {
+      name: 'setAttribute("onclick", ...)',
+      payload: 'document.body.setAttribute("onclick", "alert(1)");',
+      errorPattern:
+        /\[plugin \d+\] blocked setAttribute for inline event handler: onclick/,
+    },
+    {
+      name: "navigator.clipboard",
+      payload: "var c = navigator.clipboard;",
+      errorPattern: /\[plugin \d+\] blocked API call: Navigator\.get clipboard/,
+    },
+  ];
+
+  for (const { name, payload, errorPattern } of SANDBOX_CASES) {
+    it(`blocks ${name} called by injected plugin code`, () => {
+      cy.intercept("GET", CANARY_URL).as("canary");
 
       cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
         req.continue((res) => {
           res.body =
-            'console.log("injected bundle");window.fetch("/api/canary-should-be-blocked-by-sandbox");\n' +
+            `console.log("injected bundle");${payload}\n` +
             (res.body as string);
           res.send();
         });
@@ -1782,26 +1824,15 @@ describe("admin > custom visualizations", () => {
       H.undoToastList()
         .findByText(/"demo-viz" visualization is currently unavailable/)
         .should("be.visible");
-      // The injected console.log ran inside the sandbox (allowlisted),
-      // proving the bundle started executing before the blocked fetch
-      // tripped the distortion.
       cy.get("@consoleLog").should("be.calledWith", "injected bundle");
-
-      // loadCustomVizPlugin caught the sandbox error and logged it via
-      // console.error("Failed to load plugin ...", error). The Error's
-      // message is the distortion's "[plugin <id>] blocked API call:
-      // window.fetch".
       cy.get("@consoleError").should(
         "have.been.calledWithMatch",
         /Failed to load plugin/,
-        Cypress.sinon.match.has(
-          "message",
-          Cypress.sinon.match(/\[plugin \d+\] blocked API call: window\.fetch/),
-        ),
+        Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
       );
 
-      // The injected fetch must never have left the sandbox.
+      // No payload's network side-effect (if any) escaped the sandbox.
       cy.get("@canary.all").should("have.length", 0);
     });
-  });
+  }
 });
