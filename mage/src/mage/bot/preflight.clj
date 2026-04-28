@@ -31,16 +31,48 @@
       (println "Then re-run in a shell where mise is active.")
       (u/exit 1))))
 
+(def ^:private workmux-min-version
+  "Minimum workmux version required. 0.1.187 added the --config flag, which
+   we rely on to avoid writing .workmux.yaml at the repo root."
+  [0 1 187])
+
+(defn- parse-workmux-version
+  "Parse `workmux 0.1.189` (or just `0.1.189`) into [0 1 189], or nil if unparseable."
+  [s]
+  (when-let [[_ a b c] (re-find #"(\d+)\.(\d+)\.(\d+)" (or s ""))]
+    [(Integer/parseInt a) (Integer/parseInt b) (Integer/parseInt c)]))
+
+(defn- version<?
+  "True when version a (vector of ints) is strictly less than b."
+  [a b]
+  (neg? (compare a b)))
+
 (defn check-workmux!
-  "Check that workmux is installed. Exits on failure."
+  "Check that workmux is installed and at least the minimum version. Exits on failure."
   []
   (when-not (u/can-run? "workmux")
     (println (c/red "workmux is not installed."))
     (println)
     (println "Install workmux:")
     (println "  cargo install workmux")
-    (println "  or see: https://github.com/pghk/workmux")
-    (u/exit 1)))
+    (println "  or see: https://github.com/raine/workmux")
+    (u/exit 1))
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "--version")
+        version-str (when (zero? exit) (str/trim (str/join "" out)))
+        version     (parse-workmux-version version-str)
+        min-str     (str/join "." workmux-min-version)]
+    (cond
+      (nil? version)
+      (do
+        (println (c/red (str "Could not determine workmux version (got: " (pr-str version-str) ").")))
+        (println (c/red (str "Need workmux >= " min-str ". Run `workmux update` and retry.")))
+        (u/exit 1))
+
+      (version<? version workmux-min-version)
+      (do
+        (println (c/red (str "workmux " (str/join "." version) " is too old. Need >= " min-str ".")))
+        (println "Run `workmux update`, then retry.")
+        (u/exit 1)))))
 
 (defn check-nrepl!
   "Check that clj-nrepl-eval is installed. Exits on failure."

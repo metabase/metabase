@@ -1,15 +1,14 @@
 (ns mage.bot.autobot-test
   (:require
-   [babashka.process :as p]
-   [clojure.string :as str]
+   [babashka.fs :as fs]
    [clojure.test :refer [deftest is testing]]
    [mage.bot.autobot :as autobot]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private parse-wt-name #'autobot/parse-worktree-name)
-(def ^:private shell-quote   #'autobot/shell-quote)
-(def ^:private shell-join    #'autobot/shell-join)
+(def ^:private parse-wt-name        #'autobot/parse-worktree-name)
+(def ^:private launch-config-path   #'autobot/launch-config-path)
+(def ^:private with-workmux-config! #'autobot/with-workmux-config!)
 
 (deftest branch-to-session-name-test
   (testing "simple branch name"
@@ -37,35 +36,33 @@
   (testing "extracts last component for non-worktree paths"
     (is (= "some-dir" (parse-wt-name "some-dir  /path/to/some-dir")))))
 
-;; The launch path in launch-workmux-session! pipes shell-joined argv into a
-;; shell via `tmux send-keys -l`. If shell-quote leaks an unescaped metachar,
-;; user-controlled values (e.g. branch names) become a command-injection sink.
-;; These tests pin down the contract: every input round-trips back to itself
-;; when re-parsed by /bin/sh.
+(deftest launch-config-path-test
+  (testing "config goes under <root>/.bot/launch/<session>.yaml"
+    (is (= "/some/root/.bot/launch/my-session.yaml"
+           (launch-config-path "/some/root" "my-session")))))
 
-(defn- sh-roundtrip
-  "Pass `<quoted-cmd>` to /bin/sh as the body of a function that prints each
-   positional arg on its own line. Returns the parsed argv as the shell sees it."
-  [argv]
-  (let [script (str "f() { for a in \"$@\"; do printf '%s\\n' \"ARG=$a\"; done; }; f " (shell-join argv))
-        {:keys [out exit]} @(p/process ["sh" "-c" script] {:out :string})]
-    (when (zero? exit)
-      (->> (str/split-lines out)
-           (keep #(when (str/starts-with? % "ARG=") (subs % 4)))
-           vec))))
+(deftest with-workmux-config!-writes-and-cleans-up
+  (let [dir         (str (fs/create-temp-dir))
+        cfg-path    (str dir "/.bot/launch/test.yaml")
+        cfg-content "agent: 'claude'\n"
+        observed    (atom nil)]
+    (try
+      (testing "config file exists during invocation, gone afterward"
+        (with-workmux-config! cfg-path cfg-content
+          (fn []
+            (reset! observed (slurp cfg-path))))
+        (is (= cfg-content @observed))
+        (is (not (.exists (java.io.File. cfg-path)))))
 
-(deftest shell-join-injection-test
-  (testing "ordinary args round-trip"
-    (is (= ["workmux" "add" "feature-branch"]
-           (sh-roundtrip ["workmux" "add" "feature-branch"]))))
-  (testing "single quotes don't break the quoting"
-    (is (= ["it's a branch"] (sh-roundtrip ["it's a branch"]))))
-  (testing "command substitution is neutralized"
-    (is (= ["$(rm -rf /)"] (sh-roundtrip ["$(rm -rf /)"])))
-    (is (= ["`whoami`"] (sh-roundtrip ["`whoami`"]))))
-  (testing "double quotes, semicolons, and pipes are inert"
-    (is (= ["a\"b" "c;d" "e|f" "g&h"]
-           (sh-roundtrip ["a\"b" "c;d" "e|f" "g&h"]))))
-  (testing "shell-quote wraps in single quotes"
-    (is (= "'plain'" (shell-quote "plain")))
-    (is (= "'a'\\''b'" (shell-quote "a'b")))))
+      (testing "config file is cleaned up even when f throws"
+        (is (thrown? RuntimeException
+                     (with-workmux-config! cfg-path cfg-content
+                       (fn [] (throw (RuntimeException. "boom"))))))
+        (is (not (.exists (java.io.File. cfg-path)))))
+
+      (testing "parent directories are created on demand"
+        (let [nested (str dir "/.bot/launch/deeper/dir/x.yaml")]
+          (with-workmux-config! nested cfg-content (fn []))
+          (is (not (.exists (java.io.File. nested))))))
+      (finally
+        (fs/delete-tree dir)))))

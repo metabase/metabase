@@ -1,6 +1,7 @@
 (ns mage.bot.autobot
   "Unified autobot session management — launch, stop, list, quit."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.bot.preflight :as preflight]
    [mage.bot.setup :as bot-setup]
@@ -9,20 +10,6 @@
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(defn- shell-quote
-  "POSIX shell-quote a single argument by wrapping in single quotes and
-   escaping any embedded single quotes. Safe for inclusion in a command
-   line that will be parsed by /bin/sh."
-  [s]
-  (str "'" (str/replace (str s) "'" "'\\''") "'"))
-
-(defn- shell-join
-  "Shell-quote each argv element and join with spaces. Result is a single
-   command string that, when parsed by a shell, expands back to the
-   original argv (no expansion or substitution of user input)."
-  [argv]
-  (str/join " " (map shell-quote argv)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session naming and lookup
@@ -175,181 +162,121 @@
       pr-num      (str/replace "{{PR_NUM}}" pr-num))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Per-launch workmux config
+
+(defn- launch-config-path
+  "Per-launch workmux config path under <root>/.bot/launch/<session>.yaml.
+   The .bot/ directory is gitignored."
+  [root session-name]
+  (str root "/.bot/launch/" session-name ".yaml"))
+
+(defn- with-workmux-config!
+  "Spit `config-content` to `cfg-path`, run `f`, then delete the file even on
+   exception. Used by both launch and relaunch paths."
+  [cfg-path config-content f]
+  (io/make-parents cfg-path)
+  (spit cfg-path config-content)
+  (try (f)
+       (finally
+         (.delete (java.io.File. ^String cfg-path)))))
+
+(defn- in-tmux?
+  []
+  (not (str/blank? (u/env "TMUX" (constantly nil)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fresh launch (workmux add — creates new worktree)
 
 (defn- launch-workmux-session!
   "Launch a new workmux session (creates worktree from branch).
    branch-ref is what workmux add receives as its positional arg — either the
-   existing branch name, or origin/<name> to check out a remote branch."
-  [{:keys [session-name branch-name branch-ref base-branch prompt-file workmux-config display-info]}]
-  (let [workmux-path (str u/project-root-directory "/.workmux.yaml")
-        backup-path  (str workmux-path ".bak")
-        had-backup?  (.exists (java.io.File. workmux-path))
-        in-tmux?     (not (str/blank? (u/env "TMUX" (constantly nil))))]
+   existing branch name, or origin/<name> to check out a remote branch.
 
-    ;; Back up existing .workmux.yaml if it exists
-    (when had-backup?
-      (println (c/yellow "Backing up existing .workmux.yaml..."))
-      (.renameTo (java.io.File. workmux-path) (java.io.File. backup-path)))
+   When called from outside tmux, we pass `-s` so workmux creates the tmux
+   session itself (no `tmux new-session` shim, no bootstrap-window cleanup
+   loop). The window_prefix is set to \"\" in the template so the resulting
+   session name matches `session-name` exactly."
+  [{:keys [session-name branch-name branch-ref prompt-file workmux-config display-info]}]
+  (let [cfg-path (launch-config-path u/project-root-directory session-name)
+        ref      (or branch-ref branch-name)
+        attached? (in-tmux?)]
+    (with-workmux-config! cfg-path workmux-config
+      (fn []
+        ;; Fetch latest refs
+        (println (c/yellow "Fetching latest from remote..."))
+        (shell/sh "git" "fetch")
 
-    ;; Write our workmux config
-    (println (c/yellow "Writing .workmux.yaml..."))
-    (spit workmux-path workmux-config)
+        (println)
+        (println (c/bold (c/green "Launching workmux session: ") (c/cyan session-name)))
+        (println (c/yellow "Branch: ") branch-name)
+        (doseq [[label value] display-info]
+          (println (c/yellow (str label ": ")) value))
+        (println (c/yellow "Prompt: ") prompt-file)
+        (println)
 
-    (try
-      ;; Fetch latest refs
-      (println (c/yellow "Fetching latest from remote..."))
-      (shell/sh "git" "fetch")
+        ;; Synchronous workmux invocation. With --config we don't touch
+        ;; ./.workmux.yaml. With -s (when not already in tmux) workmux owns
+        ;; session creation. workmux returns once the worktree + window are
+        ;; up, so the cfg file is safe to delete in the finally.
+        (apply shell/sh
+               (concat ["workmux" "add" ref
+                        "--config" cfg-path
+                        "--name" session-name
+                        "-P" prompt-file]
+                       (when-not attached? ["-s"])))
 
-      ;; Launch workmux
-      (println)
-      (println (c/bold (c/green "Launching workmux session: ") (c/cyan session-name)))
-      (println (c/yellow "Branch: ") branch-name)
-      (doseq [[label value] display-info]
-        (println (c/yellow (str label ": ")) value))
-      (println (c/yellow "Prompt: ") prompt-file)
-      (println)
-
-      ;; branch-ref is either the local branch name or origin/<name> — workmux
-      ;; add will check it out either way. No --base needed since the branch
-      ;; already exists (autobot refuses to create new branches).
-      (let [ref (or branch-ref branch-name)]
-        (if in-tmux?
-          ;; Already inside tmux — run workmux directly; it creates a new window
-          ;; in the current session.
-          (shell/sh "workmux" "add" ref
-                    "--name" session-name
-                    "-P" prompt-file)
-          ;; Not inside tmux — create a detached session and send the workmux
-          ;; command to its initial shell. workmux then creates its own bot
-          ;; window alongside our bootstrap window (index 0, an empty zsh).
-          ;;
-          ;; We spawn a background cleanup loop that waits for workmux's window
-          ;; to appear (any window index != 0) and then kills window 0, so the
-          ;; user lands directly on the bot window when they attach.
-          ;;
-          ;; Each tmux step runs as its own argv invocation (no `bash -c`
-          ;; concatenation of user-controlled values). The workmux command
-          ;; line we type into the shell via `send-keys -l` is built from
-          ;; shell-quoted args, so a branch name containing $(...) or `...`
-          ;; can't trigger command substitution.
-          ;;
-          ;; Why not simpler alternatives:
-          ;;   1. `workmux add --session` hangs when run from a non-interactive
-          ;;      subprocess (it tries to attach and has no tty).
-          ;;   2. Appending `; exit` to the workmux command so window 0
-          ;;      self-destructs is racy: window 0 can exit before workmux
-          ;;      has fully registered its new window, and tmux tears down
-          ;;      the whole session.
-          (do
-            (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
-            (shell/sh "tmux" "new-session" "-d" "-s" session-name)
-            (let [typed-cmd (shell-join ["workmux" "add" ref
-                                         "--name" session-name
-                                         "-P" prompt-file])]
-              (shell/sh "tmux" "send-keys" "-t" session-name "-l" typed-cmd)
-              (shell/sh "tmux" "send-keys" "-t" session-name "Enter"))
-            ;; Background cleanup loop. session-name is sanitized to
-            ;; [a-z0-9-] by branch-to-session-name, so it's safe to
-            ;; interpolate into this shell snippet.
-            (let [cleanup-cmd (str
-                               "for i in $(seq 1 60); do "
-                               "  if tmux list-windows -t " session-name
-                               "     -F '#{window_index}' 2>/dev/null "
-                               "     | grep -qv '^0$'; then "
-                               "    tmux kill-window -t " session-name ":0 2>/dev/null; "
-                               "    exit 0; "
-                               "  fi; "
-                               "  sleep 1; "
-                               "done")]
-              (shell/sh "nohup" "bash" "-c"
-                        (str "(" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
-            (println)
-            (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
-            (println)
-            (println "Attach to it with:")
-            (println (str "  tmux attach -t " session-name)))))
-
-      (finally
-        ;; When not in tmux, workmux add was launched async via send-keys;
-        ;; give it time to read .workmux.yaml before we restore/remove it
-        (when-not in-tmux?
-          (Thread/sleep 3000))
-        ;; Restore .workmux.yaml
-        (if had-backup?
-          (do
-            (println (c/yellow "Restoring .workmux.yaml from backup..."))
-            (.renameTo (java.io.File. backup-path) (java.io.File. workmux-path)))
-          (do
-            (println (c/yellow "Removing .workmux.yaml..."))
-            (.delete (java.io.File. workmux-path))))))))
+        (when-not attached?
+          (println)
+          (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
+          (println)
+          (println "Attach to it with:")
+          (println (str "  tmux attach -t " session-name)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Relaunch (workmux open — reuses existing worktree)
 
 (defn- relaunch-existing-session!
   "Relaunch a session in an existing worktree.
-   Installs hooks, then launches tmux."
-  [{:keys [bot-name session-name wt-path prompt-file workmux-config]}]
-  (let [in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))]
-    ;; Install hooks
-    (bot-setup/setup-bot-worktree! {:wt-path wt-path})
+   Installs hooks, then launches workmux open with --config pointing at a
+   per-launch yaml under <wt-path>/.bot/launch/<session>.yaml. The worktree's
+   own persistent .workmux.yaml is left untouched. The mode (window vs
+   session) is whatever the original `workmux add` recorded."
+  [{:keys [session-name wt-path prompt-file workmux-config]}]
+  ;; Install hooks
+  (bot-setup/setup-bot-worktree! {:wt-path wt-path})
 
-    ;; Copy prompt file into worktree as prompt.md
-    (let [prompt-src  (if (.isAbsolute (java.io.File. ^String prompt-file))
-                        prompt-file
-                        (str u/project-root-directory "/" prompt-file))
-          prompt-dest (str wt-path "/prompt.md")]
-      (spit prompt-dest (slurp prompt-src))
-      (println (c/yellow "Copied prompt to " prompt-dest)))
+  ;; Copy prompt file into worktree as prompt.md
+  (let [prompt-src  (if (.isAbsolute (java.io.File. ^String prompt-file))
+                      prompt-file
+                      (str u/project-root-directory "/" prompt-file))
+        prompt-dest (str wt-path "/prompt.md")]
+    (spit prompt-dest (slurp prompt-src))
+    (println (c/yellow "Copied prompt to " prompt-dest)))
 
-    ;; Write .workmux.yaml for open (just panes section)
-    (let [panes-idx     (str/index-of workmux-config "\npanes:")
-          panes-section (when panes-idx (subs workmux-config panes-idx))]
-      (spit (str wt-path "/.workmux.yaml")
-            (str "agent: \"claude --permission-mode auto\"\n"
-                 panes-section)))
+  (let [cfg-path (launch-config-path wt-path session-name)
+        attached? (in-tmux?)]
+    (with-workmux-config! cfg-path workmux-config
+      (fn []
+        (println)
+        (println (c/bold (c/green "Relaunching session: ") (c/cyan session-name)))
+        (println)
 
-    (println)
-    (println (c/bold (c/green "Relaunching session: ") (c/cyan session-name)))
-    (println)
-
-    (if in-tmux?
-      (shell/sh {:dir wt-path} "workmux" "open" session-name "--run-hooks"
-                "-P" "prompt.md")
-      (do
-        (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
+        ;; Kill any leftover tmux session before reopening (was previously
+        ;; only done in the not-in-tmux branch; safe to do unconditionally).
         (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session-name)
-        ;; See the launch path for why we need a background cleanup loop to
-        ;; kill the bootstrap window (index 0) once workmux's window appears.
-        ;;
-        ;; All user-controlled values (wt-path, session-name) flow into
-        ;; tmux as argv (-c, -t, -s) — never concatenated into a shell
-        ;; string. The "workmux open ..." line typed via send-keys -l is
-        ;; shell-quoted.
-        (shell/sh "tmux" "new-session" "-d" "-s" session-name "-c" wt-path)
-        (let [typed-cmd (shell-join ["workmux" "open" session-name
-                                     "--run-hooks" "-P" "prompt.md"])]
-          (shell/sh "tmux" "send-keys" "-t" session-name "-l" typed-cmd)
-          (shell/sh "tmux" "send-keys" "-t" session-name "Enter"))
-        ;; session-name is sanitized to [a-z0-9-] so safe to interpolate.
-        (let [cleanup-cmd (str
-                           "for i in $(seq 1 60); do "
-                           "  if tmux list-windows -t " session-name
-                           "     -F '#{window_index}' 2>/dev/null "
-                           "     | grep -qv '^0$'; then "
-                           "    tmux kill-window -t " session-name ":0 2>/dev/null; "
-                           "    exit 0; "
-                           "  fi; "
-                           "  sleep 1; "
-                           "done")]
-          (shell/sh "nohup" "bash" "-c"
-                    (str "(" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
-        (println)
-        (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
-        (println)
-        (println "Attach to it with:")
-        (println (str "  tmux attach -t " session-name))))))
+
+        (shell/sh {:dir wt-path}
+                  "workmux" "open" session-name
+                  "--config" cfg-path
+                  "--run-hooks"
+                  "-P" "prompt.md")
+
+        (when-not attached?
+          (println)
+          (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
+          (println)
+          (println "Attach to it with:")
+          (println (str "  tmux attach -t " session-name)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Branch validation
@@ -454,6 +381,7 @@
         (println (c/red "Could not extract PR number from --pr-env-url: " pr-env-url))
         (println (c/red "Expected format: https://pr<NUMBER>.coredev.metabase.com"))
         (u/exit 1))
+      (preflight/check-workmux!)
       (when pr-env-url
         (preflight/check-pr-env-vars!))
       (when (str/blank? bot-name)
