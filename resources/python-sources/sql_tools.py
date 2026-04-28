@@ -9,6 +9,160 @@ from sqlglot import exp
 from sqlglot.errors import OptimizeError, ParseError
 
 
+#############################################################################
+# VALUES clause stripping for memory efficiency
+#############################################################################
+
+# Threshold: only strip VALUES clauses with more than this many tuples.
+# Small VALUES lists are fine; the problem is thousands of tuples causing
+# GraalPy memory amplification (~114KB per AST node vs ~1-2KB on CPython).
+_VALUES_STRIP_THRESHOLD = 100
+
+# Match VALUES followed by parenthesized tuples separated by commas.
+# This regex is intentionally conservative:
+# - Requires the VALUES keyword (case-insensitive)
+# - Matches balanced parentheses for each tuple (no nested parens inside values)
+# - Handles whitespace and newlines between tuples
+# We use a two-phase approach: first find the VALUES keyword, then count/strip tuples.
+_VALUES_KEYWORD_RE = re.compile(
+    r'\bVALUES\s*\(',
+    re.IGNORECASE
+)
+
+def _strip_large_values(sql: str) -> str:
+    """Replace large VALUES clauses with a single-row placeholder.
+
+    For queries like:
+        VALUES (1, 'a'), (2, 'b'), ..., (19800, 'zzz')
+
+    Replaces with:
+        VALUES (NULL, NULL)
+
+    preserving the column count from the first tuple. This is safe for all
+    analysis operations (referenced_tables, field_references, validate_query, etc.)
+    because the actual data inside VALUES tuples is irrelevant for structural analysis.
+
+    Only triggers when a VALUES clause has more than _VALUES_STRIP_THRESHOLD tuples.
+    """
+    # Quick check: if no VALUES keyword, nothing to do
+    if not _VALUES_KEYWORD_RE.search(sql):
+        return sql
+
+    result = []
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        # Look for VALUES keyword
+        m = _VALUES_KEYWORD_RE.search(sql, i)
+        if not m:
+            result.append(sql[i:])
+            break
+
+        # Add everything before this VALUES
+        result.append(sql[i:m.start()])
+
+        # Parse the tuples after VALUES
+        # m.end() points right after "VALUES ("
+        tuples_start = m.start()
+        pos = m.end() - 1  # back up to the opening paren
+
+        tuples = []
+        first_tuple_content = None
+
+        while pos < n:
+            # Skip whitespace
+            while pos < n and sql[pos] in ' \t\r\n':
+                pos += 1
+
+            if pos >= n or sql[pos] != '(':
+                break
+
+            # Find matching closing paren, respecting string literals
+            depth = 0
+            tuple_start = pos
+            in_string = False
+            string_char = None
+
+            while pos < n:
+                ch = sql[pos]
+                if in_string:
+                    if ch == string_char:
+                        # Check for escaped quote (doubled)
+                        if pos + 1 < n and sql[pos + 1] == string_char:
+                            pos += 1  # skip escaped quote
+                        else:
+                            in_string = False
+                elif ch == "'" or ch == '"':
+                    in_string = True
+                    string_char = ch
+                elif ch == '(':
+                    depth += 1
+                elif ch == ')':
+                    depth -= 1
+                    if depth == 0:
+                        pos += 1
+                        break
+                pos += 1
+
+            tuple_text = sql[tuple_start:pos]
+            tuples.append(tuple_text)
+
+            if first_tuple_content is None:
+                # Extract content between parens to count columns
+                inner = tuple_text[1:-1] if len(tuple_text) >= 2 else ""
+                first_tuple_content = inner
+
+            # Skip comma and whitespace between tuples
+            saved_pos = pos
+            while pos < n and sql[pos] in ' \t\r\n':
+                pos += 1
+            if pos < n and sql[pos] == ',':
+                pos += 1
+                while pos < n and sql[pos] in ' \t\r\n':
+                    pos += 1
+            else:
+                # No comma — end of VALUES list
+                break
+
+            # Safety: if next char isn't '(' we're done with tuples
+            if pos < n and sql[pos] != '(':
+                pos = saved_pos
+                break
+
+        if len(tuples) > _VALUES_STRIP_THRESHOLD and first_tuple_content is not None:
+            # Count columns by counting top-level commas in first tuple
+            col_count = 1
+            depth = 0
+            in_str = False
+            str_ch = None
+            for ch in first_tuple_content:
+                if in_str:
+                    if ch == str_ch:
+                        in_str = False
+                elif ch == "'" or ch == '"':
+                    in_str = True
+                    str_ch = ch
+                elif ch == '(':
+                    depth += 1
+                elif ch == ')':
+                    depth -= 1
+                elif ch == ',' and depth == 0:
+                    col_count += 1
+
+            nulls = ", ".join(["NULL"] * col_count)
+            # Preserve original keyword casing (e.g., "values" vs "VALUES")
+            values_keyword = sql[m.start():m.end()].rstrip().rstrip('(').rstrip()
+            result.append(f"{values_keyword} ({nulls})")
+        else:
+            # Below threshold, keep original
+            result.append(sql[tuples_start:pos])
+
+        i = pos
+
+    return "".join(result)
+
+
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
     if not isinstance(name, str):
         return False
@@ -87,6 +241,7 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
         referenced_tables("SELECT * FROM myproject.analytics.events", "bigquery")
         => '[["myproject", "analytics", "events"]]'
     """
+    sql = _strip_large_values(sql)
     ast = sqlglot.parse_one(sql, read=dialect)
     root_scope = optimizer.build_scope(ast)
 
@@ -130,6 +285,7 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
         referenced_fields("SELECT * FROM myproject.analytics.events", "bigquery")
         => '[["myproject", "analytics", "events", "*"]]'
     """
+    sql = _strip_large_values(sql)
     ast = sqlglot.parse_one(sql, read=dialect)
     root_scope = optimizer.build_scope(ast)
 
@@ -273,6 +429,7 @@ def validate_query(dialect, sql, default_table_schema, sqlglot_schema_json):
     # - Permissive mode: no schema → only check syntax, infer schema from query
     strict_mode = sqlglot_schema is not None and len(sqlglot_schema) > 0
 
+    sql = _strip_large_values(sql)
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
         ast = qualify.qualify(ast,
@@ -349,6 +506,7 @@ def simple_query(sql: str, dialect: str = None) -> str:
         simple_query("WITH cte AS (SELECT 1) SELECT * FROM cte")
         => '{"is_simple": false, "reason": "Contains a CTE"}'
     """
+    sql = _strip_large_values(sql)
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
 
@@ -429,6 +587,7 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_
     # Decode schema from JSON (passed from Clojure to avoid polyglot map issues)
     sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
 
+    sql = _strip_large_values(sql)
     ast = sqlglot.parse_one(sql, read=dialect)
     ast = qualify.qualify(ast,
                           db=default_table_schema,
@@ -632,6 +791,7 @@ def field_references(sql: str, dialect: str = "postgres") -> str:
     - used_fields: list of fields used (for custom_field)
     - member_fields: list of fields (for composite_field)
     """
+    sql = _strip_large_values(sql)
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
     except ParseError:
@@ -1612,6 +1772,7 @@ def is_single_select_stmt(sql: str, dialect: str = None) -> str:
     """Validates that a query is a single SELECT statement
     and returns the query reconstructed from the parsed AST.
     """
+    sql = _strip_large_values(sql)
     is_single_select = {"is_single_select?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
