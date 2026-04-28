@@ -52,6 +52,9 @@ export function getEmbeddedDashboardCardMenu(index = 0) {
 }
 
 export function getDashboardCardMenu(index = 0) {
+  cy.log("Wait for the card results to load");
+  getDashboardCard(index).findByTestId("loading-indicator").should("not.exist");
+  cy.log("Click on the card menu");
   return getDashboardCard(index).findByTestId("dashcard-menu");
 }
 
