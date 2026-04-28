@@ -6,6 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { UpsellSqlFixerPill } from "metabase/common/components/upsells/UpsellSqlFixer";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
@@ -144,6 +145,9 @@ export function VisualizationError({
               </ExternalLink>
             )}
             {!isResultDirty && <FixSqlQueryButton />}
+            {!isResultDirty && isSql && (
+              <UpsellSqlFixerPill source="sql-error-visualization" />
+            )}
           </Flex>
         </Flex>
       </Box>
