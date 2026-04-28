@@ -8,6 +8,7 @@
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase.audit-app.core :as audit]
+   [metabase.test :as mt]
    [metabase.util.json :as json]))
 
 (def ^:private fixture-1-dir
@@ -198,21 +199,18 @@
         (is (true? (:cli-validation (ex-data ex))))
         (is (re-find #"must be a directory" (ex-message ex)))))))
 
-(deftest main-translates-validation-errors-to-fail-test
-  ;; Not ^:parallel: uses `with-redefs` on the CLI's private `fail!` to assert without exiting.
+(deftest ^:sequential main-translates-validation-errors-to-fail-test
   (testing "-main converts ex-info {:cli-validation true} from run-cli into fail! + exit 1"
     (let [fail-calls (atom [])]
-      (with-redefs [cli/fail! (fn [& msgs]
-                                (swap! fail-calls conj (vec msgs))
-                                (throw (ex-info "mocked-exit" {::mock :exit})))]
+      (mt/with-dynamic-fn-redefs [cli/fail! (fn [& msgs]
+                                              (swap! fail-calls conj (vec msgs))
+                                              (throw (ex-info "mocked-exit" {::mock :exit})))]
         (try (#'cli/-main "--representation-dir" "/nonexistent/path/xyz-not-a-dir")
              (catch clojure.lang.ExceptionInfo _ nil)))
       (is (= 1 (count @fail-calls)) "fail! should be invoked exactly once")
       (is (re-find #"does not exist" (ffirst @fail-calls))))))
 
-(deftest main-converts-missing-embeddings-to-fail-test
-  ;; Not ^:parallel: uses `with-redefs` on the CLI's private `fail!` to assert on the user-facing
-  ;; failure path without terminating the JVM.
+(deftest ^:sequential main-converts-missing-embeddings-to-fail-test
   (testing "-main translates a missing --embeddings override into a one-line fail! + exit 1"
     (let [tmp-dir    (doto (java.io.File/createTempFile "main-missing-emb-" "")
                        (.delete) (.mkdirs) .deleteOnExit)
@@ -224,9 +222,9 @@
           _          (write "tables.json"      [])
           dir-path   (.getAbsolutePath tmp-dir)
           fail-calls (atom [])]
-      (with-redefs [cli/fail! (fn [& msgs]
-                                (swap! fail-calls conj (vec msgs))
-                                (throw (ex-info "mocked-exit" {::mock :exit})))]
+      (mt/with-dynamic-fn-redefs [cli/fail! (fn [& msgs]
+                                              (swap! fail-calls conj (vec msgs))
+                                              (throw (ex-info "mocked-exit" {::mock :exit})))]
         (let [thrown (try (#'cli/-main "--representation-dir" dir-path
                                        "--embeddings" "embeddings/does-not-exist.json")
                           nil
