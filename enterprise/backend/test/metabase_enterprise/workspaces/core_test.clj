@@ -20,12 +20,12 @@
 (defmacro ^:private with-stubbed-provisioning [& body]
   `(with-redefs [provisioning/run-async! (fn [f#] (f#))
                  provisioning/provision-workspace-database!
-                 (fn [wsd-id#]
+                 (fn [wsd-id# _provisioner#]
                    (t2/update! :model/WorkspaceDatabase {:id wsd-id#}
                                {:status :provisioned :output_schema (str "mb_iso_test_" wsd-id#)})
                    (t2/select-one :model/WorkspaceDatabase :id wsd-id#))
                  provisioning/deprovision-workspace-database!
-                 (fn [wsd-id#]
+                 (fn [wsd-id# _provisioner#]
                    (t2/update! :model/WorkspaceDatabase {:id wsd-id#}
                                {:status :unprovisioned :output_schema "" :database_details {}})
                    (t2/select-one :model/WorkspaceDatabase :id wsd-id#))]
