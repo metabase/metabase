@@ -57,7 +57,8 @@ SELECT
                 WHEN 'slackbot'                          THEN 'Slackbot'
                 WHEN 'oss-sql-gen'                       THEN 'SQL'
                 WHEN 'sql-gen'                           THEN 'SQL'
-                ELSE 'Unknown'
+                WHEN 'unknown'                           THEN 'Unknown'
+                ELSE aul.source
             END
      FROM ai_usage_log aul
      WHERE aul.conversation_id = c.id

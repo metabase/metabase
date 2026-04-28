@@ -13,7 +13,8 @@ SELECT
         WHEN 'slackbot'                          THEN 'Slackbot'
         WHEN 'oss-sql-gen'                       THEN 'SQL'
         WHEN 'sql-gen'                           THEN 'SQL'
-        ELSE 'Unknown'
+        WHEN 'unknown'                           THEN 'Unknown'
+        ELSE a.source
     END                                                               AS source_name,
     a.model,
     a.profile_id,
