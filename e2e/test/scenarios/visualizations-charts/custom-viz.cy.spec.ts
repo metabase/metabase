@@ -1940,4 +1940,48 @@ describe("sandbox", () => {
       testCase.additionalAssertions?.();
     },
   );
+
+  // innerHTML/outerHTML/insertAdjacentHTML go through DOMPurify rather than
+  // being blocked outright, so this case doesn't fit the "expect a thrown
+  // error and a fallback viz" shape of SANDBOX_CASES. Instead we inject an
+  // <img onerror> — which the browser would execute in the host realm if it
+  // survived assignment — and confirm DOMPurify stripped it by checking the
+  // onerror's side effect (a fetch to the canary URL) never happens.
+  it("sanitizes innerHTML through DOMPurify before it reaches the DOM", () => {
+    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+      "canary",
+    );
+
+    const payload = `
+      var d = document.createElement('div');
+      d.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+      document.body.appendChild(d);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<number>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    // Viz still renders — sanitization mutates the HTML but doesn't throw.
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+    cy.get("@canary.all").should("have.length", 0);
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
+    );
+  });
 });

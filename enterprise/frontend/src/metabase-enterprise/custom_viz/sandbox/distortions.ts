@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 import {
   ALLOWED_FUNCTIONS,
   CREATE_ELEMENT,
@@ -26,7 +28,8 @@ export function makeDistortionCallback(pluginId: string) {
     }
 
     if (SANITIZED_SETTERS.has(fun)) {
-      return SANITIZED_SETTERS.get(fun) as object;
+      const info = SANITIZED_SETTERS.get(fun)!;
+      return sanitizedSetterDistortion(pluginId, info.name, info.originalSet);
     }
 
     if (fun === CREATE_ELEMENT) {
@@ -34,7 +37,7 @@ export function makeDistortionCallback(pluginId: string) {
     }
 
     if (fun === INSERT_ADJACENT_HTML) {
-      return insertAdjacentHTMLDistortion();
+      return insertAdjacentHTMLDistortion(pluginId);
     }
 
     if (fun === SET_ATTRIBUTE) {
@@ -79,27 +82,47 @@ function isUserDefinedFunction(fun: object): boolean {
 }
 
 // Wraps innerHTML/outerHTML through DOMPurify before they reach the DOM.
-const SANITIZED_SETTERS = new Map<
-  object,
-  (this: Element, value: string) => void
->();
+type SanitizedSetterInfo = {
+  name: string;
+  originalSet: (this: Element, value: string) => void;
+};
+
+const SANITIZED_SETTERS = new Map<object, SanitizedSetterInfo>();
 
 for (const key of ["innerHTML", "outerHTML"] as const) {
   const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, key);
   if (descriptor?.set) {
-    const originalSet = descriptor.set;
-    SANITIZED_SETTERS.set(
-      descriptor.set,
-      function (this: Element, value: string) {
-        const purify = (
-          window as unknown as {
-            DOMPurify?: { sanitize: (v: string) => string };
-          }
-        ).DOMPurify;
-        originalSet.call(this, purify ? purify.sanitize(value) : value);
-      },
+    SANITIZED_SETTERS.set(descriptor.set, {
+      name: key,
+      originalSet: descriptor.set,
+    });
+  }
+}
+
+// DOMPurify exposes the list of nodes/attributes it stripped from the most
+// recent sanitize call as `DOMPurify.removed`. Reading it immediately after
+// sanitize lets us log only when something dangerous was actually removed,
+// not on harmless normalization (case, whitespace, missing close tags). The
+// distortion runs in the host realm, so console output goes to the host.
+function logSanitizationIfStripped(pluginId: string, source: string) {
+  if (DOMPurify.removed.length > 0) {
+    console.error(
+      `[plugin ${pluginId}] DOMPurify stripped content from ${source}:`,
+      DOMPurify.removed,
     );
   }
+}
+
+function sanitizedSetterDistortion(
+  pluginId: string,
+  name: string,
+  originalSet: (this: Element, value: string) => void,
+) {
+  return function (this: Element, value: string) {
+    const sanitized = DOMPurify.sanitize(value);
+    logSanitizationIfStripped(pluginId, name);
+    originalSet.call(this, sanitized);
+  };
 }
 
 // CSSStyleDeclaration WebIDL proxy workaround: intercept width/height on the real canvas node.
@@ -216,21 +239,14 @@ function setAttributeNSDistortion(pluginId: string) {
   };
 }
 
-function insertAdjacentHTMLDistortion() {
+function insertAdjacentHTMLDistortion(pluginId: string) {
   return function insertAdjacentHTML(
     this: Element,
     position: InsertPosition,
     html: string,
   ) {
-    const purify = (
-      window as unknown as {
-        DOMPurify?: { sanitize: (v: string) => string };
-      }
-    ).DOMPurify;
-    INSERT_ADJACENT_HTML.call(
-      this,
-      position,
-      purify ? purify.sanitize(html) : html,
-    );
+    const sanitized = DOMPurify.sanitize(html);
+    logSanitizationIfStripped(pluginId, "insertAdjacentHTML");
+    INSERT_ADJACENT_HTML.call(this, position, sanitized);
   };
 }
