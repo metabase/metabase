@@ -1,12 +1,15 @@
 export * from "./UpsellBetterSupport";
 export * from "./UpsellCacheConfig";
+export * from "./UpsellCachePreemptive";
 export * from "./UpsellCloud";
+export * from "./UpsellEmailRecipients";
 export * from "./UpsellEmailWhitelabel";
 export * from "./UpsellEmbeddingTheme";
 export * from "./UpsellHosting";
 export * from "./UpsellPerformanceTools";
 export * from "./UpsellPermissions";
 export * from "./UpsellSSO";
+export * from "./UpsellSessionTimeout";
 export * from "./UpsellUploads";
 export * from "./UpsellWhitelabel";
 export { UpsellDevInstances } from "./UpsellDevInstances";

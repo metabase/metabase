@@ -3,7 +3,10 @@ import { t } from "ttag";
 import { findWhere } from "underscore";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellCacheConfig } from "metabase/admin/upsells";
+import {
+  UpsellCacheConfig,
+  UpsellCachePreemptive,
+} from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -160,6 +163,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
           </Panel>
         </RoundedBox>
         <UpsellCacheConfig location="performance-data_cache" />
+        <UpsellCachePreemptive location="performance-data_cache" />
       </Flex>
     </SettingsPageWrapper>
   );

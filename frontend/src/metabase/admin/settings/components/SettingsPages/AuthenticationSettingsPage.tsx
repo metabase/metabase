@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellSSO } from "metabase/admin/upsells";
+import { UpsellSSO, UpsellSessionTimeout } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import {
@@ -42,6 +42,7 @@ export function AuthenticationSettingsPage({
           <UpsellSSO location="authentication-sidebar" />
         </Box>
       </Flex>
+      <UpsellSessionTimeout location="authentication-session-timeout" />
     </SettingsPageWrapper>
   );
 }

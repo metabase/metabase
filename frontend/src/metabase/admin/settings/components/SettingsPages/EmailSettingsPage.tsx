@@ -4,7 +4,10 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { UpsellHostingBanner } from "metabase/admin/upsells";
+import {
+  UpsellEmailRecipients,
+  UpsellHostingBanner,
+} from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -76,6 +79,9 @@ export function EmailSettingsPage() {
             />
             <SendTestEmailWidget />
           </SettingsSection>
+        )}
+        {isEmailConfigured && (
+          <UpsellEmailRecipients location="settings-email-recipients" />
         )}
         <Center>
           <UpsellHostingBanner location="settings-email-migrate_to_cloud" />
