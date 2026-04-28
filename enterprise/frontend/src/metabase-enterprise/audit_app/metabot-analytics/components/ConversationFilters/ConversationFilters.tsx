@@ -73,6 +73,7 @@ export function ConversationFilters({
           searchable
           w={180}
           bdrs="sm"
+          data-testid="conversation-filters-tenant-select"
         />
       )}
       <Select
@@ -85,6 +86,7 @@ export function ConversationFilters({
         searchable
         w={180}
         bdrs="sm"
+        data-testid="conversation-filters-group-select"
       />
       <Select
         data={[{ value: "", label: t`All users` }, ...userOptions]}
@@ -93,6 +95,7 @@ export function ConversationFilters({
         searchable
         w={180}
         bdrs="sm"
+        data-testid="conversation-filters-user-select"
       />
     </Flex>
   );
