@@ -14,11 +14,16 @@ import type {
   MetabaseColor,
   MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
-import type { EmbeddingTheme } from "metabase-types/api";
+import {
+  type HarmonyMode,
+  suggestHarmonyColors,
+} from "metabase/ui/colors/harmonies";
+import type { ColorHarmonyMode, EmbeddingTheme } from "metabase-types/api";
 
 interface ThemeEditorState {
   name: string;
   settings: MetabaseTheme;
+  colorHarmony: ColorHarmonyMode;
 }
 
 export type ThemeEditorId = number | "new";
@@ -42,6 +47,42 @@ const PRIMARY_COLORS_KEYS: Exclude<MetabaseColor, "charts">[] = [
   "text-primary",
 ];
 
+/** Color keys that the color-harmony generator manages, alongside `charts`. */
+const HARMONY_DERIVED_KEYS: Exclude<MetabaseColor, "charts">[] = [
+  "filter",
+  "summarize",
+  "positive",
+  "negative",
+];
+
+const DEFAULT_DRAFT_HARMONY: HarmonyMode = "octagonal";
+
+const isHarmonyMode = (mode: ColorHarmonyMode): mode is HarmonyMode =>
+  mode !== "off";
+
+/** Overwrites the harmony-managed keys on a settings object with values derived from `colors.brand`. */
+const applyHarmony = (
+  settings: MetabaseTheme,
+  mode: HarmonyMode,
+): MetabaseTheme => {
+  const brand = settings.colors?.brand;
+  if (!brand) {
+    return settings;
+  }
+  const harmony = suggestHarmonyColors(brand, mode);
+  return {
+    ...settings,
+    colors: {
+      ...settings.colors,
+      filter: harmony.filter,
+      summarize: harmony.summarize,
+      positive: harmony.positive,
+      negative: harmony.negative,
+      charts: harmony.charts,
+    },
+  };
+};
+
 export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   const isDraft = themeId === "new";
   const {
@@ -57,7 +98,11 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   // Seed once on mount when in draft mode so the baseline is stable across renders.
   const [draftInitial] = useState<ThemeEditorState | null>(() =>
     isDraft
-      ? { name: t`Untitled theme`, settings: defaultThemeSettings }
+      ? {
+          name: t`Untitled theme`,
+          settings: applyHarmony(defaultThemeSettings, DEFAULT_DRAFT_HARMONY),
+          colorHarmony: DEFAULT_DRAFT_HARMONY,
+        }
       : null,
   );
 
@@ -72,10 +117,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     if (isDraft && draftInitial) {
       setCurrentTheme(draftInitial);
     } else if (serverTheme) {
-      setCurrentTheme({
-        name: serverTheme.name,
-        settings: serverTheme.settings,
-      });
+      setCurrentTheme(serverThemeToState(serverTheme));
     }
   }, [isDraft, draftInitial, serverTheme, currentTheme]);
 
@@ -83,9 +125,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     if (isDraft) {
       return draftInitial;
     }
-    return serverTheme
-      ? { name: serverTheme.name, settings: serverTheme.settings }
-      : null;
+    return serverTheme ? serverThemeToState(serverTheme) : null;
   }, [isDraft, draftInitial, serverTheme]);
 
   const isDirty = useMemo(
@@ -94,43 +134,77 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   );
   const canSave = isDraft || isDirty;
 
-  const updateSettings = useCallback(
-    (updater: (settings: MetabaseTheme) => Partial<MetabaseTheme>) => {
-      setCurrentTheme((prev) =>
-        prev
-          ? {
-              ...prev,
-              settings: { ...prev.settings, ...updater(prev.settings) },
-            }
-          : prev,
-      );
-    },
-    [],
-  );
-
   const setName = useCallback((name: string) => {
     setCurrentTheme((prev) => (prev ? { ...prev, name } : prev));
   }, []);
 
   const setColor = useCallback(
     (key: Exclude<MetabaseColor, "charts">, value: string) => {
-      updateSettings((s) => ({
-        colors: { ...s.colors, [key]: value.toLowerCase() },
-      }));
-    },
-    [updateSettings],
-  );
+      const lowered = value.toLowerCase();
+      setCurrentTheme((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const colors = { ...prev.settings.colors, [key]: lowered };
+        const settings = { ...prev.settings, colors };
 
-  const setChartColor = useCallback(
-    (index: number, value: string) => {
-      updateSettings((s) => {
-        const charts = [...(s.colors?.charts ?? [])];
-        charts[index] = value.toLowerCase();
-        return { colors: { ...s.colors, charts } };
+        // User edited a harmony-managed color: opt out of the harmony.
+        if (
+          HARMONY_DERIVED_KEYS.includes(key) &&
+          isHarmonyMode(prev.colorHarmony)
+        ) {
+          return { ...prev, settings, colorHarmony: "off" };
+        }
+
+        // Brand changed while a harmony is active: regenerate dependents.
+        if (key === "brand" && isHarmonyMode(prev.colorHarmony)) {
+          return {
+            ...prev,
+            settings: applyHarmony(settings, prev.colorHarmony),
+          };
+        }
+
+        return { ...prev, settings };
       });
     },
-    [updateSettings],
+    [],
   );
+
+  const setChartColor = useCallback((index: number, value: string) => {
+    const lowered = value.toLowerCase();
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const charts = [...(prev.settings.colors?.charts ?? [])];
+      charts[index] = lowered;
+      const settings = {
+        ...prev.settings,
+        colors: { ...prev.settings.colors, charts },
+      };
+      // Editing a chart slot opts out of the harmony.
+      const colorHarmony: ColorHarmonyMode = isHarmonyMode(prev.colorHarmony)
+        ? "off"
+        : prev.colorHarmony;
+      return { ...prev, settings, colorHarmony };
+    });
+  }, []);
+
+  const setColorHarmony = useCallback((mode: ColorHarmonyMode) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      if (!isHarmonyMode(mode)) {
+        return { ...prev, colorHarmony: mode };
+      }
+      return {
+        ...prev,
+        colorHarmony: mode,
+        settings: applyHarmony(prev.settings, mode),
+      };
+    });
+  }, []);
 
   const setFontFamily = useCallback((family: string) => {
     setCurrentTheme((prev) => {
@@ -193,32 +267,47 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   }, [currentTheme, defaultThemeSettings]);
 
   const resetAdditionalColors = useCallback(() => {
-    updateSettings((s) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
       const defaultColors = defaultThemeSettings.colors ?? {};
-      const updatedColors = { ...s.colors };
+      const updatedColors = { ...prev.settings.colors };
 
       for (const key of ADDITIONAL_COLOR_KEYS) {
         updatedColors[key] = (defaultColors[key] as string) ?? "";
       }
-
       updatedColors.charts = defaultColors.charts ?? [];
 
-      return { colors: updatedColors };
+      let settings: MetabaseTheme = { ...prev.settings, colors: updatedColors };
+      // Keep harmony-derived values consistent with the active mode after a reset.
+      if (isHarmonyMode(prev.colorHarmony)) {
+        settings = applyHarmony(settings, prev.colorHarmony);
+      }
+      return { ...prev, settings };
     });
-  }, [updateSettings, defaultThemeSettings]);
+  }, [defaultThemeSettings]);
 
   const resetMainColors = useCallback(() => {
-    updateSettings((s) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
       const defaultColors = defaultThemeSettings.colors ?? {};
-      const updatedColors = { ...s.colors };
+      const updatedColors = { ...prev.settings.colors };
 
       for (const key of PRIMARY_COLORS_KEYS) {
         updatedColors[key] = (defaultColors[key] as string) ?? "";
       }
 
-      return { colors: updatedColors };
+      let settings: MetabaseTheme = { ...prev.settings, colors: updatedColors };
+      // Brand may have changed: re-derive dependents to stay in sync with the harmony mode.
+      if (isHarmonyMode(prev.colorHarmony)) {
+        settings = applyHarmony(settings, prev.colorHarmony);
+      }
+      return { ...prev, settings };
     });
-  }, [updateSettings, defaultThemeSettings]);
+  }, [defaultThemeSettings]);
 
   const handleSave = useCallback(async (): Promise<EmbeddingTheme | null> => {
     if (!currentTheme) {
@@ -229,6 +318,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
         const created = await createTheme({
           name: currentTheme.name || t`Untitled theme`,
           settings: currentTheme.settings,
+          color_harmony: currentTheme.colorHarmony,
         }).unwrap();
         sendToast({ message: t`Theme saved`, icon: "check" });
         return created;
@@ -237,6 +327,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
         id: themeId as number,
         name: currentTheme.name,
         settings: currentTheme.settings,
+        color_harmony: currentTheme.colorHarmony,
       }).unwrap();
       sendToast({ message: t`Theme saved`, icon: "check" });
       return updated;
@@ -261,6 +352,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     setName,
     setColor,
     setChartColor,
+    setColorHarmony,
     hasMainColorChanges,
     resetMainColors,
     hasAdditionalColorChanges,
@@ -275,3 +367,9 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
 export type EmbeddingThemeEditorResult = ReturnType<
   typeof useEmbeddingThemeEditor
 >;
+
+const serverThemeToState = (theme: EmbeddingTheme): ThemeEditorState => ({
+  name: theme.name,
+  settings: theme.settings,
+  colorHarmony: theme.color_harmony,
+});

@@ -16,6 +16,7 @@ const TEST_THEME: EmbeddingTheme = {
     fontFamily: "Roboto",
     fontSize: "14px",
   },
+  color_harmony: "off",
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
 };
@@ -139,6 +140,7 @@ describe("useEmbeddingThemeEditor", () => {
           ],
         },
       },
+      color_harmony: "off",
     };
 
     function setupWithCustomColors() {
@@ -359,6 +361,199 @@ describe("useEmbeddingThemeEditor", () => {
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
         1,
       );
+    });
+  });
+
+  describe("color harmony", () => {
+    it("seeds a draft with octagonal harmony and pre-derived colors", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("octagonal");
+      const colors = result.current.currentTheme?.settings.colors;
+      expect(colors?.filter).toBeDefined();
+      expect(colors?.summarize).toBeDefined();
+      expect(colors?.positive).toBeDefined();
+      expect(colors?.negative).toBeDefined();
+      expect(colors?.charts).toHaveLength(8);
+    });
+
+    it("loads color_harmony from the server theme", async () => {
+      fetchMock.get("path:/api/embed-theme/2", {
+        ...TEST_THEME,
+        id: 2,
+        color_harmony: "square",
+      });
+
+      const { result } = renderHookWithProviders(
+        () => useEmbeddingThemeEditor(2),
+        { withUndos: true },
+      );
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("square");
+    });
+
+    it("regenerates the derived palette when brand changes in a non-off mode", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      const initialFilter =
+        result.current.currentTheme?.settings.colors?.filter;
+      const initialChart0 =
+        result.current.currentTheme?.settings.colors?.charts?.[0];
+
+      act(() => {
+        result.current.setColor("brand", "#FF0000");
+      });
+
+      const newFilter = result.current.currentTheme?.settings.colors?.filter;
+      const newChart0 =
+        result.current.currentTheme?.settings.colors?.charts?.[0];
+      expect(newFilter).not.toBe(initialFilter);
+      expect(newChart0).not.toBe(initialChart0);
+      expect(result.current.currentTheme?.colorHarmony).toBe("octagonal");
+    });
+
+    it("flips to off when a derived color is edited manually", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("octagonal");
+
+      act(() => {
+        result.current.setColor("filter", "#123456");
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("off");
+      expect(result.current.currentTheme?.settings.colors?.filter).toBe(
+        "#123456",
+      );
+    });
+
+    it("flips to off when a chart color is edited manually", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("octagonal");
+
+      act(() => {
+        result.current.setChartColor(2, "#abcdef");
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("off");
+      expect(result.current.currentTheme?.settings.colors?.charts?.[2]).toBe(
+        "#abcdef",
+      );
+    });
+
+    it("does not flip when a non-derived color is edited", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      act(() => {
+        result.current.setColor("border", "#abcdef");
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("octagonal");
+    });
+
+    it("setColorHarmony to a non-off mode overwrites the derived palette", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      // Seed with custom colors so we can detect the overwrite.
+      act(() => {
+        result.current.setColor("filter", "#ff00ff");
+        result.current.setChartColor(0, "#ff00ff");
+      });
+
+      act(() => {
+        result.current.setColorHarmony("octagonal");
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("octagonal");
+      expect(result.current.currentTheme?.settings.colors?.filter).not.toBe(
+        "#ff00ff",
+      );
+      expect(
+        result.current.currentTheme?.settings.colors?.charts?.[0],
+      ).not.toBe("#ff00ff");
+    });
+
+    it("setColorHarmony to off only updates the mode, leaves colors", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      const filterBefore = result.current.currentTheme?.settings.colors?.filter;
+
+      act(() => {
+        result.current.setColorHarmony("off");
+      });
+
+      expect(result.current.currentTheme?.colorHarmony).toBe("off");
+      expect(result.current.currentTheme?.settings.colors?.filter).toBe(
+        filterBefore,
+      );
+    });
+
+    it("isDirty becomes true when only the harmony mode changes", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.isDirty).toBe(false);
+
+      act(() => {
+        result.current.setColorHarmony("octagonal");
+      });
+
+      expect(result.current.isDirty).toBe(true);
+    });
+
+    it("includes color_harmony in the save payload", async () => {
+      fetchMock.post("path:/api/embed-theme", {
+        ...TEST_THEME,
+        id: 99,
+      });
+
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      await result.current.handleSave();
+
+      const post = fetchMock.callHistory.calls("path:/api/embed-theme")[0];
+      const body = JSON.parse((post.options?.body as string) ?? "{}");
+      expect(body.color_harmony).toBe("octagonal");
     });
   });
 
