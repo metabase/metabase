@@ -154,19 +154,20 @@ export function SchemaViewerFieldRow({
       gap="sm"
       wrap="nowrap"
       h={ROW_HEIGHT}
-      px="lg"
-      data-expandable={canExpand || undefined}
+      px="md"
+      data-clickable={isClickable || undefined}
       onClick={isClickable ? handleClick : undefined}
       style={{ cursor: isClickable ? "pointer" : undefined }}
     >
       <FixedSizeIcon
         name={icon}
         size={16}
-        c={isSelectedInEdge ? "brand" : "text-secondary"}
+        c={isSelectedInEdge ? "brand" : undefined}
+        className={isSelectedInEdge ? undefined : S.icon}
         style={{ flexShrink: 0 }}
       />
       <Box
-        className={cx(S.name, { [S.linkable]: isClickable })}
+        className={cx(S.name, { [S.clickableName]: isClickable })}
         fz="sm"
         fw={isPK || isSelectedInEdge ? "bold" : "normal"}
         c={isSelectedInEdge ? "brand" : undefined}

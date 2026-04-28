@@ -7,23 +7,27 @@
     border-bottom: none;
   }
 
-  &[data-expandable] {
-    &:hover {
-      background-color: var(--mb-color-background-hover);
-    }
+  /* Both expandable (FK target not on canvas) and zoom-to (target already on
+     canvas) fields share the same affordance: background highlight + brand
+     text on hover. Distinguishing them visually would suggest the click does
+     different things — but to the user they're both "jump to that table". */
+  &[data-clickable]:hover {
+    background-color: var(--mb-color-background-hover);
   }
+
+  &[data-clickable]:hover .icon,
+  &[data-clickable]:hover .clickableName {
+    color: var(--mb-color-brand);
+  }
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
 }
 
 .name {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Hint that a FK field can be clicked to navigate to its target table.
-   Underline only — no color change — matches the mockup treatment of
-   foreign-key field names as subtly link-like. */
-.linkable {
-  text-decoration: underline;
 }
 
 .handle {
