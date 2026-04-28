@@ -7,7 +7,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -141,6 +142,50 @@
   []
   (api/check-superuser)
   (ws/list-remappings))
+
+(def ^:private WorkspaceInstanceDatabase
+  [:map
+   [:name          ms/NonBlankString]
+   [:input_schemas [:sequential ms/NonBlankString]]
+   [:output_schema :string]])
+
+(def ^:private WorkspaceInstance
+  [:map
+   [:name             ms/NonBlankString]
+   [:databases        [:map-of ms/PositiveInt WorkspaceInstanceDatabase]]
+   [:remappings_count ms/IntGreaterThanOrEqualToZero]])
+
+(api.macros/defendpoint :get "/current" :- [:maybe WorkspaceInstance]
+  "Read-only summary of the workspace loaded on this (child) instance.
+
+   Returns the most-recently-created workspace + its databases (keyed by
+   `:model/Database.id`) plus the count of `:model/TableRemapping` rows currently
+   active. Returns `nil` when no workspace exists.
+
+   On a properly-bootstrapped child there is at most one workspace at a time;
+   the most-recent ordering is for stability when older rows linger.
+
+   The child has no live coupling to the parent — to refresh, re-fetch `config.yml`
+   and re-run the loader."
+  []
+  (api/check-superuser)
+  (when-let [workspace (->> (ws/list-workspaces)
+                            (sort-by :created_at)
+                            reverse
+                            (some (fn [w] (when (seq (:databases w)) w))))]
+    (let [db-ids    (mapv :database_id (:databases workspace))
+          dbs-by-id (when (seq db-ids)
+                      (into {} (map (juxt :id identity))
+                            (t2/select [:model/Database :id :name] :id [:in db-ids])))]
+      {:name             (:name workspace)
+       :remappings_count (count (ws/list-remappings))
+       :databases        (into {}
+                               (map (fn [wsd]
+                                      [(:database_id wsd)
+                                       {:name          (get-in dbs-by-id [(:database_id wsd) :name] "")
+                                        :input_schemas (vec (:input_schemas wsd))
+                                        :output_schema (or (:output_schema wsd) "")}]))
+                               (:databases workspace))})))
 
 (api.macros/defendpoint :get "/:id/config/yaml"
   :- [:map
