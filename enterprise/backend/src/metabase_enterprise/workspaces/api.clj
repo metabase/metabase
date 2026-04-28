@@ -1,11 +1,8 @@
 (ns metabase-enterprise.workspaces.api
   (:require
-   [metabase-enterprise.workspaces.settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]))
-
-(comment metabase-enterprise.workspaces.settings/keep-me)
 
 (api.macros/defendpoint :get "/"
   "List all Workspaces."
@@ -15,7 +12,13 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a Workspace by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  {:id id :name "Workspace" :databases []})
+  {:id         id
+   :name       "Workspace"
+   :databases  []
+   :creator_id nil
+   :creator    nil
+   :created_at "2026-04-27T00:00:00Z"
+   :updated_at "2026-04-27T00:00:00Z"})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"

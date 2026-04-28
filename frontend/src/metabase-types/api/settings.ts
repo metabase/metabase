@@ -295,9 +295,6 @@ export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
 export const REMOTE_SYNC_TYPES = ["read-only", "read-write"] as const;
 export type RemoteSyncType = (typeof REMOTE_SYNC_TYPES)[number];
 
-export const WORKSPACE_MODES = ["main", "development"] as const;
-export type WorkspaceMode = (typeof WORKSPACE_MODES)[number];
-
 interface TokenStatusStoreUsers {
   email: string;
 }
@@ -731,7 +728,6 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
-  "workspace-mode"?: WorkspaceMode | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

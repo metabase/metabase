@@ -1,15 +1,15 @@
-import type { ComponentType, ReactNode } from "react";
-
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { ReactNode } from "react";
 
 type WorkspacesPlugin = {
-  WorkspacesNav: ComponentType;
+  isEnabled: boolean;
   getWorkspaceAdminRoutes: () => ReactNode;
+  getWorkspaceAdminNavItems: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
-  WorkspacesNav: PluginPlaceholder,
+  isEnabled: false,
   getWorkspaceAdminRoutes: () => null,
+  getWorkspaceAdminNavItems: () => null,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultPlugin();
