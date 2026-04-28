@@ -46,7 +46,7 @@ const getDefaultPluginAudit = () => ({
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
   getMetabotAnalyticsNavItems: (): ReactNode => null,
-  getMetabotAnalyticsRoutes: (): ReactNode => null,
+  getAiAnalyticsRoutes: (): ReactNode => null,
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
 

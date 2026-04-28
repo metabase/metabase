@@ -65,7 +65,7 @@
     (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-list-test@metabase.com"
                                                    :first_name "Metabot"
                                                    :last_name  "Analytics"}]
-      (let [response-path (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id)
+      (let [response-path (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id)
             convo-1       (str (random-uuid))
             convo-2       (str (random-uuid))
             convo-3       (str (random-uuid))
@@ -198,14 +198,14 @@
   (with-list-conversations-fixture!
     (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "%s&sort-by=message_count&sort-dir=asc" response-path))]
+                                           (format "%s&sort_by=message_count&sort_dir=asc" response-path))]
         (is (= [convo-3 convo-1 convo-2] (map :conversation_id (:data response))))))))
 
 (deftest list-conversations-invalid-sort-test
   (with-list-conversations-fixture!
     (fn [{:keys [response-path]}]
       (is (some? (:errors (mt/user-http-request :crowberto :get 400
-                                                (format "%s&sort-by=drop_table" response-path))))))))
+                                                (format "%s&sort_by=drop_table" response-path))))))))
 
 (defn- with-filters-fixture!
   [thunk]
@@ -251,13 +251,13 @@
         (testing "date narrows to the half-open [start, end) window"
           (is (= #{convo-1 convo-2} (request-ids "date=2026-01-01~2026-01-02"))))
         (testing "group-id narrows to conversations owned by group members"
-          (is (= #{convo-1 convo-2} (request-ids (str "group-id=" group-id)))))
-        (testing "group-id=1 (All Users) is treated as no-filter"
-          (is (= #{convo-1 convo-2 convo-3} (request-ids "group-id=1"))))
+          (is (= #{convo-1 convo-2} (request-ids (str "group_id=" group-id)))))
+        (testing "group_id=1 (All Users) is treated as no-filter"
+          (is (= #{convo-1 convo-2 convo-3} (request-ids "group_id=1"))))
         (testing "tenant-id narrows to conversations owned by users in that tenant"
-          (is (= #{convo-1 convo-2} (request-ids (str "tenant-id=" tenant-a-id)))))
+          (is (= #{convo-1 convo-2} (request-ids (str "tenant_id=" tenant-a-id)))))
         (testing "filters compose: group-id + user-id + date narrow cumulatively"
-          (is (= #{convo-1} (request-ids (format "group-id=%d&user-id=%d&date=2026-01-01~2026-01-01"
+          (is (= #{convo-1} (request-ids (format "group_id=%d&user_id=%d&date=2026-01-01~2026-01-01"
                                                  group-id user-a-id)))))
         (testing "malformed date returns 400"
           (mt/user-http-request :crowberto :get 400 (str base-path "?date=not-a-real-range")))))))
@@ -459,14 +459,14 @@
     (fn [{:keys [test-user-id convo-none convo-two convo-errored]}]
       (testing "list endpoint surfaces per-conversation search counts (errored calls still count)"
         (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+                                             (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id))
               by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
           (is (= {convo-none 0, convo-two 2, convo-errored 1}
                  (update-vals by-id :search_count)))))
       (testing "pagination scopes the hydration batch to the page"
         ;; Default sort is created_at desc: [convo-errored convo-two convo-none].
         (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
+                                             (format "ee/metabot-analytics/conversations?user_id=%s&limit=1&offset=1"
                                                      test-user-id))]
           (is (= [convo-two] (map :conversation_id (:data response))))
           (is (= 2 (:search_count (first (:data response)))))))
@@ -561,7 +561,7 @@
     (fn [{:keys [test-user-id convo-none convo-mixed convo-edits]}]
       (testing "list endpoint: counts create_sql_query + construct_notebook_query, excludes edit/replace"
         (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+                                             (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id))
               by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
           (is (= {convo-none 0, convo-mixed 2, convo-edits 0}
                  (update-vals by-id :query_count)))))
@@ -753,14 +753,14 @@
     (fn [{:keys [test-user-id convo-web convo-slack convo-null]}]
       (testing "list endpoint surfaces IP for web conversations, nil for Slack/legacy"
         (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+                                             (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id))
               by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
           (is (= {convo-web "1.2.3.4", convo-slack nil, convo-null nil}
                  (update-vals by-id :ip_address)))))
       (testing "pagination preserves ip_address for rows on page 2"
         ;; Default sort is created_at desc: [convo-null convo-slack convo-web].
         (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
+                                             (format "ee/metabot-analytics/conversations?user_id=%s&limit=1&offset=1"
                                                      test-user-id))]
           (is (= [convo-slack] (map :conversation_id (:data response))))
           (is (nil? (:ip_address (first (:data response)))))))

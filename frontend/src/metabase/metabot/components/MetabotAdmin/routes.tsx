@@ -7,7 +7,7 @@ import { MetabotAdminLayout } from "./MetabotAdminLayout";
 
 export function getMetabotAdminRoutes() {
   return [
-    PLUGIN_AUDIT.getMetabotAnalyticsRoutes(),
+    PLUGIN_AUDIT.getAiAnalyticsRoutes(),
     <Route key="layout" component={MetabotAdminLayout}>
       <IndexRoute key="index" component={AISettingsPage} />
       <Route key="metabot" path=":metabotId" component={AISettingsPage} />

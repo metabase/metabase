@@ -73,20 +73,23 @@
      :query_type  "sql"
      :sql         sql
      :mbql        nil
+     :display     nil
      :database_id database-id
      :tables      (referenced-table-names database-id sql)}))
 
 (defn- notebook-query-row
   [{:keys [message-id]} tool-name input-block structured query database-id]
-  {:tool        tool-name
-   :call_id     (:id input-block)
-   :message_id  message-id
-   :query_id    (:query-id structured)
-   :query_type  "notebook"
-   :sql         nil
-   :mbql        query
-   :database_id database-id
-   :tables      []})
+  (let [chart-type (:chart-type structured)]
+    {:tool        tool-name
+     :call_id     (:id input-block)
+     :message_id  message-id
+     :query_id    (:query-id structured)
+     :query_type  "notebook"
+     :sql         nil
+     :mbql        query
+     :display     (some-> chart-type name)
+     :database_id database-id
+     :tables      []}))
 
 (defn- query-block-pair->row
   "Build a generated-query row from an in-app metabot tool-input/tool-output

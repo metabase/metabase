@@ -6,6 +6,10 @@ import type {
 
 import type { StatsFilters } from "./query-utils";
 
+export const DEFAULT_CHART_HEIGHT = 350;
+
+export type DimensionClickHandler = (value: string) => void;
+
 export type ChartDataSources = {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;
@@ -18,12 +22,12 @@ export type NullableChartDataSources = {
 
 export type ChartProps = StatsFilters &
   NullableChartDataSources & {
-    onDimensionClick?: (value: unknown) => void;
+    onDimensionClick?: DimensionClickHandler;
     h?: number;
   };
 
 export type ChartInnerProps = StatsFilters &
   ChartDataSources & {
-    onDimensionClick?: (value: unknown) => void;
+    onDimensionClick?: DimensionClickHandler;
     h: number;
   };

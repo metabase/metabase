@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import dayjs from "dayjs";
+import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -21,17 +22,105 @@ import {
   urlStateConfig as conversationsUrlStateConfig,
 } from "../ConversationsPage/utils";
 
+import { BreakoutChart } from "./BreakoutChart";
 import S from "./ConversationStatsPage.module.css";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
-import { ConversationsByGroupChart } from "./ConversationsByGroupChart";
-import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
-import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
-import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
-import { ConversationsByTenantChart } from "./ConversationsByTenantChart";
-import { ConversationsByUserChart } from "./ConversationsByUserChart";
-import type { UsageStatsMetric } from "./query-utils";
-import type { ChartProps } from "./types";
+import {
+  type StatsFilters,
+  type UsageStatsMetric,
+  buildGroupBreakoutQuery,
+  buildSourceBreakoutQuery,
+  buildTenantBreakoutQuery,
+} from "./query-utils";
+import type { ChartDataSources, ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
+
+const sourceTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Conversations by source`;
+  },
+  get messages() {
+    return t`Messages by source`;
+  },
+  get tokens() {
+    return t`Tokens by source`;
+  },
+};
+
+const profileTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Conversations by profile`;
+  },
+  get messages() {
+    return t`Messages by profile`;
+  },
+  get tokens() {
+    return t`Tokens by profile`;
+  },
+};
+
+const userTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Users with most conversations`;
+  },
+  get messages() {
+    return t`Users with most messages`;
+  },
+  get tokens() {
+    return t`Users with most tokens`;
+  },
+};
+
+const groupTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Groups with most conversations`;
+  },
+  get messages() {
+    return t`Groups with most messages`;
+  },
+  get tokens() {
+    return t`Groups with most tokens`;
+  },
+};
+
+const ipAddressTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`IP addresses with most conversations`;
+  },
+  get messages() {
+    return t`IP addresses with most messages`;
+  },
+  get tokens() {
+    return t`IP addresses with most tokens`;
+  },
+};
+
+const tenantTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Tenants with most conversations`;
+  },
+  get messages() {
+    return t`Tenants with most messages`;
+  },
+  get tokens() {
+    return t`Tenants with most tokens`;
+  },
+};
+
+const buildSourceQuery = (opts: StatsFilters & ChartDataSources) =>
+  buildSourceBreakoutQuery({ ...opts, breakoutColumn: "source_name" });
+
+const buildProfileQuery = (opts: StatsFilters & ChartDataSources) =>
+  buildSourceBreakoutQuery({ ...opts, breakoutColumn: "profile_name" });
+
+const buildUserQuery = (opts: StatsFilters & ChartDataSources) =>
+  buildSourceBreakoutQuery({ ...opts, breakoutColumn: "user_display_name" });
+
+const buildIpAddressQuery = (opts: StatsFilters & ChartDataSources) =>
+  buildSourceBreakoutQuery({ ...opts, breakoutColumn: "ip_address" });
+
+const labelUnknownIpAddress = (value: unknown) =>
+  value == null ? t`Unknown` : value;
 
 export function ConversationStatsPage({ location }: WithRouterProps) {
   const dispatch = useDispatch();
@@ -64,6 +153,22 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     metric,
   };
 
+  const tenantNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const opt of tenantOptions) {
+      map.set(opt.value, opt.label);
+    }
+    return map;
+  }, [tenantOptions]);
+
+  const labelTenantName = useCallback(
+    (value: unknown) =>
+      value == null
+        ? value
+        : (tenantNameById.get(String(value)) ?? String(value)),
+    [tenantNameById],
+  );
+
   const navigateToConversations = useCallback(
     (filterOverrides: Partial<ConversationsUrlState>) => {
       dispatch(
@@ -86,22 +191,15 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   );
 
   const handleDayClick = useCallback(
-    (value: unknown) => {
-      if (value == null) {
-        return;
-      }
-      const dateStr = String(value).slice(0, 10);
+    (value: string) => {
+      const dateStr = dayjs(value).format("YYYY-MM-DD");
       navigateToConversations({ date: dateStr });
     },
     [navigateToConversations],
   );
 
   const handleUserClick = useCallback(
-    (value: unknown) => {
-      if (value == null) {
-        return;
-      }
-      const displayName = String(value);
+    (displayName: string) => {
       const match = userOptions.find((opt) => opt.label === displayName);
       if (match) {
         navigateToConversations({ user: match.value });
@@ -161,25 +259,54 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         />
 
         <SimpleGrid cols={2} spacing="lg">
-          <ConversationsBySourceChart {...sharedChartProps} />
-          <ConversationsByProfileBarChart {...sharedChartProps} />
+          <BreakoutChart
+            {...sharedChartProps}
+            titles={sourceTitles}
+            display="bar"
+            buildQuery={buildSourceQuery}
+          />
+          <BreakoutChart
+            {...sharedChartProps}
+            titles={profileTitles}
+            display="bar"
+            buildQuery={buildProfileQuery}
+          />
         </SimpleGrid>
 
         <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
           {hasTenants && (
-            <ConversationsByTenantChart
+            <BreakoutChart
               {...sharedChartProps}
-              tenantOptions={tenantOptions}
+              titles={tenantTitles}
+              display="row"
+              buildQuery={buildTenantBreakoutQuery}
+              labelMapper={labelTenantName}
               h={500}
             />
           )}
-          <ConversationsByGroupChart {...sharedChartProps} h={500} />
-          <ConversationsByUserChart
+          <BreakoutChart
             {...sharedChartProps}
+            titles={groupTitles}
+            display="row"
+            buildQuery={buildGroupBreakoutQuery}
+            h={500}
+          />
+          <BreakoutChart
+            {...sharedChartProps}
+            titles={userTitles}
+            display="row"
+            buildQuery={buildUserQuery}
             onDimensionClick={handleUserClick}
             h={500}
           />
-          <ConversationsByIPAddressChart {...sharedChartProps} h={500} />
+          <BreakoutChart
+            {...sharedChartProps}
+            titles={ipAddressTitles}
+            display="row"
+            buildQuery={buildIpAddressQuery}
+            labelMapper={labelUnknownIpAddress}
+            h={500}
+          />
         </SimpleGrid>
       </SettingsPageWrapper>
     </MetabotAdminLayout>

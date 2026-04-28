@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Skeleton, useMantineTheme } from "metabase/ui";
+import type { Query } from "metabase-lib";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
@@ -10,43 +11,56 @@ import {
   mapBreakoutDimension,
   toBreakoutRawSeries,
 } from "./breakout-raw-series";
-import { type UsageStatsMetric, buildSourceBreakoutQuery } from "./query-utils";
-import type { ChartInnerProps, ChartProps } from "./types";
+import type { StatsFilters, UsageStatsMetric } from "./query-utils";
+import {
+  type ChartDataSources,
+  type ChartInnerProps,
+  type ChartProps,
+  DEFAULT_CHART_HEIGHT,
+} from "./types";
 
-const TITLES: Record<UsageStatsMetric, string> = {
-  get conversations() {
-    return t`IP addresses with most conversations`;
-  },
-  get messages() {
-    return t`IP addresses with most messages`;
-  },
-  get tokens() {
-    return t`IP addresses with most tokens`;
-  },
+type BuildQueryFn = (opts: StatsFilters & ChartDataSources) => Query;
+
+type Props = ChartProps & {
+  titles: Record<UsageStatsMetric, string>;
+  display: "row" | "bar";
+  buildQuery: BuildQueryFn;
+  labelMapper?: (value: unknown) => unknown;
+  maxCategories?: number;
 };
 
-export function ConversationsByIPAddressChart({
+type InnerProps = ChartInnerProps & {
+  titles: Record<UsageStatsMetric, string>;
+  display: "row" | "bar";
+  buildQuery: BuildQueryFn;
+  labelMapper?: (value: unknown) => unknown;
+  maxCategories: number;
+};
+
+export function BreakoutChart({
   provider,
   table,
   groupMembersTable,
-  h = 350,
+  h = DEFAULT_CHART_HEIGHT,
+  maxCategories = 8,
   ...rest
-}: ChartProps) {
+}: Props) {
   if (!provider || !table || !groupMembersTable) {
     return <Skeleton h={h} />;
   }
   return (
-    <ConversationsByIPAddressChartInner
+    <BreakoutChartInner
       provider={provider}
       table={table}
       groupMembersTable={groupMembersTable}
       h={h}
+      maxCategories={maxCategories}
       {...rest}
     />
   );
 }
 
-function ConversationsByIPAddressChartInner({
+function BreakoutChartInner({
   provider,
   table,
   groupMembersTable,
@@ -57,10 +71,15 @@ function ConversationsByIPAddressChartInner({
   metric,
   onDimensionClick,
   h,
-}: ChartInnerProps) {
+  titles,
+  display,
+  buildQuery,
+  labelMapper,
+  maxCategories,
+}: InnerProps) {
   const query = useMemo(
     () =>
-      buildSourceBreakoutQuery({
+      buildQuery({
         provider,
         table,
         groupMembersTable,
@@ -69,9 +88,9 @@ function ConversationsByIPAddressChartInner({
         groupId,
         tenantId,
         metric,
-        breakoutColumn: "ip_address",
       }),
     [
+      buildQuery,
       provider,
       table,
       groupMembersTable,
@@ -87,24 +106,24 @@ function ConversationsByIPAddressChartInner({
   const { themeColor } = useMantineTheme().fn;
 
   const rawSeries = useMemo(() => {
-    const labeledData = mapBreakoutDimension(data, (value) =>
-      value == null ? t`Unknown` : value,
-    );
-    return toBreakoutRawSeries(labeledData, jsQuery, {
+    const labeled = labelMapper
+      ? mapBreakoutDimension(data, labelMapper)
+      : data;
+    return toBreakoutRawSeries(labeled, jsQuery, {
       metric,
-      display: "row",
-      maxCategories: 8,
+      display,
+      maxCategories,
       otherLabel: t`Other`,
       getColor: themeColor,
     });
-  }, [data, jsQuery, metric, themeColor]);
+  }, [data, jsQuery, labelMapper, metric, display, maxCategories, themeColor]);
 
   return (
     <BreakoutChartCard
-      title={TITLES[metric]}
+      title={titles[metric]}
       rawSeries={rawSeries}
       isFetching={isFetching}
-      display="row"
+      display={display}
       h={h}
       otherLabel={t`Other`}
       onDimensionClick={onDimensionClick}

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
@@ -50,7 +51,7 @@ export function useFilterOptions({
     () =>
       (usersData?.data ?? []).map((u) => ({
         value: String(u.id),
-        label: getUserName(u) || String(u.id),
+        label: getUserName(u) || t`Unknown`,
       })),
     [usersData],
   );
@@ -67,15 +68,13 @@ export function useFilterOptions({
 
   const tenantOptions = useMemo(
     () =>
-      (tenantsData?.data ?? []).map((t) => ({
-        value: String(t.id),
-        label: t.name,
+      (tenantsData?.data ?? []).map((tenant) => ({
+        value: String(tenant.id),
+        label: tenant.name,
       })),
     [tenantsData],
   );
 
-  // hide the filter on instances that have the feature but no tenants
-  // to choose from — an "All tenants"-only Select is a dead UI
   const hasTenants = tenantsFeatureEnabled && tenantOptions.length > 0;
 
   const dateFilter = useMemo(() => parseDateFilter(date), [date]);

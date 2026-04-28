@@ -4,7 +4,7 @@ import { ConversationDetailPage } from "./components/ConversationDetailPage";
 import { ConversationStatsPage } from "./components/ConversationStatsPage";
 import { ConversationsPage } from "./components/ConversationsPage";
 
-export function getMetabotAnalyticsRoutes() {
+export function getAiAnalyticsRoutes() {
   return (
     <Route key="usage-auditing" path="usage-auditing">
       <IndexRoute component={ConversationStatsPage} />

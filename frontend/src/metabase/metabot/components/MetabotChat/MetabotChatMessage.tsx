@@ -43,12 +43,13 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "static_viz" }, () => false)
     .exhaustive();
 
-const isUserVisibleMessage = (message: MetabotChatMessage): boolean => {
-  if (message.role === "agent" && message.type === "data_part") {
-    return isUserVisibleDataPart(message.part);
-  }
-  return message.type !== "tool_call";
-};
+const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
+  match(message)
+    .with({ type: "text" }, () => true)
+    .with({ type: "action" }, () => true)
+    .with({ type: "data_part" }, ({ part }) => isUserVisibleDataPart(part))
+    .with({ type: "tool_call" }, () => false)
+    .exhaustive();
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;
