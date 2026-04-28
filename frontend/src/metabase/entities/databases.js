@@ -14,7 +14,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { createEntity, entityCompatibleQuery, fetchData } from "./utils";
@@ -110,7 +109,6 @@ export const Databases = createEntity({
 
   objectSelectors: {
     getName: (db) => db && db.name,
-    getColor: (db) => color("database"),
   },
 
   selectors: {
