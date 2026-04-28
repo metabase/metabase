@@ -5,5 +5,13 @@
   },
   "upstream": {
     "branch": "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 72840,
+        "gqlID": "PR_kwDOAczgH87TwFyx"
+      }
+    }
   }
 }
