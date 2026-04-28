@@ -64,6 +64,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
 
+import { TenantsUpsell } from "./people/components/TenantsUpsell/TenantsUpsell";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
@@ -158,6 +159,7 @@ export const getRoutes = (
             <Route path="tenants" component={createTenantsRouteGuard()}>
               {PLUGIN_TENANTS.tenantsRoutes}
             </Route>
+            <Route path="tenants-upsell" component={TenantsUpsell} />
 
             <Route path="" component={PeopleListingApp}>
               <ModalRoute path="new" modal={NewUserModal} noWrap />

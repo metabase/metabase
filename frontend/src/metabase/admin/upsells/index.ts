@@ -12,6 +12,7 @@ export * from "./UpsellPermissions";
 export * from "./UpsellSSO";
 export * from "./UpsellSerialization";
 export * from "./UpsellSessionTimeout";
+export * from "./UpsellTenants";
 export * from "./UpsellUploads";
 export * from "./UpsellWhitelabel";
 export * from "./UpsellWritableConnection";

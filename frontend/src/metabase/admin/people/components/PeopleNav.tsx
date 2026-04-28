@@ -7,7 +7,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Stack } from "metabase/ui";
@@ -15,6 +15,7 @@ import { Divider, Stack } from "metabase/ui";
 export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
   const isUsingTenants = useSetting("use-tenants");
+  const hasTenants = useHasTokenFeature("tenants");
 
   return (
     <AdminNavWrapper justify="space-between" aria-label="people-nav">
@@ -31,6 +32,14 @@ export function PeopleNav() {
           label={isUsingTenants ? t`Internal groups` : t`Groups`}
           icon="group"
         />
+        {!hasTenants && !isUsingTenants && (
+          <PeopleNavItem
+            path="/admin/people/tenants-upsell"
+            data-testid="nav-item-tenants-upsell"
+            label={t`Tenants`}
+            icon="globe"
+          />
+        )}
         {isUsingTenants && (
           <>
             <Divider my="sm" />
