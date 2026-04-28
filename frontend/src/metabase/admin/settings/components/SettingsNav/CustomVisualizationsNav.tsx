@@ -2,6 +2,8 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/common/components/upsells/components";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { getLocation } from "metabase/selectors/routing";
 import { Flex } from "metabase/ui";
 
 import { SettingsNavItem } from "./SettingsNavItem";
@@ -12,7 +14,11 @@ export const CustomVisualizationsNav = () => {
     "custom-viz-plugin-dev-mode-enabled",
   );
 
+  const pathname = useSelector(getLocation).pathname;
   const isFull = hasCustomVizAvailable && customVizDevModeEnabled;
+  const isManageVisualizationsActive =
+    pathname.startsWith("/admin/settings/custom-visualizations/new") ||
+    pathname.startsWith("/admin/settings/custom-visualizations/edit");
 
   return (
     <SettingsNavItem
@@ -31,6 +37,7 @@ export const CustomVisualizationsNav = () => {
           <SettingsNavItem
             key="manage"
             path="custom-visualizations"
+            active={isManageVisualizationsActive ? true : undefined}
             label={t`Manage visualizations`}
           />
           <SettingsNavItem

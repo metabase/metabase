@@ -44,7 +44,7 @@ export function SettingsNavItem({
   ...navItemProps
 }: AdminNavItemProps & { active?: boolean }) {
   const children = React.Children.toArray(childrenProp) as ReactElement[];
-  const currentPath: string = useSelector(getLocation)?.pathname ?? "";
+  const currentPath = useSelector(getLocation)?.pathname ?? "";
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
     folderPattern ? currentPath.includes(folderPattern) : false,
   );
