@@ -6,7 +6,6 @@ import {
   useListSubscriptionsQuery,
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
-import { color } from "metabase/ui/colors";
 
 import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
@@ -63,10 +62,6 @@ export const Pulses = createEntity({
         undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
       );
     },
-  },
-
-  objectSelectors: {
-    getColor: (pulse) => color("pulse"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

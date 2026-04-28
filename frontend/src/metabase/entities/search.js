@@ -150,13 +150,6 @@ export const Search = createEntity({
             null)
         : warnEntityAndReturnObject(object);
     },
-
-    getColor: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getColor?.(object) ?? null)
-        : warnEntityAndReturnObject(object);
-    },
   },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {

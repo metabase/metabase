@@ -6,11 +6,7 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  Collections,
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections";
+import { Collections, getCollectionType } from "metabase/entities/collections";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
@@ -19,7 +15,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 
 import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
@@ -157,11 +152,6 @@ export const Questions = createEntity({
         Questions.selectors.getObjectUnfiltered(state, { entityId }),
       );
     },
-  },
-
-  objectSelectors: {
-    getColor: () => color("text-secondary"),
-    getCollection: (card) => card && normalizedCollection(card.collection),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

@@ -1,5 +1,4 @@
 import { TransformSchema } from "metabase/schema";
-import { color } from "metabase/ui/utils/colors";
 
 import { createEntity } from "./utils";
 
@@ -12,8 +11,4 @@ export const Transforms = createEntity({
   nameOne: "transform",
   path: "/api/transform",
   schema: TransformSchema,
-
-  objectSelectors: {
-    getColor: () => color("brand"),
-  },
 });

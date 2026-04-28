@@ -7,7 +7,6 @@ import {
 } from "metabase/collections/utils";
 import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
-import { color } from "metabase/ui/utils/colors";
 import type {
   Collection,
   CopyDocumentRequest,
@@ -107,9 +106,5 @@ export const Documents = createEntity({
         );
         return (result as { data: Document }).data;
       },
-  },
-
-  objectSelectors: {
-    getColor: () => color("brand"),
   },
 });

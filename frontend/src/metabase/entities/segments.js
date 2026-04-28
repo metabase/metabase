@@ -5,7 +5,6 @@ import {
 } from "metabase/api";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 
 import { createEntity, entityCompatibleQuery } from "./utils";
 
@@ -65,10 +64,6 @@ export const Segments = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).segment(entityId),
-  },
-
-  objectSelectors: {
-    getColor: (segment) => color("filter"),
   },
 });
 
