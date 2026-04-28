@@ -102,6 +102,37 @@ describe("admin > custom visualizations", () => {
           .findByText("Custom visualizations")
           .should("not.exist");
       });
+
+      it("should not show nested sidebar navigation when custom viz plugin dev mode is disabled", () => {
+        cy.intercept("GET", "/api/session/properties", (req) => {
+          req.continue((res) => {
+            res.body["custom-viz-plugin-dev-mode-enabled"] = false;
+          });
+        });
+
+        H.activateToken("bleeding-edge");
+        H.updateSetting("custom-viz-enabled", true);
+        H.visitCustomVizSettings();
+        H.getAddVisualizationLink().click();
+
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Development/ })
+          .should("not.exist");
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Manage visualizations/ })
+          .should("not.exist");
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Custom visualizations/ })
+          .should("have.attr", "data-active", "true");
+
+        cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+        cy.findByRole("button", { name: "Add visualization" }).click();
+        cy.findByRole("link", { name: /demo-viz/ }).click();
+
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Custom visualizations/ })
+          .should("have.attr", "data-active", "true");
+      });
     });
 
     describe("OSS", { tags: "@OSS" }, () => {
@@ -179,6 +210,12 @@ describe("admin > custom visualizations", () => {
       const invalidRepoUrl = "file:///nonexistent/repo/.git";
 
       H.visitCustomVizNewForm();
+
+      cy.findByRole("link", { name: /Manage visualizations/ }).should(
+        "have.attr",
+        "data-active",
+        "true",
+      );
 
       cy.findByLabelText(/Repository URL/).type(invalidRepoUrl);
 
@@ -372,6 +409,12 @@ describe("admin > custom visualizations", () => {
         H.enableTracking();
         H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
           H.visitCustomVizEditForm(plugin.id);
+
+          cy.findByRole("link", { name: /Manage visualizations/ }).should(
+            "have.attr",
+            "data-active",
+            "true",
+          );
 
           // Wait for the plugin data to populate the form before interacting
           // — enableReinitialize would reset any user input if the plugin

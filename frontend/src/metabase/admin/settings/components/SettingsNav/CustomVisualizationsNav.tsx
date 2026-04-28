@@ -22,6 +22,7 @@ export const CustomVisualizationsNav = () => {
 
   return (
     <SettingsNavItem
+      active={isManageVisualizationsActive && !isFull ? true : undefined}
       path={isFull ? undefined : "custom-visualizations"}
       folderPattern="custom-visualizations"
       label={
