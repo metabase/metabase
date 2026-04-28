@@ -10,6 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
 import { Badge, Ellipsified, Flex } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
 
@@ -112,10 +113,10 @@ export function ConversationsTable({
                     <DateTime value={convo.created_at} unit="day" />
                   </Ellipsified>
                 </td>
-                <td>{convo.message_count}</td>
-                <td>{convo.total_tokens.toLocaleString()}</td>
-                <td>{convo.query_count}</td>
-                <td>{convo.search_count}</td>
+                <td>{formatNumber(convo.message_count)}</td>
+                <td>{formatNumber(convo.total_tokens)}</td>
+                <td>{formatNumber(convo.query_count)}</td>
+                <td>{formatNumber(convo.search_count)}</td>
                 <td>{convo.ip_address ?? "—"}</td>
               </tr>
             ))}

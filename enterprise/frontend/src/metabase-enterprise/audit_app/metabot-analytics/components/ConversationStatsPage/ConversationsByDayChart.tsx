@@ -21,7 +21,12 @@ import {
   getMetricSeriesSettings,
   joinGroupMembers,
 } from "./query-utils";
-import type { ChartDataSources, ChartInnerProps, ChartProps } from "./types";
+import {
+  type ChartDataSources,
+  type ChartInnerProps,
+  type ChartProps,
+  DEFAULT_CHART_HEIGHT,
+} from "./types";
 
 type BucketName = "day" | "hour";
 
@@ -70,7 +75,7 @@ export function ConversationsByDayChart({
   provider,
   table,
   groupMembersTable,
-  h = 350,
+  h = DEFAULT_CHART_HEIGHT,
   ...rest
 }: ChartProps) {
   if (!provider || !table || !groupMembersTable) {

@@ -20,7 +20,6 @@ export function ConversationsPage({ location }: WithRouterProps) {
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
-  const sortingOptions = { sort_column, sort_direction };
   const {
     userId,
     groupId,
@@ -39,11 +38,11 @@ export function ConversationsPage({ location }: WithRouterProps) {
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
-      "sort-by": sort_column,
-      "sort-dir": sort_direction,
-      "user-id": userId,
-      "group-id": groupId,
-      "tenant-id": tenantId,
+      sort_by: sort_column,
+      sort_dir: sort_direction,
+      user_id: userId,
+      group_id: groupId,
+      tenant_id: tenantId,
       date: date ?? undefined,
     },
     { refetchOnMountOrArgChange: true },
@@ -84,7 +83,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
             conversations={conversations}
             isLoading={isLoading}
             error={error}
-            sortingOptions={sortingOptions}
+            sortingOptions={{ sort_column, sort_direction }}
             onSortingOptionsChange={(newSortingOptions) =>
               patchUrlState({ ...newSortingOptions, page: 0 })
             }

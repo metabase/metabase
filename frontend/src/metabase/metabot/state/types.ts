@@ -56,17 +56,9 @@ export type MetabotDebugToolCallMessage = {
   is_error?: boolean;
 };
 
-export type MetabotAgentChartMessage = {
-  id: string;
-  role: "agent";
-  type: "chart";
-  navigateTo: string;
-};
-
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
-  | MetabotAgentChartMessage
   | MetabotDebugToolCallMessage;
 
 export type MetabotUserChatMessage =

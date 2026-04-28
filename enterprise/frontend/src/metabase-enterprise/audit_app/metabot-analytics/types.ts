@@ -1,6 +1,10 @@
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type { MetabotChatMessage } from "metabase/metabot/state";
-import type { DatasetQuery, MetabotFeedback } from "metabase-types/api";
+import type {
+  DatasetQuery,
+  MetabotFeedback,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 export type MetabotUserInfo = {
   id: number;
@@ -35,12 +39,12 @@ export type ConversationSortColumn =
 export type ConversationsRequest = {
   limit?: number;
   offset?: number;
-  "user-id"?: number;
-  "group-id"?: number;
-  "tenant-id"?: number;
+  user_id?: number;
+  group_id?: number;
+  tenant_id?: number;
   date?: string;
-  "sort-by"?: ConversationSortColumn;
-  "sort-dir"?: "asc" | "desc";
+  sort_by?: ConversationSortColumn;
+  sort_dir?: "asc" | "desc";
 };
 
 export type ConversationsResponse = {
@@ -58,6 +62,7 @@ export type GeneratedQuery = {
   query_type: "sql" | "notebook";
   sql: string | null;
   mbql: DatasetQuery | null;
+  display: VisualizationDisplay | null;
   database_id: number | null;
   tables: string[];
 };

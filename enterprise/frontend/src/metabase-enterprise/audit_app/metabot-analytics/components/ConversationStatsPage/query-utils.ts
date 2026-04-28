@@ -265,3 +265,83 @@ export function breakoutByColumn(query: Query, columnName: string): Query {
   const col = findColumn(query, columnName, Lib.breakoutableColumns);
   return col ? Lib.breakout(query, 0, col) : query;
 }
+
+type BreakoutQueryOpts = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
+};
+
+export function excludeAllUsersGroup(query: Query): Query {
+  const col = findColumn(query, "group_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "!=", column: col, values: [1] }),
+  );
+}
+
+function breakoutByJoinedGroupName(query: Query): Query {
+  const col = Lib.breakoutableColumns(query, 0).find((col) => {
+    const info = Lib.displayInfo(query, 0, col);
+    return info.name === "group_name" && info.isFromJoin;
+  });
+  return col ? Lib.breakout(query, 0, col) : query;
+}
+
+export function buildGroupBreakoutQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+  metric,
+}: BreakoutQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
+  q = joinGroupMembers(q, groupMembersTable);
+  q = excludeAllUsersGroup(q);
+  q = applyIdFilter(q, "group_id", groupId);
+  q = applyUsageStatsAggregation(q, metric);
+  q = breakoutByJoinedGroupName(q);
+  q = applyMetricOrderBy(q, metric);
+  return q;
+}
+
+function applyTenantNotNullFilter(query: Query): Query {
+  const col = findColumn(query, "tenant_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(query, 0, Lib.expressionClause("not-null", [col], null));
+}
+
+export function buildTenantBreakoutQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+  metric,
+}: BreakoutQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
+  q = applyTenantNotNullFilter(q);
+  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
+  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
+  q = applyUsageStatsAggregation(q, metric);
+  q = breakoutByColumn(q, "tenant_id");
+  q = applyMetricOrderBy(q, metric);
+  return q;
+}

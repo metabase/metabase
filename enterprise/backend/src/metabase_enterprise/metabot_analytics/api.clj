@@ -53,11 +53,11 @@
 (def ^:private ListConversationsQueryParams
   "Query-param schema for `GET /conversations`."
   [:map
-   [:sort-by   {:optional true} [:maybe SortColumn]]
-   [:sort-dir  {:optional true} [:maybe SortDirection]]
-   [:user-id   {:optional true} [:maybe ms/PositiveInt]]
-   [:group-id  {:optional true} [:maybe ms/PositiveInt]]
-   [:tenant-id {:optional true} [:maybe ms/PositiveInt]]
+   [:sort_by   {:optional true} [:maybe SortColumn]]
+   [:sort_dir  {:optional true} [:maybe SortDirection]]
+   [:user_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:group_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
    [:date      {:optional true} [:maybe :string]]])
 
 (def ^:private GeneratedQuery
@@ -72,6 +72,7 @@
    [:query_type  [:enum "sql" "notebook"]]
    [:sql         [:maybe :string]]
    [:mbql        [:maybe :map]]
+   [:display     [:maybe :string]]
    [:database_id [:maybe ms/PositiveInt]]
    [:tables      [:sequential :string]]])
 
@@ -127,16 +128,16 @@
 (api.macros/defendpoint :get "/conversations" :- ListConversationsResponse
   "Return paginated list of AI conversations with summary statistics."
   [_route-params
-   {:keys [sort-by sort-dir user-id group-id tenant-id date]} :- ListConversationsQueryParams]
+   {:keys [sort_by sort_dir user_id group_id tenant_id date]} :- ListConversationsQueryParams]
   (api/check-superuser)
   (analytics.conversations/list-conversations
    {:limit     (request/limit)
     :offset    (request/offset)
-    :sort-by   sort-by
-    :sort-dir  sort-dir
-    :user-id   user-id
-    :group-id  group-id
-    :tenant-id tenant-id
+    :sort-by   sort_by
+    :sort-dir  sort_dir
+    :user-id   user_id
+    :group-id  group_id
+    :tenant-id tenant_id
     :date      date}))
 
 (api.macros/defendpoint :get "/conversations/:id" :- ConversationDetail

@@ -3,8 +3,11 @@ import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { isSingleDayFilter } from "./ConversationsByDayChart";
-import { excludeAllUsersGroup } from "./ConversationsByGroupChart";
-import { applyIdFilter, getMetricSeriesSettings } from "./query-utils";
+import {
+  applyIdFilter,
+  excludeAllUsersGroup,
+  getMetricSeriesSettings,
+} from "./query-utils";
 
 describe("getMetricSeriesSettings", () => {
   const getColor = (name: string) => `#${name}`;

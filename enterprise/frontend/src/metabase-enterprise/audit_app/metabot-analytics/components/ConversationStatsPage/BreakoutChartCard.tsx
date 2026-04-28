@@ -6,6 +6,7 @@ import type { ClickActionsMode } from "metabase/visualizations/types";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import S from "./ChartCard.module.css";
+import type { DimensionClickHandler } from "./types";
 
 // needed for visualizationIsClickable to return true when a custom handler is
 // attached; handleVisualizationClick short-circuits before this action runs
@@ -20,7 +21,7 @@ type Props = {
   display: VisualizationDisplay;
   h: number;
   otherLabel: string;
-  onDimensionClick?: (value: unknown) => void;
+  onDimensionClick?: DimensionClickHandler;
 };
 
 export function BreakoutChartCard({
@@ -58,7 +59,7 @@ export function BreakoutChartCard({
         handleVisualizationClick={(clicked: any) => {
           const value = clicked?.dimensions?.[0]?.value;
           if (value != null && value !== otherLabel && onDimensionClick) {
-            onDimensionClick(value);
+            onDimensionClick(String(value));
           }
         }}
       />

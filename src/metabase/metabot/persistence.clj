@@ -15,7 +15,7 @@
   "Subset of `:structured-output` that must survive persistence so
   `metabase-enterprise.metabot-analytics.queries` can surface generated
   queries on the admin detail page."
-  [:query-id :query-content :query :database])
+  [:query-id :query-content :query :database :chart-type])
 
 (defn- trim-structured-output [structured]
   (when (map? structured)
