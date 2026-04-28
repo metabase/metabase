@@ -63,7 +63,7 @@
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
-    [:write? {:optional true} [:maybe :boolean]]
+    [:write? {:optional true, :default false} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
     ;; true if called from table-rows-sample-query
     [:sample? {:optional true} [:maybe :boolean]]

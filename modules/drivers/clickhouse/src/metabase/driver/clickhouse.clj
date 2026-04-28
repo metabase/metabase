@@ -1,6 +1,6 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty some])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -22,7 +22,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]])
+   [metabase.util.performance :refer [not-empty some]])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -307,8 +307,18 @@
     (clickhouse-version/is-at-least? 24 4 db)
     false))
 
-(defmethod driver.sql/set-role-statement :clickhouse
-  [_ role]
+(defmethod sql-jdbc/set-role-statement :clickhouse
+  [_ _conn role]
+  ;; since Clickhouse does not truly support prepared statements with protocol-level safety and has no
+  ;; `quote_ident()` function or similar, quote the identifier client-side, but strictly validate it to make
+  ;; sure it doesn't contain anything potentially malicious.
+  (when-not (some (fn [pattern]
+                    (re-matches pattern role))
+                  ;; only alphanumeric, but allow roles that are already quoted for whatever reason
+                  [#"^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+                   #"^\"[A-Za-z_][A-Za-z0-9_]{0,125}\"$"])
+    (throw (ex-info (tru "Invalid ClickHouse role; for security reasons Metabase only supports numbers, letters, and underscores in role names.")
+                    {:type driver-api/qp.error-type.invalid-parameter})))
   (let [default-role     (driver.sql/default-database-role :clickhouse nil)
         quote-if-needed  (fn [r]
                            (if (or (re-matches #"\".*\"" r) (= role default-role))

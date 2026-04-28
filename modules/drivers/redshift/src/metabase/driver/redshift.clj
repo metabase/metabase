@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.postgres :as driver.postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -656,14 +657,9 @@
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------
 
-(defmethod driver.sql/set-role-statement :redshift
-  [_ role]
-  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)
-        role                  (str/replace role #"\"" "\"\"")]
-    (if needs-quote
-      (format "SET SESSION AUTHORIZATION \"%s\";" role)
-      (format "SET SESSION AUTHORIZATION %s;" role))))
+(defmethod sql-jdbc/set-role-statement :redshift
+  [driver conn role]
+  (format "SET SESSION AUTHORIZATION %s;" (driver.postgres/memoized-quote-identifier driver conn role)))
 
 (defmethod driver.sql/default-database-role :redshift
   [_ _]

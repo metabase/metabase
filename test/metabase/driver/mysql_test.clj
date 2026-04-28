@@ -13,7 +13,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -1042,5 +1042,14 @@
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
 
 (deftest ^:parallel set-role-statement-escape-quotes-test
-  (is (= "SET ROLE 'role''; SELECT sleep(10); --';"
-         (driver.sql/set-role-statement :mysql "role'; SELECT sleep(10); --"))))
+  (mt/test-driver :mysql
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql (mt/id) nil
+     (fn [conn]
+       (are [role expected] (= expected
+                               (driver.sql-jdbc/set-role-statement :mysql conn role))
+         "role'; SELECT sleep(10); --"
+         "SET ROLE 'role\\'; SELECT sleep(10); --';"
+
+         "webapp@localhost"
+         "SET ROLE 'webapp'@'localhost';")))))

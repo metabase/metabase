@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
@@ -714,10 +715,9 @@
           (is (= :type/JSON (:effective_type multi-field))))))))
 
 (deftest ^:parallel set-role-statement-escape-quotes-test
-  (are [role expected] (= expected
-                          (driver.sql/set-role-statement :redshift role))
-    "role\"; SELECT sleep(10); --"
-    "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
-
-    "role*\"; SELECT sleep(10); --"
-    "SET SESSION AUTHORIZATION \"role*\"\"; SELECT sleep(10); --\";"))
+  (mt/test-driver :redshift
+    (is (= "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
+           (sql-jdbc.execute/do-with-connection-with-options
+            :redshift (mt/id) nil
+            (fn [conn]
+              (driver.sql-jdbc/set-role-statement :redshift conn "role\"; SELECT sleep(10); --")))))))

@@ -7,6 +7,7 @@
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib-be.core :as lib-be]
@@ -522,6 +523,10 @@
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
 
 (deftest ^:parallel set-role-statement-escape-quotes-test
-  (is (= "SET ROLE \"x\"\"; SELECT sleep(10); --\""
-         (driver.sql/set-role-statement :clickhouse "\"x\"; SELECT sleep(10); --\"")
-         (driver.sql/set-role-statement :clickhouse "x\"; SELECT sleep(10); --"))))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"\QInvalid ClickHouse role; for security reasons Metabase only supports numbers, letters, and underscores in role names.\E"
+       (driver.sql-jdbc/set-role-statement :clickhouse nil "\"x\"; SELECT sleep(10); --\"")))
+  (is (= "SET ROLE \"x\""
+         (driver.sql-jdbc/set-role-statement :clickhouse nil "x")
+         (driver.sql-jdbc/set-role-statement :clickhouse nil "\"x\""))))
