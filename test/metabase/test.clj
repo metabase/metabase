@@ -229,8 +229,6 @@
   normal-drivers
   normal-drivers-with-feature
   normal-drivers-without-feature
-  derived-from
-  not-derived-from
   rows
   rows+column-names
   with-database-timezone-id
