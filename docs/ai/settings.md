@@ -7,33 +7,23 @@ redirect_from:
 
 # AI settings
 
-> AI features are available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/features/metabot-ai).
+> AI features are available on [Metabase Cloud](https://www.metabase.com/features/metabot-ai) and on self-hosted Metabase, using either the Metabase AI service or your own AI provider API key.
 
 _Admin > AI_
 
 This page covers admin settings for AI features in Metabase, including [Metabot](./metabot.md).
 
-On **Metabase Cloud** you can either:
+## Enable AI features
 
-- [Purchase the Metabot add-on](#add-metabot-from-the-metabase-store) from the Metabase Store, or
-- [Bring your own API key](#bring-your-own-api-key) from a supported AI provider.
+AI features are available on both Metabase Cloud and self-hosted Metabase. To turn them on:
 
-On **self-hosted Metabases**: you can [bring your own API key](#bring-your-own-api-key) from a supported AI provider.
+1. Go to **Admin settings > AI**.
+2. In **Connect to an AI provider**, choose a **Provider**:
+   - **Metabase**: The Metabase AI service. Metabase picks a benchmarked, cost-effective model for you, and billing is managed through your Metabase account. Agree to the **Metabase AI add-on Terms of Service** and click **Connect**.
+   - Another supported provider. See [bring your own API key](#bring-your-own-api-key).
+3. Once connected, configure [Metabot](#configure-metabot) and other AI features below.
 
-## Add Metabot from the Metabase Store
-
-If you're on [Metabase Cloud](https://www.metabase.com/cloud/), you can add Metabot from the Metabase Store:
-
-1. Go to [store.metabase.com](https://store.metabase.com).
-2. Log in with your **Metabase Store account** (distinct from the account you use to log in to your Metabase).
-3. In the **Instances** tab, find the instance you'd like to add Metabot to, and click "Add Metabot AI".
-4. Pick the plan based on the number of requests you expect you'll need.
-
-   A "request" is any message anyone in your Metabase sends to Metabot. Several messages sent within the same chat session are counted as separate requests. Requests are added across the entire instance.
-
-5. Read through the [terms of service](https://www.metabase.com/license/hosting) and click **Add Metabot AI**.
-
-Once you've added Metabot AI in the Metabase store, you can log in to your Metabase and configure it in _Admin > AI_.
+> The Metabase AI add-on only appears in your Metabase Store account after you've connected to the Metabase AI service in **Admin settings > AI**. If you're on a Pro trial and don't see the add-on in **Manage plan**, connect it from Admin first; the Store will reflect it after.
 
 ## Bring your own API key
 
@@ -192,7 +182,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 ## Viewing Metabot usage
 
-If you're on Metabase Cloud with the Metabot add-on, you can see how many Metabot requests people have made this month by going to **Admin > Settings > License**.
+If you're using the Metabase AI service, you can see how many Metabot requests people have made this month by going to **Admin > Settings > License**.
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
@@ -204,11 +194,11 @@ If you're using your own API key, you can track usage and costs through your AI 
 
 If you're using your own API key, you can choose which AI model Metabase uses when you [bring your own API key](#bring-your-own-api-key).
 
-On Metabase Cloud, Metabase's AI service selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
+When using the Metabase AI service, Metabase selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 
 ## Privacy
 
-On Metabase Cloud with the Metabot add-on, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
+When using the Metabase AI service, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
 
 If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
 

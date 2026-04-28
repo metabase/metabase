@@ -9,9 +9,9 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";

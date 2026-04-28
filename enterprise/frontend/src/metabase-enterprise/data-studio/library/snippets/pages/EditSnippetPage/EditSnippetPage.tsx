@@ -19,8 +19,8 @@ import { useToast } from "metabase/common/hooks";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";

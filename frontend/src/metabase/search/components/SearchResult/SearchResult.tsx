@@ -4,10 +4,10 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Icon, Loader } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { modelToUrl } from "metabase/utils/urls";
 import type { SearchContext } from "metabase-types/api";

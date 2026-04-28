@@ -9,8 +9,8 @@ import {
 } from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { Tables } from "metabase/entities/tables";
+import { useDispatch } from "metabase/redux";
 import { Button, Flex, Tooltip } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 

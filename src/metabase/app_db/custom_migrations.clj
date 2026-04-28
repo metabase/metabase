@@ -996,7 +996,7 @@
             :let [is-pg-specical-case? (= [db-type table column]
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
-        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+        (t2/query ["DROP VIEW IF EXISTS v_users;"]))
       (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))

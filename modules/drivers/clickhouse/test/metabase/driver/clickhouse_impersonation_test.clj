@@ -47,11 +47,11 @@
            (driver/set-role! :clickhouse conn default-role)
            (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
                        rset (.executeQuery stmt)]
-             (is (.next rset) true)
-             (is (.getInt rset 1) 42)
-             (is (.next rset) true)
-             (is (.getInt rset 1) 144)
-             (is (.next rset) false)))))
+             (is (true? (.next rset)))
+             (is (= 42 (.getInt rset 1)))
+             (is (true? (.next rset)))
+             (is (= 144 (.getInt rset 1)))
+             (is (false? (.next rset)))))))
       (is true))))
 
 (defn- set-role-throws-test!

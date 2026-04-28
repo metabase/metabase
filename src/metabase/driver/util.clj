@@ -1,6 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv empty?])
+  (:refer-clojure :exclude [mapv empty? some])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf :refer [mapv empty?]])
+   [metabase.util.performance :refer [mapv empty? some]])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -480,9 +480,9 @@
                                                 %1 (:visible-if %2))
                                     {} props*)
                   visible-keys     (keys all-visible-ifs)
-                  transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                  transitive-props (mapv (comp (partial get props-by-name) ->str) visible-keys)
                   next-acc         (into acc all-visible-ifs)]
-              (if-not (perf/some #(contains? acc %) visible-keys)
+              (if-not (some #(contains? acc %) visible-keys)
                 (recur transitive-props next-acc)
                 (let [cyclic-props (set/intersection (set visible-keys)
                                                      (set (keys acc)))]

@@ -29,6 +29,10 @@ export interface Bookmark {
    * Defined only when bookmark.type is "card"
    */
   card_type?: CardType;
+  /**
+   * Defined only when bookmark.type is "collection"
+   */
+  is_remote_synced?: boolean;
 }
 
 export interface BookmarkOrdering {

@@ -3,8 +3,8 @@ import { useCallback } from "react";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   ParametersForActionExecution,

@@ -172,7 +172,7 @@
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
   []
-  (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id api/*current-user-id*)]
+  (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
     (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
