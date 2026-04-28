@@ -2,7 +2,6 @@
 
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DatasetColumn,
@@ -13,6 +12,8 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import type { Metadata } from "./metadata";
 
 const SAMPLE_DATABASE = createSampleDatabase();
 
