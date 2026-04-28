@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
-import { Flex } from "metabase/ui";
+import { Divider, Flex } from "metabase/ui";
 
 import type { MetricsViewerDisplayType } from "../../types/viewer-state";
 import type { ChartTypeOption } from "../../utils/tab-config";
@@ -56,10 +56,13 @@ export function QueryExplorerBar({
   return (
     <Flex
       w="100%"
-      h="32px"
       align="center"
+      direction="row"
+      wrap={{ base: "nowrap", xs: "wrap" }}
       justify="space-between"
+      gap="xs"
       data-testid="query-explorer-bar"
+      px="lg"
     >
       {/* Left: viz type selectors */}
       <Flex align="center" gap="xs">
@@ -77,10 +80,18 @@ export function QueryExplorerBar({
         )}
       </Flex>
 
-      {/* Center: time range + granularity */}
+      {/* Center: time range + granularity as a pill group */}
       {(filterControl || granularityControl) && (
-        <Flex align="center" gap="xs">
+        <Flex
+          align="center"
+          bd="1px solid var(--mb-color-border)"
+          bdrs="xl"
+          style={{ overflow: "hidden" }}
+        >
           {filterControl}
+          {filterControl && granularityControl && (
+            <Divider orientation="vertical" style={{ alignSelf: "stretch" }} />
+          )}
           {granularityControl}
         </Flex>
       )}

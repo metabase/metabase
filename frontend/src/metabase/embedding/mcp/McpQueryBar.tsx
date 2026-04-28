@@ -1,18 +1,11 @@
+import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { QueryExplorerBar } from "metabase/metrics-viewer/components/QueryExplorerBar";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
-import {
-  Box,
-  Button,
-  DefaultSelectItem,
-  Flex,
-  Icon,
-  Popover,
-} from "metabase/ui";
+import { Box, Button, DefaultSelectItem, Flex, Popover } from "metabase/ui";
 
 import { McpExploreButton } from "./McpExploreButton";
 import { useChartTypes } from "./hooks/useChartTypes";
@@ -67,14 +60,17 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
     <Popover opened={isDateFilterOpen} onChange={setIsDateFilterOpen}>
       <Popover.Target>
         <Button
-          w={160}
-          justify="space-between"
           fw="bold"
-          py="xs"
-          px="sm"
+          px="md"
           variant="subtle"
           color="text-primary"
-          rightSection={<Icon name="chevrondown" size={12} />}
+          styles={{
+            root: {
+              "&:hover": {
+                backgroundColor: "var(--mb-color-background-hover)",
+              },
+            },
+          }}
           onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
         >
           {dateFilterLabel}
@@ -122,14 +118,18 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
       <Popover opened={isBucketOpen} onChange={setIsBucketOpen}>
         <Popover.Target>
           <Button
-            w={120}
-            justify="space-between"
             fw="bold"
             py="xs"
-            px="sm"
+            px="md"
             variant="subtle"
             color="text-primary"
-            rightSection={<Icon name="chevrondown" size={12} />}
+            styles={{
+              root: {
+                "&:hover": {
+                  backgroundColor: "var(--mb-color-background-hover)",
+                },
+              },
+            }}
             onClick={() => setIsBucketOpen(!isBucketOpen)}
           >
             {bucketLabel}
@@ -173,9 +173,7 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
       onChartTypeChange={handleDisplayChange}
       filterControl={filterControl}
       granularityControl={granularityControl}
-      exploreControl={
-        <McpExploreButton app={app} instanceUrl={instanceUrl} />
-      }
+      exploreControl={<McpExploreButton app={app} instanceUrl={instanceUrl} />}
     />
   );
 }

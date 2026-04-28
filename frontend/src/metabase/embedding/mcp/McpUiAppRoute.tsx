@@ -130,11 +130,11 @@ export function McpUiAppRoute() {
 
           {/* Visualization fills the remaining space */}
           <Flex flex={1} mih={0} style={{ overflow: "hidden" }}>
-            <SdkQuestion.QuestionVisualization height="calc(500px - 8rem)" />
+            <SdkQuestion.QuestionVisualization height="calc(500px - 7.5rem)" />
           </Flex>
 
           {/* Query bar: viz selectors (left), time controls (center), explore (right) */}
-          <Flex py="xs" px="sm" style={{ flexShrink: 0 }}>
+          <Flex py="xs" px="sm" pt="md" style={{ flexShrink: 0 }}>
             <McpQueryBar app={app} instanceUrl={instanceUrl} />
           </Flex>
         </SdkQuestion>
