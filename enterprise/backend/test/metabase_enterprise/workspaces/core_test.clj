@@ -16,48 +16,23 @@
 
 (use-fixtures :each with-premium-feature)
 
-;;; Stub provisioning: flips status synchronously without hitting real drivers.
-(defmacro ^:private with-stubbed-provisioning [& body]
-  `(with-redefs [provisioning/run-async! (fn [f#] (f#))
-                 provisioning/provision-workspace-database!
-                 (fn [wsd-id# _provisioner#]
-                   (t2/update! :model/WorkspaceDatabase {:id wsd-id#}
-                               {:status :provisioned :output_schema (str "mb_iso_test_" wsd-id#)})
-                   (t2/select-one :model/WorkspaceDatabase :id wsd-id#))
-                 provisioning/deprovision-workspace-database!
-                 (fn [wsd-id# _provisioner#]
-                   (t2/update! :model/WorkspaceDatabase {:id wsd-id#}
-                               {:status :unprovisioned :output_schema "" :database_details {}})
-                   (t2/select-one :model/WorkspaceDatabase :id wsd-id#))]
-     ~@body))
+;;; Stub provisioner: records calls but doesn't hit real drivers.
+(defn- stub-provisioner []
+  (reify provisioning/Provisioner
+    (init! [_ _ _ _]
+      {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
+    (grant! [_ _ _ _ _] nil)
+    (destroy! [_ _ _ _] nil)))
 
 ;;; ----------------------------------------------- CRUD -------------------------------------------------------
 
 (deftest create-workspace-test
-  (testing "create with databases (schemas required)"
+  (testing "create with name only (no databases)"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name       "Test WS"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :databases  [{:database_id   (mt/id)
-                                                    :input_schemas ["PUBLIC"]}]})]
+                                      :creator_id (mt/user->id :crowberto)})]
         (is (= "Test WS" (:name ws)))
-        (is (= ["PUBLIC"] (:input_schemas (first (:databases ws))))))))
-
-  (testing "create with multiple input schemas"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name       "Multi Schema"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :databases  [{:database_id   (mt/id)
-                                                    :input_schemas ["raw_github" "raw_stripe"]}]})]
-        (is (= ["raw_github" "raw_stripe"]
-               (:input_schemas (first (:databases ws))))))))
-
-  (testing "schemas are required — empty schemas throws"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"input_schemas is required"
-         (ws/create-workspace! {:name       "No Schemas"
-                                :creator_id (mt/user->id :crowberto)
-                                :databases  [{:database_id (mt/id) :input_schemas []}]})))))
+        (is (empty? (:databases ws)))))))
 
 (deftest get-and-list-test
   (testing "get returns nil for non-existent"
@@ -66,114 +41,88 @@
   (testing "get returns hydrated workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name       "Get Test"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :databases  [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]})]
+                                      :creator_id (mt/user->id :crowberto)})]
         (let [fetched (ws/get-workspace (:id ws))]
           (is (some? (:creator fetched)))
-          (is (= 1 (count (:databases fetched))))))))
+          (is (= [] (:databases fetched)))))))
 
   (testing "list returns all"
     (mt/with-model-cleanup [:model/Workspace]
-      (ws/create-workspace! {:name "A" :creator_id (mt/user->id :crowberto) :databases []})
-      (ws/create-workspace! {:name "B" :creator_id (mt/user->id :crowberto) :databases []})
+      (ws/create-workspace! {:name "A" :creator_id (mt/user->id :crowberto)})
+      (ws/create-workspace! {:name "B" :creator_id (mt/user->id :crowberto)})
       (is (>= (count (ws/list-workspaces)) 2)))))
 
 ;;; ----------------------------------------- Add/Remove Database ----------------------------------------------
 
 (deftest add-database-test
-  (testing "add database with schemas"
+  (testing "add database provisions immediately"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws  (ws/create-workspace! {:name "Add DB" :creator_id (mt/user->id :crowberto) :databases []})
-            ws' (ws/add-database! (:id ws) (mt/id) :input_schemas ["PUBLIC" "ANALYTICS"])]
+      (let [ws  (ws/create-workspace! {:name "Add DB" :creator_id (mt/user->id :crowberto)})
+            ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                  (ws/add-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))]
         (is (= 1 (count (:databases ws'))))
-        (is (= ["PUBLIC" "ANALYTICS"] (:input_schemas (first (:databases ws'))))))))
+        (is (= ["PUBLIC" "ANALYTICS"] (:input_schemas (first (:databases ws')))))
+        (is (= :provisioned (:status (first (:databases ws'))))))))
 
   (testing "schemas required on add"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "No Schema Add" :creator_id (mt/user->id :crowberto) :databases []})]
+      (let [ws (ws/create-workspace! {:name "No Schema Add" :creator_id (mt/user->id :crowberto)})]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"input_schemas is required"
-             (ws/add-database! (:id ws) (mt/id) :input_schemas []))))))
+             (ws/add-database! (:id ws) (mt/id) []))))))
 
   (testing "duplicate database throws 409"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name       "Dup DB"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :databases  [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]})]
+      (let [ws (ws/create-workspace! {:name "Dup DB" :creator_id (mt/user->id :crowberto)})]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Database already in workspace"
-             (ws/add-database! (:id ws) (mt/id) :input_schemas ["PUBLIC"])))))))
+             (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])))))))
 
 (deftest remove-database-test
-  (testing "remove unprovisioned database"
+  (testing "remove deprovisions and deletes"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name       "Remove DB"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :databases  [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]})]
-        (is (empty? (:databases (ws/remove-database! (:id ws) (mt/id))))))))
+      (let [ws (ws/create-workspace! {:name "Remove DB" :creator_id (mt/user->id :crowberto)})]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
+          (let [ws' (ws/remove-database! (:id ws) (mt/id))]
+            (is (empty? (:databases ws'))))))))
 
   (testing "remove from non-existent workspace throws 404"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"Workspace not found"
          (ws/remove-database! 999999 (mt/id))))))
 
-;;; ----------------------------------------- Lifecycle locking ------------------------------------------------
+;;; ----------------------------------------- Update Database --------------------------------------------------
 
-(deftest locked-when-provisioned-test
-  (testing "structural edits blocked when any DB is provisioned"
-    (with-stubbed-provisioning
-      (mt/with-model-cleanup [:model/Workspace]
-        (let [ws (ws/create-workspace! {:name       "Lock Test"
-                                        :creator_id (mt/user->id :crowberto)
-                                        :databases  [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]})]
-          (ws/provision! (:id ws))
-          ;; Now locked — all structural edits should fail
-          (testing "add-database blocked"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"locked"
-                 (ws/add-database! (:id ws) 999 :input_schemas ["OTHER"]))))
-
-          (testing "remove-database blocked"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"locked"
-                 (ws/remove-database! (:id ws) (mt/id)))))
-
-          (testing "update-workspace blocked"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"locked"
-                 (ws/update-workspace! (:id ws) {:name "New Name" :databases []}))))
-
-          (testing "delete-workspace blocked"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"locked"
-                 (ws/delete-workspace! (:id ws)))))
-
-          ;; But provisioning actions still work
-          (testing "deprovision still works"
-            (is (= 1 (ws/deprovision! (:id ws)))))
-
-          ;; After deprovisioning, edits work again
-          (testing "edits work after deprovision"
-            (let [ws' (ws/get-workspace (:id ws))]
-              (is (every? #(= :unprovisioned (:status %)) (:databases ws'))))
-            (is (some? (ws/update-workspace! (:id ws) {:name      "Unlocked"
-                                                       :databases [{:database_id   (mt/id)
-                                                                    :input_schemas ["PUBLIC"]}]})))))))))
-
-(deftest provision-retry-from-partial-state-test
-  (testing "can retry provisioning after partial failure"
+(deftest update-database-test
+  (testing "update deprovisions old config and reprovisions with new schemas"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name       "Partial Test"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :databases  [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]})]
-        ;; Simulate partial failure: flip to provisioning then back to unprovisioned
-        (t2/update! :model/WorkspaceDatabase {:workspace_id (:id ws)} {:status :provisioning})
-        (t2/update! :model/WorkspaceDatabase {:workspace_id (:id ws)} {:status :unprovisioned})
-        ;; Now retry with stubbed provisioning
-        (with-stubbed-provisioning
-          (is (= 1 (ws/provision! (:id ws))))
-          (let [ws' (ws/get-workspace (:id ws))]
+      (let [ws (ws/create-workspace! {:name "Update DB" :creator_id (mt/user->id :crowberto)})]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
+          (let [ws' (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"])]
+            (is (= ["PUBLIC" "ANALYTICS"] (:input_schemas (first (:databases ws')))))
             (is (= :provisioned (:status (first (:databases ws')))))))))))
+
+;;; ----------------------------------------- Delete Workspace ------------------------------------------------
+
+(deftest delete-workspace-test
+  (testing "delete deprovisions all databases first"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (ws/create-workspace! {:name "Delete WS" :creator_id (mt/user->id :crowberto)})]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (ws/delete-workspace! (:id ws)))
+        (is (nil? (ws/get-workspace (:id ws)))))))
+
+  (testing "delete workspace with no databases"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
+        (ws/delete-workspace! (:id ws))
+        (is (nil? (ws/get-workspace (:id ws))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 
