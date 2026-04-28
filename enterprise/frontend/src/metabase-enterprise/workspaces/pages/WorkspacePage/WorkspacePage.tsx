@@ -1,18 +1,15 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Center } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
-import type {
-  UpdateWorkspaceRequest,
-  Workspace,
-  WorkspaceDatabase,
-} from "metabase-types/api";
+import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
-import { useGetWorkspaceQueryWithPolling } from "../../hooks/use-get-workspace-query-with-polling";
+import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
+import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
 type WorkspacePageProps = {
   params: { workspaceId: string };
@@ -20,14 +17,13 @@ type WorkspacePageProps = {
 
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
-  const { workspace, isLoading, error } =
-    useGetWorkspaceQueryWithPolling(workspaceId);
+  const { workspace, isLoading, error } = useFetchWorkspace(workspaceId);
 
   if (isLoading || error != null || workspace == null) {
     return (
-      <SettingsPageWrapper title={t`Workspace settings`}>
+      <Center h="100%">
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-      </SettingsPageWrapper>
+      </Center>
     );
   }
 
@@ -42,22 +38,32 @@ function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const { sendErrorToast } = useMetadataToasts();
 
-  const handleSave = async (patch: Omit<UpdateWorkspaceRequest, "id">) => {
-    const { error } = await updateWorkspace({ id: workspace.id, ...patch });
+  const handleNameChange = async (name: string) => {
+    if (name === workspace.name) {
+      return;
+    }
+    const { error } = await updateWorkspace({ id: workspace.id, name });
+    if (error) {
+      sendErrorToast(t`Failed to update workspace name`);
+    }
+  };
+
+  const handleDatabasesChange = async (databases: WorkspaceDatabase[]) => {
+    const { error } = await updateWorkspace({
+      id: workspace.id,
+      databases,
+    });
     if (error) {
       sendErrorToast(t`Failed to update workspace`);
     }
   };
 
   return (
-    <SettingsPageWrapper title={t`Workspace settings`}>
-      <WorkspaceEditor
-        workspace={workspace}
-        onNameChange={(name) => handleSave({ name })}
-        onDatabasesChange={(databases: WorkspaceDatabase[]) =>
-          handleSave({ databases })
-        }
-      />
-    </SettingsPageWrapper>
+    <WorkspaceEditor
+      workspace={workspace}
+      menu={<WorkspaceMoreMenu workspace={workspace} />}
+      onNameChange={handleNameChange}
+      onDatabasesChange={handleDatabasesChange}
+    />
   );
 }

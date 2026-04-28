@@ -1,30 +1,37 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { Button, Group, Icon, Paper, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Button, Text, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
-import type {
-  Database,
-  DatabaseId,
-  WorkspaceDatabase,
-} from "metabase-types/api";
+import type { DatabaseId, WorkspaceDatabase } from "metabase-types/api";
 
+import type { WorkspaceInfo } from "../../../types";
 import { isDatabaseProvisioned } from "../../../utils";
+import { TitleSection } from "../TitleSection";
 
 import { DatabaseMappingModal } from "./DatabaseMappingModal";
-import { getAddTooltipLabel, getAvailableDatabases } from "./utils";
+import { DatabaseMappingTable } from "./DatabaseMappingTable";
+import {
+  getAddTooltipLabel,
+  getAvailableDatabases,
+  isSupportedDatabase,
+} from "./utils";
 
 type DatabaseMappingSectionProps = {
-  databases: WorkspaceDatabase[];
+  workspace: WorkspaceInfo;
   onChange: (databases: WorkspaceDatabase[]) => void;
 };
 
 export function DatabaseMappingSection({
-  databases: mappings,
+  workspace,
   onChange,
 }: DatabaseMappingSectionProps) {
-  const [isModalOpened, setIsModalOpened] = useState(false);
+  const mappings = workspace.databases;
+  const isNew = workspace.id == null;
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
   const { data: databasesResponse } = useListDatabasesQuery();
 
@@ -35,22 +42,22 @@ export function DatabaseMappingSection({
   const selectedMapping = mappings.find(
     (mapping) => mapping.database_id === selectedDatabaseId,
   );
+  const supportedDatabases = databases.filter(isSupportedDatabase);
   const availableDatabases = getAvailableDatabases(databases, mappings);
-  const hasAvailableDatabases = availableDatabases.length > 0;
-  const canAddMapping = hasAvailableDatabases && !isReadOnly;
+  const canAddMapping = availableDatabases.length > 0 && !isReadOnly;
 
   const handleOpenCreate = () => {
     setSelectedDatabaseId(undefined);
-    setIsModalOpened(true);
+    openModal();
   };
 
   const handleOpenEdit = (mapping: WorkspaceDatabase) => {
     setSelectedDatabaseId(mapping.database_id);
-    setIsModalOpened(true);
+    openModal();
   };
 
   const handleClose = () => {
-    setIsModalOpened(false);
+    closeModal();
     setSelectedDatabaseId(undefined);
   };
 
@@ -61,46 +68,57 @@ export function DatabaseMappingSection({
   const handleUpdate = (mapping: WorkspaceDatabase) => {
     onChange(
       mappings.map((current) =>
-        current.database_id === selectedDatabaseId
-          ? { ...mapping, status: current.status }
-          : current,
+        current.database_id === selectedDatabaseId ? mapping : current,
       ),
     );
   };
 
-  const handleDelete = (mapping: WorkspaceDatabase) => {
+  const handleRemove = (mapping: WorkspaceDatabase) => {
     onChange(
       mappings.filter((current) => current.database_id !== mapping.database_id),
     );
   };
 
+  const canRemoveMapping = selectedMapping != null && mappings.length > 1;
+
   return (
     <>
-      <Group justify="flex-end">
-        <Tooltip
-          label={getAddTooltipLabel(isReadOnly)}
-          disabled={canAddMapping}
-          openDelay={TOOLTIP_OPEN_DELAY}
-        >
-          <Button
-            leftSection={<Icon name="add" />}
-            disabled={!canAddMapping}
-            onClick={handleOpenCreate}
-          >{t`Add database`}</Button>
-        </Tooltip>
-      </Group>
-      {mappings.length > 0 && (
-        <Stack>
-          {mappings.map((mapping) => (
-            <DatabaseMappingItem
-              key={mapping.database_id}
-              mapping={mapping}
-              database={databasesById.get(mapping.database_id)}
-              onClick={() => handleOpenEdit(mapping)}
-            />
-          ))}
-        </Stack>
-      )}
+      <TitleSection
+        label={t`Database mapping`}
+        description={t`Configure which databases are accessible from this workspace.`}
+        rightSection={
+          <Tooltip
+            label={getAddTooltipLabel({
+              readOnly: isReadOnly,
+              hasSupportedDatabases: supportedDatabases.length > 0,
+              hasAvailableDatabases: availableDatabases.length > 0,
+            })}
+            disabled={canAddMapping}
+            openDelay={TOOLTIP_OPEN_DELAY}
+          >
+            <Button
+              variant={mappings.length === 0 ? "filled" : "default"}
+              disabled={!canAddMapping}
+              onClick={handleOpenCreate}
+            >
+              {t`Add database`}
+            </Button>
+          </Tooltip>
+        }
+      >
+        {mappings.length === 0 ? (
+          <Box p="md">
+            <Text c="text-secondary">{t`No databases mapped yet.`}</Text>
+          </Box>
+        ) : (
+          <DatabaseMappingTable
+            mappings={mappings}
+            databasesById={databasesById}
+            withStatus={!isNew}
+            onRowClick={handleOpenEdit}
+          />
+        )}
+      </TitleSection>
       <DatabaseMappingModal
         opened={isModalOpened}
         mapping={selectedMapping}
@@ -109,45 +127,12 @@ export function DatabaseMappingSection({
           mappings,
           selectedDatabaseId,
         )}
-        canDelete={mappings.length > 1}
-        isReadOnly={isReadOnly}
+        readOnly={isReadOnly}
+        canRemove={canRemoveMapping}
         onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
-        onDelete={selectedMapping != null ? handleDelete : undefined}
+        onDelete={handleRemove}
         onClose={handleClose}
       />
     </>
-  );
-}
-
-type DatabaseMappingItemProps = {
-  mapping: WorkspaceDatabase;
-  database?: Database;
-  onClick: () => void;
-};
-
-function DatabaseMappingItem({
-  mapping,
-  database,
-  onClick,
-}: DatabaseMappingItemProps) {
-  return (
-    <Paper
-      withBorder
-      shadow="0"
-      p="lg"
-      onClick={onClick}
-      style={{ cursor: "pointer" }}
-    >
-      <Stack gap="sm">
-        <Group gap="sm" align="center">
-          <Icon name="database" />
-          <Text fw={700}>{database?.name ?? t`Database`}</Text>
-        </Group>
-        <Group gap="sm" align="center">
-          <Icon name="schema" />
-          <Text c="text-secondary">{mapping.input_schemas.join(" ")}</Text>
-        </Group>
-      </Stack>
-    </Paper>
   );
 }

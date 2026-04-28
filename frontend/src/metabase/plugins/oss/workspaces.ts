@@ -1,19 +1,22 @@
 import type { ComponentType, ReactNode } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { State } from "metabase/redux/store";
 
 type WorkspacesPlugin = {
-  WorkspacesNav: ComponentType;
+  isEnabled: boolean;
+  canManageWorkspaces: (state: State) => boolean;
   TableRemappingNav: ComponentType;
-  getWorkspaceAdminRoutes: () => ReactNode;
   getWorkspaceAdminFullWidthRoutes: () => ReactNode;
+  getDataStudioWorkspaceRoutes: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
-  WorkspacesNav: PluginPlaceholder,
+  isEnabled: false,
+  canManageWorkspaces: () => false,
   TableRemappingNav: PluginPlaceholder,
-  getWorkspaceAdminRoutes: () => null,
   getWorkspaceAdminFullWidthRoutes: () => null,
+  getDataStudioWorkspaceRoutes: () => null,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultPlugin();

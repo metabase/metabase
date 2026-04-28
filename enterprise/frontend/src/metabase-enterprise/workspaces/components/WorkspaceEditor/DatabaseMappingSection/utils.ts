@@ -1,12 +1,15 @@
 import { t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import type {
   Database,
   DatabaseId,
   WorkspaceDatabase,
 } from "metabase-types/api";
 
-import { isSupportedDatabase } from "../../../utils";
+export function isSupportedDatabase(database: Database): boolean {
+  return hasFeature(database, "workspace");
+}
 
 export function getAvailableDatabases(
   databases: Database[],
@@ -21,8 +24,25 @@ export function getAvailableDatabases(
   );
 }
 
-export function getAddTooltipLabel(isReadOnly: boolean): string {
-  return isReadOnly
-    ? t`Unprovision this workspace before editing.`
-    : t`No available databases that support workspaces.`;
+type AddTooltipParams = {
+  readOnly: boolean;
+  hasSupportedDatabases: boolean;
+  hasAvailableDatabases: boolean;
+};
+
+export function getAddTooltipLabel({
+  readOnly,
+  hasSupportedDatabases,
+  hasAvailableDatabases,
+}: AddTooltipParams): string {
+  if (readOnly) {
+    return t`Deprovision this workspace before editing.`;
+  }
+  if (!hasSupportedDatabases) {
+    return t`No databases support workspaces.`;
+  }
+  if (!hasAvailableDatabases) {
+    return t`All supported databases are already added.`;
+  }
+  return "";
 }

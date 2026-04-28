@@ -20,7 +20,7 @@
   `table_remapping`. This hook returns `[to-schema to-name]` when a remapping
   exists so sync asks the driver about the isolated warehouse location; returns
   nil otherwise (OSS fallback) so the driver is queried at the logical identity."
-  metabase-enterprise.workspaces.remapping.core
+  metabase-enterprise.workspaces.table-remapping
   [_db-id _schema _name]
   nil)
 

@@ -1,45 +1,51 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { Button, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import * as Urls from "metabase/utils/urls";
 import type { Workspace } from "metabase-types/api";
 
-import { useListWorkspacesQueryWithPolling } from "../../hooks/use-list-workspaces-query-with-polling";
+import { useFetchWorkspaceList } from "../../hooks/use-fetch-workspace-list";
 
 import { WorkspaceList } from "./WorkspaceList";
 import { filterWorkspaces } from "./utils";
 
 export function WorkspaceListPage() {
-  const { workspaces, error, isLoading } = useListWorkspacesQueryWithPolling();
+  const { workspaces, error, isLoading } = useFetchWorkspaceList();
+
+  if (error) {
+    return <DelayedLoadingAndErrorWrapper loading={false} error={error} />;
+  }
 
   return (
-    <SettingsPageWrapper
-      title={t`Provisioning`}
-      description={t`Provision isolated workspaces for transform development.`}
-    >
-      {error ? (
-        <DelayedLoadingAndErrorWrapper loading={false} error={error} />
-      ) : (
-        <WorkspaceListPageBody workspaces={workspaces} isLoading={isLoading} />
-      )}
-    </SettingsPageWrapper>
+    <PageContainer data-testid="workspace-list-page" gap={0}>
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
+        }
+        py={0}
+        showMetabotButton
+      />
+      <WorkspaceListPageBody workspaces={workspaces} loading={isLoading} />
+    </PageContainer>
   );
 }
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
-  isLoading: boolean;
+  loading: boolean;
 };
 
 function WorkspaceListPageBody({
   workspaces,
-  isLoading,
+  loading,
 }: WorkspaceListPageBodyProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebouncedValue(
@@ -54,7 +60,7 @@ function WorkspaceListPageBody({
   const isFiltered = debouncedQuery.length > 0;
 
   return (
-    <Stack>
+    <Stack style={{ overflow: "hidden" }}>
       <Flex gap="0.5rem">
         <TextInput
           placeholder={t`Search...`}
@@ -65,16 +71,19 @@ function WorkspaceListPageBody({
           onChange={(event) => setSearchQuery(event.currentTarget.value)}
         />
         <Button
+          variant={workspaces.length === 0 ? "filled" : "default"}
           leftSection={<Icon name="add" />}
           component={ForwardRefLink}
           to={Urls.newWorkspace()}
         >{t`New`}</Button>
       </Flex>
-      <WorkspaceList
-        workspaces={filteredWorkspaces}
-        isFiltered={isFiltered}
-        isLoading={isLoading}
-      />
+      <Flex direction="column" flex={1} mih={0}>
+        <WorkspaceList
+          workspaces={filteredWorkspaces}
+          filtered={isFiltered}
+          loading={loading}
+        />
+      </Flex>
     </Stack>
   );
 }

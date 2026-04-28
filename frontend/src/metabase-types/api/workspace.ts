@@ -7,7 +7,7 @@ export type WorkspaceId = number;
 export type WorkspaceDatabaseStatus =
   | "provisioned"
   | "provisioning"
-  | "unprovisioning"
+  | "deprovisioning"
   | "unprovisioned";
 
 export type Workspace = {
@@ -30,7 +30,7 @@ export type WorkspaceDatabase = {
 
 export type CreateWorkspaceRequest = {
   name: string;
-  databases?: WorkspaceDatabase[];
+  databases: WorkspaceDatabase[];
 };
 
 export type UpdateWorkspaceRequest = {

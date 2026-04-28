@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import { useListDatabaseSchemasQuery } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -20,24 +22,35 @@ import type {
 } from "metabase-types/api";
 
 type DatabaseMappingFormValues = {
-  database_id: string;
+  database_id: string | null;
   input_schemas: string[];
 };
 
-const VALIDATION_SCHEMA = Yup.object({
-  database_id: Yup.string().required(Errors.required),
-  input_schemas: Yup.array()
-    .of(Yup.string().required())
-    .min(1, Errors.required)
-    .required(),
-});
+function getValidationSchema(databases: Database[]) {
+  return Yup.object({
+    database_id: Yup.string().required(Errors.required),
+    input_schemas: Yup.array()
+      .of(Yup.string().nullable().required())
+      .when("database_id", {
+        is: (value: string) => {
+          const databaseId = getDatabaseId(value);
+          const database = databases.find(
+            (database) => database.id === databaseId,
+          );
+          return database != null && hasFeature(database, "schemas");
+        },
+        then: (schema) => schema.min(1, Errors.required).required(),
+        otherwise: (schema) => schema,
+      }),
+  });
+}
 
 type DatabaseMappingModalProps = {
   mapping?: WorkspaceDatabase;
   databases: Database[];
   opened: boolean;
-  canDelete?: boolean;
-  isReadOnly?: boolean;
+  readOnly?: boolean;
+  canRemove?: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
@@ -47,8 +60,8 @@ export function DatabaseMappingModal({
   mapping,
   databases,
   opened,
-  canDelete = true,
-  isReadOnly = false,
+  readOnly = false,
+  canRemove = false,
   onSubmit,
   onDelete,
   onClose,
@@ -57,7 +70,7 @@ export function DatabaseMappingModal({
 
   return (
     <Modal
-      title={isNew ? t`Add database` : t`Edit database configuration`}
+      title={isNew ? t`Add database` : t`Edit database mapping`}
       opened={opened}
       padding="xl"
       onClose={onClose}
@@ -65,8 +78,8 @@ export function DatabaseMappingModal({
       <DatabaseMappingForm
         mapping={mapping}
         databases={databases}
-        canDelete={canDelete}
-        isReadOnly={isReadOnly}
+        readOnly={readOnly}
+        canRemove={canRemove}
         onSubmit={onSubmit}
         onDelete={onDelete}
         onClose={onClose}
@@ -78,8 +91,8 @@ export function DatabaseMappingModal({
 type DatabaseMappingFormProps = {
   mapping?: WorkspaceDatabase;
   databases: Database[];
-  canDelete: boolean;
-  isReadOnly: boolean;
+  readOnly: boolean;
+  canRemove: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
@@ -88,14 +101,18 @@ type DatabaseMappingFormProps = {
 function DatabaseMappingForm({
   mapping,
   databases,
-  canDelete,
-  isReadOnly,
+  readOnly,
+  canRemove,
   onSubmit,
   onDelete,
   onClose,
 }: DatabaseMappingFormProps) {
   const isNew = mapping == null;
-  const hasDelete = !isNew && onDelete != null;
+  const initialValues = useMemo(() => getInitialValues(mapping), [mapping]);
+  const validationSchema = useMemo(
+    () => getValidationSchema(databases),
+    [databases],
+  );
 
   const handleSubmit = (values: DatabaseMappingFormValues) => {
     onSubmit(getDatabaseMapping(values));
@@ -111,14 +128,18 @@ function DatabaseMappingForm({
 
   return (
     <FormProvider
-      initialValues={getInitialValues(mapping)}
-      validationSchema={VALIDATION_SCHEMA}
+      initialValues={initialValues}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       {({ values, setFieldValue, dirty }) => {
         const databaseId = values.database_id
           ? getDatabaseId(values.database_id)
           : null;
+        const database = databases.find(
+          (database) => database.id === databaseId,
+        );
+        const hasSchemas = database != null && hasFeature(database, "schemas");
 
         const handleDatabaseChange = (value: string) => {
           setFieldValue("database_id", value);
@@ -134,29 +155,31 @@ function DatabaseMappingForm({
                 placeholder={t`Select a database`}
                 data={getDatabaseOptions(databases)}
                 searchable
-                readOnly={isReadOnly}
+                readOnly={readOnly}
                 onChange={handleDatabaseChange}
               />
-              {databaseId != null && (
+              {databaseId != null && hasSchemas && (
                 <DatabaseSchemasSelect
                   databaseId={databaseId}
                   selectedSchemas={values.input_schemas}
-                  isReadOnly={isReadOnly}
+                  readOnly={readOnly}
                 />
               )}
               <Group>
-                {hasDelete && (
+                {!isNew && (
                   <Tooltip
-                    label={getDeleteButtonLabel(isReadOnly, canDelete) ?? ""}
-                    disabled={
-                      getDeleteButtonLabel(isReadOnly, canDelete) == null
+                    label={
+                      readOnly
+                        ? t`Deprovision this workspace before editing.`
+                        : t`A workspace must have at least one database.`
                     }
+                    disabled={canRemove}
                     openDelay={TOOLTIP_OPEN_DELAY}
                   >
                     <Button
                       variant="subtle"
                       color="error"
-                      disabled={isReadOnly || !canDelete}
+                      disabled={!canRemove}
                       onClick={handleDelete}
                     >
                       {t`Delete`}
@@ -168,14 +191,14 @@ function DatabaseMappingForm({
                 </Box>
                 <Button onClick={onClose}>{t`Cancel`}</Button>
                 <Tooltip
-                  label={t`Unprovision this workspace before editing.`}
-                  disabled={!isReadOnly}
+                  label={t`Deprovision this workspace before editing.`}
+                  disabled={!readOnly}
                   openDelay={TOOLTIP_OPEN_DELAY}
                 >
                   <FormSubmitButton
                     label={isNew ? t`Add database` : t`Save`}
                     variant="filled"
-                    disabled={isReadOnly || (!isNew && !dirty)}
+                    disabled={readOnly || (!isNew && !dirty)}
                   />
                 </Tooltip>
               </Group>
@@ -187,32 +210,21 @@ function DatabaseMappingForm({
   );
 }
 
-function getDeleteButtonLabel(
-  isReadOnly: boolean,
-  canDelete: boolean,
-): string | undefined {
-  if (isReadOnly) {
-    return t`Unprovision this workspace before editing.`;
-  }
-  if (!canDelete) {
-    return t`A workspace must have at least one database.`;
-  }
-}
-
 type DatabaseSchemasSelectProps = {
   databaseId: DatabaseId;
   selectedSchemas: string[];
-  isReadOnly: boolean;
+  readOnly: boolean;
 };
 
 function DatabaseSchemasSelect({
   databaseId,
   selectedSchemas,
-  isReadOnly,
+  readOnly,
 }: DatabaseSchemasSelectProps) {
-  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId != null ? { id: databaseId, include_hidden: true } : skipToken,
-  );
+  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery({
+    id: databaseId,
+    include_hidden: true,
+  });
   const isAllSelected =
     availableSchemas.length > 0 &&
     selectedSchemas.length === availableSchemas.length;
@@ -220,12 +232,12 @@ function DatabaseSchemasSelect({
   return (
     <FormMultiSelect
       name="input_schemas"
-      label={t`Readable schemas`}
+      label={t`Schemas`}
       description={t`Tables in these schemas are readable in this workspace.`}
       placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
       data={availableSchemas}
       searchable
-      readOnly={isReadOnly}
+      readOnly={readOnly}
     />
   );
 }
@@ -248,19 +260,30 @@ function getDatabaseOptions(databases: Database[]) {
 function getInitialValues(
   mapping?: WorkspaceDatabase,
 ): DatabaseMappingFormValues {
+  if (mapping == null) {
+    return {
+      database_id: null,
+      input_schemas: [],
+    };
+  }
+
   return {
-    database_id:
-      mapping?.database_id != null ? getDatabaseValue(mapping.database_id) : "",
-    input_schemas: mapping?.input_schemas ?? [],
+    database_id: getDatabaseValue(mapping.database_id),
+    input_schemas: mapping.input_schemas,
   };
 }
 
 function getDatabaseMapping(
   values: DatabaseMappingFormValues,
 ): WorkspaceDatabase {
+  if (values.database_id == null) {
+    throw new Error("Database ID is required");
+  }
+
   return {
     database_id: getDatabaseId(values.database_id),
     input_schemas: values.input_schemas,
+    output_schema: "",
     status: "unprovisioned",
   };
 }
