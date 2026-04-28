@@ -2,7 +2,6 @@ import { type KeyboardEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateCollectionMutation } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import {
   COLLECTION_FORM_SCHEMA,
@@ -13,7 +12,6 @@ import type {
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -39,7 +37,6 @@ const isCollectionItem = (
 
 export function EditCollectionModal(props: EditCollectionModalProps) {
   const { collection, onClose, onSave } = props;
-  const [sendToast] = useToast();
   const [updateCollection] = useUpdateCollectionMutation();
   const initialValues = useMemo<CollectionFormValues>(() => {
     const parentId = isCollectionItem(collection)
@@ -54,23 +51,16 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
 
   const handleSubmit = useCallback(
     async (values: CollectionFormValues) => {
-      try {
-        await updateCollection({
-          id: collection.id,
-          name: values.name,
-          description: values.description ?? undefined,
-          parent_id: values.parent_id,
-        }).unwrap();
-        onSave?.();
-        onClose();
-      } catch (err) {
-        void sendToast({
-          message: getErrorMessage(err, t`Failed to update collection`),
-          icon: "warning",
-        });
-      }
+      await updateCollection({
+        id: collection.id,
+        name: values.name,
+        description: values.description ?? undefined,
+        parent_id: values.parent_id,
+      }).unwrap();
+      onSave?.();
+      onClose();
     },
-    [collection.id, updateCollection, onSave, onClose, sendToast],
+    [collection.id, updateCollection, onSave, onClose],
   );
 
   const shouldDisableItem = useCallback(
