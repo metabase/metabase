@@ -9,7 +9,7 @@
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 

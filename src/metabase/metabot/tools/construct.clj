@@ -11,7 +11,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

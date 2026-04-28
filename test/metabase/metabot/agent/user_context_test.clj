@@ -7,7 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
    [metabase.test :as mt]))
 
 (deftest format-current-time-test

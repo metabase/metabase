@@ -9,7 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -122,7 +122,8 @@
 
 ;; For saved entities (table, model, question, metric, dashboard), the frontend only sends
 ;; type + id. We fetch full details from the DB using entity-details and render them via
-;; llm-representations, mirroring what the Python AI service did via HTTP callbacks.
+;; llm-shape (the output-side XML formatters), mirroring what the Python AI service did
+;; via HTTP callbacks.
 
 (defn- fetch-and-format
   "Fetch entity details and format with llm-rep. Falls back to format-simple-entity on failure."

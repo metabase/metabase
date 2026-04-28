@@ -10,7 +10,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]

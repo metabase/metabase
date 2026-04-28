@@ -1,8 +1,8 @@
-(ns metabase.metabot.tools.shared.llm-representations-test
+(ns metabase.metabot.tools.shared.llm-shape-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]))
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]))
 
 (deftest escape-xml-test
   (testing "escape-xml handles special characters"

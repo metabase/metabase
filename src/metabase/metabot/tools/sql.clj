@@ -6,7 +6,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-rep]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
