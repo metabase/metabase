@@ -68,7 +68,7 @@ export function DatabaseMappingModal({
 
   return (
     <Modal
-      title={isNew ? t`Add database` : t`Edit database configuration`}
+      title={isNew ? t`Add database` : t`Edit database mapping`}
       opened={opened}
       padding="xl"
       onClose={onClose}
