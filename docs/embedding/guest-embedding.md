@@ -57,7 +57,7 @@ Add the embed script and configuration to your HTML:
     instanceUrl: "YOUR_METABASE_URL",
     // Optional. Set this if you want the embed to fetch a fresh JWT
     // when the current one expires. See "Refreshing the JWT" below.
-    // guestEmbedProviderUri: "/api/metabase-guest-token",
+    // guestEmbedProviderUri: "/your/apps/endpoint",
   };
 </script>
 ```
@@ -103,14 +103,14 @@ Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regeneratin
 
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute               | Description                                                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `token`                 | Required. The signed JWT token from your server.                                                             |
-| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                       |
-| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                  |
-| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                        |
-| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                           |
-| `custom-context`        | String or JSON forwarded to your [`guestEmbedProviderUri`](#refreshing-the-jwt) endpoint as `customContext`. |
+| Attribute               | Description                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `token`                 | Required. The signed JWT token from your server.                                                     |
+| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                               |
+| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                          |
+| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                |
+| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                   |
+| `custom-context`        | String forwarded to your [`guestEmbedProviderUri`](#refreshing-the-jwt) endpoint as `customContext`. |
 
 \* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
@@ -309,12 +309,12 @@ When the end-user changes a value in your custom widget, re-sign a new JWT on yo
 
 ## Refreshing the JWT
 
-JWTs you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data, and any filter selections the visitor made will reset on the next request. To keep the embed alive without reloading the page, configure a guest token endpoint on your server that hands out fresh JWTs on demand.
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data, and any filter selections the viewer made will reset on the next request. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
 
-The endpoint should serve two flows:
+The endpoint can serve two flows:
 
-- **Refresh**: when the embed's current JWT is about to expire, the embed POSTs to your endpoint to get the new JWT, and swaps it in.
-- **Initialize** (optional): if you don't want to pre-render a JWT in the HTML at all, the embed can call the same endpoint on load to fetch that first JWT.
+- **Refreshing tokens**: when the embed's current JWT is about to expire, the embed POSTs to your endpoint to get the new JWT, and swaps it in.
+- **Initializing with a token** (optional): if you don't want to pre-render a JWT in the HTML at all, the embed can call the same endpoint on load to fetch that first JWT.
 
 ### Setting the endpoint URL in the guest embed
 
@@ -330,7 +330,7 @@ Add `guestEmbedProviderUri` to your `metabaseConfig`. The value is a path (or fu
 </script>
 ```
 
-When the embed needs a token, it sends a `POST` request to `guestEmbedProviderUri` with a JSON body, which includes cookies (`credentials: "include"`), so you can authenticate the request with your app's existing session.
+When the embed needs a token, it sends a `POST` request to `guestEmbedProviderUri` with a JSON body, which includes cookies, so you can authenticate the request with your app's existing session.
 
 Request:
 
@@ -356,7 +356,7 @@ Response: a JSON object with a single `jwt` field:
 
 ### Refresh flow
 
-Pre-render an initial JWT on the component (just like a regular guest embed) and configure `guestEmbedProviderUri`. When the JWT expires, the embed will call your endpoint to get a fresh one and seamlessly swap it in.
+Pre-render an initial JWT on the component (just like a regular guest embed) and configure `guestEmbedProviderUri`. When the JWT expires, the embed will call your endpoint to get a fresh one and swap it in.
 
 ```html
 <script>
