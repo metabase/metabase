@@ -48,4 +48,9 @@
    [:values [:fn {:error/message "must be an array"}
              #(instance? java.util.List %)]]
    [:has_more_values :boolean]
-   [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
+   ;; java.util.List rather than [:sequential [:maybe :string]] for the same reason as :values
+   ;; — Jackson hands us ArrayLists, which `:sequential` rejects.
+   [:human_readable_values {:optional true}
+    [:fn {:error/message "must be a list of (optional) strings"}
+     #(and (instance? java.util.List %)
+           (every? (fn [x] (or (nil? x) (string? x))) %))]]])
