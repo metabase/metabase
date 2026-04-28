@@ -1,9 +1,9 @@
 ## Create and configure custom_viz_plugin table for custom visualization plugins
 
 databaseChangeLog:
-  - logicalFilePath: migrations/061_update_migrations.yaml
+  - logicalFilePath: migrations/062_update_migrations.yaml
   - changeSet:
-      id: v61.2026-04-09T10:00:00
+      id: v62.2026-04-09T10:00:00
       author: sgavrylov
       comment: Create custom_viz_plugin table for custom visualization plugins
       preConditions:
