@@ -748,12 +748,6 @@
    :requires [[mage.bot.preflight :as preflight]]
    :task (task! (preflight/preflight! parsed))}
 
-  -bot-write-sandbox-settings
-  {:doc "Write container-compatible .claude/settings.local.json for bot sandboxing"
-   :examples [["./bin/mage -bot-write-sandbox-settings" "Write sandbox settings"]]
-   :requires [[mage.bot.preflight :as preflight]]
-   :task (task! (preflight/write-sandbox-settings! parsed))}
-
   -bot-preflight-health
   {:doc "Wait for Metabase backend to become healthy (retries for up to 5 minutes)"
    :examples [["./bin/mage -bot-preflight-health" "Wait for backend health"]]

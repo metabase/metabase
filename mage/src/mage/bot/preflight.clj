@@ -203,17 +203,3 @@
     (check-node-modules!)
     (println (c/green "All preflight checks passed."))))
 
-(defn write-sandbox-settings!
-  "Copy dev/bot/bot.settings.local.json into the current worktree's
-  .claude/settings.local.json — the sandboxed permission set used by
-  bot agents."
-  [_parsed]
-  (let [source (str u/project-root-directory "/dev/bot/bot.settings.local.json")
-        target ".claude/settings.local.json"]
-    (if (.exists (java.io.File. ^String source))
-      (do
-        (spit target (slurp source))
-        (println (c/green "Wrote ") target))
-      (do
-        (println (c/red "Source not found: ") source)
-        (u/exit 1)))))

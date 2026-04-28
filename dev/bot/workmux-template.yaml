@@ -1,4 +1,4 @@
-agent: claude
+agent: "claude --permission-mode auto"
 
 post_create:
   # Trust mise.toml early so pane shells don't prompt with "config not trusted"

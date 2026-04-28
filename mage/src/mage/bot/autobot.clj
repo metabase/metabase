@@ -307,7 +307,7 @@
     (let [panes-idx     (str/index-of workmux-config "\npanes:")
           panes-section (when panes-idx (subs workmux-config panes-idx))]
       (spit (str wt-path "/.workmux.yaml")
-            (str "agent: claude\n"
+            (str "agent: \"claude --permission-mode auto\"\n"
                  panes-section)))
 
     (println)
