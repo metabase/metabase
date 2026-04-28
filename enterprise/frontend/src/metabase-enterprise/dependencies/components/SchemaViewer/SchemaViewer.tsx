@@ -5,57 +5,41 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
-  useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   Box,
   Button,
-  FixedSizeIcon,
   Group,
-  Icon,
   Loader,
   Stack,
   Text,
-  UnstyledButton,
   useColorScheme,
 } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
-import type {
-  ConcreteTableId,
-  Database,
-  DatabaseId,
-  DependencyId,
-  Field,
-  GetErdRequest,
-  TableDependencyNode,
-  TableDependencyNodeData,
-} from "metabase-types/api";
+import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
-import { GraphInfoPanel } from "../DependencyGraph/GraphInfoPanel";
-
+import { AutoLayoutButton } from "./AutoLayoutButton";
 import { SchemaViewerEdge } from "./Edge";
+import { FitToNewNodes } from "./FitToNewNodes";
 import { SchemaViewerNodeLayout } from "./NodeLayout";
 import { SchemaViewerNodeSearch } from "./NodeSearch";
 import { SchemaPickerInput } from "./SchemaPickerInput";
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
+import { SelectedNodeInfoPanel } from "./SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
+import { getErdQueryParams } from "./getErdQueryParams";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
-import { useZoomToNodes } from "./useZoomToNodes";
-import {
-  focusNodeLayout,
-  getNodesWithPositions,
-  mergeWithExistingPositions,
-  toFlowGraph,
-} from "./utils";
+import { useEdgeZoom } from "./useEdgeZoom";
+import { useExtraTableIds } from "./useExtraTableIds";
+import { useGraphSync } from "./useGraphSync";
+import { focusNodeLayout, toFlowGraph } from "./utils";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -72,253 +56,10 @@ const PRO_OPTIONS = {
 const DEFAULT_ZOOM = 0.3;
 const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
 
-interface FitToNewNodesProps {
-  nodeIds: readonly string[] | null;
-  onDone: () => void;
-}
-
-/**
- * When `nodeIds` is set to a non-empty list (e.g. by SchemaViewer when
- * tables have been added via FK expansion, or when an edge has been
- * double-clicked), pan/zoom the camera to the given nodes using the shared
- * {@link useZoomToNodes} rules (≥0.5 zoom, header in viewport). Calls
- * `onDone` once the zoom has been scheduled to clear the pending state.
- */
-function FitToNewNodes({ nodeIds, onDone }: FitToNewNodesProps) {
-  const zoomToNodes = useZoomToNodes();
-  useEffect(() => {
-    if (nodeIds == null || nodeIds.length === 0) {
-      return;
-    }
-    // requestAnimationFrame to let React Flow commit any pending node
-    // additions (and their measured dimensions) before we compute bounds.
-    const handle = requestAnimationFrame(() => {
-      zoomToNodes(nodeIds);
-      onDone();
-    });
-    return () => cancelAnimationFrame(handle);
-  }, [nodeIds, zoomToNodes, onDone]);
-  return null;
-}
-
-/**
- * Re-runs the default Dagre layout on all currently-displayed nodes. Rendered
- * inside ReactFlow so it can use {@link useReactFlow} to read and replace
- * node state imperatively (React Flow's fitView can only run inside the
- * provider).
- */
-function AutoLayoutButton() {
-  const { getNodes, getEdges, setNodes, fitView } =
-    useReactFlow<SchemaViewerFlowNode>();
-
-  const handleClick = useCallback(() => {
-    const currentNodes = getNodes();
-    const currentEdges = getEdges();
-    if (currentNodes.length === 0) {
-      return;
-    }
-    const laidOut = getNodesWithPositions(currentNodes, currentEdges);
-    setNodes(laidOut);
-    fitView({ nodes: laidOut, duration: 500 });
-  }, [getNodes, getEdges, setNodes, fitView]);
-
-  return (
-    <Button
-      bg="background-primary"
-      variant="default"
-      leftSection={<Icon name="sparkles" />}
-      onClick={handleClick}
-    >
-      {t`Auto-layout`}
-    </Button>
-  );
-}
-
-/**
- * Wraps the shared GraphInfoPanel so it can live inside ReactFlow (where
- * useZoomToNodes is available) and adapt our ErdNode data into the
- * DependencyNode shape that GraphInfoPanel expects. Also handles:
- *  - onTitleClick: re-zoom onto the selected node
- *  - renderFieldExtras: append a clickable target-table name next to FK
- *    fields; clicking it pans to the linked table without dropping the
- *    current selection
- */
-function SelectedNodeInfoPanel({
-  nodes,
-  selectedNodeId,
-  onClose,
-}: {
-  nodes: SchemaViewerFlowNode[];
-  selectedNodeId: string | null;
-  onClose: () => void;
-}) {
-  const zoomToNodes = useZoomToNodes();
-
-  // RTK-Query dedupes with the SchemaPickerInput subscription, so this is
-  // free — we just want the database name for the panel's breadcrumbs.
-  const { data: databasesResponse } = useListDatabasesQuery({
-    include: "schemas",
-  });
-
-  const selectedNode = useMemo(
-    () =>
-      selectedNodeId != null
-        ? (nodes.find((n) => n.id === selectedNodeId) ?? null)
-        : null,
-    [nodes, selectedNodeId],
-  );
-
-  const nodesByTableId = useMemo(() => {
-    const map = new Map<number, SchemaViewerFlowNode>();
-    for (const node of nodes) {
-      map.set(Number(node.data.table_id), node);
-    }
-    return map;
-  }, [nodes]);
-
-  const dependencyNode = useMemo(() => {
-    if (selectedNode == null) {
-      return null;
-    }
-    const db = databasesResponse?.data?.find(
-      (database) => database.id === selectedNode.data.db_id,
-    );
-    return toTableDependencyNode(selectedNode, db);
-  }, [selectedNode, databasesResponse]);
-
-  const handleTitleClick = useCallback(() => {
-    if (selectedNode != null) {
-      zoomToNodes([selectedNode.id]);
-    }
-  }, [selectedNode, zoomToNodes]);
-
-  const renderFieldExtras = useCallback(
-    (field: Field) => {
-      if (selectedNode == null) {
-        return null;
-      }
-      const erdField = selectedNode.data.fields.find((f) => f.id === field.id);
-      if (erdField?.fk_target_table_id == null) {
-        return null;
-      }
-      const targetNode = nodesByTableId.get(
-        Number(erdField.fk_target_table_id),
-      );
-      if (targetNode == null) {
-        return null;
-      }
-      const targetName = targetNode.data.name;
-      return (
-        <Group gap="xs" wrap="nowrap">
-          <Text c="text-tertiary">→</Text>
-          <UnstyledButton
-            className={S.fkLink}
-            c="brand"
-            onClick={() => zoomToNodes([targetNode.id])}
-          >
-            <Group gap={4} wrap="nowrap" display="inline-flex">
-              <FixedSizeIcon name="table2" />
-              <span>{targetName}</span>
-            </Group>
-          </UnstyledButton>
-        </Group>
-      );
-    },
-    [selectedNode, nodesByTableId, zoomToNodes],
-  );
-
-  if (dependencyNode == null) {
-    return null;
-  }
-
-  return (
-    <Panel className={S.infoPanel} position="top-right">
-      <GraphInfoPanel
-        node={dependencyNode}
-        getGraphUrl={emptyGraphUrl}
-        onClose={onClose}
-        hideReplaceButton
-        onTitleClick={handleTitleClick}
-        renderFieldExtras={renderFieldExtras}
-      />
-    </Panel>
-  );
-}
-
-function emptyGraphUrl(): string {
-  return "";
-}
-
-/**
- * Adapt a SchemaViewer ErdNode into the TableDependencyNode shape consumed
- * by GraphInfoPanel. When a matching Database is passed, populate `data.db`
- * so PanelHeader renders the database + schema breadcrumbs. `transform` and
- * `owner` stay unset — the panel's optional sections degrade gracefully,
- * and the ERD payload doesn't carry that data.
- */
-function toTableDependencyNode(
-  node: SchemaViewerFlowNode,
-  db?: Database,
-): TableDependencyNode {
-  const data: TableDependencyNodeData = {
-    name: node.data.name,
-    display_name: node.data.display_name,
-    description: null,
-    db_id: node.data.db_id,
-    schema: node.data.schema ?? "",
-    db,
-    fields: node.data.fields.map(
-      (f) =>
-        ({
-          id: f.id,
-          name: f.name,
-          display_name: f.display_name,
-          database_type: f.database_type,
-          semantic_type: f.semantic_type ?? null,
-          fk_target_field_id: f.fk_target_field_id ?? null,
-        }) as unknown as Field,
-    ),
-  };
-  return {
-    id: Number(node.data.table_id) as DependencyId,
-    type: "table",
-    data,
-  };
-}
-
 interface SchemaViewerProps {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
   initialTableIds: ConcreteTableId[] | undefined;
-}
-
-interface GetErdQueryParamsArgs {
-  databaseId: DatabaseId | undefined;
-  schema: string | undefined;
-  extraTableIds: readonly ConcreteTableId[];
-}
-
-function getErdQueryParams({
-  databaseId,
-  schema,
-  extraTableIds,
-}: GetErdQueryParamsArgs): GetErdRequest | typeof skipToken {
-  if (databaseId == null) {
-    return skipToken;
-  }
-  // With no schema and no table-ids the backend auto-discovers; fine.
-  // With a schema, the backend returns all tables in that schema — we only
-  // append `table-ids` for external tables the user has explicitly expanded
-  // into.
-  // With no schema but explicit table-ids, those are the focal set.
-  const params: GetErdRequest = { "database-id": databaseId };
-  if (schema != null) {
-    params.schema = schema;
-  }
-  if (extraTableIds.length > 0) {
-    params["table-ids"] = [...extraTableIds];
-  }
-  return params;
 }
 
 export function SchemaViewer({
@@ -336,71 +77,12 @@ export function SchemaViewer({
     () => setPendingFitNodeIds(null),
     [],
   );
-  // Per-edge memory of which endpoint the camera last zoomed to, so
-  // successive double-clicks on the same edge alternate source → target.
-  const lastEdgeZoomSideRef = useRef<Map<string, "source" | "target">>(
-    new Map(),
-  );
-  // When the user expands a new table via FK click, these candidate IDs
-  // hold the edge that should be auto-selected once the new graph arrives.
-  // Stored as a ref (not state) so setting it doesn't trigger an extra
-  // render — the sync effect just reads it on the next ERD response.
-  const pendingEdgeIdsToSelectRef = useRef<readonly string[] | null>(null);
 
-  // External/extra focal table IDs — specifically tables from OTHER schemas
-  // that the user has expanded into via FK click. When a `schema` is set the
-  // backend returns all tables in that schema automatically, so we never put
-  // schema-native tables in this set.
-  // Persisted per (databaseId, schema) so external expansions survive reloads.
-  const prefsKey = databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
-  const currentContextKey = prefsKey;
-
-  const { value: savedPrefs, setValue: setSavedPrefs } = useUserKeyValue({
-    namespace: "schema_viewer",
-    key: prefsKey ?? "",
-    skip: prefsKey == null,
+  const { extraTableIds, addExtraTableId, contextKey } = useExtraTableIds({
+    databaseId,
+    schema,
+    initialTableIds,
   });
-
-  // Ref-backed store keyed by `${databaseId}:${schema}` so we don't re-apply
-  // URL ids / saved prefs when the user later clears the set in the same
-  // context (avoids clearing-then-restoring loops).
-  const initializedContextRef = useRef<string | null>(null);
-
-  const [extraTableIds, setExtraTableIds] = useState<
-    readonly ConcreteTableId[]
-  >(initialTableIds ?? []);
-
-  // When context (database / schema) changes: seed from URL if present, else
-  // clear and wait for saved prefs to arrive (next effect).
-  const prevContextKeyRef = useRef(currentContextKey);
-  if (prevContextKeyRef.current !== currentContextKey) {
-    prevContextKeyRef.current = currentContextKey;
-    initializedContextRef.current = null;
-    setExtraTableIds(initialTableIds ?? []);
-  }
-
-  // Restore saved prefs once per context (skipped when URL supplied ids).
-  useEffect(() => {
-    if (databaseId == null) {
-      return;
-    }
-    if (initializedContextRef.current === currentContextKey) {
-      return;
-    }
-    if (initialTableIds != null && initialTableIds.length > 0) {
-      initializedContextRef.current = currentContextKey;
-      return;
-    }
-    if (
-      savedPrefs != null &&
-      typeof savedPrefs === "object" &&
-      "table_ids" in savedPrefs &&
-      Array.isArray(savedPrefs.table_ids)
-    ) {
-      initializedContextRef.current = currentContextKey;
-      setExtraTableIds(savedPrefs.table_ids as ConcreteTableId[]);
-    }
-  }, [databaseId, currentContextKey, initialTableIds, savedPrefs]);
 
   const { data, isFetching, error } = useGetErdQuery(
     getErdQueryParams({ databaseId, schema, extraTableIds }),
@@ -428,6 +110,26 @@ export function SchemaViewer({
     Set<ConcreteTableId>
   >(() => new Set());
 
+  const graph = useMemo(() => {
+    if (data == null) {
+      return null;
+    }
+    return toFlowGraph(data);
+  }, [data]);
+
+  const { registerPendingEdgeSelection } = useGraphSync({
+    hasEntry,
+    error,
+    isFetching,
+    graph,
+    nodes,
+    contextKey,
+    setNodes,
+    setEdges,
+    setExpandingTableIds,
+    setPendingFitNodeIds,
+  });
+
   // Handler for expanding to a related table via FK click
   const handleExpandToTable = useCallback(
     (
@@ -437,14 +139,7 @@ export function SchemaViewer({
       if (databaseId == null) {
         return;
       }
-      setExtraTableIds((prev) => {
-        if (prev.includes(tableId)) {
-          return prev;
-        }
-        const next = [...prev, tableId];
-        setSavedPrefs({ table_ids: next });
-        return next;
-      });
+      addExtraTableId(tableId);
       setExpandingTableIds((prev) => {
         if (prev.has(tableId)) {
           return prev;
@@ -459,25 +154,11 @@ export function SchemaViewer({
         candidateEdgeIdsToSelect != null &&
         candidateEdgeIdsToSelect.length > 0
       ) {
-        pendingEdgeIdsToSelectRef.current = candidateEdgeIdsToSelect;
+        registerPendingEdgeSelection(candidateEdgeIdsToSelect);
       }
     },
-    [databaseId, setSavedPrefs],
+    [databaseId, addExtraTableId, registerPendingEdgeSelection],
   );
-
-  // Clear the canvas whenever the database/schema context changes, regardless
-  // of how it was changed (picker click, direct URL navigation, history
-  // back/forward). Without this, the previous schema's nodes linger on screen
-  // until the new fetch resolves and the sync effect replaces them.
-  const prevContextForClearRef = useRef(currentContextKey);
-  useEffect(() => {
-    if (prevContextForClearRef.current !== currentContextKey) {
-      prevContextForClearRef.current = currentContextKey;
-      setNodes([]);
-      setEdges([]);
-      setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
-    }
-  }, [currentContextKey, setNodes, setEdges]);
 
   // Track the node id most recently focused via the Focus node button so the
   // button can disable itself until the user selects a different node.
@@ -509,26 +190,7 @@ export function SchemaViewer({
     [edges, setNodes, setEdges],
   );
 
-  // Click on an already-selected edge: alternate between zooming to the
-  // source node (first repeat click, or any time the previous was "target")
-  // and the target node (when the previous was "source"). The first click —
-  // the one that selects the edge — is left alone, so the zoom only kicks
-  // in once the user has clearly chosen that edge. The edge stays selected
-  // — fitView doesn't touch React Flow's selection state.
-  const handleEdgeClick = useCallback(
-    (_event: React.MouseEvent, edge: SchemaViewerFlowEdge) => {
-      if (!edge.selected) {
-        return;
-      }
-      const previousSide = lastEdgeZoomSideRef.current.get(edge.id);
-      const nextSide: "source" | "target" =
-        previousSide === "source" ? "target" : "source";
-      lastEdgeZoomSideRef.current.set(edge.id, nextSide);
-      const targetNodeId = nextSide === "source" ? edge.source : edge.target;
-      setPendingFitNodeIds([targetNodeId]);
-    },
-    [],
-  );
+  const { handleEdgeClick } = useEdgeZoom({ setPendingFitNodeIds });
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
@@ -580,13 +242,6 @@ export function SchemaViewer({
     }
   }, [nodes, selectedNodeId]);
 
-  const graph = useMemo(() => {
-    if (data == null) {
-      return null;
-    }
-    return toFlowGraph(data);
-  }, [data]);
-
   // Lift selected edges above unselected ones so the highlighted edge
   // always renders on top of any edges that cross through it. We do this
   // by reordering the array (selected edges last) rather than setting a
@@ -610,95 +265,6 @@ export function SchemaViewer({
     }
     return [...unselected, ...selected];
   }, [edges]);
-
-  // Latest nodes held in a ref so the sync effect below can read current
-  // state without adding `nodes` to its dependency array (which would cause
-  // the effect to re-run on every internal React Flow node change — like
-  // drags or position tweaks — and incorrectly re-merge against the result
-  // of its own previous run).
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
-
-  useEffect(() => {
-    if (!hasEntry || error != null) {
-      setNodes([]);
-      setEdges([]);
-      setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
-      return;
-    }
-    if (isFetching || graph == null) {
-      return;
-    }
-
-    // If we expanded via FK click and a matching edge has now arrived in
-    // the new graph, mark it as selected — the existing edge-selection
-    // plumbing (stroke color, node `.selected` class, z-index lift) will
-    // light up the connecting edge AND both connected nodes automatically.
-    let nextEdges: SchemaViewerFlowEdge[] = graph.edges;
-    const pendingEdgeIds = pendingEdgeIdsToSelectRef.current;
-    if (pendingEdgeIds != null) {
-      const matchedId = pendingEdgeIds.find((candidate) =>
-        graph.edges.some((e) => e.id === candidate),
-      );
-      if (matchedId != null) {
-        nextEdges = graph.edges.map((e) =>
-          e.id === matchedId ? { ...e, selected: true } : e,
-        );
-        pendingEdgeIdsToSelectRef.current = null;
-      }
-    }
-    setEdges(nextEdges);
-
-    // Merge incoming nodes with current positions so an incremental expansion
-    // (e.g. clicking an FK to fetch a related table) doesn't blank the canvas
-    // by replacing every node with a fresh opacity-0 copy. Falls back to the
-    // fresh graph for first loads, schema switches, removals, or disconnected
-    // new nodes — those still go through the normal Dagre relayout path.
-    const currentNodes = nodesRef.current;
-    const currentById = new Map(currentNodes.map((n) => [n.id, n]));
-    const merged = mergeWithExistingPositions(
-      graph.nodes,
-      currentNodes,
-      graph.edges,
-    );
-
-    const nextNodes = merged ?? graph.nodes;
-    setNodes(nextNodes);
-
-    // Clear any expand-in-flight markers for tables that just arrived in the
-    // new graph (or that are no longer in the selection). FK field loaders
-    // disappear automatically once their target table is visible.
-    setExpandingTableIds((prev) => {
-      if (prev.size === 0) {
-        return prev;
-      }
-      const visibleIds = new Set(
-        nextNodes.map((n) => n.data.table_id as ConcreteTableId),
-      );
-      let changed = false;
-      const next = new Set<ConcreteTableId>();
-      for (const id of prev) {
-        if (visibleIds.has(id)) {
-          changed = true;
-        } else {
-          next.add(id);
-        }
-      }
-      return changed ? next : prev;
-    });
-
-    // If this was an incremental add (there was a current canvas and some of
-    // it carried over), queue up a fitView on the newly-added tables so the
-    // camera pans to wherever they landed.
-    if (currentNodes.length > 0) {
-      const addedIds = nextNodes
-        .filter((n) => !currentById.has(n.id))
-        .map((n) => n.id);
-      if (addedIds.length > 0) {
-        setPendingFitNodeIds(addedIds);
-      }
-    }
-  }, [hasEntry, graph, error, isFetching, setNodes, setEdges]);
 
   return (
     <SchemaViewerContext.Provider value={schemaViewerContextValue}>
@@ -753,10 +319,7 @@ export function SchemaViewer({
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
             <SchemaPickerInput databaseId={databaseId} schema={schema} />
-            <SchemaViewerNodeSearch
-              key={currentContextKey ?? ""}
-              nodes={nodes}
-            />
+            <SchemaViewerNodeSearch key={contextKey ?? ""} nodes={nodes} />
           </Group>
         </Panel>
         {isFetching && (
