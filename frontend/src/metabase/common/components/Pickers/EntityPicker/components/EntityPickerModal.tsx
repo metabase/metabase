@@ -8,8 +8,8 @@ import { t } from "ttag";
 
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import resizeObserver from "metabase/lib/resize-observer";
 import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
+import resizeObserver from "metabase/utils/resize-observer";
 import type { RecentContexts } from "metabase-types/api";
 
 import { useLogRecentItem } from "../hooks";
@@ -217,7 +217,7 @@ const SearchInput = ({
       data-autofocus
       type="search"
       leftSection={<Icon name="search" size={16} />}
-      miw={400}
+      miw="min(400px, 100%)"
       placeholder={t`Search…`}
       value={localValue}
       onChange={(e) => {

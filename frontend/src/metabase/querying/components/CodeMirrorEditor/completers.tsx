@@ -10,7 +10,7 @@ import {
   useListSnippetsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 
 import { source } from "./language";

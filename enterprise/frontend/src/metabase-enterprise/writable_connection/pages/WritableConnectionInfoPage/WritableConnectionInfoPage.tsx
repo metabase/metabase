@@ -13,9 +13,9 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseData } from "metabase-types/api";
 
 const FORM_CONFIG: DatabaseFormConfig = {

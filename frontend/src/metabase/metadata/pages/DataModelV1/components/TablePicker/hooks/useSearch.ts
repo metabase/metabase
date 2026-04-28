@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { skipToken, useSearchQuery } from "metabase/api";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { isSyncCompleted } from "metabase/utils/syncing";
 
 import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
 import { node, rootNode } from "../utils";

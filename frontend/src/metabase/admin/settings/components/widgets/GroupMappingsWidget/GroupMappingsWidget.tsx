@@ -1,11 +1,11 @@
 import _ from "underscore";
 
 import { Groups } from "metabase/entities/groups";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { updateSetting } from "metabase/redux/settings";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import type { Settings } from "metabase-types/api/settings";
-import type { State } from "metabase-types/store";
 
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 

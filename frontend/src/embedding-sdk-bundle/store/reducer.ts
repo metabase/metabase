@@ -53,6 +53,9 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
 );
 
+const SET_PLUGINS_READY = "sdk/SET_PLUGINS_READY";
+export const setPluginsReady = createAction<boolean>(SET_PLUGINS_READY);
+
 const initialState: SdkState = {
   isGuestEmbed: null,
   metabaseInstanceUrl: "",
@@ -70,6 +73,7 @@ const initialState: SdkState = {
   usageProblem: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
+  pluginsReady: false,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -193,5 +197,9 @@ export const sdk = createReducer(initialState, (builder) => {
       loading: false,
       error,
     };
+  });
+
+  builder.addCase(setPluginsReady, (state, action) => {
+    state.pluginsReady = action.payload;
   });
 });

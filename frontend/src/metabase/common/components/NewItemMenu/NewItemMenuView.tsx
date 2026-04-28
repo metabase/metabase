@@ -3,14 +3,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { getNewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";

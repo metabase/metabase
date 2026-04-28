@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
 export const UpsellHostingBanner = ({ location }: { location: string }) => {

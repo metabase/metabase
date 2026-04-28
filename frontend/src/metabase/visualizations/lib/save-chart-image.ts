@@ -1,6 +1,6 @@
 import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
 import {
   createBrandingElement,
@@ -47,6 +47,7 @@ export const saveChartImage = async ({
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
+    cspNonce: window.MetabaseNonce,
     height: canvasHeight,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);

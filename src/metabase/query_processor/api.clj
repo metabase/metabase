@@ -84,7 +84,7 @@
                               (:constraints query))]
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints constraints)
-                                          (update :info merge info))
+                                          (assoc :info info))
                                       rff))
           (qp/process-query (update query :info merge info) rff))))))
 

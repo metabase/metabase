@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import type {
   DefinedClauseName,
   ExpressionError,
 } from "metabase/querying/expressions";
 import { Box, Button, Flex } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 
 import {

@@ -4,14 +4,14 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 

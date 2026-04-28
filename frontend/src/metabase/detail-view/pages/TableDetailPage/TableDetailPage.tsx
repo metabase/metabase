@@ -15,7 +15,7 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";

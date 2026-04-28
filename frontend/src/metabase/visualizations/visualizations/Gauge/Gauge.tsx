@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 

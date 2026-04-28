@@ -21,7 +21,7 @@ Sometimes when a data warehouse is inside an enterprise environment, direct conn
 
 ## How to use SSH tunneling
 
-When connecting though a bastion host:
+When connecting through a bastion host:
 
 - Answer yes to the "Use an SSH-tunnel for database connections" parameter.
 - Enter the hostname for the data warehouse as it is seen from inside the network in the `Host` parameter.
@@ -50,8 +50,8 @@ ssh <SSH tunnel username>@<SSH tunnel host> -p <SSH tunnel port>
 Another common case where direct connections are impossible is when connecting to a data warehouse that is only accessible locally and does not allow remote connections. In this case you will be opening an SSH connection to the data warehouse, then from there connecting back to the same computer.
 
 - Answer yes to the "Use an SSH-tunnel for database connections" parameter.
-- Enter `localhost` in the `Host` parameter. This is the name the server.
-- Enter the same value in the `Port` parameter that you would use if you where sitting directly at the data warehouse host system.
+- Enter `localhost` in the `Host` parameter. This is the name of the server.
+- Enter the same value in the `Port` parameter that you would use if you were sitting directly at the data warehouse host system.
 - Enter the external name of the data warehouse, as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
 - Enter the SSH port as seen from outside the network into the `SSH tunnel port` parameter. This is usually 22, regardless of which data warehouse you are connecting to.
 - Choose your authentication method as described above (username and password or SSH key).

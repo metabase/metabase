@@ -6,10 +6,10 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { isEmbedPreview } from "metabase/embedding/config";
+import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
+import * as Urls from "metabase/utils/urls";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {
@@ -57,7 +57,7 @@ export function useDashboardUrlQuery(
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
      */
-    if (IS_EMBED_PREVIEW || !dashboardId) {
+    if (isEmbedPreview() || !dashboardId) {
       return;
     }
 
@@ -122,7 +122,7 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
 
 function parseTabId(location: Location) {
   const slug = location.query?.tab;

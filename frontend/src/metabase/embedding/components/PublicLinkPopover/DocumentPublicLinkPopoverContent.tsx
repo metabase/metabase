@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { useSelector } from "metabase/lib/redux";
 import { getPublicEmbedHTMLWithResizer } from "metabase/public/lib/code-templates";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Anchor,

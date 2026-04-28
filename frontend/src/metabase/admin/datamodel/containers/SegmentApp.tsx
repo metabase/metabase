@@ -9,10 +9,10 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { trackSegmentCreated } from "metabase/data-studio/analytics";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import type { Segment } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { SegmentForm } from "../components/SegmentForm";
 

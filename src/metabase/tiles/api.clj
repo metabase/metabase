@@ -151,7 +151,7 @@
 (mu/defn- resolve-field :- ::lib.schema.metadata/column
   [query      :- ::lib.schema/query
    legacy-ref :- ::legacy-ref]
-  (lib/metadata query (lib/->pMBQL legacy-ref)))
+  (lib/metadata query (lib/->mbql5 legacy-ref)))
 
 (mu/defn- tiles-query :- ::lib.schema/query
   "Transform a card's query into a query finding coordinates in a particular region.

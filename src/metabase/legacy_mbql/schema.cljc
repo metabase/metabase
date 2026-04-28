@@ -42,7 +42,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
+   [metabase.util.performance :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
    [metabase.util.time :as u.time]))
 
 (defn infer-mbql-clause-schema
@@ -298,7 +298,7 @@
    (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
    [:fn
     {:error/message    "MBQL 4 :expression options should not be empty, use a nil map instead"
-     :decode/normalize perf/not-empty}
+     :decode/normalize not-empty}
     seq]])
 
 (mr/def ::ExpressionName
@@ -341,7 +341,7 @@
     (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
     [:fn
      {:error/message    "MBQL 4 :field ref options should not be empty, use nil instead"
-      :decode/normalize perf/not-empty}
+      :decode/normalize not-empty}
      seq]]])
 
 (mr/def ::require-base-type-for-field-name
@@ -648,7 +648,7 @@
   x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
-;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
+;; aligns with the corresponding MBQL 5 schema and with the reference docs we publish.
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]
@@ -954,12 +954,11 @@
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard (#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit opts)))]
+     [:field id-or-name (:and opts {:temporal-unit (unit :guard #{:day-of-week :month-of-year :quarter-of-year})})]
      & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
-        (let [unit         (:temporal-unit opts)
-              field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
+        (let [field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
               extract-expr (case unit
                              :day-of-week     [:get-day-of-week field :iso]
                              :month-of-year   [:get-month field]
@@ -2121,7 +2120,7 @@
 
 (defclause* dimension
   [:and
-   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:fn {:error/message "must be a `:dimension` clause"} (partial is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
     [:target [:schema [:or [:ref ::FieldOrExpressionRef] [:ref ::template-tag]]]]

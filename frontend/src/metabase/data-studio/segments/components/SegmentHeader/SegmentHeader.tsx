@@ -10,6 +10,7 @@ import {
 import type { SegmentTabUrls } from "metabase/data-studio/segments/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
+import { modelIconMap } from "metabase/utils/icon";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";
@@ -48,7 +49,7 @@ export function SegmentHeader({
             readOnly={readOnly}
           />
         }
-        icon="segment"
+        icon={modelIconMap.segment}
         menu={<SegmentMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
         tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}

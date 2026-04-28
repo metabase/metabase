@@ -1,6 +1,5 @@
-import { getIcon } from "metabase/lib/icon";
-import { Ellipsified } from "metabase/ui";
-import { Box, Icon, Menu, type MenuItemProps } from "metabase/ui";
+import { Box, Ellipsified, Icon, Menu, type MenuItemProps } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 
 import type {
   MiniPickerCollectionItem,

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 export type ColumnAndSeparator = {

@@ -410,7 +410,7 @@
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
     (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
-                                                            {:query-permissions/sandboxed-table sandboxed?} sandboxed?)))
+                                                            {:query-permissions/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

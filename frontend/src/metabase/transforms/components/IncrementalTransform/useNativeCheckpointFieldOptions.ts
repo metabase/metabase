@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { SelectOption } from "metabase/ui";
 import * as Lib from "metabase-lib";

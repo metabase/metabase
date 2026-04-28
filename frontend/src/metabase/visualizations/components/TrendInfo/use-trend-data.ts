@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { formatValue } from "metabase/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { formatValue } from "metabase/utils/formatting";
+import { formatDateTimeRangeWithUnit } from "metabase/utils/formatting/date";
 import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import {
   computePreviousPeriodChange,

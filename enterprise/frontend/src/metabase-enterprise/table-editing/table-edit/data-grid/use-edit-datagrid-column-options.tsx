@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
 import type { ColumnOptions } from "metabase/data-grid";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import type { DescribeActionFormResponse } from "metabase-enterprise/table-editing/api/types";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 

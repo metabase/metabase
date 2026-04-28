@@ -6,8 +6,8 @@ import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import MetabaseSettings from "metabase/lib/settings";
-import { isNullOrUndefined } from "metabase/lib/types";
+import MetabaseSettings from "metabase/utils/settings";
+import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

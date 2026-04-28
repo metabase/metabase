@@ -10,7 +10,8 @@ import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { DraggedItem } from "metabase/redux/store/visualizer";
 import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
@@ -25,7 +26,6 @@ import {
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerVizDefinition } from "metabase-types/api";
-import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";

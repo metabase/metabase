@@ -7,7 +7,7 @@ import {
 import type {
   EmbeddingDataPicker,
   EmbeddingEntityType,
-} from "metabase-types/store/embedding-data-picker";
+} from "metabase/redux/store/embedding-data-picker";
 
 interface EmbeddingDataPickerContext {
   entityTypes: EmbeddingEntityType[];

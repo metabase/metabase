@@ -67,6 +67,10 @@ const eventsSandboxedByDefault: EventName[] = [
   "onMouseOver",
   "onMouseOut",
   "onMouseUp",
+  "onTouchCancel",
+  "onTouchEnd",
+  "onTouchMove",
+  "onTouchStart",
 ];
 
 /** All supported events that start with 'onMouse' */

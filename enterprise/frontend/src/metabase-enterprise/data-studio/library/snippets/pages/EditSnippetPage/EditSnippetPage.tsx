@@ -18,10 +18,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";

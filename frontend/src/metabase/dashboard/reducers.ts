@@ -3,7 +3,7 @@ import { assoc, chain, merge, updateIn } from "icepick";
 
 import { Actions } from "metabase/entities/actions";
 import { Questions } from "metabase/entities/questions";
-import { combineReducers } from "metabase/lib/redux";
+import { combineReducers } from "metabase/redux";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card, WritebackAction } from "metabase-types/api";
 

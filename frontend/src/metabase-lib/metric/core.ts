@@ -713,3 +713,10 @@ export function isSameSource(
 ): boolean {
   return LibMetric.isSameSource(dimension1, dimension2) as boolean;
 }
+
+export function isCompatibleType(
+  dimension1: DimensionMetadata,
+  dimension2: DimensionMetadata,
+): boolean {
+  return LibMetric.isCompatibleType(dimension1, dimension2) as boolean;
+}

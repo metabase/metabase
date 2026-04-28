@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
+import { METAKEY } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
 
 import S from "./NativeQueryEditorRunButton.module.css";

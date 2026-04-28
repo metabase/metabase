@@ -1,4 +1,4 @@
-import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
+import type { DataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
 import type {
   DatabaseId,
   FieldId,

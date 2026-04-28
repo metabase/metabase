@@ -62,12 +62,12 @@ import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
-import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { useSelector } from "metabase/redux";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type {

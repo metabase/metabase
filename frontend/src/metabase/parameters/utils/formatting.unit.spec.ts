@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockField,

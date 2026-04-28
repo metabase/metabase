@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isDefaultGroup } from "metabase/utils/groups";
 import {
   AIToolKey,
   type GroupInfo,
@@ -31,6 +32,19 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
     [groupPermissions],
   );
 
+  const allUsersGroup = useMemo(
+    () =>
+      groups.find(
+        (g) => isDefaultGroup(g) || g.magic_group_type === "all-external-users",
+      ),
+    [groups],
+  );
+
+  const allUsersGroupPermissions = useMemo(
+    () => (allUsersGroup ? (permissionsByGroup[allUsersGroup.id] ?? []) : []),
+    [allUsersGroup, permissionsByGroup],
+  );
+
   return (
     <div className={S.CardContainer} data-testid="ai-feature-access-table">
       <table className={S.Table}>
@@ -56,6 +70,8 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
               initialPermissions={permissionsByGroup[group.id] || []}
               key={group.id}
               onPermissionChange={onPermissionChange}
+              allUsersGroup={allUsersGroup}
+              allUsersGroupPermissions={allUsersGroupPermissions}
             />
           ))}
         </tbody>

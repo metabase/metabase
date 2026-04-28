@@ -1,7 +1,8 @@
 (ns metabase.notification.send
   (:require
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.channel.core :as channel]
    [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
@@ -88,11 +89,11 @@
             (channel/send! channel message))
           (log/debugf "Sent with %d retries" (count @retry-errors))
           (log/info "Sent successfully")))
-      (prometheus/inc! :metabase-notification/channel-send-ok {:payload-type payload-type
-                                                               :channel-type channel-type})
+      (analytics/inc! :metabase-notification/channel-send-ok {:payload-type payload-type
+                                                              :channel-type channel-type})
       (catch Throwable e
-        (prometheus/inc! :metabase-notification/channel-send-error {:payload-type payload-type
-                                                                    :channel-type channel-type})
+        (analytics/inc! :metabase-notification/channel-send-error {:payload-type payload-type
+                                                                   :channel-type channel-type})
         (log/warn e "Failed to send")))))
 
 (defn- hydrate-notification
@@ -119,10 +120,10 @@
                                         {:payload-type payload-type
                                          :channel-type channel-type}))
 
-(defmethod prometheus/known-labels :metabase-notification/send-ok [_] payload-labels)
-(defmethod prometheus/known-labels :metabase-notification/send-error [_] payload-labels)
-(defmethod prometheus/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
-(defmethod prometheus/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
+(defmethod analytics.core/known-labels :metabase-notification/send-ok [_] payload-labels)
+(defmethod analytics.core/known-labels :metabase-notification/send-error [_] payload-labels)
+(defmethod analytics.core/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
+(defmethod analytics.core/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
 
 (defn- since-trigger-ms
   [notification-info]
@@ -136,10 +137,20 @@
     (u/with-timer-ms
       [duration-ms-fn]
       (when-let [wait-time (since-trigger-ms notification-info)]
-        (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
+        (analytics/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
       (try
         (log/info "Sending")
-        (prometheus/inc! :metabase-notification/concurrent-tasks)
+        (analytics/inc! :metabase-notification/concurrent-tasks)
+        ;; Guard against orphaned card notifications whose payload record was cascade-deleted.
+        ;; Only applies to persisted notifications (with a non-nil :payload_id); Pulse-converted
+        ;; notifications pass through :payload instead and have no :payload_id.
+        (when-let [payload-id (when (= :notification/card payload_type)
+                                (:payload_id notification-info))]
+          (when-not (t2/exists? :model/NotificationCard payload-id)
+            (log/warnf "Payload for notification %d no longer exists, deleting" id)
+            (t2/delete! :model/Notification id)
+            (throw (ex-info "Card no longer exists, notification deleted"
+                            {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]
           (task-history/with-task-history {:task          "notification-send"
@@ -170,18 +181,18 @@
                           (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
-              (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
+              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
           (log/error e "Failed to send")
-          (prometheus/inc! :metabase-notification/send-error {:payload-type payload_type})
+          (analytics/inc! :metabase-notification/send-error {:payload-type payload_type})
           (throw e))
         (finally
-          (prometheus/dec! :metabase-notification/concurrent-tasks)
+          (analytics/dec-gauge! :metabase-notification/concurrent-tasks)
           (when-let [run-id (task-history/current-run-id)]
             (task-history/complete-task-run! run-id))))
-      (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
+      (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
       (when-let [total-time (since-trigger-ms notification-info)]
-        (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
+        (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
       nil)))
 
 (defn- cron->next-execution-times

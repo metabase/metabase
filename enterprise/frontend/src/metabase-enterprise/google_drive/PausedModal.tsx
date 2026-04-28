@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting, useStoreUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import { Box, Button, Modal, Stack, Text } from "metabase/ui";

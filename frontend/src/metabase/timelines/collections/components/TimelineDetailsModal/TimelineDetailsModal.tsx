@@ -5,12 +5,12 @@ import _ from "underscore";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import type { InputProps } from "metabase/common/components/Input";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { getTimelineName } from "metabase/common/utils/timelines";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { getTimelineName } from "metabase/lib/timelines";
-import * as Urls from "metabase/lib/urls";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import * as Urls from "metabase/utils/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import type { MenuItem } from "../../types";

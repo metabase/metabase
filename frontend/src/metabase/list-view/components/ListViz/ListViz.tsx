@@ -2,16 +2,16 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { displayNameForColumn } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   getIsListViewConfigurationShown,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, type IconName } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import { displayNameForColumn } from "metabase/utils/formatting";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {

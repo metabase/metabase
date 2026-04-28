@@ -1,4 +1,4 @@
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 import type { Document, DocumentContent } from "metabase-types/api";
 
 import { createMockUser } from "./user";

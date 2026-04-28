@@ -61,6 +61,7 @@
    #'qp.perms/remove-permissions-key
    #'qp.perms/remove-source-card-keys
    #'qp.perms/remove-sandboxed-table-keys
+   #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
@@ -141,7 +142,7 @@
                         [query <>])))
               ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
               (when-not (map? <>)
-                (throw (ex-info (format "Middleware did not return a valid query.")
+                (throw (ex-info "Middleware did not return a valid query."
                                 {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn middleware-fn]

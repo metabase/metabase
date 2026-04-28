@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { reload } from "metabase/lib/dom";
 import { SettingsApi, StoreApi } from "metabase/services";
+import { reload } from "metabase/utils/dom";
 import type { TokenStatus } from "metabase-types/api";
 
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";

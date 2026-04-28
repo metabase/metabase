@@ -1,4 +1,7 @@
-import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
+import {
+  formatDateTimeWithUnit,
+  formatNumber,
+} from "metabase/utils/formatting";
 import type { BillingInfoLineItem } from "metabase-types/api";
 import {
   supportedDisplayTypes,

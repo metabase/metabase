@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import type { VisualizerDataSource } from "metabase-types/api";
 
 import {

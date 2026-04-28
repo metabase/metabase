@@ -848,3 +848,18 @@
     (boolean
      (when (and (seq sources1) (seq sources2))
        (some (set sources1) sources2)))))
+
+(defn ^:export isCompatibleType
+  "Check if two dimensions have compatible effective types for cross-database matching.
+   Two date/datetime dimensions are compatible, two time dimensions are compatible,
+   otherwise requires exact type match. Returns false if either type is nil."
+  [dimension1 dimension2]
+  (let [type1 (types.isa/column-type dimension1)
+        type2 (types.isa/column-type dimension2)]
+    (boolean
+     (when (and type1 type2)
+       (or (= type1 type2)
+           (and (isa? type1 :type/HasDate)
+                (isa? type2 :type/HasDate))
+           (and (isa? type1 :type/Time)
+                (isa? type2 :type/Time)))))))

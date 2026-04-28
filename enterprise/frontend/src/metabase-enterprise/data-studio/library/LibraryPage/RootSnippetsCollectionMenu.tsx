@@ -1,10 +1,10 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { dataStudioArchivedSnippets } from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
+import { dataStudioArchivedSnippets } from "metabase/utils/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 

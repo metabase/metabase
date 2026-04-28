@@ -1,4 +1,4 @@
-import { defer } from "metabase/lib/promise";
+import { defer } from "metabase/utils/promise";
 
 export function createPauses<Count extends number>(count: Count) {
   const pauses = new Array(count).fill(null).map(() => defer());

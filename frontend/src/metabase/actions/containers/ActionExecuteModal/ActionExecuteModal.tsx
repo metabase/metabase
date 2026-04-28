@@ -3,9 +3,9 @@ import { useCallback } from "react";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   ParametersForActionExecution,
   WritebackActionId,

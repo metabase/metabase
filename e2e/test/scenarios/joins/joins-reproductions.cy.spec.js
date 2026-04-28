@@ -405,7 +405,7 @@ describe("issue 18502", () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 2022");
+    cy.findByText("April 2025");
   });
 });
 
@@ -1089,7 +1089,7 @@ describe("issue 31769", () => {
     });
   });
 
-  it("shouldn't drop joins using MLv2 format (metabase#31769)", () => {
+  it("shouldn't drop joins using Lib/MBQL 5 (metabase#31769)", () => {
     H.selectSavedQuestionsToJoin("Q1", "Q2");
 
     H.popover().findByText("Products → Category").click();

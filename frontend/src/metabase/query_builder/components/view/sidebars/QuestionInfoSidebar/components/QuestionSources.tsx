@@ -3,10 +3,10 @@ import { c } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
 

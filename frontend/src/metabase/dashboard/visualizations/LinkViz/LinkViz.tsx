@@ -6,10 +6,10 @@ import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { Search } from "metabase/entities/search";
-import { getUrlTarget } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { useSelector } from "metabase/redux";
+import { getUrlTarget } from "metabase/utils/dom";
+import { modelToUrl } from "metabase/utils/urls";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,

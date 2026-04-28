@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [get-in not-empty some]])
@@ -490,6 +490,14 @@
 
       (::sql.qp/forced-alias opts)
       (keyword (driver-api/qp.add.source-alias opts))
+
+      ;; The field is referenced through a join (source-table is a join-alias
+      ;; string). The join target is compiled as a subquery that already
+      ;; projects this nfc column with JSON extraction applied — reference the
+      ;; projected column directly instead of re-applying extraction, which
+      ;; would derive the wrong column name through nested projections. (#73198)
+      (string? (driver-api/qp.add.source-table opts))
+      honeysql-expr
 
       :else
       (perf/postwalk #(if (h2x/identifier? %)
@@ -1310,22 +1318,22 @@
                       (let [init-result (try
                                           (driver/init-workspace-isolation! driver database test-workspace)
                                           (catch Exception e
-                                            (throw (ex-info (format "Failed to initialize workspace isolation (CREATE DATABASE/USER): %s"
-                                                                    (ex-message e))
+                                            (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
+                                                                 (ex-message e))
                                                             {:step :init} e))))
                             workspace-with-details (merge test-workspace init-result)]
                         (when test-table
                           (try
                             (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
                             (catch Exception e
-                              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
-                                                      (:schema test-table) (:name test-table) (ex-message e))
+                              (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
+                                                   (:schema test-table) (:name test-table) (ex-message e))
                                               {:step :grant :table test-table} e)))))
                         (try
                           (driver/destroy-workspace-isolation! driver database workspace-with-details)
                           (catch Exception e
-                            (throw (ex-info (format "Failed to destroy workspace isolation (DROP DATABASE/USER): %s"
-                                                    (ex-message e))
+                            (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
+                                                 (ex-message e))
                                             {:step :destroy} e))))
                         nil)
                       (catch Exception e

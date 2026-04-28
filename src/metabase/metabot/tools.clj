@@ -59,9 +59,7 @@
   create-sql-query-tool
   create-sql-query-code-edit-tool
   edit-sql-query-tool
-  edit-sql-query-code-edit-tool
-  replace-sql-query-tool
-  replace-sql-query-code-edit-tool]
+  replace-sql-query-tool]
  [tools.charts
   create-chart-tool
   edit-chart-tool]

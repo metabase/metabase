@@ -1,6 +1,6 @@
 import { nanoid } from "@reduxjs/toolkit";
 
-import api from "metabase/lib/api";
+import api from "metabase/utils/api";
 import type { JSONValue } from "metabase-types/api";
 
 import { type AIStreamingConfig, processChatResponse } from "./process-stream";
@@ -69,18 +69,25 @@ export async function aiStreamingQuery(
     });
 
     if (!response.ok) {
-      let serverMessage: string | undefined;
+      let responseBody: unknown;
       try {
-        const body = await response.json();
-        if (typeof body?.message === "string") {
-          serverMessage = body.message;
-        }
+        responseBody = await response.json();
       } catch {
         // ignore json parse errors
       }
-      // Throw a string when we have a server message (matches P.string in error handler),
-      // otherwise throw an Error (falls through to the generic default message).
-      throw serverMessage ?? new Error(`Response status: ${response.status}`);
+
+      if (typeof responseBody === "string") {
+        throw { status: response.status, message: responseBody };
+      }
+
+      if (responseBody && typeof responseBody === "object") {
+        throw {
+          status: response.status,
+          ...(responseBody as Record<string, unknown>),
+        };
+      }
+
+      throw new Error(`Response status: ${response.status}`);
     }
 
     if (!response.body) {

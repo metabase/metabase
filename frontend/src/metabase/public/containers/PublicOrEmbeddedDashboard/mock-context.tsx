@@ -10,7 +10,7 @@ import {
   mapDispatchToProps,
   mapStateToProps,
 } from "metabase/dashboard/context/context.redux";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 
 export type MockDashboardContextProps = Partial<
   Omit<PropsWithChildren<DashboardContextReturned>, "dashboardActions"> & {

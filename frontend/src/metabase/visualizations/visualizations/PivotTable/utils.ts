@@ -2,8 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
-import { sumArray } from "metabase/lib/arrays";
-import { measureText } from "metabase/lib/measure-text";
+import { sumArray } from "metabase/utils/arrays";
+import { measureText } from "metabase/utils/measure-text";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";

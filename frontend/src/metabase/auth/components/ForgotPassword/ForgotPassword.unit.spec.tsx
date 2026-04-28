@@ -6,7 +6,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
 
 import { ForgotPassword } from "./ForgotPassword";
 
