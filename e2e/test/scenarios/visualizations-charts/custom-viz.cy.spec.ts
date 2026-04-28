@@ -1863,6 +1863,40 @@ describe("sandbox", () => {
       payload: 'document.body.setAttribute("href", "javascript:alert(1)");',
       errorPattern: blockedPattern(/setAttribute with javascript: URL: href/),
     },
+    {
+      // Try to defeat the membrane by binding a non-allowlisted native.
+      // Safe because `window.fetch` access already
+      // returns a `blocked` function. Binding it produces a bound
+      // function that still throws when called.
+      name: "window.fetch.bind(window) bypass attempt",
+      payload:
+        'window.fetch.bind(window)("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      // Try to bypass via Function.prototype.bind.call. Confirms the check
+      // isn't sensitive to which side initiates the bind.
+      name: "Function.prototype.bind.call(window.fetch, ...) bypass attempt",
+      payload:
+        'Function.prototype.bind.call(window.fetch, window)("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
   ];
 
   it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(

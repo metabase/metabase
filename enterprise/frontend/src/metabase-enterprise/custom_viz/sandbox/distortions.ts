@@ -67,6 +67,9 @@ export function makeDistortionCallback(pluginId: string) {
 // `[native code]` even though they wrap user code (e.g. React's bound
 // dispatchSetState), but their `.name` is prefixed with `bound ` — we treat
 // those as user-defined too.
+//
+// Distortion callback returns a `blocked` function on first
+// access, and `blocked.bind(...)` is still a function that throws when called.
 function isUserDefinedFunction(fun: object): boolean {
   if (!Function.prototype.toString.call(fun).includes("[native code]")) {
     return true;
