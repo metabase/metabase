@@ -110,19 +110,18 @@ export function useFilterOptions({
 
   const dateFilter = useMemo(() => parseDateFilter(date), [date]);
   const userId = parseId(user);
-  const noFilterSentinel = tenantsFeatureEnabled
+  const groupNoFilterValue = tenantsFeatureEnabled
     ? ALL_USERS_SYNTHETIC
     : DEFAULT_GROUP;
-  const resolvedGroup = group ?? noFilterSentinel;
   const groupId =
-    resolvedGroup === noFilterSentinel ? undefined : parseId(resolvedGroup);
+    group == null || group === groupNoFilterValue ? undefined : parseId(group);
   const tenantId = hasTenants ? parseId(tenant) : undefined;
 
   return {
     dateFilter,
     userId,
-    group: resolvedGroup,
     groupId,
+    groupNoFilterValue,
     tenantId,
     userOptions,
     groupOptions,

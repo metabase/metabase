@@ -16,11 +16,7 @@ import {
   VIEW_USAGE_LOG,
 } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
-import {
-  ALL_USERS_SYNTHETIC,
-  ConversationFilters,
-  useFilterOptions,
-} from "../ConversationFilters";
+import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import {
   type UrlState as ConversationsUrlState,
   urlStateConfig as conversationsUrlStateConfig,
@@ -128,20 +124,20 @@ const labelUnknownIpAddress = (value: unknown) =>
 
 export function ConversationStatsPage({ location }: WithRouterProps) {
   const dispatch = useDispatch();
-  const [{ date, user, group: groupParam, tenant, metric }, { patchUrlState }] =
+  const [{ date, user, group, tenant, metric }, { patchUrlState }] =
     useUrlState(location, statsUrlStateConfig);
 
   const {
     dateFilter,
     userId,
-    group,
     groupId,
+    groupNoFilterValue,
     tenantId,
     userOptions,
     groupOptions,
     tenantOptions,
     hasTenants,
-  } = useFilterOptions({ date, user, group: groupParam, tenant });
+  } = useFilterOptions({ date, user, group, tenant });
 
   const conversationsAudit = useAuditTable(VIEW_CONVERSATIONS);
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
@@ -185,14 +181,14 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             sort_direction: "desc",
             date,
             user,
-            group: groupParam,
+            group,
             tenant,
             ...filterOverrides,
           }),
         }),
       );
     },
-    [dispatch, date, user, groupParam, tenant],
+    [dispatch, date, user, group, tenant],
   );
 
   const handleDayClick = useCallback(
@@ -227,9 +223,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             user={user}
             onUserChange={(val) => patchUrlState({ user: val })}
             group={group}
-            onGroupChange={(val) =>
-              patchUrlState({ group: val === ALL_USERS_SYNTHETIC ? null : val })
-            }
+            onGroupChange={(val) => patchUrlState({ group: val })}
+            groupNoFilterValue={groupNoFilterValue}
             tenant={tenant}
             onTenantChange={(val) => patchUrlState({ tenant: val })}
             userOptions={userOptions}

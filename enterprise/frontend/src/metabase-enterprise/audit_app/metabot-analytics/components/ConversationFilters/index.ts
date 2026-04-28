@@ -1,6 +1,5 @@
 export { ConversationFilters } from "./ConversationFilters";
 export {
-  ALL_USERS_SYNTHETIC,
   DEFAULT_DATE,
   DEFAULT_DATE_FILTER,
   DEFAULT_GROUP,
