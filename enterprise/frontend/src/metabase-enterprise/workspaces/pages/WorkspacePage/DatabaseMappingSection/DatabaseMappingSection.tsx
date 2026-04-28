@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Button, Text, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type {
@@ -15,8 +15,8 @@ import type {
 import { isDatabaseProvisioned } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
-import { DatabaseMappingItem } from "./DatabaseMappingItem";
 import { DatabaseMappingModal } from "./DatabaseMappingModal";
+import { DatabaseMappingTable } from "./DatabaseMappingTable";
 import {
   getAddTooltipLabel,
   getAvailableDatabases,
@@ -96,37 +96,33 @@ export function DatabaseMappingSection({
       <TitleSection
         label={t`Database mapping`}
         description={t`Configure which databases are accessible from this workspace.`}
+        rightSection={
+          <Tooltip
+            label={getAddTooltipLabel({
+              readOnly: isReadOnly,
+              hasSupportedDatabases: supportedDatabases.length > 0,
+              hasAvailableDatabases: availableDatabases.length > 0,
+            })}
+            disabled={canAddMapping}
+            openDelay={TOOLTIP_OPEN_DELAY}
+          >
+            <Button disabled={!canAddMapping} onClick={handleOpenCreate}>
+              {t`Add database`}
+            </Button>
+          </Tooltip>
+        }
       >
-        <Stack p="md">
-          {mappings.map((mapping) => (
-            <DatabaseMappingItem
-              key={mapping.database_id}
-              mapping={mapping}
-              database={databasesById.get(mapping.database_id)}
-              readOnly={isReadOnly}
-              onEdit={() => handleOpenEdit(mapping)}
-              onRemove={() => handleRemove(mapping)}
-            />
-          ))}
-          <Group justify={mappings.length === 0 ? "space-between" : "flex-end"}>
-            {mappings.length === 0 && (
-              <Text c="text-secondary">{t`No databases mapped yet.`}</Text>
-            )}
-            <Tooltip
-              label={getAddTooltipLabel({
-                readOnly: isReadOnly,
-                hasSupportedDatabases: supportedDatabases.length > 0,
-                hasAvailableDatabases: availableDatabases.length > 0,
-              })}
-              disabled={canAddMapping}
-              openDelay={TOOLTIP_OPEN_DELAY}
-            >
-              <Button disabled={!canAddMapping} onClick={handleOpenCreate}>
-                {t`Add database`}
-              </Button>
-            </Tooltip>
-          </Group>
-        </Stack>
+        {mappings.length === 0 ? (
+          <Box p="md">
+            <Text c="text-secondary">{t`No databases mapped yet.`}</Text>
+          </Box>
+        ) : (
+          <DatabaseMappingTable
+            mappings={mappings}
+            databasesById={databasesById}
+            onRowClick={handleOpenEdit}
+          />
+        )}
       </TitleSection>
       <DatabaseMappingModal
         opened={isModalOpened}
@@ -136,7 +132,6 @@ export function DatabaseMappingSection({
           mappings,
           selectedDatabaseId,
         )}
-        canDelete={mappings.length > 1}
         readOnly={isReadOnly}
         onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
         onDelete={selectedMapping != null ? handleRemove : undefined}

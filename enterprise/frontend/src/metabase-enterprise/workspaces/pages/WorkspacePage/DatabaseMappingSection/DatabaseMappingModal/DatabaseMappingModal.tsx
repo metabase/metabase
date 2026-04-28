@@ -36,7 +36,6 @@ type DatabaseMappingModalProps = {
   mapping?: WorkspaceDatabase;
   databases: Database[];
   opened: boolean;
-  canDelete?: boolean;
   readOnly?: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
@@ -47,7 +46,6 @@ export function DatabaseMappingModal({
   mapping,
   databases,
   opened,
-  canDelete = true,
   readOnly = false,
   onSubmit,
   onDelete,
@@ -65,7 +63,6 @@ export function DatabaseMappingModal({
       <DatabaseMappingForm
         mapping={mapping}
         databases={databases}
-        canDelete={canDelete}
         readOnly={readOnly}
         onSubmit={onSubmit}
         onDelete={onDelete}
@@ -78,7 +75,6 @@ export function DatabaseMappingModal({
 type DatabaseMappingFormProps = {
   mapping?: WorkspaceDatabase;
   databases: Database[];
-  canDelete: boolean;
   readOnly: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
@@ -88,7 +84,6 @@ type DatabaseMappingFormProps = {
 function DatabaseMappingForm({
   mapping,
   databases,
-  canDelete,
   readOnly,
   onSubmit,
   onDelete,
@@ -147,14 +142,14 @@ function DatabaseMappingForm({
               <Group>
                 {hasDelete && (
                   <Tooltip
-                    label={getDeleteButtonLabel(readOnly, canDelete) ?? ""}
-                    disabled={getDeleteButtonLabel(readOnly, canDelete) == null}
+                    label={t`Unprovision this workspace before editing.`}
+                    disabled={!readOnly}
                     openDelay={TOOLTIP_OPEN_DELAY}
                   >
                     <Button
                       variant="subtle"
                       color="error"
-                      disabled={readOnly || !canDelete}
+                      disabled={readOnly}
                       onClick={handleDelete}
                     >
                       {t`Delete`}
@@ -185,18 +180,6 @@ function DatabaseMappingForm({
   );
 }
 
-function getDeleteButtonLabel(
-  readOnly: boolean,
-  canDelete: boolean,
-): string | undefined {
-  if (readOnly) {
-    return t`Unprovision this workspace before editing.`;
-  }
-  if (!canDelete) {
-    return t`A workspace must have at least one database.`;
-  }
-}
-
 type DatabaseSchemasSelectProps = {
   databaseId: DatabaseId;
   selectedSchemas: string[];
@@ -218,7 +201,7 @@ function DatabaseSchemasSelect({
   return (
     <FormMultiSelect
       name="input_schemas"
-      label={t`Readable schemas`}
+      label={t`Schemas`}
       description={t`Tables in these schemas are readable in this workspace.`}
       placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
       data={availableSchemas}
