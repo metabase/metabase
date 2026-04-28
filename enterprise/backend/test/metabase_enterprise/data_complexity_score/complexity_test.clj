@@ -561,7 +561,7 @@
           "synonym-source returns a fresh provider-embedder for the descriptor"))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
-  (testing "provider-embedder splits names on _/-/./camelCase before sending to get-embeddings-batch"
+  (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)
           embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch

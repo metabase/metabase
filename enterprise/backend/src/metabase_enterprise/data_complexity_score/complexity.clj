@@ -351,8 +351,9 @@
   (str/join "." (map snake parts)))
 
 (defn- snake-keys
-  "Recursively snake-case all keywords to strings, for stable round-trips through JSON.
-  Keyword values in leaf positions are stringified too. Keys keys sorted also."
+  "Walk maps recursively, snake-casing keyword keys and keyword leaf values to strings.
+  Sequential collections aren't traversed — current callers (`weights`, `embedding-model`) only
+  pass maps. Sorted-map output keeps the JSON serialization stable."
   [x]
   (cond
     (map? x)     (into (sorted-map) (map (fn [[k v]] [(snake k) (snake-keys v)])) x)
