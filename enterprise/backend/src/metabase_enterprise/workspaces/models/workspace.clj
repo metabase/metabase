@@ -82,7 +82,7 @@
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
   is missing from the incoming `:databases` list or would have its `:input_schemas`
   changed. Only `:unprovisioned` rows are freely mutable; `:provisioning`,
-  `:provisioned`, and `:unprovisioning` rows must be preserved verbatim."
+  `:provisioned`, and `:deprovisioning` rows must be preserved verbatim."
   [existing-active incoming-by-db-id]
   (doseq [{:keys [database_id input_schemas]} existing-active]
     (let [incoming (get incoming-by-db-id database_id)]
@@ -94,14 +94,14 @@
 
 (defn delete-workspace!
   "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows is in
-  a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, or `:unprovisioning`)
+  a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, or `:deprovisioning`)
   — those point at live warehouse resources and must be unprovisioned explicitly
   first. Cascade-deletes `:unprovisioned` children via the FK."
   [id]
   (when (t2/exists? :model/WorkspaceDatabase
                     :workspace_id id
                     :status [:not= :unprovisioned])
-    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; unprovision them first"
+    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; deprovision them first"
                     {:status-code 409
                      :workspace_id id})))
   (t2/delete! :model/Workspace :id id))
@@ -109,7 +109,7 @@
 (defn update-workspace!
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
   list. Only `:unprovisioned` rows are freely mutable. Rows in any other state
-  (`:provisioning`, `:provisioned`, `:unprovisioning`) must be preserved by
+  (`:provisioning`, `:provisioned`, `:deprovisioning`) must be preserved by
   `database_id` with matching `:input_schemas`, or a 409 is raised. Fields not
   present in `params` are left untouched."
   [id params]

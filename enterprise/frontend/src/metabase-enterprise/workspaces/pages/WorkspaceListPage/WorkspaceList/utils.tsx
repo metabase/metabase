@@ -7,10 +7,10 @@ import { getUserName } from "metabase/utils/user";
 import type { Workspace } from "metabase-types/api";
 
 import {
+  isDatabaseDeprovisioning,
   isDatabaseProvisioned,
   isDatabaseProvisioning,
   isDatabaseUnprovisioned,
-  isDatabaseUnprovisioning,
 } from "../../../utils";
 
 export function getNameColumn(): TreeTableColumnDef<Workspace> {
@@ -82,8 +82,8 @@ function getStatusLabel(workspace: Workspace): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning…`;
   }
-  if (workspace.databases.some(isDatabaseUnprovisioning)) {
-    return t`Unprovisioning…`;
+  if (workspace.databases.some(isDatabaseDeprovisioning)) {
+    return t`Deprovisioning…`;
   }
   if (workspace.databases.every(isDatabaseProvisioned)) {
     return t`Provisioned`;
@@ -98,7 +98,7 @@ function getStatusIcon(workspace: Workspace): ReactNode {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return <Loader size="sm" />;
   }
-  if (workspace.databases.some(isDatabaseUnprovisioning)) {
+  if (workspace.databases.some(isDatabaseDeprovisioning)) {
     return <Loader size="sm" />;
   }
   if (workspace.databases.every(isDatabaseProvisioned)) {

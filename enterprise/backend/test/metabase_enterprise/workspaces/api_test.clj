@@ -30,7 +30,7 @@
                  ["PUT /:id"             :put    403 (str "ee/workspace/" (:id ws))                   {:name "X" :databases [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]}]
                  ["DELETE /:id"          :delete 403 (str "ee/workspace/" (:id ws))                   nil]
                  ["POST provision"       :post   403 (str "ee/workspace/" (:id ws) "/provision")      nil]
-                 ["POST unprovision"     :post   403 (str "ee/workspace/" (:id ws) "/unprovision")    nil]
+                 ["POST deprovision"     :post   403 (str "ee/workspace/" (:id ws) "/deprovision")    nil]
                  ["GET remappings"       :get    403 "ee/workspace/remappings"                        nil]]]
           (testing label
             (is (= "You don't have permissions to do that."

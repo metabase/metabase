@@ -5,7 +5,7 @@ import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Workspace, WorkspaceId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../constants";
-import { isDatabaseProvisioning, isDatabaseUnprovisioning } from "../utils";
+import { isDatabaseDeprovisioning, isDatabaseProvisioning } from "../utils";
 
 export function useFetchWorkspace(workspaceId: WorkspaceId | undefined) {
   const [isPolling, setIsPolling] = useState(false);
@@ -33,6 +33,6 @@ function isPollingNeededForWorkspace(workspace: Workspace | undefined) {
 
   return (
     workspace.databases.some(isDatabaseProvisioning) ||
-    workspace.databases.some(isDatabaseUnprovisioning)
+    workspace.databases.some(isDatabaseDeprovisioning)
   );
 }

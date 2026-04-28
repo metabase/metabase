@@ -5,16 +5,16 @@ import { Icon, Loader } from "metabase/ui";
 
 import type { WorkspaceInfo } from "../../../types";
 import {
+  isDatabaseDeprovisioning,
   isDatabaseProvisioned,
   isDatabaseProvisioning,
   isDatabaseUnprovisioned,
-  isDatabaseUnprovisioning,
 } from "../../../utils";
 
 export function getStatusIcon(workspace: WorkspaceInfo): ReactNode {
   if (
     workspace.databases.some(isDatabaseProvisioning) ||
-    workspace.databases.some(isDatabaseUnprovisioning)
+    workspace.databases.some(isDatabaseDeprovisioning)
   ) {
     return <Loader size="sm" />;
   }
@@ -28,8 +28,8 @@ export function getStatusMessage(workspace: WorkspaceInfo): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning this workspace…`;
   }
-  if (workspace.databases.some(isDatabaseUnprovisioning)) {
-    return t`Unprovisioning this workspace…`;
+  if (workspace.databases.some(isDatabaseDeprovisioning)) {
+    return t`Deprovisioning this workspace…`;
   }
   if (workspace.databases.every(isDatabaseProvisioned)) {
     return t`This workspace is provisioned and ready to use.`;
@@ -44,11 +44,11 @@ export function getButtonLabel(workspace: WorkspaceInfo): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning…`;
   }
-  if (workspace.databases.some(isDatabaseUnprovisioning)) {
-    return t`Unprovisioning…`;
+  if (workspace.databases.some(isDatabaseDeprovisioning)) {
+    return t`Deprovisioning…`;
   }
   if (workspace.databases.every(isDatabaseProvisioned)) {
-    return t`Unprovision workspace`;
+    return t`Deprovision workspace`;
   }
   return t`Provision workspace`;
 }

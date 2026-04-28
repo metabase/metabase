@@ -95,10 +95,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         }
       },
     }),
-    unprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
+    deprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/workspace/${id}/unprovision`,
+        url: `/api/ee/workspace/${id}/deprovision`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
@@ -107,7 +107,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
             draft.databases = draft.databases.map((database) => ({
               ...database,
-              status: "unprovisioning",
+              status: "deprovisioning",
             }));
           }),
         );
@@ -128,5 +128,5 @@ export const {
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,
   useProvisionWorkspaceMutation,
-  useUnprovisionWorkspaceMutation,
+  useDeprovisionWorkspaceMutation,
 } = workspaceApi;

@@ -24,7 +24,7 @@
                    (t2/update! :model/WorkspaceDatabase {:id wsd-id#}
                                {:status :provisioned :output_schema (str "mb_iso_test_" wsd-id#)})
                    (t2/select-one :model/WorkspaceDatabase :id wsd-id#))
-                 provisioning/unprovision-workspace-database!
+                 provisioning/deprovision-workspace-database!
                  (fn [wsd-id#]
                    (t2/update! :model/WorkspaceDatabase {:id wsd-id#}
                                {:status :unprovisioned :output_schema "" :database_details {}})
@@ -149,11 +149,11 @@
                  (ws/delete-workspace! (:id ws)))))
 
           ;; But provisioning actions still work
-          (testing "unprovision still works"
-            (is (= 1 (ws/unprovision! (:id ws)))))
+          (testing "deprovision still works"
+            (is (= 1 (ws/deprovision! (:id ws)))))
 
-          ;; After unprovisioning, edits work again
-          (testing "edits work after unprovision"
+          ;; After deprovisioning, edits work again
+          (testing "edits work after deprovision"
             (let [ws' (ws/get-workspace (:id ws))]
               (is (every? #(= :unprovisioned (:status %)) (:databases ws'))))
             (is (some? (ws/update-workspace! (:id ws) {:name      "Unlocked"

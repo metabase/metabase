@@ -11,10 +11,10 @@ import {
 import type { Database, WorkspaceDatabase } from "metabase-types/api";
 
 import {
+  isDatabaseDeprovisioning,
   isDatabaseProvisioned,
   isDatabaseProvisioning,
   isDatabaseUnprovisioned,
-  isDatabaseUnprovisioning,
 } from "../../../../utils";
 
 import type { DatabaseMappingRow } from "./types";
@@ -84,8 +84,8 @@ function getStatusLabel(mapping: WorkspaceDatabase): string {
   if (isDatabaseProvisioning(mapping)) {
     return t`Provisioning…`;
   }
-  if (isDatabaseUnprovisioning(mapping)) {
-    return t`Unprovisioning…`;
+  if (isDatabaseDeprovisioning(mapping)) {
+    return t`Deprovisioning…`;
   }
   if (isDatabaseProvisioned(mapping)) {
     return t`Provisioned`;
@@ -97,7 +97,7 @@ function getStatusLabel(mapping: WorkspaceDatabase): string {
 }
 
 function getStatusIcon(mapping: WorkspaceDatabase): ReactNode {
-  if (isDatabaseProvisioning(mapping) || isDatabaseUnprovisioning(mapping)) {
+  if (isDatabaseProvisioning(mapping) || isDatabaseDeprovisioning(mapping)) {
     return <Loader size="sm" />;
   }
   if (isDatabaseProvisioned(mapping)) {

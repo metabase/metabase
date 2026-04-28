@@ -8,8 +8,8 @@ export function isDatabaseProvisioning(database: WorkspaceDatabase): boolean {
   return database.status === "provisioning";
 }
 
-export function isDatabaseUnprovisioning(database: WorkspaceDatabase): boolean {
-  return database.status === "unprovisioning";
+export function isDatabaseDeprovisioning(database: WorkspaceDatabase): boolean {
+  return database.status === "deprovisioning";
 }
 
 export function isDatabaseUnprovisioned(database: WorkspaceDatabase): boolean {

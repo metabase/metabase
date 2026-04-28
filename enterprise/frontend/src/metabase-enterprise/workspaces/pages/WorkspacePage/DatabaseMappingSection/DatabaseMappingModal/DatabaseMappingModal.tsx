@@ -170,7 +170,7 @@ function DatabaseMappingForm({
                   <Tooltip
                     label={
                       readOnly
-                        ? t`Unprovision this workspace before editing.`
+                        ? t`Deprovision this workspace before editing.`
                         : t`A workspace must have at least one database.`
                     }
                     disabled={canRemove}
@@ -191,7 +191,7 @@ function DatabaseMappingForm({
                 </Box>
                 <Button onClick={onClose}>{t`Cancel`}</Button>
                 <Tooltip
-                  label={t`Unprovision this workspace before editing.`}
+                  label={t`Deprovision this workspace before editing.`}
                   disabled={!readOnly}
                   openDelay={TOOLTIP_OPEN_DELAY}
                 >

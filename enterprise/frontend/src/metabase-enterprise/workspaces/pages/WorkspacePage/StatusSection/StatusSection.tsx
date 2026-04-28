@@ -4,16 +4,16 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Text } from "metabase/ui";
 import {
+  useDeprovisionWorkspaceMutation,
   useProvisionWorkspaceMutation,
-  useUnprovisionWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { WorkspaceId } from "metabase-types/api";
 
 import type { WorkspaceInfo } from "../../../types";
 import {
+  isDatabaseDeprovisioning,
   isDatabaseProvisioned,
   isDatabaseProvisioning,
-  isDatabaseUnprovisioning,
 } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
@@ -39,7 +39,7 @@ export function StatusSection({ workspace }: StatusSectionProps) {
       <Group p="md" justify="space-between" wrap="nowrap">
         <WorkspaceStatus workspace={workspace} />
         {isProvisioned ? (
-          <UnprovisionButton workspace={workspace} workspaceId={workspaceId} />
+          <DeprovisionButton workspace={workspace} workspaceId={workspaceId} />
         ) : (
           <ProvisionButton workspace={workspace} workspaceId={workspaceId} />
         )}
@@ -69,7 +69,7 @@ function ProvisionButton({ workspace, workspaceId }: StatusButtonProps) {
 
   const isInProgress =
     workspace.databases.some(isDatabaseProvisioning) ||
-    workspace.databases.some(isDatabaseUnprovisioning);
+    workspace.databases.some(isDatabaseDeprovisioning);
 
   const handleProvision = () => {
     show({
@@ -100,25 +100,25 @@ function ProvisionButton({ workspace, workspaceId }: StatusButtonProps) {
   );
 }
 
-function UnprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
-  const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
+function DeprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
+  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
   const { modalContent, show } = useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
 
   const isInProgress =
     workspace.databases.some(isDatabaseProvisioning) ||
-    workspace.databases.some(isDatabaseUnprovisioning);
+    workspace.databases.some(isDatabaseDeprovisioning);
 
-  const handleUnprovision = () => {
+  const handleDeprovision = () => {
     show({
-      title: t`Unprovision this workspace?`,
+      title: t`Deprovision this workspace?`,
       message: t`Deletes the isolation schema and database user from each database.`,
-      confirmButtonText: t`Unprovision workspace`,
+      confirmButtonText: t`Deprovision workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        const { error } = await unprovisionWorkspace(workspaceId);
+        const { error } = await deprovisionWorkspace(workspaceId);
         if (error) {
-          sendErrorToast(t`Failed to unprovision workspace`);
+          sendErrorToast(t`Failed to deprovision workspace`);
         }
       },
     });
@@ -129,7 +129,7 @@ function UnprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
       <Button
         variant="default"
         disabled={isInProgress}
-        onClick={handleUnprovision}
+        onClick={handleDeprovision}
       >
         {getButtonLabel(workspace)}
       </Button>

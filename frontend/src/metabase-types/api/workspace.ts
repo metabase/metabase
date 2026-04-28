@@ -6,7 +6,7 @@ export type WorkspaceId = number;
 export type WorkspaceDatabaseStatus =
   | "provisioned"
   | "provisioning"
-  | "unprovisioning"
+  | "deprovisioning"
   | "unprovisioned";
 
 export type Workspace = {

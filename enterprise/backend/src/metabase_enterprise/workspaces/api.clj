@@ -12,7 +12,7 @@
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceStatus
-  [:enum "unprovisioned" "provisioning" "provisioned" "unprovisioning"])
+  [:enum "unprovisioned" "provisioning" "provisioned" "deprovisioning"])
 
 (def ^:private WorkspaceDatabaseParams
   [:map
@@ -129,12 +129,12 @@
   (api/check-superuser)
   {:workspace_id id :triggered (ws/provision! id)})
 
-(api.macros/defendpoint :post "/:id/unprovision"
+(api.macros/defendpoint :post "/:id/deprovision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
-  "Unprovision all provisioned databases."
+  "Deprovision all provisioned databases."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  {:workspace_id id :triggered (ws/unprovision! id)})
+  {:workspace_id id :triggered (ws/deprovision! id)})
 
 (api.macros/defendpoint :get "/remappings"
   "Return all table remappings."

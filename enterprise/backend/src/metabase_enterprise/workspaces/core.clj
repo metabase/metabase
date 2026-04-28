@@ -6,9 +6,9 @@
                      provision!
      unprovisioned ────────────► provisioning ──────► provisioned
           ▲                           │                    │
-          │                  failure  │                    │ unprovision!
+          │                  failure  │                    │ deprovision!
           │                           ▼                    ▼
-          │                     unprovisioned ◄──── unprovisioning
+          │                     unprovisioned ◄──── deprovisioning
           │                                                │
           │                                       failure  │
           │                                                ▼
@@ -22,7 +22,7 @@
 
      Any DB not unprovisioned → LOCKED mode
        • provision! (retry failed DBs)
-       • unprovision! (tear down everything)
+       • deprovision! (tear down everything)
        • reads (get, list)
        • all structural edits → 409"
   (:require
@@ -47,7 +47,7 @@
    (add/remove DB, change schemas, rename) are only allowed when all DBs are unprovisioned."
   [ws]
   (when (any-provisioned? ws)
-    (throw (ex-info "Workspace is locked: databases are provisioned. Unprovision before making changes."
+    (throw (ex-info "Workspace is locked: databases are provisioned. Deprovision before making changes."
                     {:status-code  409
                      :workspace_id (:id ws)
                      :statuses     (mapv (juxt :database_id :status) (:databases ws))}))))
@@ -186,12 +186,12 @@
     (assert-provisionable! ws)
     (provisioning/provision-workspace! workspace-id)))
 
-(defn unprovision!
-  "Unprovision all provisioned databases in a workspace. Tears everything down.
+(defn deprovision!
+  "Deprovision all provisioned databases in a workspace. Tears everything down.
    Returns the number of databases that were scheduled."
   [workspace-id]
   (assert-workspace-exists workspace-id)
-  (provisioning/unprovision-workspace! workspace-id))
+  (provisioning/deprovision-workspace! workspace-id))
 
 (defn get-config []
   (throw (ex-info "not implemented" {})))

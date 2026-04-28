@@ -87,9 +87,9 @@
       (run-async! (fn [] (provision-workspace-databases! workspace-id))))
     triggered))
 
-(defn unprovision-workspace-database!
-  "Reverse provisioning for an `:unprovisioning` WorkspaceDatabase.
-  State transitions: `:unprovisioning` -> `:unprovisioned` on success,
+(defn deprovision-workspace-database!
+  "Reverse provisioning for a `:deprovisioning` WorkspaceDatabase.
+  State transitions: `:deprovisioning` -> `:unprovisioned` on success,
   or back to `:provisioned` on failure."
   [workspace-database-id]
   (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
@@ -97,8 +97,8 @@
     (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
       (when-not wsd
         (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
-      (when-not (= :unprovisioning (:status wsd))
-        (throw (ex-info "WorkspaceDatabase must be :unprovisioning to unprovision"
+      (when-not (= :deprovisioning (:status wsd))
+        (throw (ex-info "WorkspaceDatabase must be :deprovisioning to deprovision"
                         {:id workspace-database-id :status (:status wsd)})))
       (try
         (let [db        (t2/select-one :model/Database :id (:database_id wsd))
@@ -120,25 +120,25 @@
           (throw t)))
       (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))))
 
-(defn unprovision-workspace-databases!
-  "Synchronously unprovision every `:unprovisioning` WorkspaceDatabase under `workspace-id`."
+(defn deprovision-workspace-databases!
+  "Synchronously deprovision every `:deprovisioning` WorkspaceDatabase under `workspace-id`."
   [workspace-id]
   (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
                                   :workspace_id workspace-id
-                                  :status       :unprovisioning)]
+                                  :status       :deprovisioning)]
     (try
-      (unprovision-workspace-database! id)
+      (deprovision-workspace-database! id)
       (catch Throwable t
-        (log/warnf t "Failed to unprovision WorkspaceDatabase %s" id)))))
+        (log/warnf t "Failed to deprovision WorkspaceDatabase %s" id)))))
 
-(defn unprovision-workspace!
+(defn deprovision-workspace!
   "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to
-  `:unprovisioning` synchronously, then kick off async unprovisioning.
+  `:deprovisioning` synchronously, then kick off async deprovisioning.
   Returns the number of rows scheduled."
   [workspace-id]
   (let [triggered (t2/update! :model/WorkspaceDatabase
                               {:workspace_id workspace-id :status :provisioned}
-                              {:status :unprovisioning})]
+                              {:status :deprovisioning})]
     (when (pos? triggered)
-      (run-async! (fn [] (unprovision-workspace-databases! workspace-id))))
+      (run-async! (fn [] (deprovision-workspace-databases! workspace-id))))
     triggered))
