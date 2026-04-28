@@ -17,9 +17,9 @@ fk_target_field_id:
 - v_users
 - user_id
 dimensions: []
-position: 9
+position: 10
 custom_position: 0
-database_position: 9
+database_position: 10
 has_field_values: auto-list
 serdes/meta:
 - id: Internal Metabase Database

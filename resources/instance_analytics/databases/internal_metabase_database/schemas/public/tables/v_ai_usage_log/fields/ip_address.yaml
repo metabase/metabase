@@ -11,9 +11,9 @@ database_type: varchar
 base_type: type/Text
 effective_type: type/Text
 dimensions: []
-position: 13
+position: 14
 custom_position: 0
-database_position: 13
+database_position: 14
 has_field_values: auto-list
 serdes/meta:
 - id: Internal Metabase Database

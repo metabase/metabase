@@ -223,6 +223,21 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
+  description: Display label for the Metabot profile that handled this conversation (e.g. Internal, Embedding, Slackbot, SQL); humanized version of profile_id.
+  display_name: Profile Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_conversations, profile_name]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_conversations, profile_name]
+  name: profile_name
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
   description: Name of one permissions group the user belongs to (excluding All Users); used for cohort breakdowns.
   display_name: Group Name
   effective_type: type/Text
@@ -248,6 +263,21 @@ result_metadata:
   fk_target_field_id: null
   id: [Internal Metabase Database, public, v_metabot_conversations, source]
   name: source
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: Display label for the surface that originated the conversation (e.g. Metabot, Documents, Slackbot, SQL); humanized version of source.
+  display_name: Source Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_conversations, source_name]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_conversations, source_name]
+  name: source_name
   semantic_type: type/Category
   settings: null
   visibility_type: normal

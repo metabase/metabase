@@ -72,6 +72,21 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
+  description: Display label for the originating surface (e.g. Metabot, Documents, Slackbot, SQL); humanized version of source.
+  display_name: Source Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_ai_usage_log, source_name]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_ai_usage_log, source_name]
+  name: source_name
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
   description: Provider/model identifier returned by the LLM (e.g. anthropic/claude-sonnet-4-20250514).
   display_name: Model
   effective_type: type/Text

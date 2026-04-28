@@ -17,9 +17,9 @@ fk_target_field_id:
 - v_metabot_conversations
 - conversation_id
 dimensions: []
-position: 8
+position: 9
 custom_position: 0
-database_position: 8
+database_position: 9
 has_field_values: auto-list
 serdes/meta:
 - id: Internal Metabase Database

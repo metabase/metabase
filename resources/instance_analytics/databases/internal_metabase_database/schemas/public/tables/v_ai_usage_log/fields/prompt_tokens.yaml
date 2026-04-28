@@ -12,9 +12,9 @@ base_type: type/Integer
 effective_type: type/Integer
 semantic_type: type/Quantity
 dimensions: []
-position: 5
+position: 6
 custom_position: 0
-database_position: 5
+database_position: 6
 has_field_values: auto-list
 serdes/meta:
 - id: Internal Metabase Database

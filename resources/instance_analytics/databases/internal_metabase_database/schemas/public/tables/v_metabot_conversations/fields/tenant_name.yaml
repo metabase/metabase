@@ -12,9 +12,9 @@ base_type: type/Text
 effective_type: type/Text
 semantic_type: type/Category
 dimensions: []
-position: 17
+position: 19
 custom_position: 0
-database_position: 17
+database_position: 19
 has_field_values: auto-list
 serdes/meta:
 - id: Internal Metabase Database
