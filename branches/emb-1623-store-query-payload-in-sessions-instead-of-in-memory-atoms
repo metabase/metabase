@@ -5,5 +5,13 @@
   },
   "upstream": {
     "branch": "emb-1623-store-query-payload-in-sessions-instead-of-in-memory-atoms"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 73200,
+        "gqlID": "PR_kwDOAczgH87Vjtw5"
+      }
+    }
   }
 }
