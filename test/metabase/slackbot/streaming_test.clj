@@ -203,6 +203,29 @@
                        {:ai-proxy? true}]
                       @store-opts)))))))))
 
+(deftest slackbot-streaming-persists-failed-conversations-test
+  (testing "User message is persisted even if setup throws after it (BOT-1279)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            stored     (promise)]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_ctx]
+            (with-redefs [metabot.persistence/store-message!
+                          (fn [_conv-id _profile-id _messages & {:as opts}]
+                            (deliver stored opts)
+                            nil)
+                          ;; Force setup to throw *after* the user message has been stored.
+                          slackbot.persistence/message-history
+                          (fn [& _] (throw (ex-info "boom" {})))]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (let [opts (deref stored 5000 ::timeout)]
+                (testing "user store-message! was called before the failure"
+                  (is (not= ::timeout opts))
+                  (is (some? (:slack-msg-id opts))))))))))))
+
 (deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "user + assistant persists receive ai-proxy? = false for direct BYOK provider"
     (tu/with-slackbot-setup
