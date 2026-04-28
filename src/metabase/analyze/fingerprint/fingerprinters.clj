@@ -233,16 +233,16 @@
   Temporal (->temporal [this] this)
   java.util.Date (->temporal [this] (t/instant this)))
 
-(def ^:private ^:const mode-stats-max-distinct
+(def ^:private mode-stats-max-distinct
   "Maximum number of distinct values to track for mode-fraction / top-3-fraction computation.
-   Values beyond this cap are counted toward total but not tracked individually. For typical
-   10k-row samples, the true top values will almost always appear in the first 100 distinct
-   values seen."
+  Values beyond this cap are counted toward total but not tracked individually. For typical
+  10k-row samples, the true top values will almost always appear in the first 100 distinct
+  values seen."
   100)
 
 (defn- top-n-fraction
   "Given a map of value->count and a total row count, return the sum of the top-n counts
-   divided by total. Returns nil if total is not positive."
+  divided by total. Returns nil if total is not positive."
   [counts total n]
   (when (pos? total)
     (/ (double (reduce + 0.0 (take n (sort > (vals counts)))))
@@ -250,9 +250,9 @@
 
 (defn- mode-stats
   "Reducer that tracks value frequencies (bounded at `mode-stats-max-distinct` entries)
-   and, on completion, returns {:mode-fraction, :top-3-fraction}. High mode-fraction
-   signals single-value dominance; high top-3-fraction with moderate mode-fraction signals
-   bimodal / few-real-categories distributions."
+  and, on completion, returns {:mode-fraction, :top-3-fraction}. High mode-fraction
+  signals single-value dominance; high top-3-fraction with moderate mode-fraction signals
+  bimodal / few-real-categories distributions."
   ([] [{} 0])
   ([[counts total]]
    {:mode-fraction  (top-n-fraction counts total 1)
@@ -266,7 +266,7 @@
 
 (defn- ->millis-from-epoch
   "Coerce a `java.time.temporal.Temporal` (as produced by `->temporal`) to long epoch millis.
-   Returns nil for unsupported types; callers typically wrap with `(keep ->millis-from-epoch)`
+  Returns nil for unsupported types; callers typically wrap with `(keep ->millis-from-epoch)`
    to strip non-coerceable values."
   [t]
   (cond (instance? Instant t)        (.toEpochMilli ^Instant t)

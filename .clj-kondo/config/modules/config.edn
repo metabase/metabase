@@ -1015,7 +1015,6 @@
    :api  #{metabase.interestingness.core}
    :uses #{util}}
 
-
   internal-stats
   {:team "UX West"
    :api  #{metabase.internal-stats.core}

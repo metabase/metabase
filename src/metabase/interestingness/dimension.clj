@@ -89,19 +89,19 @@
 
 (def ^:private dimension-bonus-types
   "Semantic types that make especially interesting dimensions."
-  [:type/CreationTimestamp
-   :type/Address
+  [:type/Address
    :type/Birthdate
-   :type/Title
-   :type/Currency
-   :type/Quantity
-   :type/Share
-   :type/Score
-   :type/JoinTemporal
    :type/CancelationTemporal
    :type/Company
+   :type/CreationTimestamp
+   :type/Currency
+   :type/JoinTemporal
+   :type/Owner
+   :type/Quantity
+   :type/Score
+   :type/Share
    :type/Subscription
-   :type/Owner])
+   :type/Title])
 
 (defn type-bonus
   "Boost fields with semantic types that tend to produce interesting explorations."

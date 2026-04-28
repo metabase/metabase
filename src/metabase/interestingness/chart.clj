@@ -1,21 +1,21 @@
 (ns metabase.interestingness.chart
   "Chart-level interestingness scoring.
 
-   Operates on the same `chart-config` shape that
-   [[metabase.interestingness.chart.stats/compute-chart-stats]] consumes —
-   `{:series {name -> {:x :y :x_values :y_values ...}} :display_type ...}` —
-   and returns a scalar score in `[0.0, 1.0]` describing how likely the chart
-   is to surface a useful insight.
+  Operates on the same `chart-config` shape that
+  [[metabase.interestingness.chart.stats/compute-chart-stats]] consumes —
+  `{:series {name -> {:x :y :x_values :y_values ...}} :display_type ...}` —
+  and returns a scalar score in `[0.0, 1.0]` describing how likely the chart
+  is to surface a useful insight.
 
-   The score blends three signal groups:
-   - **non-degeneracy**: hard gate against flat measures and single-value
-     dimensions (a chart no aggregation can rescue)
-   - **statistical signal**: presence of trend, outliers, correlations, peaks
-     in the distribution — read from the stats map
-   - **structure**: reasonable category count, non-trivial data-point count
+  The score blends three signal groups:
+  - **non-degeneracy**: hard gate against flat measures and single-value
+    dimensions (a chart no aggregation can rescue)
+  - **statistical signal**: presence of trend, outliers, correlations, peaks
+    in the distribution — read from the stats map
+  - **structure**: reasonable category count, non-trivial data-point count
 
-   Callers who already compute stats can pass them via the 2-arity form to
-   avoid recomputation."
+  Callers who already compute stats can pass them via the 2-arity form to
+  avoid recomputation."
   (:require
    [metabase.interestingness.chart.stats :as chart.stats]))
 
@@ -30,7 +30,7 @@
 
 (defn- flat?
   "True if the series' y_values have effectively zero spread."
-  [{:keys [y_values]}]
+  [{:keys [y_values], :as _series}]
   (let [v (variance y_values)]
     (or (nil? v) (< v 1e-12))))
 
@@ -40,8 +40,8 @@
 
 (defn- non-degeneracy-score
   "0 if every series is flat or has a single x; softer penalty if any one is.
-   1 when all series look lively."
-  [{:keys [series]}]
+  1 when all series look lively."
+  [{:keys [series], :as _chart-config}]
   (if (empty? series)
     0.0
     (let [configs      (vals series)
@@ -66,7 +66,7 @@
            (some-> overall-change-pct double abs (>= 5.0)))))
 
 (defmethod signal-score :time-series
-  [{:keys [series correlations]}]
+  [{:keys [series correlations], :as _stats}]
   (if (empty? series)
     0.0
     (let [per-series (for [[_ s] series]
@@ -150,9 +150,9 @@
 (defn chart-interestingness
   "Compute a `[0.0, 1.0]` interestingness score for a chart.
 
-   `chart-config` is the same map shape consumed by
-   [[metabase.interestingness.chart.stats/compute-chart-stats]]. Optional
-   `stats` lets callers who already computed stats avoid recomputation."
+  `chart-config` is the same map shape consumed by
+  [[metabase.interestingness.chart.stats/compute-chart-stats]]. Optional
+  `stats` lets callers who already computed stats avoid recomputation."
   ([chart-config]
    (chart-interestingness chart-config
                           (chart.stats/compute-chart-stats chart-config {})))
