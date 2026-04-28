@@ -529,7 +529,7 @@
             live     (atom 0)
             max-live (atom 0)
             bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
-        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 4]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_run-id _run-method _user-id _transform]
                                               (bump)
@@ -543,7 +543,7 @@
       (let [plan  [{:id 1} {:id 2}]
             deps  {1 #{} 2 #{1}}
             order (atom [])]
-        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 4]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ transform]
                                               (when (= 1 (:id transform))
@@ -555,7 +555,7 @@
     (testing "Dependents of a failed transform are skipped transitively"
       (let [plan [{:id 1} {:id 2} {:id 3}]
             deps {1 #{} 2 #{1} 3 #{2}}]
-        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 4]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ transform]
                                               (when (= 1 (:id transform))
@@ -571,11 +571,51 @@
             live     (atom 0)
             max-live (atom 0)
             bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
-        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 2]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 2]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ _]
                                               (bump)
                                               (Thread/sleep 50)
                                               (swap! live dec))]
             (jobs/run-transforms! 0 (set (range 1 9)) {:run-method :manual})
-            (is (= 2 @max-live) "should never exceed the concurrency setting")))))))
+            (is (= 2 @max-live) "should never exceed the concurrency setting")))))
+
+    (testing "Python transforms are serialized in their own lane (n=1)"
+      (let [py       (fn [id] {:id id :source {:type :python}})
+            plan     [(py 1) (py 2) (py 3) (py 4)]
+            deps     {1 #{} 2 #{} 3 #{} 4 #{}}
+            live     (atom 0)
+            max-live (atom 0)
+            bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
+          (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
+                        jobs/run-transform! (fn [_ _ _ _]
+                                              (bump)
+                                              (Thread/sleep 100)
+                                              (swap! live dec))]
+            (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual})
+            (is (= 1 @max-live)
+                "python transforms must run one at a time even with concurrency=4")))))
+
+    (testing "SQL and Python lanes run in parallel without contending for slots"
+      (let [py        (fn [id] {:id id :source {:type :python}})
+            sql       (fn [id] {:id id})
+            plan      [(sql 1) (sql 2) (sql 3) (py 4) (py 5)]
+            deps      {1 #{} 2 #{} 3 #{} 4 #{} 5 #{}}
+            sql-live  (atom 0) max-sql  (atom 0)
+            py-live   (atom 0) max-py   (atom 0)
+            bump-sql! (fn [] (let [n (swap! sql-live inc)] (swap! max-sql max n)))
+            bump-py!  (fn [] (let [n (swap! py-live  inc)] (swap! max-py  max n)))]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 3]
+          (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
+                        jobs/run-transform! (fn [_ _ _ transform]
+                                              (if (= :python (-> transform :source :type))
+                                                (do (bump-py!)
+                                                    (Thread/sleep 150)
+                                                    (swap! py-live dec))
+                                                (do (bump-sql!)
+                                                    (Thread/sleep 50)
+                                                    (swap! sql-live dec))))]
+            (jobs/run-transforms! 0 #{1 2 3 4 5} {:run-method :manual})
+            (is (= 3 @max-sql) "all three SQL transforms run in parallel")
+            (is (= 1 @max-py)  "python lane stays single-slot")))))))

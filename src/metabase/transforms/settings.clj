@@ -17,8 +17,8 @@
   :encryption :no
   :audit      :getter)
 
-(setting/defsetting transform-run-job-concurrency
-  (deferred-tru "Maximum number of transforms a single transform-job run may execute in parallel.")
+(setting/defsetting transform-run-job-sql-concurrency
+  (deferred-tru "Maximum number of SQL-backed transforms a single transform-job run may execute in parallel. Python transforms are always serialized within a job run because the python-runner is single-threaded.")
   :type       :integer
   :visibility :internal
   :default    3
