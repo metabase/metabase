@@ -1,12 +1,16 @@
 (ns metabase.lib-be.json-schema-test
   (:require
    [clj-yaml.core :as yaml]
-   [clojure.java.shell :as sh]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.lib-be.json-schema :as js]
    [metabase.util.json :as json-util])
-  (:import (java.io File)))
+  (:import (com.github.erosb.jsonsKema FormatValidationPolicy
+                                       JsonParser
+                                       SchemaLoader
+                                       Validator
+                                       ValidatorConfig)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,39 +39,20 @@
                  [:field {:base-type :type/BigInteger}
                   "hello" "schema" "tbl" "f"]]]}]})
 
-(defn- is-valid? [schema-file query]
-  (let [query-json (json-util/encode query {:pretty true})
-        jv (sh/sh "jv" (str schema-file) "/dev/stdin" :in query-json)]
-    (is (zero? (:exit jv)) (str query-json "\n" (:err jv)))))
-
-;; If you end up making changes to the json schema generator, install jv to make
-;; sure the validation tests below are run:
-;; https://github.com/santhosh-tekuri/jsonschema
-
 (deftest fix-json-schema-test
-  (let [schema (js/make-schema)]
+  (let [schema-map (js/make-schema)
+        schema (.load (SchemaLoader. (json-util/encode schema-map)))
+        validator (Validator/create schema (ValidatorConfig. FormatValidationPolicy/ALWAYS))]
     (testing "does it pass the malli schema?"
-      (is (map? schema)))
+      (is (map? schema-map)))
     (testing "it should remove malli quirks"
       (walk/postwalk check-node schema))
-    (let [^File schema-file (File/createTempFile "json-schema" "test")]
-      (spit schema-file (json-util/encode schema))
-      (spit "/tmp/schema.clj" (pr-str schema))
-      (try
-        (testing "does the schema itself validate?"
-          (let [jv (sh/sh "jv" (str schema-file))]
-            (is (zero? (:exit jv)) (:err jv))))
-        (testing "simple query"
-          (is-valid? schema-file simple-query))
-        (testing "representation examples validate"
-          (let [examples-dir "../representations/examples/v1/collections/main/queries"]
-            ;; skip these tests when you don't have a representations checkout
-            (when (.exists (File. examples-dir))
-              (doseq [f (.listFiles (File. examples-dir))]
-                (let [query (:dataset_query (yaml/parse-string (slurp f)))]
-                  (is-valid? schema-file query))))))
-        ;; If you don't have the jv validator installed, don't worry about it
-        (catch java.io.IOException e
-          (when-not (re-find #"No such file or directory" (str e))
-            (throw e)))
-        (finally (.delete schema-file))))))
+    (testing "simple query"
+      (is (nil? (.validate validator
+                           (.parse (JsonParser. (json-util/encode simple-query)))))))
+    (testing "representation examples validate"
+      (let [examples-dir "serialization_baseline/collections/main/queries"]
+        (doseq [f (.listFiles (io/file (io/resource examples-dir)))]
+          (let [query (:dataset_query (yaml/parse-string (slurp f)))]
+            (is (nil? (.validate validator
+                                 (.parse (JsonParser. (json-util/encode query))))))))))))
