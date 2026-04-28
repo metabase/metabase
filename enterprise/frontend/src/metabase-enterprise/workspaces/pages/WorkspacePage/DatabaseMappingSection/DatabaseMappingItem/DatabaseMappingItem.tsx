@@ -26,7 +26,6 @@ export function DatabaseMappingItem({
     <Flex
       justify="space-between"
       align="center"
-      py="md"
       data-testid="workspace-db-list-item"
     >
       <Flex align="center" gap="sm">

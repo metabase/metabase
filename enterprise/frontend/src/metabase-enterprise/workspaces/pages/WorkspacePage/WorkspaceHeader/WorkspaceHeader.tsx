@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Flex, Stack, Text } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
@@ -29,29 +29,22 @@ export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
   };
 
   return (
-    <Flex
-      data-testid="workspace-header-section"
-      gap="1.25rem"
-      justify="space-between"
-      wrap="wrap"
-    >
-      <Stack gap="sm">
-        <EditableText
-          key={workspace.id}
-          initialValue={workspace.name}
-          placeholder={t`Workspace name`}
-          fz="h2"
-          fw={700}
-          lh={1.2}
-          ml="-xs"
-          onChange={handleNameChange}
-        />
-        <Text size="sm" c="text-secondary">
-          {creatorName
-            ? jt`Created by ${creatorName} at ${date}`
-            : jt`Created at ${date}`}
-        </Text>
-      </Stack>
-    </Flex>
+    <Box data-testid="workspace-header-section">
+      <EditableText
+        key={workspace.id}
+        initialValue={workspace.name}
+        placeholder={t`Workspace name`}
+        fz="h1"
+        fw={700}
+        lh={1.2}
+        m="-xs"
+        onChange={handleNameChange}
+      />
+      <Text c="text-secondary" maw="40rem">
+        {creatorName
+          ? jt`Created by ${creatorName} at ${date}`
+          : jt`Created at ${date}`}
+      </Text>
+    </Box>
   );
 }

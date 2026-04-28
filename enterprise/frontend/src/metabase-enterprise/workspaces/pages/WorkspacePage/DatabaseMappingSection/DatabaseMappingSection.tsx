@@ -75,9 +75,7 @@ export function DatabaseMappingSection({
   const handleUpdate = (mapping: WorkspaceDatabase) => {
     handleChange(
       mappings.map((current) =>
-        current.database_id === selectedDatabaseId
-          ? { ...mapping, status: current.status }
-          : current,
+        current.database_id === selectedDatabaseId ? mapping : current,
       ),
     );
   };
@@ -112,7 +110,7 @@ export function DatabaseMappingSection({
             <Text c="text-secondary">{t`No databases mapped yet.`}</Text>
           </Box>
         ) : (
-          <Stack gap={0} px="md">
+          <Stack p="md">
             {mappings.map((mapping) => (
               <DatabaseMappingItem
                 key={mapping.database_id}

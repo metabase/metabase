@@ -14,7 +14,13 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   {:id         id
    :name       "Workspace"
-   :databases  []
+   :databases  [{:database_id   1
+                 :input_schemas ["public"]
+                 :output_schema "workspace_1"
+                 :status        "provisioned"}
+                {:database_id   2
+                 :input_schemas ["public" "main"]
+                 :status        "unprovisioned"}]
    :creator_id nil
    :creator    nil
    :created_at "2026-04-27T00:00:00Z"
