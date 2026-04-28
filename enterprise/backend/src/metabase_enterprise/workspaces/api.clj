@@ -21,7 +21,7 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name      ms/NonBlankString]
-   [:databases {:optional true} [:sequential WorkspaceDatabaseParams]]])
+   [:databases [:sequential WorkspaceDatabaseParams]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}

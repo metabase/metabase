@@ -1,15 +1,15 @@
+import { t } from "ttag";
+
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Center, Stack } from "metabase/ui";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Center } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
-import type { Workspace } from "metabase-types/api";
+import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
+import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
-import { DangerSection } from "./DangerSection";
-import { DatabaseMappingSection } from "./DatabaseMappingSection";
-import { ProvisionSection } from "./ProvisionSection";
-import { SetupSection } from "./SetupSection";
-import { WorkspaceHeader } from "./WorkspaceHeader";
+import { WorkspaceEditor } from "./WorkspaceEditor";
 
 type WorkspacePageProps = {
   params: { workspaceId: string };
@@ -35,13 +35,34 @@ type WorkspacePageBodyProps = {
 };
 
 function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const handleNameChange = async (name: string) => {
+    if (name === workspace.name) {
+      return;
+    }
+    const { error } = await updateWorkspace({ id: workspace.id, name });
+    if (error) {
+      sendErrorToast(t`Failed to update workspace name`);
+    }
+  };
+
+  const handleDatabasesChange = async (databases: WorkspaceDatabase[]) => {
+    const { error } = await updateWorkspace({
+      id: workspace.id,
+      databases,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update workspace`);
+    }
+  };
+
   return (
-    <Stack gap="3.25rem">
-      <WorkspaceHeader workspace={workspace} />
-      <DatabaseMappingSection workspace={workspace} />
-      <ProvisionSection workspace={workspace} />
-      <SetupSection workspace={workspace} />
-      <DangerSection workspace={workspace} />
-    </Stack>
+    <WorkspaceEditor
+      workspace={workspace}
+      onNameChange={handleNameChange}
+      onDatabasesChange={handleDatabasesChange}
+    />
   );
 }

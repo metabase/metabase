@@ -2,49 +2,47 @@ import { jt, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Text } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+
+import type { WorkspaceInfo } from "../../../types";
 
 type WorkspaceHeaderProps = {
-  workspace: Workspace;
+  workspace: WorkspaceInfo;
+  onNameChange: (name: string) => void;
 };
 
-export function WorkspaceHeader({ workspace }: WorkspaceHeaderProps) {
-  const [updateWorkspace] = useUpdateWorkspaceMutation();
-  const { sendErrorToast } = useMetadataToasts();
-  const creatorName = workspace.creator ? getUserName(workspace.creator) : null;
-  const date = <DateTime key="date" value={workspace.created_at} unit="day" />;
-
-  const handleNameChange = async (name: string) => {
-    if (name === workspace.name) {
-      return;
-    }
-    const { error } = await updateWorkspace({ id: workspace.id, name });
-    if (error) {
-      sendErrorToast(t`Failed to update workspace name`);
-    }
-  };
+export function WorkspaceHeader({
+  workspace,
+  onNameChange,
+}: WorkspaceHeaderProps) {
+  const creatorName =
+    workspace.creator != null ? getUserName(workspace.creator) : null;
+  const createdAt =
+    workspace.created_at != null ? (
+      <DateTime key="date" value={workspace.created_at} unit="day" />
+    ) : null;
 
   return (
     <Box data-testid="workspace-header-section">
       <EditableText
-        key={workspace.id}
+        key={workspace.id ?? "new"}
         initialValue={workspace.name}
         placeholder={t`Workspace name`}
         fz="h1"
         fw={700}
         lh={1.2}
         m="-xs"
-        onChange={handleNameChange}
+        bd={workspace.id == null ? "1px solid border" : undefined}
+        onChange={onNameChange}
       />
-      <Text c="text-secondary" maw="40rem">
-        {creatorName
-          ? jt`Created by ${creatorName} at ${date}`
-          : jt`Created at ${date}`}
-      </Text>
+      {createdAt != null && (
+        <Text c="text-secondary" maw="40rem">
+          {creatorName
+            ? jt`Created by ${creatorName} at ${createdAt}`
+            : jt`Created at ${createdAt}`}
+        </Text>
+      )}
     </Box>
   );
 }

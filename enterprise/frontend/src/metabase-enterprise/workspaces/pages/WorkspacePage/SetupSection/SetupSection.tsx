@@ -2,8 +2,8 @@ import { jt, t } from "ttag";
 
 import { Box, Button, Code, Divider, Stack, Text, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
-import type { Workspace } from "metabase-types/api";
 
+import type { WorkspaceInfo } from "../../../types";
 import { isDatabaseProvisioned } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
@@ -14,14 +14,17 @@ const DOCKER_COMMAND = `docker run -d -p 3000:3000 \\
   metabase/metabase-enterprise:latest`;
 
 type SetupSectionProps = {
-  workspace: Workspace;
+  workspace: WorkspaceInfo;
 };
 
 export function SetupSection({ workspace }: SetupSectionProps) {
-  const configUrl = `/api/ee/workspace/${workspace.id}/config/yaml`;
-  const isFullyProvisioned =
-    workspace.databases.length > 0 &&
-    workspace.databases.every(isDatabaseProvisioned);
+  const workspaceId = workspace.id;
+  if (workspaceId == null) {
+    return null;
+  }
+
+  const configUrl = `/api/ee/workspace/${workspaceId}/config/yaml`;
+  const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
 
   return (
     <TitleSection
@@ -31,7 +34,7 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <Stack p="md" gap="sm">
         <Text>{t`Download the config file with isolated database credentials:`}</Text>
         <Box>
-          {isFullyProvisioned ? (
+          {isProvisioned ? (
             <Button
               variant="filled"
               component="a"

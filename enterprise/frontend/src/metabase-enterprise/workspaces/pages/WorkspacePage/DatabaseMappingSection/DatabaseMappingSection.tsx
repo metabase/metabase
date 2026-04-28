@@ -2,15 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Text, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
-import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
-import type {
-  DatabaseId,
-  Workspace,
-  WorkspaceDatabase,
-} from "metabase-types/api";
+import type { DatabaseId, WorkspaceDatabase } from "metabase-types/api";
 
 import { isDatabaseProvisioned } from "../../../utils";
 import { TitleSection } from "../TitleSection";
@@ -24,19 +18,18 @@ import {
 } from "./utils";
 
 type DatabaseMappingSectionProps = {
-  workspace: Workspace;
+  databases: WorkspaceDatabase[];
+  onChange: (databases: WorkspaceDatabase[]) => void;
 };
 
 export function DatabaseMappingSection({
-  workspace,
+  databases: mappings,
+  onChange,
 }: DatabaseMappingSectionProps) {
-  const [updateWorkspace] = useUpdateWorkspaceMutation();
-  const { sendErrorToast } = useMetadataToasts();
   const [isModalOpened, setIsModalOpened] = useState(false);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
   const { data: databasesResponse } = useListDatabasesQuery();
 
-  const mappings = workspace.databases;
   const isReadOnly = mappings.some(isDatabaseProvisioned);
   const databases = databasesResponse?.data ?? [];
   const databasesById = new Map(databases.map((db) => [db.id, db]));
@@ -47,16 +40,6 @@ export function DatabaseMappingSection({
   const supportedDatabases = databases.filter(isSupportedDatabase);
   const availableDatabases = getAvailableDatabases(databases, mappings);
   const canAddMapping = availableDatabases.length > 0 && !isReadOnly;
-
-  const handleChange = async (next: WorkspaceDatabase[]) => {
-    const { error } = await updateWorkspace({
-      id: workspace.id,
-      databases: next,
-    });
-    if (error) {
-      sendErrorToast(t`Failed to update workspace`);
-    }
-  };
 
   const handleOpenCreate = () => {
     setSelectedDatabaseId(undefined);
@@ -74,11 +57,11 @@ export function DatabaseMappingSection({
   };
 
   const handleAdd = (mapping: WorkspaceDatabase) => {
-    handleChange([...mappings, mapping]);
+    onChange([...mappings, mapping]);
   };
 
   const handleUpdate = (mapping: WorkspaceDatabase) => {
-    handleChange(
+    onChange(
       mappings.map((current) =>
         current.database_id === selectedDatabaseId ? mapping : current,
       ),
@@ -86,7 +69,7 @@ export function DatabaseMappingSection({
   };
 
   const handleRemove = (mapping: WorkspaceDatabase) => {
-    handleChange(
+    onChange(
       mappings.filter((current) => current.database_id !== mapping.database_id),
     );
   };

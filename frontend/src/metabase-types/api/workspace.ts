@@ -29,7 +29,7 @@ export type WorkspaceDatabase = {
 
 export type CreateWorkspaceRequest = {
   name: string;
-  databases?: WorkspaceDatabase[];
+  databases: WorkspaceDatabase[];
 };
 
 export type UpdateWorkspaceRequest = {

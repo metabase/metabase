@@ -2,13 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import {
-  Ellipsified,
-  Group,
-  Icon,
-  Loader,
-  type TreeTableColumnDef,
-} from "metabase/ui";
+import { Group, Icon, Loader, type TreeTableColumnDef } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import type { Workspace } from "metabase-types/api";
 
@@ -27,7 +21,7 @@ export function getNameColumn(): TreeTableColumnDef<Workspace> {
     width: "auto",
     minWidth: 200,
     accessorFn: (workspace) => workspace.name,
-    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+    cell: ({ getValue }) => String(getValue()),
   };
 }
 
@@ -41,7 +35,7 @@ export function getStatusColumn(): TreeTableColumnDef<Workspace> {
     cell: ({ row, getValue }) => (
       <Group gap="sm" wrap="nowrap">
         {getStatusIcon(row.original)}
-        <Ellipsified>{String(getValue())}</Ellipsified>
+        {String(getValue())}
       </Group>
     ),
   };
@@ -55,7 +49,7 @@ export function getCreatedByColumn(): TreeTableColumnDef<Workspace> {
     minWidth: 160,
     accessorFn: (workspace) =>
       workspace.creator ? getUserName(workspace.creator) : "",
-    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+    cell: ({ getValue }) => String(getValue()),
   };
 }
 

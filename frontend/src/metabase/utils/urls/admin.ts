@@ -186,6 +186,10 @@ export function adminWorkspaceList() {
   return "/admin/settings/workspaces";
 }
 
+export function adminNewWorkspace() {
+  return "/admin/settings/workspaces/new";
+}
+
 export function adminWorkspace(workspaceId: WorkspaceId) {
   return `/admin/settings/workspaces/${workspaceId}`;
 }

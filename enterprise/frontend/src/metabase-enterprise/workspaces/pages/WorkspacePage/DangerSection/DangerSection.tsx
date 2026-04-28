@@ -8,13 +8,13 @@ import { Button, Flex, Tooltip } from "metabase/ui";
 import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
 
+import type { WorkspaceInfo } from "../../../types";
 import { isDatabaseUnprovisioned } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
 type DangerSectionProps = {
-  workspace: Workspace;
+  workspace: WorkspaceInfo;
 };
 
 export function DangerSection({ workspace }: DangerSectionProps) {
@@ -23,9 +23,12 @@ export function DangerSection({ workspace }: DangerSectionProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { modalContent, show } = useConfirmation();
 
-  const isFullyUnprovisioned = workspace.databases.every(
-    isDatabaseUnprovisioned,
-  );
+  if (workspace.id == null) {
+    return null;
+  }
+
+  const workspaceId = workspace.id;
+  const isUnprovisioned = workspace.databases.every(isDatabaseUnprovisioned);
 
   const handleDelete = () => {
     show({
@@ -34,7 +37,7 @@ export function DangerSection({ workspace }: DangerSectionProps) {
       confirmButtonText: t`Delete workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        const { error } = await deleteWorkspace(workspace.id);
+        const { error } = await deleteWorkspace(workspaceId);
         if (error) {
           sendErrorToast(t`Failed to delete workspace`);
           return;
@@ -53,13 +56,13 @@ export function DangerSection({ workspace }: DangerSectionProps) {
       <Flex p="md">
         <Tooltip
           label={t`Unprovision the workspace before deleting it.`}
-          disabled={isFullyUnprovisioned}
+          disabled={isUnprovisioned}
           openDelay={TOOLTIP_OPEN_DELAY}
         >
           <Button
             variant="filled"
             color="error"
-            disabled={!isFullyUnprovisioned}
+            disabled={!isUnprovisioned}
             onClick={handleDelete}
           >{t`Delete workspace`}</Button>
         </Tooltip>
