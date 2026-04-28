@@ -103,11 +103,11 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         aria-selected={isSelected}
         isSelected={isSelected}
         hovered={isHovered}
-        onClick={onToggleExpand}
+        onClick={isSelected ? onToggleExpand : undefined}
         hasDefaultIconStyle={isRegularCollection}
         ref={ref}
       >
-        <ExpandToggleButton hidden={!hasChildren}>
+        <ExpandToggleButton hidden={!hasChildren} onClick={onToggleExpand}>
           <TreeNode.ExpandToggleIcon
             isExpanded={isExpanded}
             name="chevronright"
