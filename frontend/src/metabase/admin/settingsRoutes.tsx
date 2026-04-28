@@ -7,7 +7,6 @@ import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
@@ -37,19 +36,8 @@ const SettingsLayoutWrapper = ({ children }: SettingsLayoutWrapperProps) => (
   </AdminSettingsLayout>
 );
 
-const FullWidthSettingsLayoutWrapper = ({
-  children,
-}: SettingsLayoutWrapperProps) => (
-  <AdminSettingsLayout sidebar={<SettingsNav />} fullWidth>
-    {children}
-  </AdminSettingsLayout>
-);
-
 export const getSettingsRoutes = () => (
   <>
-    <Route component={FullWidthSettingsLayoutWrapper}>
-      {PLUGIN_WORKSPACES.getWorkspaceAdminFullWidthRoutes()}
-    </Route>
     <Route component={SettingsLayoutWrapper}>
       <IndexRedirect to="general" />
       <Route path="general" component={GeneralSettingsPage} />

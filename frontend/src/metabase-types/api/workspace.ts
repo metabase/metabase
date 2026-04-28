@@ -39,6 +39,18 @@ export type UpdateWorkspaceRequest = {
   databases?: WorkspaceDatabase[];
 };
 
+export type WorkspaceInstanceDatabase = {
+  name: string;
+  input_schemas: string[];
+  output_schema: string;
+};
+
+export type WorkspaceInstance = {
+  name: string;
+  databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
+  remappings_count: number;
+};
+
 export type TableRemappingId = number;
 
 export type TableRemapping = {

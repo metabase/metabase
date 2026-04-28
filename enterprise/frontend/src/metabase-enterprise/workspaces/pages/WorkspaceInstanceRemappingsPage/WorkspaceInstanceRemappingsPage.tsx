@@ -1,29 +1,33 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { Center, Flex, Stack, Title } from "metabase/ui";
+import { Center, Flex, Stack } from "metabase/ui";
 import { useListTableRemappingsQuery } from "metabase-enterprise/api";
 import type { TableRemappingId } from "metabase-types/api";
 
+import { WorkspaceInstanceHeader } from "../../components/WorkspaceInstanceHeader";
 import { toDatabasesById } from "../../utils";
 
 import { RemappingSidebar } from "./RemappingSidebar";
 import { RemappingTable } from "./RemappingTable";
-import S from "./TableRemappingPage.module.css";
+import { RemappingsFilterBar } from "./RemappingsFilterBar";
+import S from "./WorkspaceInstanceRemappingsPage.module.css";
+import { filterRemappings } from "./utils";
 
-export function TableRemappingPage() {
-  usePageTitle(t`Table remapping`);
+export function WorkspaceInstanceRemappingsPage() {
+  usePageTitle(t`Workspace`);
 
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
   const [selectedRemappingId, setSelectedRemappingId] =
     useState<TableRemappingId>();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const {
     data: remappings = [],
@@ -43,6 +47,11 @@ export function TableRemappingPage() {
     [databases],
   );
 
+  const filteredRemappings = useMemo(
+    () => filterRemappings(remappings, databasesById, searchQuery),
+    [remappings, databasesById, searchQuery],
+  );
+
   const isLoading = isLoadingRemappings || isLoadingDatabases;
   const error = remappingsError ?? databasesError;
 
@@ -51,34 +60,33 @@ export function TableRemappingPage() {
     [remappings, selectedRemappingId],
   );
 
+  useLayoutEffect(() => {
+    if (selectedRemappingId != null && selectedRemapping == null) {
+      setSelectedRemappingId(undefined);
+    }
+  }, [selectedRemappingId, selectedRemapping]);
+
   return (
     <Flex
-      className={cx(S.container, { [S.resizing]: isResizing })}
+      className={cx({ [S.resizing]: isResizing })}
       ref={containerRef}
       h="100%"
-      w="100%"
       wrap="nowrap"
-      data-testid="table-remapping-page"
+      data-testid="workspace-instance-remappings"
     >
-      <Stack
-        className={S.main}
-        flex={1}
-        miw={0}
-        mih={0}
-        h="100%"
-        py="2rem"
-        pl="2rem"
-        pr={selectedRemapping == null ? "2rem" : "lg"}
-        gap="lg"
-      >
-        <Title order={1}>{t`Table remapping`}</Title>
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+        <WorkspaceInstanceHeader />
+        <RemappingsFilterBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+        />
         {isLoading || error != null ? (
           <Center flex={1}>
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
           <RemappingTable
-            remappings={remappings}
+            remappings={filteredRemappings}
             databasesById={databasesById}
             selectedRemappingId={selectedRemapping?.id}
             onRemappingSelect={(remapping) =>

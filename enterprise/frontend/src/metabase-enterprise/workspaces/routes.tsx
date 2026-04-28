@@ -1,7 +1,8 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRedirect, IndexRoute, Route } from "react-router";
 
-import { TableRemappingPage } from "./components/TableRemappingPage";
 import { NewWorkspacePage } from "./pages/NewWorkspacePage";
+import { WorkspaceInstanceOverviewPage } from "./pages/WorkspaceInstanceOverviewPage";
+import { WorkspaceInstanceRemappingsPage } from "./pages/WorkspaceInstanceRemappingsPage";
 import { WorkspaceListPage } from "./pages/WorkspaceListPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 
@@ -15,6 +16,12 @@ export function getDataStudioWorkspaceRoutes() {
   );
 }
 
-export function getWorkspaceAdminFullWidthRoutes() {
-  return <Route path="table-remapping" component={TableRemappingPage} />;
+export function getDataStudioWorkspaceInstanceRoutes() {
+  return (
+    <>
+      <IndexRedirect to="overview" />
+      <Route path="overview" component={WorkspaceInstanceOverviewPage} />
+      <Route path="remappings" component={WorkspaceInstanceRemappingsPage} />
+    </>
+  );
 }
