@@ -1,13 +1,11 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
-   [metabase.agent-lib.core :as agent-lib]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -49,20 +47,6 @@
    [:visualization {:optional true} construct-visualization-schema]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
-
-(defn resolve-source-database-id
-  "Resolve the database ID for a source_entity. Public only so tests can stub it.
-
-  Still consumed by [[execute-program]] (the legacy sexp pipeline used by slackbot). The
-  representations pipeline derives database-id from the first stage's source instead;
-  see [[resolve-database-id-from-first-stage]]."
-  [{:keys [type id]}]
-  (case type
-    "table"                (:db_id (tools.u/get-table id :db_id))
-    ("model" "question")   (:database_id (tools.u/get-card id))
-    "metric"               (:database_id (tools.u/get-card id))
-    (throw (ex-info (str "Unsupported source_entity type: " type)
-                    {:agent-error? true :status-code 400}))))
 
 (defn- first-stage-source-table-fk
   "Pull the portable `[db schema table]` FK out of `stages[0].source-table`, or `nil`
@@ -187,92 +171,6 @@
                        :status-code  400
                        :error        :missing-source-in-first-stage})))))
 
-;;; --------------------------- Legacy sexp-pipeline scaffolding (step 15 delete) ---------------------------
-;;;
-;;; Everything from here down to (and including) `execute-program` is sexp-only: it's used
-;;; solely by the HTTP `/v2/construct-query` endpoint in `metabase.agent-api.api`. That
-;;; endpoint migrates in `repr-plan.md` step 15; at that point this entire block goes away
-;;; along with `construct-program` from the endpoint body schema.
-;;;
-;;; The repr pipeline (`execute-representations-query`, `resolve-database-id-from-first-stage`,
-;;; `resolve-source-database-id`, the result-column helpers, the main tool) lives above and
-;;; below this block.
-;;; -----------------------------------------------------------------------------------------
-
-(defn- source-entity->model-str
-  "Map source_entity type to the model string used by agent-lib evaluation context."
-  [type]
-  (case type
-    "table"      "table"
-    "model"      "dataset"
-    "question"   "card"
-    "metric"     "metric"
-    type))
-
-(defn program-source->source-entity
-  "Convert a structured-program `:source` map (using agent-lib model strings: `table`,
-  `card`, `dataset`, `metric`) into the `source-entity` shape consumed by
-  [[execute-program]] (using metabot type strings: `table`, `question`, `model`,
-  `metric`). Throws if the source isn't one of the four database-resolved types
-  (e.g. `context` or nested `program` sources are rejected)."
-  [{:keys [type id] :as source}]
-  (let [entity-type (case type
-                      "table"   "table"
-                      "card"    "question"
-                      "dataset" "model"
-                      "metric"  "metric"
-                      (throw (ex-info (str "Unsupported program source type: " (pr-str type))
-                                      {:agent-error? true
-                                       :status-code  400
-                                       :source       source})))]
-    {:type entity-type :id id}))
-
-(defn- source-metadata-for
-  "Resolve the lib metadata object for a source entity."
-  [type id metadata-provider]
-  (case type
-    "table"              (lib.metadata/table metadata-provider id)
-    ("model" "question") (lib.metadata/card metadata-provider id)
-    "metric"             (lib.metadata/card metadata-provider id)
-    nil))
-
-(defn- surrounding-tables-for
-  "Derive surrounding tables from a source query's visible columns."
-  [metadata-provider source-metadata source-id]
-  (try
-    (let [query (lib/query metadata-provider source-metadata)]
-      (->> (lib/visible-columns query)
-           (keep :table-id)
-           distinct
-           (remove #{source-id})
-           (mapv (fn [tid] {:id tid}))))
-    (catch Exception _ [])))
-
-(defn- available-measure-ids
-  "Return the set of measure IDs available on a source entity, or empty set."
-  [metadata-provider source-metadata]
-  (try
-    (->> (lib/available-measures (lib/query metadata-provider source-metadata))
-         (keep :id)
-         set)
-    (catch Exception _ #{})))
-
-(defn- build-evaluation-context
-  "Build the EvaluationContext for agent-lib from source_entity and referenced_entities."
-  [{:keys [type id]} referenced-entities metadata-provider]
-  (let [model-str      (source-entity->model-str type)
-        source-metadata (source-metadata-for type id metadata-provider)
-        surrounding     (surrounding-tables-for metadata-provider source-metadata id)
-        measure-ids     (available-measure-ids metadata-provider source-metadata)]
-    {:source-entity       {:model model-str :id id}
-     :referenced-entities (or (mapv (fn [{:keys [type id]}]
-                                      {:model (source-entity->model-str type) :id id})
-                                    referenced-entities)
-                              [])
-     :surrounding-tables  surrounding
-     :measure-ids         measure-ids
-     :source-metadata     source-metadata}))
-
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
 (defn- result-columns-for-query
@@ -283,22 +181,6 @@
     (mapv #(tools.u/->result-column query %) cols)))
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
-
-(defn execute-program
-  "Execute a legacy sexp-in-array structured program via agent-lib.
-
-  Post-step-14: the only remaining caller is the HTTP `/v2/construct-query` endpoint in
-  `metabase.agent-api.api`. Will be deleted in step 15 along with the endpoint migration."
-  [source-entity referenced-entities program]
-  (let [database-id (resolve-source-database-id source-entity)
-        mp          (lib-be/application-database-metadata-provider database-id)
-        context     (build-evaluation-context source-entity referenced-entities mp)
-        mbql5-query (agent-lib/evaluate-program program mp context)
-        query-id    (u/generate-nano-id)]
-    {:structured-output {:query-id       query-id
-                         :query          mbql5-query
-                         :result-columns (result-columns-for-query mbql5-query mp)}
-     :instructions      (instructions/query-created-instructions-for query-id)}))
 
 (defn execute-representations-query
   "Execute a notebook query in the canonical MBQL 5 YAML representations format.
