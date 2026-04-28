@@ -29,8 +29,6 @@
                  ["POST /"               :post   403 "ee/workspace/"                                  {:name "X" :databases [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]}]
                  ["PUT /:id"             :put    403 (str "ee/workspace/" (:id ws))                   {:name "X" :databases [{:database_id (mt/id) :input_schemas ["PUBLIC"]}]}]
                  ["DELETE /:id"          :delete 403 (str "ee/workspace/" (:id ws))                   nil]
-                 ["POST add-database"    :post   403 (str "ee/workspace/" (:id ws) "/add-database")   {:database_id (mt/id) :input_schemas ["PUBLIC"]}]
-                 ["POST remove-database" :post   403 (str "ee/workspace/" (:id ws) "/remove-database") {:database_id (mt/id)}]
                  ["POST provision"       :post   403 (str "ee/workspace/" (:id ws) "/provision")      nil]
                  ["POST unprovision"     :post   403 (str "ee/workspace/" (:id ws) "/unprovision")    nil]
                  ["GET remappings"       :get    403 "ee/workspace/remappings"                        nil]]]
@@ -64,21 +62,6 @@
         (testing "delete"
           (is (true? (:deleted (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" (:id ws))))))
           (mt/user-http-request :crowberto :get 404 (str "ee/workspace/" (:id ws))))))))
-
-(deftest add-remove-database-smoke-test
-  (testing "add and remove database via HTTP"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (mt/user-http-request :crowberto :post 200 "ee/workspace/"
-                                     {:name "DB Ops" :databases []})]
-        (let [ws' (mt/user-http-request :crowberto :post 200
-                                        (str "ee/workspace/" (:id ws) "/add-database")
-                                        {:database_id (mt/id) :input_schemas ["PUBLIC"]})]
-          (is (= 1 (count (:databases ws')))))
-
-        (let [ws'' (mt/user-http-request :crowberto :post 200
-                                         (str "ee/workspace/" (:id ws) "/remove-database")
-                                         {:database_id (mt/id)})]
-          (is (empty? (:databases ws''))))))))
 
 (deftest remappings-smoke-test
   (testing "GET /ee/workspace/remappings"
