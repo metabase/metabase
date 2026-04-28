@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1586-prototype-interactivity-improvements-for-mcp-apps",
     "hash": "2c6ed0f1eb4496be2a05b35ba448fac30229751d"
+  },
+  "upstream": {
+    "branch": "emb-1620-apply-the-shared-query-explorer-bar"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 73272,
+        "gqlID": "PR_kwDOAczgH87WOYl8"
+      }
+    }
   }
 }
