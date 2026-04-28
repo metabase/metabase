@@ -405,6 +405,88 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.82 -- normalise filter clauses where the LLM passed a values-list as a single
+;;; vector arg.
+;;;
+;;; lib's canonical shape for `:in` / `:not-in` is **flat**: `[in, {}, lhs, v1, v2, v3]`.
+;;; Likewise `:=` and `:!=` take exactly two operand args: `[=, {}, lhs, rhs]`. LLMs
+;;; sometimes put the value list into a single vector slot:
+;;;
+;;;   [in,  {}, lhs, [v1, v2, v3]]      → splat → [in,  {}, lhs, v1, v2, v3]
+;;;   [not-in, {}, lhs, [v1, v2, v3]]   → splat → [not-in, {}, lhs, v1, v2, v3]
+;;;
+;;; And occasionally use `=` / `!=` with a list value, expecting list-membership semantics:
+;;;
+;;;   [=,  {}, lhs, [v1, v2, v3]]       → [in,  {}, lhs, v1, v2, v3]
+;;;   [!=, {}, lhs, [v1, v2, v3]]       → [not-in, {}, lhs, v1, v2, v3]
+;;;
+;;; Adapted from the sexp pipeline's `in`/`not-in`/`=`/`!=` repair branches (see
+;;; `repr-deletion-followups.md` § 1.10). The sexp form `[in lhs [v1 v2 v3]]` was nested by
+;;; design; the repr canonical form is flat, so we splat instead of just rewriting head.
+;;;
+;;; A "values list" is recognised conservatively: a non-empty vector whose every entry is a
+;;; primitive scalar (string, number, boolean, nil). This excludes nested clauses
+;;; (vectors with a string head + map options) and FK-path arguments (which only appear
+;;; inside a `field` clause, never as values to a comparison op).
+;;; ============================================================
+
+(defn- scalar-literal? [v]
+  (or (string? v) (number? v) (boolean? v) (nil? v)))
+
+(defn- values-list? [v]
+  (and (vector? v)
+       (seq v)
+       (every? scalar-literal? v)))
+
+(defn- splat-in-values-clause [head opts lhs values]
+  (into [head opts lhs] values))
+
+(defn- =->in-head [head]
+  (case head "=" "in" "!=" "not-in"))
+
+(defn- list-value-comparison-clause
+  "If `node` is a comparison clause whose last arg is a values-list, return
+  `[head opts lhs values]` so the splat can be applied. Otherwise return `nil`.
+
+  Recognises two shapes (pass runs *before* `ensure-clause-options*`):
+
+    * `[head, opts-map, lhs, [v1 v2 …]]` (4 elements, options already in place); and
+    * `[head, lhs, [v1 v2 …]]` (3 elements, options omitted - we splice an empty
+      options map for downstream uniformity)."
+  [heads node]
+  (when (and (vector? node)
+             (>= (count node) 3)
+             (string? (nth node 0))
+             (contains? heads (nth node 0)))
+    (let [head    (nth node 0)
+          opts-at (when (map? (nth node 1)) 1)
+          ;; If options are present, lhs is at slot 2 and values at slot 3; otherwise
+          ;; lhs is at slot 1 and values at slot 2. Either way we need exactly one lhs and
+          ;; one values-list arg, so total args after head is either 2 (no opts) or 3 (opts).
+          [lhs values-slot] (if opts-at
+                              [(when (= 4 (count node)) (nth node 2))
+                               (when (= 4 (count node)) (nth node 3))]
+                              [(when (= 3 (count node)) (nth node 1))
+                               (when (= 3 (count node)) (nth node 2))])]
+      (when (and lhs (values-list? values-slot))
+        [head (if opts-at (nth node 1) {}) lhs values-slot]))))
+
+(defn- normalise-list-value-comparisons*
+  "Pre-Pass-1 sweep: splat values-list args of `in`/`not-in` and rewrite `=`/`!=` against a
+  values-list to `in`/`not-in`. Runs *before* `ensure-clause-options*` because Pass 1 would
+  otherwise mis-identify a 2-element values-list (e.g. `[\"alice\" \"bob\"]`) as a bare
+  clause and corrupt it by inserting `{}` between the two scalars."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (or (when-let [[head opts lhs values] (list-value-comparison-clause #{"in" "not-in"} node)]
+           (splat-in-values-clause head opts lhs values))
+         (when-let [[head opts lhs values] (list-value-comparison-clause #{"=" "!="} node)]
+           (splat-in-values-clause (=->in-head head) opts lhs values))
+         node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.83 -- unwrap boolean wrapper clauses.
 ;;;
 ;;; LLMs occasionally write `["true", x]` thinking of it as "wrap this clause as truthy",
@@ -1529,6 +1611,9 @@
   "Pure-shape passes that don't require a metadata provider."
   [parsed]
   (-> parsed
+      ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
+      ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
+      normalise-list-value-comparisons*
       ensure-clause-options*
       unwrap-boolean-wrappers*
       unwrap-nested-field-clauses*

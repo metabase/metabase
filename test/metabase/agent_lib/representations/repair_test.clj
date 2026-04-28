@@ -348,6 +348,79 @@
           (is (= once twice) (str "input: " input)))))))
 
 ;;; ============================================================
+;;; Pass 1.82 - normalise list-valued comparison/in clauses to flat positional args
+;;; ============================================================
+
+(deftest splat-in-values-list-test
+  (testing "[in {} lhs [v1 v2 v3]] splats values into positional args"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["in" {} field ["alice" "bob" "carol"]]]
+      (is (= ["in" {} field "alice" "bob" "carol"]
+             (repair/repair trivial-mp input)))))
+  (testing "[not-in {} lhs [v1 v2]] splats too"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["not-in" {} field ["banned1" "banned2"]]]
+      (is (= ["not-in" {} field "banned1" "banned2"]
+             (repair/repair trivial-mp input)))))
+  (testing "already-flat in clause is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["in" {} field "alice" "bob" "carol"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest convert-eq-with-list-to-in-test
+  (testing "[= {} lhs [v1 v2 v3]] becomes [in {} lhs v1 v2 v3]"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["=" {} field ["alice" "bob"]]]
+      (is (= ["in" {} field "alice" "bob"]
+             (repair/repair trivial-mp input)))))
+  (testing "[!= {} lhs [v1 v2 v3]] becomes [not-in {} lhs v1 v2 v3]"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["!=" {} field ["alice" "bob"]]]
+      (is (= ["not-in" {} field "alice" "bob"]
+             (repair/repair trivial-mp input)))))
+  (testing "[= {} lhs scalar] is left alone"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          input ["=" {} field "alice"]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest in-with-clause-rhs-untouched-test
+  (testing "a clause-shaped rhs (e.g. nested expression) is not splatted"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "CREATED_AT"]]
+          abs   ["absolute-datetime" {} "2024-01-01" "day"]
+          input ["=" {} field abs]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "a list containing a clause is not splatted (would corrupt structure)"
+    ;; This shouldn't actually happen in practice but is the exact case our \"all entries
+    ;; are scalar\" predicate guards against.
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "CREATED_AT"]]
+          abs   ["absolute-datetime" {} "2024-01-01" "day"]
+          input ["in" {} field [abs]]]
+      ;; Untouched because abs is a clause, not a scalar.
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest splat-mixed-scalars-test
+  (testing "a values list with mixed scalar types splats correctly"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "AGE"]]
+          input ["in" {} field [18 21 65]]]
+      (is (= ["in" {} field 18 21 65]
+             (repair/repair trivial-mp input))))
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "FLAG"]]
+          input ["in" {} field [true false]]]
+      (is (= ["in" {} field true false]
+             (repair/repair trivial-mp input))))))
+
+(deftest splat-idempotent-test
+  (testing "splat is idempotent"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]]
+      (doseq [input [["in" {} field ["alice" "bob"]]
+                     ["not-in" {} field ["x" "y"]]
+                     ["=" {} field ["a" "b"]]
+                     ["!=" {} field ["a" "b"]]]]
+        (let [once  (repair/repair trivial-mp input)
+              twice (repair/repair trivial-mp once)]
+          (is (= once twice) (str "input: " input)))))))
+
+;;; ============================================================
 ;;; Pass 1.83 - unwrap boolean wrapper clauses
 ;;; ============================================================
 
