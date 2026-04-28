@@ -35,3 +35,15 @@
           (is (true? (ws.settings/has-remappings-enabled)))
           (t2/delete! :model/TableRemapping :id remap-id)
           (is (false? (ws.settings/has-remappings-enabled))))))))
+
+(deftest has-remappings-enabled-true-via-workspace-config-test
+  (testing "has-remappings-enabled is true when workspace-config-present? is set, even with no remappings"
+    (mt/with-empty-h2-app-db!
+      ;; No TableRemapping rows exist; the canonical signal alone should flip the setting on.
+      (let [original @ws.settings/workspace-config-present?]
+        (try
+          (reset! ws.settings/workspace-config-present? true)
+          (is (true? (ws.settings/has-remappings-enabled))
+              "config-file signal alone is sufficient — true even with zero TableRemapping rows")
+          (finally
+            (reset! ws.settings/workspace-config-present? original)))))))
