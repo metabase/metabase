@@ -94,16 +94,15 @@
 ;;; isolating macaw details to this namespace.
 
 (defn- macaw-table->hsql
-  "Convert a macaw table node to a HoneySQL table reference.
-   Returns `[table-identifier :alias]` when aliased, or `table-identifier` when not.
-   The alias is a plain keyword since HoneySQL expects that in FROM/JOIN position."
+  "Convert a macaw table node to a HoneySQL table reference suitable for a FROM or JOIN entry.
+   Returns `[table-identifier :alias]` when aliased, or `[table-identifier]` when not."
   [driver {:keys [schema table table-alias]}]
   (let [table-id (apply h2x/identifier :table
                         (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
                                       (sql.normalize/normalize-name driver table)]))]
     (if table-alias
       [table-id (keyword (sql.normalize/normalize-name driver table-alias))]
-      table-id)))
+      [table-id])))
 
 (defn- macaw-column->hsql
   "Convert a macaw column node to a HoneySQL column identifier."

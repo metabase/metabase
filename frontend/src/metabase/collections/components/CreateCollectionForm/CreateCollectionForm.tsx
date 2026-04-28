@@ -21,6 +21,7 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { Flex } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -142,6 +143,7 @@ function CreateCollectionForm({
                 filterPersonalCollections={filterPersonalCollections}
                 entityType="collection"
                 onCollectionSelect={setSelectedParentCollection}
+                mb="1rem"
               />
             )}
             {showAuthorityLevelPicker && !isParentTenantCollection && (
@@ -149,10 +151,12 @@ function CreateCollectionForm({
             )}
             <FormFooter>
               <FormErrorMessage inline />
-              {!!onCancel && (
-                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-              )}
-              <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+              <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
+                {!!onCancel && (
+                  <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+                )}
+                <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+              </Flex>
             </FormFooter>
           </Form>
         );

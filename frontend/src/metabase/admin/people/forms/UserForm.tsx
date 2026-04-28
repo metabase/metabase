@@ -51,7 +51,6 @@ export const UserForm = ({
     <FormProvider
       initialValues={initialValues}
       validationSchema={external ? externalUserSchema : localUserSchema}
-      validateOnMount
       enableReinitialize
       onSubmit={onSubmit}
     >

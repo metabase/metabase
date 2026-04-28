@@ -83,7 +83,6 @@ export function PythonTransformEditor({
   };
 
   const handleRun = () => {
-    // Use custom onRun handler if provided (workspace dry-run), otherwise use internal test-run
     if (onRun) {
       onRun();
     } else {
@@ -91,7 +90,6 @@ export function PythonTransformEditor({
     }
   };
 
-  // Notify workspace when test-run completes in workspace context
   useEffect(() => {
     const runJustCompleted = wasRunning && !isRunning;
     if (
@@ -114,10 +112,6 @@ export function PythonTransformEditor({
     if (!isEditMode) {
       return;
     }
-    // In workspaces, disable run shortcut when transform has unsaved changes (hideRunButton)
-    // if (uiOptions?.hideRunButton) {
-    //   return;
-    // }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {

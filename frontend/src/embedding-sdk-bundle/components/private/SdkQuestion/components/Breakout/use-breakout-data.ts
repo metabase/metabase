@@ -17,52 +17,45 @@ export interface SDKBreakoutItem extends BreakoutListItem {
 }
 
 export const useBreakoutData = (): SDKBreakoutItem[] => {
-  const { updateQuestion, ...interactiveQuestionContext } =
-    useSdkQuestionContext();
+  const {
+    updateAndNormalizeQuestion,
+    lastVisibleStageIndex: stageIndex,
+    ...interactiveQuestionContext
+  } = useSdkQuestionContext();
   const question = interactiveQuestionContext.question as Question;
-  const onQueryChange = (query: Lib.Query) => {
+  const query = question?.query();
+
+  const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
-      updateQuestion(question.setQuery(query), { run: true });
+      updateAndNormalizeQuestion(question.setQuery(nextQuery), { run: true });
     }
   };
-
-  const query = question?.query();
-  const stageIndex = -1;
 
   const { onUpdateBreakout, onRemoveBreakout, onReplaceBreakouts } =
     useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
-  const breakouts = query ? Lib.breakouts(query, stageIndex) : [];
+  if (!query) {
+    return [];
+  }
 
-  const items: BreakoutListItem[] = query
-    ? breakouts
-        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
-        .filter(isNotNull)
-    : [];
-
-  return items.map((item, index) => {
-    const removeBreakout = () => {
-      if (item.breakout) {
-        return onRemoveBreakout(item.breakout);
-      }
-    };
-
-    const updateBreakout = (column: Lib.ColumnMetadata) => {
-      if (item.breakout) {
-        return onUpdateBreakout(item.breakout, column);
-      }
-    };
-
-    const replaceBreakoutColumn = (column: Lib.ColumnMetadata) => {
-      return onReplaceBreakouts(column);
-    };
-
-    return {
+  return Lib.breakouts(query, stageIndex)
+    .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
+    .filter(isNotNull)
+    .map((item, index) => ({
       ...item,
       breakoutIndex: index,
-      removeBreakout,
-      updateBreakout,
-      replaceBreakoutColumn,
-    };
-  });
+      removeBreakout: () => {
+        if (item.breakout) {
+          onRemoveBreakout(item.breakout);
+        }
+      },
+      updateBreakout: (column: Lib.ColumnMetadata) => {
+        if (item.breakout) {
+          onUpdateBreakout(item.breakout, column);
+        }
+      },
+      replaceBreakoutColumn: (column: Lib.ColumnMetadata) => {
+        onReplaceBreakouts(column);
+      },
+    }));
 };

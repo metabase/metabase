@@ -47,12 +47,12 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      <Flex mb="lg" mt="md" w="100%">
+      <Flex mb="lg" mt="md" w="100%" h="xl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="md">
+        <Group ml="auto" gap="md" className={S.ButtonGroup}>
           {showMetabotButton && <MetabotDataStudioButton />}
-          {showAppSwitcher && <AppSwitcher className={S.ProfileLink} />}
+          {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
       <Group
