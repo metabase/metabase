@@ -12,6 +12,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
