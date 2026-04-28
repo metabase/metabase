@@ -9,14 +9,17 @@
 (set! *warn-on-reflection* true)
 
 (defn- parse-set-args
-  "Parse --set KEY=VALUE arguments into a map of {\"KEY\" \"VALUE\"}."
+  "Parse --set KEY=VALUE arguments into a map of {\"KEY\" \"VALUE\"}.
+   Warns on entries without a `=` so typos surface."
   [set-args]
   (into {}
-        (map (fn [s]
-               (let [idx (str/index-of s "=")]
-                 (when (and idx (pos? idx))
-                   [(subs s 0 idx) (subs s (inc idx))])))
-             set-args)))
+        (keep (fn [s]
+                (let [idx (str/index-of s "=")]
+                  (if (and idx (pos? idx))
+                    [(subs s 0 idx) (subs s (inc idx))]
+                    (do (println (c/yellow "Warning: --set value missing '=' (ignored): " s))
+                        nil)))))
+        set-args))
 
 (defn- parse-set-from-file-args
   "Parse --set-from-file KEY=path arguments by reading the referenced file
@@ -39,7 +42,8 @@
 
 (defn- resolve-file-includes
   "Replace all {{FILE:path}} placeholders with the contents of the referenced files.
-   Paths are relative to the project root."
+   Paths are relative to the project root. One pass only — included content is
+   not re-scanned for further {{FILE:...}} markers."
   [content]
   (str/replace content
                #"\{\{FILE:([^}]+)\}\}"

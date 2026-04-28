@@ -692,11 +692,8 @@
           (kill-container! cname))
         (println (c/green "All containers stopped.")))
       (println (c/yellow "No containers found for prefix: " prefix))))
-  ;; Remove mise.local.toml
-  (let [toml-path (str (root) "/mise.local.toml")]
-    (when (.exists (java.io.File. toml-path))
-      (.delete (java.io.File. toml-path))
-      (println (c/green "Removed " toml-path))))
+  ;; Leave mise.local.toml in place — the user may have added their own [env] keys
+  ;; and `update-mise-local!` only merges, never overwrites unrelated values.
   ;; Remove state file
   (delete-state-file!))
 

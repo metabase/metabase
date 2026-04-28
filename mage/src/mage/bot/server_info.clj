@@ -44,8 +44,8 @@
     (println "NREPL_PORT=NONE")
     (println (str "SOCKET_REPL_HOST=" (get env "REPL_HOST")))
     (println (str "SOCKET_REPL_PORT=" (get env "REPL_PORT")))
-    (println "SOCKET_REPL_USAGE=echo '(+ 1 2)' | nc -q 1 "
-             (get env "REPL_HOST") " " (get env "REPL_PORT"))
+    (println (str "SOCKET_REPL_USAGE=echo '(+ 1 2)' | nc -q 1 "
+                  (get env "REPL_HOST") " " (get env "REPL_PORT")))
     (println)
     (println "Remote PR envs expose a socket REPL, not nREPL. `clj-nrepl-eval`")
     (println "will NOT work here. Send ONE form per connection via `nc`. Wrap")

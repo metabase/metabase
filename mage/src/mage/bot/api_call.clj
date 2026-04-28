@@ -37,7 +37,7 @@
                body (assoc :body body))]
     (try
       (http/request (assoc opts :method method :uri url))
-      (catch Exception e
+      (catch java.io.IOException e
         (println (c/red (str "Connection failed: " url)))
         (let [msg (or (.getMessage e) (str (class e)))]
           (println msg))

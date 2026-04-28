@@ -29,8 +29,7 @@
   #{"add" "am" "apply" "bisect" "checkout" "cherry-pick" "clean" "clone"
     "commit" "gc" "init" "merge" "mv" "notes" "pack-refs" "pull" "push"
     "rebase" "reflog" "replace" "rerere" "reset" "restore" "revert" "rm"
-    "sparse-checkout" "submodule" "switch" "update-index"
-    "update-ref" "worktree"})
+    "sparse-checkout" "switch" "update-index" "update-ref"})
 
 (def ^:private git-fetch-dangerous-flags
   "Flags on `git fetch` that can execute arbitrary commands via the remote helper or pack protocol."
@@ -93,6 +92,14 @@
     (= subcommand "remote")
     (let [remote-sub (first args)]
       (contains? #{"show" "get-url" nil} remote-sub))
+
+    ;; worktree: only `list` is read-only
+    (= subcommand "worktree")
+    (= "list" (first args))
+
+    ;; submodule: `status`, `summary`, and bare `submodule` (defaults to status) are read-only
+    (= subcommand "submodule")
+    (contains? #{"status" "summary" nil} (first args))
 
     ;; Unknown subcommand — block to be safe
     :else false))

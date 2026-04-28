@@ -1,10 +1,10 @@
 (ns mage.bot.linear
   (:require
+   [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
    [mage.bot.env :as bot-env]
    [mage.color :as c]
-   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -51,14 +51,16 @@
   (let [api-key  (get-api-key!)
         payload  (json/write-str {:query     issue-query
                                   :variables {:id issue-id}})
-        result   (shell/sh* {:quiet? true}
-                            "curl" "-s" "-X" "POST"
-                            linear-api-url
-                            "-H" "Content-Type: application/json"
-                            "-H" (str "Authorization: " api-key)
-                            "-d" payload)
-        response (json/read-str (str/join "\n" (:out result))
-                                {:key-fn keyword})]
+        resp     (try
+                   (http/post linear-api-url
+                              {:headers {"Content-Type"  "application/json"
+                                         "Authorization" api-key}
+                               :body    payload
+                               :throw   false})
+                   (catch Exception e
+                     (println (c/red "Linear API request failed: ") (.getMessage e))
+                     (u/exit 1)))
+        response (json/read-str (:body resp) {:key-fn keyword})]
     (when-let [errors (:errors response)]
       (println (c/red "Linear API error:") (pr-str errors))
       (u/exit 1))

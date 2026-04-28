@@ -59,8 +59,10 @@
         (println (c/green "Symlinked " relative-path))))))
 
 (defn- copy-tree-if-exists!
-  "Copy a directory tree from main to worktree using cp -c (APFS copy-on-write).
-   Replaces existing destination. Skips if source doesn't exist."
+  "Copy a directory tree from main to worktree. Tries APFS copy-on-write
+   (`cp -rc`) first; on non-APFS filesystems (including Linux) falls back
+   to a regular recursive copy. Replaces existing destination. Skips if
+   source doesn't exist."
   [main-path worktree-root relative-path]
   (let [src  (str main-path "/" relative-path)
         dest (str worktree-root "/" relative-path)]
@@ -69,8 +71,14 @@
       (do
         (when (fs/exists? dest {:nofollow-links true})
           (fs/delete-tree dest))
-        (shell/sh* {:quiet? true} "bash" "-c" (str "cp -rc " (pr-str src) " " (pr-str dest) " 2>/dev/null; true"))
-        (println (c/green "Copied " relative-path " (copy-on-write)"))))))
+        (let [{:keys [exit]} (shell/sh* {:quiet? true} "cp" "-rc" src dest)]
+          (if (zero? exit)
+            (println (c/green "Copied " relative-path " (copy-on-write)"))
+            (let [{:keys [exit err]} (shell/sh* {:quiet? true} "cp" "-r" src dest)]
+              (if (zero? exit)
+                (println (c/green "Copied " relative-path))
+                (do (println (c/red "Failed to copy " relative-path ":"))
+                    (doseq [line err] (println (c/red "  " line))))))))))))
 
 (defn- copy-files!
   "Copy individual files from main worktree to new worktree."
@@ -141,9 +149,16 @@
       (pg/execute! db-spec [(str "CREATE DATABASE \"" db-name "\"")])
       (println (c/green "Created postgres database: ") db-name)
       (catch Exception e
-        (if (str/includes? (ex-message e) "already exists")
+        (cond
+          (str/includes? (ex-message e) "already exists")
           (println (c/green "Postgres database already exists: ") db-name)
-          (throw e))))))
+
+          :else
+          (do
+            (println (c/red "Failed to create postgres database '" db-name "': ") (ex-message e))
+            (println (c/yellow "Expected a local Postgres on localhost:5432 with user=metabase password=password."))
+            (println (c/yellow "Adjust your local Postgres or set up the metabase user/password to match."))
+            (throw e)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main entry point

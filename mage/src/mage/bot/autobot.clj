@@ -21,12 +21,12 @@
    e.g., (branch-to-session-name \"feature/my-branch\") -> \"feature-my-branch\"
          (branch-to-session-name \"stream-fingerprinting\") -> \"stream-fingerprinting\""
   [branch-name]
-  (let [slug (-> branch-name
-                 (str/lower-case)
-                 (str/replace #"[^a-z0-9-]" "-")
-                 (str/replace #"-+" "-")
-                 (str/replace #"^-|-$" ""))]
-    (subs slug 0 (min (count slug) 40))))
+  (-> branch-name
+      (str/lower-case)
+      (str/replace #"[^a-z0-9-]" "-")
+      (str/replace #"-+" "-")
+      ((fn [s] (subs s 0 (min (count s) 40))))
+      (str/replace #"^-|-$" "")))
 
 (defn- workmux-list-raw
   "Run `workmux list` and return the raw output lines."
@@ -48,17 +48,21 @@
         :else (last (str/split path #"/"))))))
 
 (defn find-session
-  "Find a session matching the given name or ID (case-insensitive substring match).
-   Returns the worktree name (suitable for workmux commands) or nil."
+  "Find a session matching the given name or ID. Tries an exact match on the
+   parsed worktree name first; if none, falls back to a case-insensitive
+   substring match on the raw line. Returns the worktree name (suitable for
+   workmux commands) or nil."
   [name-or-id]
-  (let [needle (str/lower-case (str/trim name-or-id))
-        lines  (workmux-list-raw)
-        data   (rest lines)]
-    (->> data
-         (keep (fn [line]
-                 (when (str/includes? (str/lower-case line) needle)
-                   (parse-worktree-name line))))
-         first)))
+  (let [needle  (str/lower-case (str/trim name-or-id))
+        data    (rest (workmux-list-raw))
+        names   (keep parse-worktree-name data)
+        exact   (some (fn [n] (when (= (str/lower-case n) needle) n)) names)]
+    (or exact
+        (->> data
+             (keep (fn [line]
+                     (when (str/includes? (str/lower-case line) needle)
+                       (parse-worktree-name line))))
+             first))))
 
 (defn- print-available-sessions!
   "Print the list of available sessions."
@@ -176,7 +180,7 @@
   (spit cfg-path config-content)
   (try (f)
        (finally
-         (.delete (java.io.File. ^String cfg-path)))))
+         (fs/delete-if-exists cfg-path))))
 
 (defn- in-tmux?
   []
@@ -239,16 +243,13 @@
    per-launch yaml under <wt-path>/.bot/launch/<session>.yaml. The worktree's
    own persistent .workmux.yaml is left untouched. The mode (window vs
    session) is whatever the original `workmux add` recorded."
-  [{:keys [session-name wt-path prompt-file workmux-config]}]
+  [{:keys [bot-name session-name wt-path prompt-file workmux-config]}]
   ;; Install hooks
-  (bot-setup/setup-bot-worktree! {:wt-path wt-path})
+  (bot-setup/setup-bot-worktree! {:bot-name bot-name :wt-path wt-path})
 
-  ;; Copy prompt file into worktree as prompt.md
-  (let [prompt-src  (if (.isAbsolute (java.io.File. ^String prompt-file))
-                      prompt-file
-                      (str u/project-root-directory "/" prompt-file))
-        prompt-dest (str wt-path "/prompt.md")]
-    (spit prompt-dest (slurp prompt-src))
+  ;; Copy prompt file into worktree as prompt.md. Callers always pass an absolute path.
+  (let [prompt-dest (str wt-path "/prompt.md")]
+    (spit prompt-dest (slurp prompt-file))
     (println (c/yellow "Copied prompt to " prompt-dest)))
 
   (let [cfg-path (launch-config-path wt-path session-name)
@@ -401,22 +402,24 @@
         (println (str "Stop it first with: /autobot-stop " session-name))
         (u/exit 1))
 
-      ;; Write the prompt to a temp file — passed to workmux -P for the agent's initial prompt
+      ;; Write the prompt to a temp file — passed to workmux -P for the agent's initial prompt.
+      ;; The file is consumed before this fn returns; deleteOnExit ensures cleanup even on crash.
       (let [prompt-file (str (System/getProperty "java.io.tmpdir") "/.autobot-prompt-" session-name ".md")]
         (spit prompt-file command)
-
-        ;; Check for existing worktree -> relaunch, otherwise fresh launch
-        (let [existing (find-session session-name)
-              wt-path  (when existing (worktree-path existing))]
-          (if (and existing wt-path)
-            (do
-              (println (c/yellow "Found existing worktree: " existing))
-              (relaunch-existing-session!
-               {:session-name   session-name
-                :wt-path        wt-path
-                :prompt-file    prompt-file
-                :workmux-config config}))
-            (do
+        (.deleteOnExit (java.io.File. ^String prompt-file))
+        (try
+          ;; Check for existing worktree -> relaunch, otherwise fresh launch
+          (let [existing (find-session session-name)
+                wt-path  (when existing (worktree-path existing))]
+            (if (and existing wt-path)
+              (do
+                (println (c/yellow "Found existing worktree: " existing))
+                (relaunch-existing-session!
+                 {:bot-name       bot-name
+                  :session-name   session-name
+                  :wt-path        wt-path
+                  :prompt-file    prompt-file
+                  :workmux-config config}))
               ;; Fresh launch: verify the branch exists somewhere before creating a worktree.
               ;; Returns the ref to pass to workmux (branch name if local, origin/<name> if remote-only).
               (let [branch-ref (resolve-branch-ref! branch-name
@@ -432,7 +435,9 @@
                   :base-branch    base-branch
                   :prompt-file    prompt-file
                   :workmux-config config
-                  :display-info   info})))))))))
+                  :display-info   info}))))
+          (finally
+            (fs/delete-if-exists prompt-file)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Result lookup

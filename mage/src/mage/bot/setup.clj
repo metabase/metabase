@@ -31,8 +31,11 @@
   "Install workmux-status hooks in the worktree. Bot agents rely on
    the user's global Claude Code settings (`~/.claude/settings.json`)
    plus the project `.claude/settings.local.json` that
-   `setup-worktree` already copies from the main worktree."
-  [{:keys [wt-path]}]
+   `setup-worktree` already copies from the main worktree.
+
+   `bot-name` is currently informational but threaded through so future
+   bot-specific setup steps can branch on it without another signature change."
+  [{:keys [_bot-name wt-path]}]
   (write-hooks! wt-path))
 
 (defn setup!
@@ -43,4 +46,4 @@
     (when (str/blank? bot)
       (println (c/red "Usage: ./bin/mage -bot-setup --bot <name>"))
       (u/exit 1))
-    (setup-bot-worktree! {:wt-path wt-path})))
+    (setup-bot-worktree! {:bot-name bot :wt-path wt-path})))

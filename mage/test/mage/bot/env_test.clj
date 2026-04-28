@@ -62,7 +62,7 @@
   (testing "mise.local.toml wins over .env"
     (with-temp-dir
       (fn [dir]
-        (spit (str dir "/mise.local.toml") "MB_JETTY_PORT = \"3042\"\n")
+        (spit (str dir "/mise.local.toml") "[env]\nMB_JETTY_PORT = \"3042\"\n")
         (spit (str dir "/.env") "MB_JETTY_PORT=9999\n")
         (is (= "3042" (bot-env/resolve-env "MB_JETTY_PORT" dir))))))
   (testing ".env wins over .lein-env"

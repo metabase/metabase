@@ -3,22 +3,55 @@
    Priority order: mise.local.toml > .env > .lein-env > system env."
   (:require
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+(defn- parse-toml-value
+  "Parse a TOML scalar value (RHS of `key = value`). Returns the unquoted string
+   for basic strings (with `\\\"` and `\\\\` escapes), the inner text for literal
+   strings, or the raw token for bare scalars (ints, bools). Returns nil for
+   values we don't handle (multi-line strings, arrays, inline tables)."
+  [v]
+  (let [v (str/trim v)]
+    (cond
+      (and (str/starts-with? v "\"")
+           (not (str/starts-with? v "\"\"\""))
+           (re-matches #"\"(?:[^\"\\]|\\.)*\"" v))
+      (-> v
+          (subs 1 (dec (count v)))
+          (str/replace #"\\(.)" "$1"))
+
+      (and (str/starts-with? v "'")
+           (not (str/starts-with? v "'''"))
+           (re-matches #"'[^']*'" v))
+      (subs v 1 (dec (count v)))
+
+      (re-matches #"[A-Za-z0-9_+\-.]+" v)
+      v
+
+      :else nil)))
+
 (defn read-mise-local-toml
-  "Parse mise.local.toml [env] section and return a map of env var name -> value."
+  "Parse mise.local.toml [env] section and return a map of env var name -> value.
+   Handles double-quoted strings (with escapes), single-quoted literal strings,
+   and bare scalars. Keys may contain word chars, hyphens, or dots."
   ([] (read-mise-local-toml u/project-root-directory))
   ([root-dir]
    (let [path (str root-dir "/mise.local.toml")]
      (when (.exists (java.io.File. ^String path))
-       (into {}
-             (keep (fn [line]
-                     (when-let [[_ k v] (re-matches #"\s*(\w+)\s*=\s*\"([^\"]*)\"\s*" (str/trim line))]
-                       [k v])))
-             (str/split-lines (slurp path)))))))
+       (with-open [rdr (io/reader path)]
+         (->> (line-seq rdr)
+              (drop-while #(not= (str/trim %) "[env]"))
+              (drop 1)
+              (take-while #(not (re-matches #"\s*\[.*\]\s*" %)))
+              (keep (fn [line]
+                      (when-let [[_ k raw-v] (re-matches #"\s*([\w.\-]+)\s*=\s*(.*?)\s*" line)]
+                        (when-let [v (parse-toml-value raw-v)]
+                          [k v]))))
+              (into {})))))))
 
 (defn read-dot-env
   "Parse .env file and return a map of env var name -> value.

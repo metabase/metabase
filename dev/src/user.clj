@@ -18,7 +18,10 @@
   "Parse a TOML scalar value (RHS of `key = value`). Returns the unquoted string
   for basic strings (with `\\\"` and `\\\\` escapes), the inner text for literal
   strings, or the raw token for bare values (integers, booleans). Returns nil for
-  values we don't handle (multi-line strings, arrays, inline tables)."
+  values we don't handle (multi-line strings, arrays, inline tables).
+
+  Mirrors mage.bot.env/parse-toml-value — duplicated here so REPL boot doesn't
+  depend on the mage namespace classpath. Keep the two in sync."
   [v]
   (let [v (str/trim v)]
     (cond

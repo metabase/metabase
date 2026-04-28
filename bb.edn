@@ -802,11 +802,9 @@
   {:doc "Convert a markdown file to PDF using md-to-pdf"
    :examples [["./bin/mage -bot-md-to-pdf report.md" "Convert report.md to report.pdf"]
               ["./bin/mage -bot-md-to-pdf .bot/qabot/20260410/report.md" "Convert with full path"]]
-   :task (let [args (vec *command-line-args*)]
-           (when (empty? args)
-             (println "Usage: ./bin/mage -bot-md-to-pdf <file.md>")
-             (System/exit 1))
-           (let [md-file (first args)
-                 dir     (.getParent (java.io.File. ^String md-file))
-                 fname   (.getName (java.io.File. ^String md-file))]
-             (babashka.tasks/shell {:dir (or dir ".")} "npx" "-y" "md-to-pdf" fname)))}}}
+   :arg-schema [:tuple [:string {:name "file"}]]
+   :task (task!
+          (let [md-file (first (:arguments parsed))
+                dir     (.getParent (java.io.File. ^String md-file))
+                fname   (.getName (java.io.File. ^String md-file))]
+            (babashka.tasks/shell {:dir (or dir ".")} "npx" "-y" "md-to-pdf" fname)))}}}
