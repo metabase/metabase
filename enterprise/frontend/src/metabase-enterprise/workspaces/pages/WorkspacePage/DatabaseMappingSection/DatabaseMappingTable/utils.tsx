@@ -57,7 +57,7 @@ export function getStatusColumn(): TreeTableColumnDef<DatabaseMappingRow> {
     id: "status",
     header: t`Status`,
     width: "auto",
-    minWidth: 160,
+    minWidth: 240,
     accessorFn: (row) => getStatusLabel(row.mapping),
     cell: ({ row, getValue }) => (
       <Group gap="sm" wrap="nowrap">

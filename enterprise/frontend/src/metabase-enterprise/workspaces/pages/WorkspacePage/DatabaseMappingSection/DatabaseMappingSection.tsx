@@ -79,6 +79,8 @@ export function DatabaseMappingSection({
     );
   };
 
+  const canRemoveMapping = selectedMapping != null && mappings.length > 1;
+
   return (
     <>
       <TitleSection
@@ -126,8 +128,9 @@ export function DatabaseMappingSection({
           selectedDatabaseId,
         )}
         readOnly={isReadOnly}
+        canRemove={canRemoveMapping}
         onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
-        onDelete={selectedMapping != null ? handleRemove : undefined}
+        onDelete={handleRemove}
         onClose={handleClose}
       />
     </>

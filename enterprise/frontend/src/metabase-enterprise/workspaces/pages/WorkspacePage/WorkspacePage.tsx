@@ -7,6 +7,7 @@ import * as Urls from "metabase/utils/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
+import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
 import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
 import { WorkspaceEditor } from "./WorkspaceEditor";
@@ -61,6 +62,7 @@ function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
   return (
     <WorkspaceEditor
       workspace={workspace}
+      menu={<WorkspaceMoreMenu workspace={workspace} />}
       onNameChange={handleNameChange}
       onDatabasesChange={handleDatabasesChange}
     />

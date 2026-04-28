@@ -32,7 +32,7 @@ export function WorkspaceList({
 
   const handleRowActivate = useCallback(
     (row: Row<Workspace>) => {
-      dispatch(push(Urls.adminWorkspace(row.original.id)));
+      dispatch(push(Urls.workspace(row.original.id)));
     },
     [dispatch],
   );

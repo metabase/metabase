@@ -2,68 +2,74 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group } from "metabase/ui";
+import { Button, Group, Text } from "metabase/ui";
 import {
   useProvisionWorkspaceMutation,
   useUnprovisionWorkspaceMutation,
 } from "metabase-enterprise/api";
-import type { WorkspaceDatabase, WorkspaceId } from "metabase-types/api";
+import type { WorkspaceId } from "metabase-types/api";
 
 import type { WorkspaceInfo } from "../../../types";
 import {
   isDatabaseProvisioned,
   isDatabaseProvisioning,
-  isDatabaseUnprovisioned,
   isDatabaseUnprovisioning,
 } from "../../../utils";
 import { TitleSection } from "../TitleSection";
 
-type ProvisionSectionProps = {
+import { getButtonLabel, getStatusIcon, getStatusMessage } from "./utils";
+
+type StatusSectionProps = {
   workspace: WorkspaceInfo;
 };
 
-export function ProvisionSection({ workspace }: ProvisionSectionProps) {
+export function StatusSection({ workspace }: StatusSectionProps) {
   const workspaceId = workspace.id;
   if (workspaceId == null) {
     return null;
   }
 
-  const databases = workspace.databases;
-  const hasProvisioned = databases.some(isDatabaseProvisioned);
-  const hasUnprovisioned = databases.some(isDatabaseUnprovisioned);
-  const hasProvisioning = databases.some(isDatabaseProvisioning);
-  const hasUnprovisioning = databases.some(isDatabaseUnprovisioning);
+  const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
 
   return (
     <TitleSection
-      label={t`Provision the workspace`}
-      description={t`Create a temporary schema in each database and a user with read-only database access and write access to the schema.`}
+      label={t`Status`}
+      description={t`Provisioning creates a temporary schema in each database and a user with read-only database access and write access to the schema.`}
     >
-      <Group p="md" gap="sm" wrap="nowrap">
-        {(hasUnprovisioned || hasProvisioning) && (
-          <ProvisionButton workspaceId={workspaceId} databases={databases} />
-        )}
-        {(hasProvisioned || hasUnprovisioning) && (
-          <UnprovisionButton workspaceId={workspaceId} databases={databases} />
+      <Group p="md" justify="space-between" wrap="nowrap">
+        <WorkspaceStatus workspace={workspace} />
+        {isProvisioned ? (
+          <UnprovisionButton workspace={workspace} workspaceId={workspaceId} />
+        ) : (
+          <ProvisionButton workspace={workspace} workspaceId={workspaceId} />
         )}
       </Group>
     </TitleSection>
   );
 }
 
-type ButtonProps = {
+function WorkspaceStatus({ workspace }: { workspace: WorkspaceInfo }) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      {getStatusIcon(workspace)}
+      <Text>{getStatusMessage(workspace)}</Text>
+    </Group>
+  );
+}
+
+type StatusButtonProps = {
+  workspace: WorkspaceInfo;
   workspaceId: WorkspaceId;
-  databases: WorkspaceDatabase[];
 };
 
-function ProvisionButton({ workspaceId, databases }: ButtonProps) {
+function ProvisionButton({ workspace, workspaceId }: StatusButtonProps) {
   const [provisionWorkspace] = useProvisionWorkspaceMutation();
   const { modalContent, show } = useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
 
   const isInProgress =
-    databases.some(isDatabaseProvisioning) ||
-    databases.some(isDatabaseUnprovisioning);
+    workspace.databases.some(isDatabaseProvisioning) ||
+    workspace.databases.some(isDatabaseUnprovisioning);
 
   const handleProvision = () => {
     show({
@@ -87,23 +93,21 @@ function ProvisionButton({ workspaceId, databases }: ButtonProps) {
         disabled={isInProgress}
         onClick={handleProvision}
       >
-        {databases.some(isDatabaseProvisioning)
-          ? t`Provisioning…`
-          : t`Provision workspace`}
+        {getButtonLabel(workspace)}
       </Button>
       {modalContent}
     </>
   );
 }
 
-function UnprovisionButton({ workspaceId, databases }: ButtonProps) {
+function UnprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
   const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
   const { modalContent, show } = useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
 
   const isInProgress =
-    databases.some(isDatabaseProvisioning) ||
-    databases.some(isDatabaseUnprovisioning);
+    workspace.databases.some(isDatabaseProvisioning) ||
+    workspace.databases.some(isDatabaseUnprovisioning);
 
   const handleUnprovision = () => {
     show({
@@ -127,9 +131,7 @@ function UnprovisionButton({ workspaceId, databases }: ButtonProps) {
         disabled={isInProgress}
         onClick={handleUnprovision}
       >
-        {databases.some(isDatabaseUnprovisioning)
-          ? t`Unprovisioning…`
-          : t`Unprovision workspace`}
+        {getButtonLabel(workspace)}
       </Button>
       {modalContent}
     </>

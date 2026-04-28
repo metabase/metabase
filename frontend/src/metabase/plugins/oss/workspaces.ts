@@ -1,15 +1,17 @@
 import type { ReactNode } from "react";
 
+import type { State } from "metabase/redux/store";
+
 type WorkspacesPlugin = {
   isEnabled: boolean;
-  getWorkspaceAdminRoutes: () => ReactNode;
-  getWorkspaceAdminNavItems: () => ReactNode;
+  canManageWorkspaces: (state: State) => boolean;
+  getDataStudioWorkspaceRoutes: () => ReactNode;
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
   isEnabled: false,
-  getWorkspaceAdminRoutes: () => null,
-  getWorkspaceAdminNavItems: () => null,
+  canManageWorkspaces: () => false,
+  getDataStudioWorkspaceRoutes: () => null,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultPlugin();

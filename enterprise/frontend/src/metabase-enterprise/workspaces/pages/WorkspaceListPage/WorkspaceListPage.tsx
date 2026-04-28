@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { Button, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import * as Urls from "metabase/utils/urls";
@@ -18,17 +20,21 @@ import { filterWorkspaces } from "./utils";
 export function WorkspaceListPage() {
   const { workspaces, error, isLoading } = useFetchWorkspaceList();
 
+  if (error) {
+    return <DelayedLoadingAndErrorWrapper loading={false} error={error} />;
+  }
+
   return (
-    <SettingsPageWrapper
-      title={t`Workspaces`}
-      description={t`Create a workspace to iterate on queries with full database-level isolation.`}
-    >
-      {error ? (
-        <DelayedLoadingAndErrorWrapper loading={false} error={error} />
-      ) : (
-        <WorkspaceListPageBody workspaces={workspaces} loading={isLoading} />
-      )}
-    </SettingsPageWrapper>
+    <PageContainer data-testid="workspace-list-page" gap={0}>
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
+        }
+        py={0}
+        showMetabotButton
+      />
+      <WorkspaceListPageBody workspaces={workspaces} loading={isLoading} />
+    </PageContainer>
   );
 }
 
@@ -54,7 +60,7 @@ function WorkspaceListPageBody({
   const isFiltered = debouncedQuery.length > 0;
 
   return (
-    <Stack>
+    <Stack style={{ overflow: "hidden" }}>
       <Flex gap="0.5rem">
         <TextInput
           placeholder={t`Search...`}
@@ -68,14 +74,16 @@ function WorkspaceListPageBody({
           variant={workspaces.length === 0 ? "filled" : "default"}
           leftSection={<Icon name="add" />}
           component={ForwardRefLink}
-          to={Urls.adminNewWorkspace()}
+          to={Urls.newWorkspace()}
         >{t`New`}</Button>
       </Flex>
-      <WorkspaceList
-        workspaces={filteredWorkspaces}
-        filtered={isFiltered}
-        loading={loading}
-      />
+      <Flex direction="column" flex={1} mih={0}>
+        <WorkspaceList
+          workspaces={filteredWorkspaces}
+          filtered={isFiltered}
+          loading={loading}
+        />
+      </Flex>
     </Stack>
   );
 }

@@ -6,6 +6,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
@@ -18,6 +19,7 @@ import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import {
@@ -75,6 +77,11 @@ export function getDataStudioRoutes(
           />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
+        {PLUGIN_WORKSPACES.isEnabled && (
+          <Route path="workspaces" component={WorkspacesSectionLayout}>
+            {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
+          </Route>
+        )}
       </Route>
     </Route>
   );

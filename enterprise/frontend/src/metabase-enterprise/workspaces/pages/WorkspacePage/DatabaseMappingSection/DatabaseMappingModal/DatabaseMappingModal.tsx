@@ -30,7 +30,7 @@ function getValidationSchema(databases: Database[]) {
   return Yup.object({
     database_id: Yup.string().required(Errors.required),
     input_schemas: Yup.array()
-      .of(Yup.string().required())
+      .of(Yup.string().nullable().required())
       .when("database_id", {
         is: (value: string) => {
           const databaseId = getDatabaseId(value);
@@ -50,6 +50,7 @@ type DatabaseMappingModalProps = {
   databases: Database[];
   opened: boolean;
   readOnly?: boolean;
+  canRemove?: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
@@ -60,6 +61,7 @@ export function DatabaseMappingModal({
   databases,
   opened,
   readOnly = false,
+  canRemove = false,
   onSubmit,
   onDelete,
   onClose,
@@ -77,6 +79,7 @@ export function DatabaseMappingModal({
         mapping={mapping}
         databases={databases}
         readOnly={readOnly}
+        canRemove={canRemove}
         onSubmit={onSubmit}
         onDelete={onDelete}
         onClose={onClose}
@@ -89,6 +92,7 @@ type DatabaseMappingFormProps = {
   mapping?: WorkspaceDatabase;
   databases: Database[];
   readOnly: boolean;
+  canRemove: boolean;
   onSubmit: (mapping: WorkspaceDatabase) => void;
   onDelete?: (mapping: WorkspaceDatabase) => void;
   onClose: () => void;
@@ -98,6 +102,7 @@ function DatabaseMappingForm({
   mapping,
   databases,
   readOnly,
+  canRemove,
   onSubmit,
   onDelete,
   onClose,
@@ -163,14 +168,18 @@ function DatabaseMappingForm({
               <Group>
                 {!isNew && (
                   <Tooltip
-                    label={t`Unprovision this workspace before editing.`}
-                    disabled={!readOnly}
+                    label={
+                      readOnly
+                        ? t`Unprovision this workspace before editing.`
+                        : t`A workspace must have at least one database.`
+                    }
+                    disabled={canRemove}
                     openDelay={TOOLTIP_OPEN_DELAY}
                   >
                     <Button
                       variant="subtle"
                       color="error"
-                      disabled={readOnly}
+                      disabled={!canRemove}
                       onClick={handleDelete}
                     >
                       {t`Delete`}
