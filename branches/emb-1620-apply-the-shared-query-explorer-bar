@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1586-prototype-interactivity-improvements-for-mcp-apps",
-    "hash": "1074771d0f36a7ab6b7a8d1c6e21cd3eaf496e1f"
+    "hash": "e875d11d4b4c4810726ee44acbfef8f00a5dde93"
   },
   "upstream": {
     "branch": "emb-1620-apply-the-shared-query-explorer-bar"
