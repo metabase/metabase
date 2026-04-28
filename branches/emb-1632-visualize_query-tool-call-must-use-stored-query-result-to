@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-1623-store-query-payload-in-sessions-instead-of-in-memory-atoms",
-    "hash": "ab44db0b568ea493ce0ed29cb86a7a682ee86724"
+    "name": "emb-1586-prototype-interactivity-improvements-for-mcp-apps",
+    "hash": "7ff9f4d0266edccddde3312be20eb13518b9e803"
   },
   "upstream": {
     "branch": "emb-1632-visualize_query-tool-call-must-use-stored-query-result-to"
