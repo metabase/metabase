@@ -18,6 +18,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
+import { ColorHarmonyPicker } from "./ColorHarmonyPicker";
 import { ColorSwatchCard } from "./ColorSwatchCard";
 import {
   CHART_COLOR_COUNT,
@@ -143,16 +144,22 @@ export function EditorPanel({
                 </Flex>
               </UnstyledButton>
 
-              {editor.hasAdditionalColorChanges && (
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  aria-label={t`Revert to default additional colors`}
-                  onClick={editor.resetAdditionalColors}
-                >
-                  <Icon name="revert" size={16} />
-                </Button>
-              )}
+              <Flex align="center" gap="xs">
+                <ColorHarmonyPicker
+                  mode={currentTheme.colorHarmony}
+                  onChange={editor.setColorHarmony}
+                />
+                {editor.hasAdditionalColorChanges && (
+                  <Button
+                    variant="subtle"
+                    size="compact-sm"
+                    aria-label={t`Revert to default additional colors`}
+                    onClick={editor.resetAdditionalColors}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                )}
+              </Flex>
             </Flex>
 
             <Collapse in={moreColorsOpen}>
