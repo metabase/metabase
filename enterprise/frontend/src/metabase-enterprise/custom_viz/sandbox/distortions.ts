@@ -150,11 +150,42 @@ function isInlineEventHandlerName(name: unknown): boolean {
   return typeof name === "string" && /^on/i.test(name);
 }
 
+// URL-bearing attributes — setting `javascript:<code>` here makes the browser
+// run <code> in the host realm (outside the membrane) when the element is
+// followed/submitted/loaded.
+const URL_VALUED_ATTRS = new Set([
+  "href",
+  "src",
+  "xlink:href",
+  "action",
+  "formaction",
+  "poster",
+  "cite",
+  "background",
+  "manifest",
+]);
+
+function isUrlBearingAttr(name: unknown): boolean {
+  return typeof name === "string" && URL_VALUED_ATTRS.has(name.toLowerCase());
+}
+
+// Browsers tolerate leading whitespace before the protocol (e.g.
+// " javascript:..." still navigates), so allow any leading whitespace
+// before testing the prefix.
+function isJavascriptUrl(value: unknown): boolean {
+  return typeof value === "string" && /^\s*javascript:/i.test(value);
+}
+
 function setAttributeDistortion(pluginId: string) {
   return function setAttribute(this: Element, name: string, value: string) {
     if (isInlineEventHandlerName(name)) {
       throw new Error(
         `[plugin ${pluginId}] blocked setAttribute for inline event handler: ${name}`,
+      );
+    }
+    if (isUrlBearingAttr(name) && isJavascriptUrl(value)) {
+      throw new Error(
+        `[plugin ${pluginId}] blocked setAttribute with javascript: URL: ${name}`,
       );
     }
     return SET_ATTRIBUTE.call(this, name, value);
@@ -171,6 +202,11 @@ function setAttributeNSDistortion(pluginId: string) {
     if (isInlineEventHandlerName(qualifiedName)) {
       throw new Error(
         `[plugin ${pluginId}] blocked setAttributeNS for inline event handler: ${qualifiedName}`,
+      );
+    }
+    if (isUrlBearingAttr(qualifiedName) && isJavascriptUrl(value)) {
+      throw new Error(
+        `[plugin ${pluginId}] blocked setAttributeNS with javascript: URL: ${qualifiedName}`,
       );
     }
     return SET_ATTRIBUTE_NS.call(this, namespace, qualifiedName, value);

@@ -1851,6 +1851,18 @@ describe("sandbox", () => {
       payload: 'document.write("<p>injected</p>");',
       errorPattern: blockedPattern(/API call: Document\.write/),
     },
+    {
+      name: 'setAttribute("onerror", ...)',
+      payload: 'document.body.setAttribute("onerror", "alert(1)");',
+      errorPattern: blockedPattern(
+        /setAttribute for inline event handler: onerror/,
+      ),
+    },
+    {
+      name: 'setAttribute("href", "javascript:...")',
+      payload: 'document.body.setAttribute("href", "javascript:alert(1)");',
+      errorPattern: blockedPattern(/setAttribute with javascript: URL: href/),
+    },
   ];
 
   it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(
