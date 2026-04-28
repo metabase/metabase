@@ -80,6 +80,27 @@
   without a `formula-version` bump."
   :names-split)
 
+(def ^:private ^Class floats-class
+  "`float[]` class object — cached so [[ensure-floats]] can `instance?`-check without
+  re-resolving on every vector."
+  (class (float-array 0)))
+
+(defn- ensure-floats
+  "Return `v` as a `float[]`, copying only when it isn't already one.
+
+  ai-service / openai providers already return primitive `float[]` (see `decode-embeddings`
+  in `metabase-enterprise.semantic-search.embedding`), so the common path skips the copy."
+  ^floats [v]
+  (if (instance? floats-class v) v (float-array v)))
+
+(def ^:private provider-batch-size
+  "Names per `get-embeddings-batch` HTTP call.
+
+  ai-service's `get-embeddings-batch` does no batching of its own, so without chunking here a
+  large catalog would land as a single multi-MB request/response. 256 keeps each call bounded
+  while staying well under any provider's per-request limit."
+  256)
+
 (defn provider-embedder
   "Build an embedder that embeds names via `semantic-search/get-embeddings-batch` using
   `model-descriptor` (`{:provider :model-name :model-dimensions}`).
@@ -87,6 +108,10 @@
   For each distinct normalized name the raw form is sent through [[split-for-embedding]].
   Splitting *before* lowercasing preserves the camelCase boundary (`\"pageViews\"` →
   `\"page views\"`); the normalized key is what scoring looks up.
+
+  Texts are chunked into `provider-batch-size` pieces so a large catalog doesn't land as a
+  single oversized HTTP request — `get-embeddings-batch` does no chunking of its own for the
+  ai-service / openai providers.
 
   Errors from the provider bubble up — `score-synonym-pairs` converts them into `nil`
   measurements + an `:error` field so a broken run is visible downstream."
@@ -101,9 +126,11 @@
           names     (vec (keys name->raw))]
       (when (seq names)
         (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
-              vectors (vec (semantic-search/get-embeddings-batch model-descriptor texts))]
+              vectors (into []
+                            (mapcat #(semantic-search/get-embeddings-batch model-descriptor %))
+                            (partition-all provider-batch-size texts))]
           (into {}
-                (keep (fn [[n v]] (when v [n (float-array v)])))
+                (keep (fn [[n v]] (when v [n (ensure-floats v)])))
                 (map vector names vectors)))))))
 
 (def default-synonym-embedder

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.api :as api]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
@@ -34,48 +35,46 @@
 
 (deftest complexity-endpoint-superuser-gets-consistent-totals-test
   (testing "check invariants not covered by schema"
-    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
-          measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
-          component-score  (fn [cat k] (get-in resp [cat :components k :score]))
-          ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
-          ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
-          ;; embedding the provider returns for that name, so adding universe-only entities that
-          ;; collide on normalized name with a library entity could in principle flip which vector
-          ;; wins and drop the pair count below library's. Reviewers (human or AI) sometimes want
-          ;; to carve it out on that basis — don't. In every realistic configuration (prod, dev,
-          ;; the fixture that backs this endpoint's hermetic path in complexity_test.clj) the
-          ;; invariant holds, and asserting it keeps us honest about regressions in the common
-          ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
-          ;; want to see and we'll deal with it then.
-          ;;
-          ;; When ai-service isn't reachable, the default synonym embedder throws and
-          ;; `score-synonym-pairs` returns nil measurements + an :error field. The invariant
-          ;; assertions below guard on `some?` so those nil rows are skipped rather than NPEing.
-          component-keys   [:entity-count :name-collisions :synonym-pairs
-                            :field-count :repeated-measures]]
-      (testing ":total equals the sum of its component :score values (skipped on nil-score cascade)"
-        (doseq [catalog [:library :universe :metabot]
-                :let [{:keys [total components]} (get resp catalog)
-                      scores (map :score (vals components))]
-                :when (every? some? (cons total scores))]
-          (is (= total (reduce + scores))
-              (format "%s :total should equal sum of component :score values" catalog))))
-      (testing "universe is a superset of library: every measurement and score ≥ library's"
-        (doseq [k      component-keys
-                getter [measurement component-score]
-                :let   [lib (getter :library k)
-                        uni (getter :universe k)]
-                :when  (and (some? lib) (some? uni))]
-          (is (>= uni lib)
-              (format "universe %s (%s) should be ≥ library's (%s)" k uni lib))))
-      (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
-        (doseq [catalog [:library :universe :metabot]
-                :let [n-entities (measurement catalog :entity-count)
-                      syn-pairs  (measurement catalog :synonym-pairs)
-                      max-pairs  (/ (* n-entities (dec n-entities)) 2)]
-                :when (some? syn-pairs)]
-          (is (<= syn-pairs max-pairs)
-              (format "%s :synonym-pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities)))))))
+    ;; Stub the default synonym embedder to a constant-empty lookup so the synonym axis scores a
+    ;; deterministic 0 in every catalog. Without this, CI environments where ai-service isn't
+    ;; reachable would see `score-synonym-pairs` cascade nil + :error and the invariants below
+    ;; would silently skip those rows — letting regressions through.
+    (mt/with-dynamic-fn-redefs [embedders/default-synonym-embedder (fn [_entities] {})]
+      (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
+            measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
+            component-score  (fn [cat k] (get-in resp [cat :components k :score]))
+            ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
+            ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
+            ;; embedding the provider returns for that name, so adding universe-only entities that
+            ;; collide on normalized name with a library entity could in principle flip which vector
+            ;; wins and drop the pair count below library's. Reviewers (human or AI) sometimes want
+            ;; to carve it out on that basis — don't. In every realistic configuration (prod, dev,
+            ;; the fixture that backs this endpoint's hermetic path in complexity_test.clj) the
+            ;; invariant holds, and asserting it keeps us honest about regressions in the common
+            ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
+            ;; want to see and we'll deal with it then.
+            component-keys   [:entity-count :name-collisions :synonym-pairs
+                              :field-count :repeated-measures]]
+        (testing ":total equals the sum of its component :score values"
+          (doseq [catalog [:library :universe :metabot]
+                  :let [{:keys [total components]} (get resp catalog)
+                        scores (map :score (vals components))]]
+            (is (= total (reduce + scores))
+                (format "%s :total should equal sum of component :score values" catalog))))
+        (testing "universe is a superset of library: every measurement and score ≥ library's"
+          (doseq [k      component-keys
+                  getter [measurement component-score]
+                  :let   [lib (getter :library k)
+                          uni (getter :universe k)]]
+            (is (>= uni lib)
+                (format "universe %s (%s) should be ≥ library's (%s)" k uni lib))))
+        (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
+          (doseq [catalog [:library :universe :metabot]
+                  :let [n-entities (measurement catalog :entity-count)
+                        syn-pairs  (measurement catalog :synonym-pairs)
+                        max-pairs  (/ (* n-entities (dec n-entities)) 2)]]
+            (is (<= syn-pairs max-pairs)
+                (format "%s :synonym-pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities))))))))
 
 (deftest complexity-endpoint-metabot-catalog-test
   (testing ":metabot mirrors :universe when neither content-verification nor use_verified_content is active"

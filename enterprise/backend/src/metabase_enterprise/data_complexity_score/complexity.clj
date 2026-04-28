@@ -443,9 +443,10 @@
                   :embedding-model {:provider ... :model-name ... :model-dimensions ...}
                   :text-variant :names-split}}
 
-  `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
-  in use.
-  An explicit `:embedder` means the caller owns the model + preprocessing narrative.
+  `:embedding-model` and `:text-variant` are present when the effective synonym embedder is
+  the default synonym embedder.
+  If the caller passes a different explicit `:embedder`, they own the model + preprocessing
+  narrative; explicitly passing the default embedder still includes the default metadata.
 
   Options:
     `:embedder` — overrides the synonym-axis embedder (defaults to the MiniLM-L6-v2 embedder
