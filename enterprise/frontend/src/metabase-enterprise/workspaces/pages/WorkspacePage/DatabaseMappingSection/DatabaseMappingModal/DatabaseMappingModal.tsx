@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import { useListDatabaseSchemasQuery } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -20,17 +22,28 @@ import type {
 } from "metabase-types/api";
 
 type DatabaseMappingFormValues = {
-  database_id: string;
+  database_id: string | null;
   input_schemas: string[];
 };
 
-const VALIDATION_SCHEMA = Yup.object({
-  database_id: Yup.string().required(Errors.required),
-  input_schemas: Yup.array()
-    .of(Yup.string().required())
-    .min(1, Errors.required)
-    .required(),
-});
+function getValidationSchema(databases: Database[]) {
+  return Yup.object({
+    database_id: Yup.string().required(Errors.required),
+    input_schemas: Yup.array()
+      .of(Yup.string().required())
+      .when("database_id", {
+        is: (value: string) => {
+          const databaseId = getDatabaseId(value);
+          const database = databases.find(
+            (database) => database.id === databaseId,
+          );
+          return database != null && hasFeature(database, "schemas");
+        },
+        then: (schema) => schema.min(1, Errors.required).required(),
+        otherwise: (schema) => schema,
+      }),
+  });
+}
 
 type DatabaseMappingModalProps = {
   mapping?: WorkspaceDatabase;
@@ -90,7 +103,10 @@ function DatabaseMappingForm({
   onClose,
 }: DatabaseMappingFormProps) {
   const isNew = mapping == null;
-  const hasDelete = !isNew && onDelete != null;
+  const validationSchema = useMemo(
+    () => getValidationSchema(databases),
+    [databases],
+  );
 
   const handleSubmit = (values: DatabaseMappingFormValues) => {
     onSubmit(getDatabaseMapping(values));
@@ -107,13 +123,17 @@ function DatabaseMappingForm({
   return (
     <FormProvider
       initialValues={getInitialValues(mapping)}
-      validationSchema={VALIDATION_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       {({ values, setFieldValue, dirty }) => {
         const databaseId = values.database_id
           ? getDatabaseId(values.database_id)
           : null;
+        const database = databases.find(
+          (database) => database.id === databaseId,
+        );
+        const hasSchemas = database != null && hasFeature(database, "schemas");
 
         const handleDatabaseChange = (value: string) => {
           setFieldValue("database_id", value);
@@ -132,7 +152,7 @@ function DatabaseMappingForm({
                 readOnly={readOnly}
                 onChange={handleDatabaseChange}
               />
-              {databaseId != null && (
+              {databaseId != null && hasSchemas && (
                 <DatabaseSchemasSelect
                   databaseId={databaseId}
                   selectedSchemas={values.input_schemas}
@@ -140,7 +160,7 @@ function DatabaseMappingForm({
                 />
               )}
               <Group>
-                {hasDelete && (
+                {!isNew && (
                   <Tooltip
                     label={t`Unprovision this workspace before editing.`}
                     disabled={!readOnly}
@@ -191,9 +211,10 @@ function DatabaseSchemasSelect({
   selectedSchemas,
   readOnly,
 }: DatabaseSchemasSelectProps) {
-  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId != null ? { id: databaseId, include_hidden: true } : skipToken,
-  );
+  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery({
+    id: databaseId,
+    include_hidden: true,
+  });
   const isAllSelected =
     availableSchemas.length > 0 &&
     selectedSchemas.length === availableSchemas.length;
@@ -229,19 +250,30 @@ function getDatabaseOptions(databases: Database[]) {
 function getInitialValues(
   mapping?: WorkspaceDatabase,
 ): DatabaseMappingFormValues {
+  if (mapping == null) {
+    return {
+      database_id: null,
+      input_schemas: [],
+    };
+  }
+
   return {
-    database_id:
-      mapping?.database_id != null ? getDatabaseValue(mapping.database_id) : "",
-    input_schemas: mapping?.input_schemas ?? [],
+    database_id: getDatabaseValue(mapping.database_id),
+    input_schemas: mapping.input_schemas,
   };
 }
 
 function getDatabaseMapping(
   values: DatabaseMappingFormValues,
 ): WorkspaceDatabase {
+  if (values.database_id == null) {
+    throw new Error("Database ID is required");
+  }
+
   return {
     database_id: getDatabaseId(values.database_id),
     input_schemas: values.input_schemas,
+    output_schema: "",
     status: "unprovisioned",
   };
 }
