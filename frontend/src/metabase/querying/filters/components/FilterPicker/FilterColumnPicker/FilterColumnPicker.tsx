@@ -15,7 +15,6 @@ import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
@@ -54,7 +53,7 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: (clause?: DefinedClauseName) => void;
+  onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;

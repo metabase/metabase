@@ -93,6 +93,7 @@ export const getIcon = (
       return {
         name: OFFICIAL_COLLECTION.icon,
         color: OFFICIAL_COLLECTION.color,
+        tooltip: OFFICIAL_COLLECTION.tooltips?.default,
       };
     }
   }
