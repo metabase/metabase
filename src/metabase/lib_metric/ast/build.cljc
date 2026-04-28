@@ -431,6 +431,62 @@
           {}
           (or dimension-mappings [])))
 
+(defn- fk-source-field-for-table
+  "Find an FK column in `source-table-id` whose target column lives in
+   `target-table-id`. Returns `{:source-field <fk-id> :base-type <bt>}` or nil
+   if no such FK is reachable. Used as a fallback when the metric's
+   dimension-mappings don't already carry `:source-field` for the joined
+   table — for example when the user filters by a joined-table segment
+   without having added any dimension on that table.
+
+   The production `MetricContextMetadataProvider` only routes column requests
+   that carry `:table-id`, so we fetch by `:table-id` on each side and match
+   FK targets against the full target-table column id set.
+
+   If `source-table-id` has more than one FK pointing into `target-table-id`
+   (rare ambiguous schema), the first FK by id wins. Users with such
+   schemas should add an explicit dimension-mapping with the
+   disambiguating `:source-field`."
+  [metadata-provider source-table-id target-table-id]
+  (when (and source-table-id target-table-id (not= source-table-id target-table-id))
+    (let [source-cols (lib.metadata.protocols/metadatas
+                       metadata-provider
+                       {:lib/type :metadata/column :table-id source-table-id})
+          fk-cols     (->> source-cols
+                           (filter :fk-target-field-id)
+                           (sort-by :id))
+          target-cols (when (seq fk-cols)
+                        (lib.metadata.protocols/metadatas
+                         metadata-provider
+                         {:lib/type :metadata/column :table-id target-table-id}))
+          target-ids  (into #{} (map :id) (or target-cols []))
+          fk          (perf/some (fn [c]
+                                   (when (contains? target-ids (:fk-target-field-id c))
+                                     c))
+                                 fk-cols)]
+      (when fk
+        (cond-> {:source-field (:id fk)}
+          (:base-type fk) (assoc :base-type (:base-type fk)))))))
+
+(defn- ensure-table-annotations
+  "Augment `annotations-by-table` with FK-derived entries for any
+   `target-table-ids` not already annotated. Tables without a reachable
+   FK from `source-table-id` are skipped silently — the segment clause
+   for those will fall through unannotated and the QP will surface the
+   downstream error if any."
+  [metadata-provider source-table-id annotations-by-table target-table-ids]
+  (reduce (fn [acc tid]
+            (if (or (nil? tid)
+                    (= tid source-table-id)
+                    (contains? acc tid))
+              acc
+              (if-let [ann (fk-source-field-for-table
+                            metadata-provider source-table-id tid)]
+                (assoc acc tid ann)
+                acc)))
+          annotations-by-table
+          target-table-ids))
+
 (defn- field-ids-in-clause
   "Collect all field-ids referenced by `[:field _ id]` refs within `clause`."
   [clause]
@@ -477,12 +533,15 @@
 
 (defn- expand-segment-clause
   "Given a raw `[:segment _ id]` clause, look up the segment metadata, pull its
-   filter clauses, and annotate any field refs with `:source-field` from the
-   metric's dimension-mappings. Returns a single MBQL filter clause (possibly
-   wrapped in `:and`) or `nil` to signal 'leave the original clause alone'.
+   filter clauses, and annotate any field refs with `:source-field`. Annotations
+   come first from the metric's dimension-mappings; tables not covered there
+   fall back to FK-derived annotations from the metadata provider so the
+   filter-only flow (no joined-table dimensions) still works. Returns a single
+   MBQL filter clause (possibly wrapped in `:and`) or `nil` to signal 'leave
+   the original clause alone'.
 
    Callers should short-circuit on source-table segments before invoking this."
-  [metadata-provider annotations-by-table segment-clause]
+  [metadata-provider source-table-id annotations-by-table segment-clause]
   (let [segment-id (nth segment-clause 2)
         segment    (first (lib.metadata.protocols/metadatas
                            metadata-provider
@@ -491,7 +550,11 @@
     (when (seq clauses)
       (let [field-ids         (reduce into #{} (map field-ids-in-clause clauses))
             field-id->table   (fetch-field-table-ids metadata-provider field-ids)
-            annotated         (perf/mapv #(annotate-field-refs % field-id->table annotations-by-table)
+            target-tables     (set (vals field-id->table))
+            annotations       (ensure-table-annotations
+                               metadata-provider source-table-id
+                               annotations-by-table target-tables)
+            annotated         (perf/mapv #(annotate-field-refs % field-id->table annotations)
                                          clauses)]
         (if (= 1 (count annotated))
           (first annotated)
@@ -526,7 +589,8 @@
                     source-table-id
                     (not= seg-table source-table-id))
              (if-let [expanded (expand-segment-clause
-                                metadata-provider annotations-by-table clause)]
+                                metadata-provider source-table-id
+                                annotations-by-table clause)]
                (update acc :expanded-clauses conj expanded)
                (update acc :normal-filters conj clause))
              (update acc :normal-filters conj clause)))))

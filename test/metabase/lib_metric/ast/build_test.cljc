@@ -688,6 +688,96 @@
               "the FK must survive to compiled MBQL so add-implicit-joins can inject the JOIN")
           (is (= (meta/id :categories :name) (nth field-ref 2))))))))
 
+(deftest ^:parallel from-definition-derives-source-field-from-fk-test
+  (testing "joined-table segment :source-field is derived from FK metadata when no dimension-mapping carries it"
+    ;; The metric has NO dimension-mapping for the joined `:categories` table —
+    ;; covers the user-facing filter-only flow where a joined-table segment is
+    ;; applied without ever adding a dimension on that table. The FK
+    ;; (`venues.category-id` → `categories.id`) is read straight from the
+    ;; metadata provider.
+    (let [provider   (make-test-provider-with-segments
+                      (sample-metric-metadata) ; <- no joined dim
+                      (sample-measure-metadata)
+                      [(joined-segment)])
+          definition {:lib/type          :metric/definition
+                      :expression        [:metric {:lib/uuid expr-uuid} 42]
+                      :filters           [{:lib/uuid expr-uuid
+                                           :filter [:segment {:lib/uuid "44444444-0000-0000-0000-000000000001"} 500]}]
+                      :projections       []
+                      :metadata-provider provider}
+          ast        (ast.build/from-definition definition)
+          src-query  (get-in ast [:expression :ast])
+          filter-node (:filter src-query)]
+      (testing "valid AST"
+        (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
+      (testing "segment is pre-expanded into a :filter/mbql node"
+        (is (= :filter/mbql (:node/type filter-node)))
+        (is (= := (first (:clause filter-node)))))
+      (testing "field ref carries :source-field derived from FK metadata"
+        (let [field-ref (nth (:clause filter-node) 2)]
+          (is (= :field (first field-ref)))
+          (is (= (meta/id :venues :category-id)
+                 (:source-field (second field-ref)))
+              "FK column id from the metadata provider, not from any dimension mapping")
+          (is (= (meta/id :categories :name) (nth field-ref 2))))))))
+
+(deftest ^:parallel from-definition-orders-products-fk-derivation-test
+  (testing "real-world Orders→Products: filter-only flow with no Products dimension on the metric"
+    ;; Mirrors the user-reported runtime scenario as closely as the test
+    ;; metadata permits: a metric on Orders, no dimensions on Products,
+    ;; segment authored on Products. The FK Orders.PRODUCT_ID → Products.ID
+    ;; must be derived from the metadata provider so the QP can synthesize
+    ;; the LEFT JOIN PRODUCTS at run time.
+    (let [orders-metric-metadata
+          {:lib/type           :metadata/metric
+           :id                 4242
+           :name               "Total Order Amount"
+           :table-id           (meta/id :orders)
+           :dimensions         []
+           :dimension-mappings []
+           :dataset-query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                   (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))}
+
+          products-segment
+          {:lib/type   :metadata/segment
+           :id         9001
+           :name       "widgets"
+           :table-id   (meta/id :products)
+           :definition {:lib/type :mbql/query
+                        :database (meta/id)
+                        :stages   [{:lib/type :mbql.stage/mbql
+                                    :source-table (meta/id :products)
+                                    :filters [[:= {:lib/uuid "aaaa1111-0000-0000-0000-000000000001"}
+                                               [:field {:lib/uuid "aaaa1111-0000-0000-0000-000000000002"}
+                                                (meta/id :products :category)]
+                                               "Widget"]]}]}}
+
+          provider   (make-test-provider-with-segments
+                      orders-metric-metadata
+                      nil
+                      [products-segment])
+          definition {:lib/type          :metric/definition
+                      :expression        [:metric {:lib/uuid expr-uuid} 4242]
+                      :filters           [{:lib/uuid expr-uuid
+                                           :filter [:segment {:lib/uuid "55555555-0000-0000-0000-000000000001"} 9001]}]
+                      :projections       []
+                      :metadata-provider provider}
+          ast        (ast.build/from-definition definition)
+          src-query  (get-in ast [:expression :ast])
+          filter-node (:filter src-query)]
+      (testing "valid AST"
+        (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
+      (testing "compiled MBQL carries :source-field on the Products field ref so add-implicit-joins can JOIN"
+        (let [mbql    (ast.compile/compile-to-mbql src-query)
+              filters (-> mbql :stages first :filters)]
+          (is (= 1 (count filters)))
+          (let [field-ref (nth (first filters) 2)]
+            (is (= :field (first field-ref)))
+            (is (= (meta/id :products :category) (nth field-ref 2)))
+            (is (= (meta/id :orders :product-id)
+                   (:source-field (second field-ref)))
+                "Orders.PRODUCT_ID FK derived from the metadata provider")))))))
+
 (deftest ^:parallel from-definition-preserves-source-table-segment-test
   (testing "segment on the metric's source table is left as a raw :segment clause"
     (let [provider   (make-test-provider-with-segments
