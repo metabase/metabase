@@ -5,6 +5,8 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
    [metabase.test :as mt]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.interface :as transforms.i]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:workspaces} (f))))
@@ -72,3 +74,72 @@
               (is (= "ORDERS"         (:to_table_name row))))))
         (finally
           (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))
+
+(defn- with-stubbed-execute-multimethod!
+  "Replace `transforms.i/execute!` with a stub that captures the transform map it receives.
+  Returns the captured value via the supplied atom. The hook still fires before dispatch
+  (wired in `transforms.execute/execute!`), so the captured target reflects the post-rewrite
+  state — the question this helper answers is 'what does the per-type method actually see?'."
+  [captured-atom body-fn]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (with-redefs [transforms.i/execute! (fn [transform _opts]
+                                        (reset! captured-atom transform)
+                                        {:status :succeeded})]
+    (body-fn)))
+
+(deftest python-transforms-inherit-target-rewrite-test
+  (testing "Python transforms see the rewritten target via the wrapper-level gate (regression for GHY-3479)"
+    (mt/with-temp [:model/Workspace         {ws-id :id} {:name (str "ws-" (random-uuid))}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      (mt/id)
+                                               :database_details {}
+                                               :output_schema    "ws_test_schema"
+                                               :input_schemas    []
+                                               :status           :provisioned}]
+      (try
+        (ws.table-remapping/clear-mappings-for-db! (mt/id))
+        (let [captured        (atom nil)
+              python-transform {:id     999
+                                :source {:type :python}
+                                :target {:database (mt/id)
+                                         :schema   "PUBLIC"
+                                         :name     "FOO"
+                                         :type     :table}}]
+          (with-stubbed-execute-multimethod!
+            captured
+            (fn []
+              (transforms.execute/execute! python-transform)))
+          (is (= "ws_test_schema" (get-in @captured [:target :schema]))
+              "Python transform's :target.schema is rewritten before dispatch")
+          (is (= "FOO" (get-in @captured [:target :name]))
+              ":name is preserved")
+          (testing "TableRemapping row was recorded for the Python path too"
+            (let [row (t2/select-one :model/TableRemapping
+                                     :database_id     (mt/id)
+                                     :from_schema     "PUBLIC"
+                                     :from_table_name "FOO")]
+              (is (some? row) "Python target rewrite records a TableRemapping row")
+              (is (= "ws_test_schema" (:to_schema row))))))
+        (finally
+          (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))
+
+(deftest non-workspaced-db-target-passthrough-via-execute-test
+  (testing "When no WorkspaceDatabase is provisioned, the wrapper passes target through unchanged"
+    (let [captured        (atom nil)
+          python-transform {:id     998
+                            :source {:type :python}
+                            :target {:database (mt/id)
+                                     :schema   "PUBLIC"
+                                     :name     "BAR"
+                                     :type     :table}}]
+      (with-stubbed-execute-multimethod!
+        captured
+        (fn []
+          (transforms.execute/execute! python-transform)))
+      (is (= "PUBLIC" (get-in @captured [:target :schema]))
+          ":schema is unchanged when DB is not workspaced")
+      (is (nil? (t2/select-one :model/TableRemapping
+                               :database_id     (mt/id)
+                               :from_schema     "PUBLIC"
+                               :from_table_name "BAR"))
+          "no TableRemapping row recorded for a non-workspaced DB"))))

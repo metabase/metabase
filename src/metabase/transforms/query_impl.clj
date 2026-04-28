@@ -37,11 +37,10 @@
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
-           ;; If workspace isolation is active for this DB, the hook rewrites :schema to
-           ;; the workspace output schema and records a TableRemapping so reads against
-           ;; the canonical name resolve to this copy. Otherwise it returns target unchanged.
-           target      (resolve-transform-target (:id db) (:target transform))
-           transform   (assoc transform :target target)
+           ;; Workspace target rewrite (resolve-transform-target) ran in
+           ;; `metabase.transforms.execute/execute!` before dispatch. The transform's
+           ;; `:target` already reflects the workspace schema when applicable.
+           target      (:target transform)
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
