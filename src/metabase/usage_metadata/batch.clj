@@ -3,8 +3,6 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.queries.models.query :as query-model]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
@@ -90,46 +88,14 @@
                          [:<  :started_at (utc-day-end bucket-date)]]
               :group-by [:hash]}))
 
-(defn- query-database-id [stored-query]
-  (let [stage-0       (first (:stages stored-query))
-        legacy-query  (:query stored-query)
-        source-table  (or (:source-table stage-0)
-                          (:source-table legacy-query))
-        source-card   (or (:source-card stage-0)
-                          (:source-card legacy-query))
-        {:keys [database-id table-id]} (try
-                                         (query-model/query->database-and-table-ids stored-query)
-                                         (catch Throwable e
-                                           (log/debug e "usage-metadata: query->database-and-table-ids failed")
-                                           nil))]
-    (or (:database stored-query)
-        database-id
-        (when source-table
-          (t2/select-one-fn :db_id :model/Table :id source-table))
-        (when-let [source-card source-card]
-          (t2/select-one-fn :database_id :model/Card :id source-card))
-        (when table-id
-          (t2/select-one-fn :db_id :model/Table :id table-id)))))
-
 (defn- add-skip [stats reason n]
   (update-in stats [:skipped-rows reason] (fnil + 0) n))
 
-(defn- normalize-query [stored-query]
-  (when-let [database-id (query-database-id stored-query)]
-    (lib/query (lib-be/application-database-metadata-provider database-id)
-               stored-query)))
-
 (defn- query->facts [stored-query]
-  (let [normalized-query (try
-                           (normalize-query stored-query)
-                           (catch Throwable _
-                             ::normalize-error))]
+  (let [normalized-query (lib-be/normalize-query stored-query)]
     (cond
-      (= normalized-query ::normalize-error)
+      (empty? normalized-query)
       {:status :skip, :reason :normalize-error}
-
-      (nil? normalized-query)
-      {:status :skip, :reason :missing-database-id}
 
       (nil? (usage-metadata.extract/select-root-owner normalized-query))
       {:status :skip, :reason :unsupported-query}
