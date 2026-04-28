@@ -240,7 +240,7 @@
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
               (metabot/log-ai-usage!
-               {:source             "oss-sql-gen"
+               {:source             "sql-gen"
                 :model              (:model usage)
                 :prompt-tokens      (:prompt usage)
                 :completion-tokens  (:completion usage)})

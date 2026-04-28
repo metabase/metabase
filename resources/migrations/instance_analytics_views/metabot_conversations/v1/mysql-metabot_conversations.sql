@@ -21,6 +21,22 @@ SELECT
        AND mm.deleted_at IS NULL
      ORDER BY mm.created_at
      LIMIT 1)                                                         AS profile_id,
+    (SELECT CASE mm.profile_id
+                WHEN 'internal'                  THEN 'Internal'
+                WHEN 'embedding_next'            THEN 'Embedding'
+                WHEN 'nlq'                       THEN 'NLQ'
+                WHEN 'sql'                       THEN 'SQL'
+                WHEN 'slackbot'                  THEN 'Slackbot'
+                WHEN 'transforms_codegen'        THEN 'Transforms codegen'
+                WHEN 'document-generate-content' THEN 'Documents'
+                ELSE mm.profile_id
+            END
+     FROM metabot_message mm
+     WHERE mm.conversation_id = c.id
+       AND mm.role = 'assistant'
+       AND mm.deleted_at IS NULL
+     ORDER BY mm.created_at
+     LIMIT 1)                                                         AS profile_name,
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id
@@ -33,6 +49,20 @@ SELECT
      WHERE aul.conversation_id = c.id
      ORDER BY aul.created_at
      LIMIT 1)                                                         AS source,
+    (SELECT CASE aul.source
+                WHEN 'metabot_agent'                     THEN 'Metabot'
+                WHEN 'document_generate_content'         THEN 'Documents'
+                WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
+                WHEN 'slack'                             THEN 'Slackbot'
+                WHEN 'slackbot'                          THEN 'Slackbot'
+                WHEN 'oss-sql-gen'                       THEN 'SQL'
+                WHEN 'sql-gen'                           THEN 'SQL'
+                ELSE 'Unknown'
+            END
+     FROM ai_usage_log aul
+     WHERE aul.conversation_id = c.id
+     ORDER BY aul.created_at
+     LIMIT 1)                                                         AS source_name,
     c.ip_address                                                      AS ip_address,
     MAX(a.tenant_id)                                                  AS tenant_id,
     MAX(t.name)                                                       AS tenant_name,
