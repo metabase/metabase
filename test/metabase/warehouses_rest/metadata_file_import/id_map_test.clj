@@ -1,4 +1,4 @@
-(ns metabase.warehouses-rest.metadata-file-import.id-map-test
+(ns ^:parallel metabase.warehouses-rest.metadata-file-import.id-map-test
   (:require
    [clojure.test :refer :all]
    [metabase.warehouses-rest.metadata-file-import.id-map :as id-map]))
