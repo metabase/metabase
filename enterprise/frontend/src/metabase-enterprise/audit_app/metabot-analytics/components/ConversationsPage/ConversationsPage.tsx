@@ -9,26 +9,39 @@ import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/Met
 import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
-import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
+import {
+  ALL_USERS_SYNTHETIC,
+  ConversationFilters,
+  useFilterOptions,
+} from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
 
 export function ConversationsPage({ location }: WithRouterProps) {
   const [
-    { page, sort_column, sort_direction, date, user, group, tenant },
+    {
+      page,
+      sort_column,
+      sort_direction,
+      date,
+      user,
+      group: groupParam,
+      tenant,
+    },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
   const {
     userId,
+    group,
     groupId,
     tenantId,
     userOptions,
     groupOptions,
     tenantOptions,
     hasTenants,
-  } = useFilterOptions({ date, user, group, tenant });
+  } = useFilterOptions({ date, user, group: groupParam, tenant });
 
   const {
     data: conversationsData,
@@ -68,7 +81,12 @@ export function ConversationsPage({ location }: WithRouterProps) {
             user={user}
             onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             group={group}
-            onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+            onGroupChange={(val) =>
+              patchUrlState({
+                group: val === ALL_USERS_SYNTHETIC ? null : val,
+                page: 0,
+              })
+            }
             tenant={tenant}
             onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
             userOptions={userOptions}

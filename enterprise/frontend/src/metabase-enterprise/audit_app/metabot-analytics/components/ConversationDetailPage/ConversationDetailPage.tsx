@@ -58,12 +58,10 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
   const chatMessages = useMemo(() => {
     const isSlackbot =
-      conversation.profile_id === "slackbot" ||
-      conversation.profile_id === "slack";
-
-    return isSlackbot
-      ? (conversation.chat_messages ?? []).map(convertSlackChatMessage)
-      : (conversation.chat_messages ?? []);
+      conversation?.profile_id === "slackbot" ||
+      conversation?.profile_id === "slack";
+    const msgs = conversation?.chat_messages ?? [];
+    return isSlackbot ? msgs.map(convertSlackChatMessage) : msgs;
   }, [conversation]);
 
   if (isLoading || error) {

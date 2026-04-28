@@ -7,11 +7,13 @@ import { deserializeDateParameterValue } from "metabase/querying/parameters/util
 import { getUserName } from "metabase/utils/user";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { GroupListQuery } from "metabase-types/api";
 
 import type { FilterUrlState } from "./url-state";
 
 export const DEFAULT_DATE = "past30days";
 export const DEFAULT_GROUP = "1"; // All Users group
+export const ALL_USERS_SYNTHETIC = "all";
 
 export const DEFAULT_DATE_FILTER: DateFilterValue = {
   type: "relative",
@@ -32,6 +34,31 @@ export function parseDateFilter(date: string | null): DateFilterValue {
   return (
     (date ? deserializeDateParameterValue(date) : null) ?? DEFAULT_DATE_FILTER
   );
+}
+
+function sortGroupsTenantsEnabled(
+  groups: readonly GroupListQuery[],
+): GroupListQuery[] {
+  const internal = groups.filter(
+    (g) => g.magic_group_type === "all-internal-users",
+  );
+  const external = groups.filter(
+    (g) => g.magic_group_type === "all-external-users",
+  );
+  const rest = groups.filter(
+    (g) =>
+      g.magic_group_type !== "all-internal-users" &&
+      g.magic_group_type !== "all-external-users",
+  );
+  return [...internal, ...external, ...rest];
+}
+
+function sortGroupsTenantsDisabled(
+  groups: readonly GroupListQuery[],
+): GroupListQuery[] {
+  const defaultGroup = groups.filter((g) => String(g.id) === DEFAULT_GROUP);
+  const rest = groups.filter((g) => String(g.id) !== DEFAULT_GROUP);
+  return [...defaultGroup, ...rest];
 }
 
 export function useFilterOptions({
@@ -57,14 +84,18 @@ export function useFilterOptions({
   );
 
   const groupOptions = useMemo(() => {
-    const groups = (groupsData ?? []).map((g) => ({
+    const rawGroups = groupsData ?? [];
+    const ordered = tenantsFeatureEnabled
+      ? sortGroupsTenantsEnabled(rawGroups)
+      : sortGroupsTenantsDisabled(rawGroups);
+    const options = ordered.map((g) => ({
       value: String(g.id),
       label: g.name,
     }));
-    const defaultGroup = groups.find((g) => g.value === DEFAULT_GROUP);
-    const rest = groups.filter((g) => g.value !== DEFAULT_GROUP);
-    return defaultGroup ? [defaultGroup, ...rest] : groups;
-  }, [groupsData]);
+    return tenantsFeatureEnabled
+      ? [{ value: ALL_USERS_SYNTHETIC, label: t`All users` }, ...options]
+      : options;
+  }, [groupsData, tenantsFeatureEnabled]);
 
   const tenantOptions = useMemo(
     () =>
@@ -79,12 +110,18 @@ export function useFilterOptions({
 
   const dateFilter = useMemo(() => parseDateFilter(date), [date]);
   const userId = parseId(user);
-  const groupId = group === DEFAULT_GROUP ? undefined : parseId(group);
+  const noFilterSentinel = tenantsFeatureEnabled
+    ? ALL_USERS_SYNTHETIC
+    : DEFAULT_GROUP;
+  const resolvedGroup = group ?? noFilterSentinel;
+  const groupId =
+    resolvedGroup === noFilterSentinel ? undefined : parseId(resolvedGroup);
   const tenantId = hasTenants ? parseId(tenant) : undefined;
 
   return {
     dateFilter,
     userId,
+    group: resolvedGroup,
     groupId,
     tenantId,
     userOptions,

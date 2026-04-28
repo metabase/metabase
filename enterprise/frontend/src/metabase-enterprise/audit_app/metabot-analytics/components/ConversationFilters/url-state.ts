@@ -4,7 +4,7 @@ import {
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
 
-import { DEFAULT_DATE, DEFAULT_GROUP } from "./useFilterOptions";
+import { DEFAULT_DATE } from "./useFilterOptions";
 
 export type FilterUrlState = {
   date: string | null;
@@ -22,13 +22,13 @@ export const filterUrlStateConfig: UrlStateConfig<FilterUrlState> = {
   parse: (query) => ({
     date: parseString(query.date) ?? DEFAULT_DATE,
     user: parseString(query.user),
-    group: parseString(query.group) ?? DEFAULT_GROUP,
+    group: parseString(query.group),
     tenant: parseString(query.tenant),
   }),
   serialize: ({ date, user, group, tenant }) => ({
     date: date === DEFAULT_DATE ? undefined : (date ?? undefined),
     user: user ?? undefined,
-    group: group === DEFAULT_GROUP ? undefined : (group ?? undefined),
+    group: group ?? undefined,
     tenant: tenant ?? undefined,
   }),
 };
