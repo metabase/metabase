@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -221,7 +222,7 @@ saved later when it is ready."
   ([card]
    (populate-result-metadata card nil))
 
-  ([{query :dataset_query :as card} changes]
+  ([{query :dataset_query metadata :result_metadata :as card} changes]
    (-> (cond
          ;; not updating the query => no-op
          (and (not-empty changes)
@@ -230,8 +231,16 @@ saved later when it is ready."
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
 
+         (and mi/*deserializing?*
+              (= (:type card) :model)
+              metadata
+              (not (= (:type query) :native)))
+         (do (log/debug "Deserializing model: re-inferring result_metadata with stripped YAML as overrides")
+             (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))
+
          ;; changing the metadata => use that metadata, but replace any placeholder idents in it.
-         (and (not-empty changes) (contains? changes :result_metadata))
+         (or (and (not-empty changes) (contains? changes :result_metadata))
+             (and (empty? changes) metadata))
          (do
            (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
            card)
@@ -250,6 +259,6 @@ saved later when it is ready."
          :else
          (do
            (log/debug "Attempting to infer result metadata for Card")
-           (update card :result_metadata merge-metadata (infer-metadata-with-model-overrides query card))))
+           (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
        ;; now normalize the result metadata as needed so it passes the output schema check
        (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))
