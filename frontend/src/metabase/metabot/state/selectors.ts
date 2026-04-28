@@ -15,7 +15,11 @@ import {
   type MetabotProfileId,
 } from "../constants";
 
-import type { MetabotAgentId, MetabotUserChatMessage } from "./types";
+import type {
+  MetabotAgentId,
+  MetabotChatMessage,
+  MetabotUserChatMessage,
+} from "./types";
 
 /*
  * Top Level Selectors
@@ -114,6 +118,29 @@ export const getActiveToolCalls = createSelector(
 
 export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
+);
+
+const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
+  messages.reduce<MetabotChatMessage[][]>((turns, m) => {
+    if (m.role === "user" || turns.length === 0) {
+      turns.push([m]);
+    } else {
+      turns[turns.length - 1].push(m);
+    }
+    return turns;
+  }, []);
+
+export const getFinalNavigateToMessageIdsPerTurn = createSelector(
+  getMessages,
+  (messages) =>
+    new Set(
+      splitByTurn(messages).flatMap((turn) => {
+        const lastNav = turn.findLast(
+          (m) => m.type === "data_part" && m.part.type === "navigate_to",
+        );
+        return lastNav ? [lastNav.id] : [];
+      }),
+    ),
 );
 
 export const getAgentErrorMessages = createSelector(

@@ -47,7 +47,6 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
   match(message)
     .with({ type: "text" }, () => true)
     .with({ type: "action" }, () => true)
-    .with({ type: "chart" }, () => true)
     .with({ type: "data_part" }, ({ part }) => isUserVisibleDataPart(part))
     .with({ type: "tool_call" }, () => false)
     .exhaustive();
