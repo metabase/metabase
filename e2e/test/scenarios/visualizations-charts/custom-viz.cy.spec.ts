@@ -1798,6 +1798,59 @@ describe("sandbox", () => {
       payload: "var c = navigator.clipboard;",
       errorPattern: blockedPattern(/API call: Navigator\.get clipboard/),
     },
+    {
+      // Hits createElementDistortion's BLOCKED_TAGS — different code path
+      // and different error format ("blocked createElement: <tag>") from
+      // the API-call cases above.
+      name: 'createElement("script")',
+      payload: 'document.createElement("script");',
+      errorPattern: blockedPattern(/createElement: script/),
+    },
+    // `eval` / `new Function(...)` Near membrane allows these in the sandbox, but
+    // it still catches anything they evaluate (e.g. `eval('window.fetch(...)')` triggers the fetch
+    // distortion), so it's not an escape — just not blocked at access.
+    {
+      name: "eval-evaluated fetch",
+      payload:
+        "eval('window.fetch(\"/api/canary-should-be-blocked-by-sandbox\")');",
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "XMLHttpRequest",
+      payload: "new XMLHttpRequest();",
+      errorPattern: blockedPattern(/API call: window\.XMLHttpRequest/),
+    },
+    {
+      name: "document.cookie setter",
+      payload: 'document.cookie = "${document.cookie}stolen=1;";',
+      errorPattern: blockedPattern(/API call: set cookie/),
+    },
+    {
+      name: "window.open",
+      payload: 'window.open("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.open/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "document.write",
+      payload: 'document.write("<p>injected</p>");',
+      errorPattern: blockedPattern(/API call: Document\.write/),
+    },
   ];
 
   it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(
