@@ -1340,6 +1340,63 @@
   [conn username]
   (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
 
+(defn- public-create-grant?
+  "True if `schema-name` grants CREATE to the PUBLIC pseudo-role on PostgreSQL.
+
+   When this is the case, REVOKE-ing CREATE from the workspace user is a no-op:
+   the user still inherits CREATE through PUBLIC, can create tables in input
+   schemas, and the resulting orphaned objects make `DROP USER` fail at
+   deprovisioning time. Workspace isolation can't enforce read-only on input
+   schemas in this state.
+
+   Historical default on PostgreSQL ≤14; PostgreSQL 15 changed the default to
+   drop CREATE for PUBLIC on `public`. Redshift uses a different check (see
+   the redshift driver) because it can't cast `aclitem[]` to text."
+  [conn schema-name]
+  (let [{:keys [acl]} (first (jdbc/query conn ["SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname = ?" schema-name]))]
+    (boolean
+     (when (and acl (> (count acl) 1))
+       ;; nspacl text form: `{<grantee>=<perms>/<grantor>,...}`. PUBLIC entries
+       ;; have an empty grantee, so they appear as `=<perms>/<grantor>` after
+       ;; the opening `{` or after a comma.
+       (re-find #"(?:^\{|,)=[^/]*C" acl)))))
+
+(defn raise-public-create-grant!
+  "Throw the standard ex-info for the public-CREATE-grant pre-condition. Shared
+   between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
+   own check via `SVV_SCHEMA_PRIVILEGES`)."
+  [schema-name]
+  (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC; workspace isolation cannot "
+                               "enforce input-schema read-only until this is revoked. Run:\n\n"
+                               "    REVOKE CREATE ON SCHEMA %s FROM PUBLIC;\n\n"
+                               "then retry workspace provisioning.")
+                          schema-name schema-name)
+                  {:status-code 412
+                   :schema schema-name})))
+
+(defn assert-no-public-create-grant!
+  "Throws when `schema-name` has CREATE granted to PUBLIC on PostgreSQL. Called
+   from `grant-workspace-read-access!` for each input schema being granted —
+   we want this check per-schema (only the schemas actually used as inputs
+   matter), not a blanket check on `public` at init time."
+  [conn schema-name]
+  (when (public-create-grant? conn schema-name)
+    (raise-public-create-grant! schema-name)))
+
+;;; Isolation limit, checked at grant time in [[grant-workspace-read-access!]] via
+;;; [[assert-no-public-create-grant!]]: PostgreSQL's permission model lets a user
+;;; receive privileges either directly or through PUBLIC (the implicit pseudo-role
+;;; every login is a member of). REVOKE-ing CREATE from a specific user only
+;;; removes their *direct* grant — it can't override a PUBLIC grant. So if any
+;;; input schema (most commonly `public` itself, on PostgreSQL ≤14 where that
+;;; was the default) grants CREATE to PUBLIC, the workspace user inherits it
+;;; transitively and our isolation contract leaks: the user can create tables
+;;; in input schemas, becoming their owner, which then makes `DROP USER` fail
+;;; at deprovisioning. The probe at grant time fails fast with a 412 so the
+;;; cluster admin can run `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before
+;;; retrying. PostgreSQL 15+ removed the permissive default on `public`, so
+;;; fresh PG15 clusters typically pass; PG14 and earlier need the manual revoke.
+
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
   (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
@@ -1386,6 +1443,14 @@
         qu             (sql.u/quote-name :postgres :field username)
         ;; Collect all unique source schemas that contain the tables we need to grant access to
         source-schemas (into #{} (keep :schema) tables)
+        ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
+        ;; the comment block above [[init-workspace-isolation! :postgres]] for the
+        ;; isolation hole this catches. We probe per-schema so only the schemas
+        ;; actually used as inputs need to be locked down — schemas the workspace
+        ;; never touches can keep their default ACLs.
+        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+                         (doseq [s source-schemas]
+                           (assert-no-public-create-grant! check-conn s)))
         ;; Grant USAGE on source schemas, then SELECT on each table
         ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
         sqls           (concat
