@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [malli.util :as mut]
    [metabase.agent-api.validation :as agent-api.validation]
-   [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -369,14 +368,21 @@
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
-(mr/def ::program-request
-  "Request body for /v2/query.
-  An agent-lib structured program with `:source` and `:operations`. The top-level
-  `:source` must reference a database entity (`table`, `card`, `dataset`, or
-  `metric`); `context` and nested `program` sources are rejected at the HTTP
-  boundary by [[evaluate-program-for-execution]] because they require an
-  in-process evaluation context."
-  agent-lib/program-schema)
+(mr/def ::construct-query-request
+  "Request body for /v2/construct-query and the fresh-query branch of /v2/query.
+  A single `:query` key whose value is a YAML string in the canonical Metabase MBQL 5
+  representations format. The YAML is fully self-describing: the database is derived from
+  the first stage's `source-table:` or `source-card:`, all field references are portable
+  FKs (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary
+  `source_entity` / `referenced_entities` envelope. See
+  `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference
+  (including operators, joins, expressions, multi-stage queries, and FK conventions)."
+  [:map
+   [:query {:tool/description (str "A YAML string containing a Metabase MBQL 5 query in the "
+                                   "canonical representations format \u2014 see the "
+                                   "construct_notebook_query tool documentation for the format "
+                                   "reference.")}
+    ms/NonBlankString]])
 
 (def ^:private construct-query-prompt-max-length
   10000)
@@ -405,175 +411,43 @@
    [:query ms/NonBlankString]
    [:prompt {:optional true} ConstructQueryPrompt]])
 
-(def ^:private allowed-program-source-types
-  "Top-level program source types that the HTTP boundary accepts. `context` and
-  nested `program` sources require an in-process evaluation context and are
-  rejected here."
-  #{"table" "card" "dataset" "metric"})
+(defn- evaluate-yaml-to-live-query
+  "Run the representations pipeline (parse \u2192 repair \u2192 validate \u2192 resolve) on a YAML
+  request body and return the resolved MBQL 5 lib query (with `:lib/metadata` attached).
+  The pipeline raises `:agent-error?` ex-data on any LLM-input failure (unknown DB,
+  unknown table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]]
+  surfaces them with the appropriate 4xx status code instead of a 500."
+  [body]
+  (-> (metabot-construct/execute-representations-query (:query body))
+      (get-in [:structured-output :query])))
 
-(def ^:private construct-query-tool-description
-  "User-facing description for the `construct_query` MCP tool. Tuned to give the
-  LLM enough structure to produce valid programs without reproducing the full
-  reference — covers the program shape, canonical operator names, reference forms,
-  and a few worked examples spanning the common patterns."
-  (str
-   "Construct a Metabase MBQL query from a structured program. The body structure is:\n"
-   "`{\"source\": {...}, \"operations\": [...]}`\n"
-   "For MCP calls, include `\"prompt\": \"<user's exact original message>\"` whenever you have the user's message; do not summarize or modify it.\n"
-   "Returns `{\"query_handle\": \"<uuid>\"}` — pass it as `query_handle` to `execute_query` or `visualize_query`.\n"
-   "For the full reference, read the `metabase://docs/construct-query.md` MCP resource.\n"
-   "\n"
-   "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
-   "Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, "
-   "but the canonical names below always work.\n"
-   "\n"
-   "## Workflow\n"
-   "1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.\n"
-   "2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. You get back `{\"query_handle\": \"<uuid>\"}`.\n"
-   "3. Pass that handle to `execute_query` or `visualize_query` as `query_handle`.\n"
-   "Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.\n"
-   "\n"
-   "## Source\n"
-   "One of `{\"type\": T, \"id\": N}`:\n"
-   "- `table` — a database table\n"
-   "- `card` — a saved question\n"
-   "- `dataset` — a model (model card id)\n"
-   "- `metric` — a metric (supplies its own aggregation and time dimension; extra aggregates usually unnecessary)\n"
-   "\n"
-   "## Top-level operations (applied in order)\n"
-   "Each operation is `[\"op\", arg, ...]`:\n"
-   "- `[\"filter\", clause]` — add a filter\n"
-   "- `[\"aggregate\", agg-clause]` — add an aggregation\n"
-   "- `[\"breakout\", ref-or-bucketed]` — add a grouping dimension\n"
-   "- `[\"expression\", \"Name\", expr]` — define a named computed column (reference later with `expression-ref`)\n"
-   "- `[\"with-fields\", [refs...]]` — restrict returned columns\n"
-   "- `[\"order-by\", ref]` or `[\"order-by\", ref, \"asc\"|\"desc\"]` — sort\n"
-   "- `[\"limit\", N]` — cap rows\n"
-   "- `[\"join\", join-clause]` — join another entity\n"
-   "- `[\"append-stage\"]` — start a new query stage (needed to filter on aggregated values)\n"
-   "- `[\"with-page\", {\"page\": N, \"items\": M}]` — paginate\n"
-   "\n"
-   "## References (used as arguments inside operations)\n"
-   "- `[\"field\", N]` — database field by id. Do NOT put options in a third slot (no `[\"field\", id, {...}]`); wrap instead\n"
-   "- `[\"expression-ref\", \"Name\"]` — a named expression defined earlier\n"
-   "- `[\"aggregation-ref\", N]` — the Nth `aggregate` defined earlier (0-based). REQUIRED when sorting by an aggregated value\n"
-   "- `[\"measure\", N]` — a pre-defined measure on the source entity\n"
-   "- `[\"with-temporal-bucket\", ref, unit]` — temporal bucketing. `unit` is one of: `minute` `hour` `day` `week` `month` `quarter` `year`. Also `day-of-week`, `hour-of-day`, etc. (extraction aliases)\n"
-   "- `[\"with-binning\", ref, {\"strategy\": \"num-bins\"|\"bin-width\"|\"default\", ...}]` — numeric binning. E.g. `{\"strategy\": \"num-bins\", \"num-bins\": 10}`\n"
-   "\n"
-   "## Filter operators\n"
-   "`=`, `!=`, `<`, `<=`, `>`, `>=`, `between`, `in`, `not-in`, `is-null`, `not-null`, `is-empty`, `not-empty`, "
-   "`contains`, `does-not-contain`, `starts-with`, `ends-with`, `time-interval`, `and`, `or`, `not`, `segment`.\n"
-   "Examples: `[\"=\", [\"field\", 101], \"active\"]`, `[\"between\", [\"field\", 305], \"2024-01-01\", \"2024-12-31\"]`, "
-   "`[\"in\", [\"field\", 302], [10, 20, 30]]`, `[\"time-interval\", [\"field\", 305], -7, \"day\"]`.\n"
-   "\n"
-   "## Aggregation operators\n"
-   "`count`, `sum`, `avg`, `min`, `max`, `distinct`, `median`, `stddev`, `var`, `percentile`, "
-   "`count-where`, `sum-where`, `distinct-where`, `share`, `cum-count`, `cum-sum`. "
-   "Examples: `[\"count\"]`, `[\"sum\", [\"field\", 302]]`, `[\"count-where\", [\"=\", [\"field\", 101], \"completed\"]]`.\n"
-   "\n"
-   "## Temporal helpers (for use in `expression` or as grouping)\n"
-   "`get-year`, `get-quarter`, `get-month`, `get-week`, `get-day`, `get-day-of-week`, `get-hour`, `get-minute`, "
-   "`datetime-add`, `datetime-diff`, `datetime-subtract`, `now`, `today`, `relative-datetime`, `absolute-datetime`, "
-   "`with-temporal-bucket`, `convert-timezone`.\n"
-   "\n"
-   "## Examples\n"
-   "Top 5 customers by revenue:\n"
-   "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
-   " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
-   "                [\"breakout\", [\"field\", 101]],\n"
-   "                [\"order-by\", [\"aggregation-ref\", 0], \"desc\"],\n"
-   "                [\"limit\", 5]]}\n"
-   "```\n"
-   "Monthly revenue from a metric (metric supplies the aggregation):\n"
-   "```\n"
-   "{\"source\": {\"type\": \"metric\", \"id\": 10},\n"
-   " \"operations\": [[\"breakout\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"]],\n"
-   "                [\"order-by\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"], \"asc\"]]}\n"
-   "```\n"
-   "Filter on an aggregated value (requires `append-stage`):\n"
-   "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
-   " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
-   "                [\"breakout\", [\"field\", 101]],\n"
-   "                [\"append-stage\"],\n"
-   "                [\"filter\", [\">\", [\"aggregation-ref\", 0], 1000]]]}\n"
-   "```\n"
-   "Named expression referenced later:\n"
-   "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
-   " \"operations\": [[\"expression\", \"Discount\", [\"-\", [\"field\", 302], [\"field\", 303]]],\n"
-   "                [\"aggregate\", [\"sum\", [\"expression-ref\", \"Discount\"]]]]}\n"
-   "```\n"
-   "Previous-period comparison with `offset` (stay in the SAME stage — do NOT add `append-stage`):\n"
-   "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
-   " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
-   "                [\"aggregate\", [\"offset\", [\"sum\", [\"field\", 302]], -1]],\n"
-   "                [\"breakout\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"]]]}\n"
-   "```\n"
-   "\n"
-   "## Rules & common pitfalls\n"
-   "Stage boundaries (most common source of errors):\n"
-   "- Filtering on an aggregated value REQUIRES `append-stage` between the aggregate/breakout and the filter "
-   "(see the \"filter on aggregated value\" example). Without it, `aggregation-ref` resolution fails in the same stage.\n"
-   "- Defining an `expression` that uses `aggregation-ref` also REQUIRES `append-stage` first.\n"
-   "- EXCEPTION: `offset` (previous-period comparison) stays in the same stage as its base aggregation and breakout — do NOT add `append-stage` for it.\n"
-   "\n"
-   "Refs & shapes:\n"
-   "- Aggregation helpers take field refs, not bare IDs: `[\"sum\", [\"field\", 201]]`, never `[\"sum\", 201]`.\n"
-   "- To sort by an aggregated value, use `[\"aggregation-ref\", N]` — not the original expression.\n"
-   "- Do NOT put options in a third slot of `field` (no `[\"field\", id, {...}]`). Wrap instead: `[\"with-temporal-bucket\", [\"field\", id], \"month\"]` or `[\"with-binning\", [\"field\", id], {...}]`.\n"
-   "- `case` takes `[[condition, value], ...]` branches and an optional bare fallback as the THIRD arg — do not wrap it as `{\"default\": ...}`. Omit the third arg when there is no fallback.\n"
-   "- JSON objects appear only where a helper explicitly calls for one (e.g. `with-page`, `with-binning`). Everywhere else, use operator tuples.\n"
-   "\n"
-   "Joins & related tables:\n"
-   "- If the source table's detail response already surfaces a related table's fields, use those field refs directly — no explicit join needed.\n"
-   "- Reach for `join` + `with-join-conditions` only for custom aliases, self-joins, explicit joined-field selection, or when direct related-field refs are unavailable.\n"
-   "- If an explicit join returns a permission error, the underlying table is not accessible — surface the error, do not retry with implicit refs.\n"
-   "\n"
-   "Metrics & dates:\n"
-   "- A `metric` source already provides its own aggregation and time dimension. Add only the additional breakouts/filters you need.\n"
-   "- When the user asks for an exact year (e.g. 2024), use `[\"=\", [\"field\", year_field], 2024]` or a `between` with explicit dates — not relative filters like `time-interval`.\n"))
-
-(defn- evaluate-program-to-live-query
-  "Resolve a program's source entity, evaluate the program via agent-lib, and return
-  the live lib query (with lib metadata attached)."
-  [program]
-  (let [source-type (get-in program [:source :type])]
-    (api/check (contains? allowed-program-source-types source-type)
-               [400 (str "top-level program source must be one of: "
-                         (str/join ", " (sort allowed-program-source-types)))]))
-  (let [source-entity (metabot-construct/program-source->source-entity (:source program))
-        result        (metabot-construct/execute-program source-entity nil program)]
-    (get-in result [:structured-output :query])))
-
-(defn- evaluate-program-for-execution
-  "Evaluate a program and return a plain MBQL 5 query map suitable for serialization
-  into a continuation token and execution by the QP."
-  [program]
-  (lib/prepare-for-serialization (evaluate-program-to-live-query program)))
+(defn- evaluate-yaml-for-execution
+  "Evaluate a YAML request body and return a plain MBQL 5 query map suitable for
+  serialization into a continuation token and execution by the QP."
+  [body]
+  (lib/prepare-for-serialization (evaluate-yaml-to-live-query body)))
 
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
-  "Construct an MBQL query from a structured agent-lib program.
+  "Construct an MBQL query from a Metabase representations YAML string.
 
-  The body is the program itself: a JSON object with `source` (identifying the
-  table/card/dataset/metric to query), `operations` (an array of operator
-  tuples), and `prompt` (the user's original request). Returns a base64-encoded
-  MBQL query that can be executed via /v1/execute. See the agent_api reference
-  for the full program syntax."
+  The body is `{\"query\": \"<yaml>\"}` where the YAML is a self-describing MBQL 5 query
+  in the canonical representations format \u2014 see the `construct_notebook_query` tool
+  documentation for the format reference. Returns a base64-encoded MBQL query that can be
+  executed via /v1/execute or paginated via /v2/query."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description construct-query-tool-description
+           :description (str "Construct a Metabase query from a YAML string in the canonical "
+                             "representations format. The body is `{\"query\": \"<yaml>\"}`; "
+                             "see the construct_notebook_query tool for the YAML format "
+                             "reference (operators, joins, expressions, multi-stage queries, "
+                             "portable FKs). Returns an opaque query string that can be "
+                             "executed with execute_query.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   {:keys [prompt] :as request} :- ::construct-query-request]
-  (let [program (dissoc request :prompt)
-        query   (evaluate-program-for-execution program)]
-    (cond-> {:query (-> query json/encode u/encode-base64)}
-      prompt (assoc :prompt prompt))))
+   body :- ::construct-query-request]
+  (let [query (evaluate-yaml-for-execution body)]
+    {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -657,40 +531,44 @@
                        :max-results-bare-rows page-size}))
 
 (mr/def ::query-request
-  "Request body for /v2/query. Accepts either a structured program or a continuation_token."
+  "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <yaml>}`,
+  same shape as /v2/construct-query) or a `:continuation_token` from a prior response."
   [:multi {:dispatch (fn [m]
-                       (if (:continuation_token m) :continuation :program))}
+                       (if (:continuation_token m) :continuation :fresh))}
    [:continuation [:map [:continuation_token ms/NonBlankString]]]
-   [:program      ::program-request]])
+   [:fresh        ::construct-query-request]])
 
 (defn- initial-page-state
   "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
-   shape. A fresh program evaluates the user's program and computes a total-row budget
-   from its `:limit`; a continuation token carries that state from a prior response."
+   shape. A fresh YAML body is evaluated through the representations pipeline and the
+   total-row budget is derived from the resolved query's `:limit`; a continuation token
+   carries that state from a prior response."
   [body]
   (if-let [token (:continuation_token body)]
     (let [{:keys [query pagination]} (decode-continuation-token token)]
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
-    (let [live-query (evaluate-program-to-live-query body)]
+    (let [live-query (evaluate-yaml-to-live-query body)]
       {:query       (lib/prepare-for-serialization live-query)
        :total-limit (total-row-limit live-query)
        :page        1})))
 
 (api.macros/defendpoint :post "/v2/query"
   :- (streaming-response/streaming-response-schema ::query-response)
-  "Execute a structured program and stream the results, with continuation-token pagination.
+  "Execute a representations YAML query and stream the results, with continuation-token pagination.
 
-  Accepts either a program (same shape as /v2/construct-query) or a
-  `continuation_token` from a previous response. Returns results with column
-  metadata and an optional `continuation_token` for fetching the next page."
+  Accepts either a YAML body (same shape as /v2/construct-query) or a `continuation_token`
+  from a previous response. Returns results with column metadata and an optional
+  `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
            :title "Query Tables and Metrics"
-           :description (str "Execute a structured program and return results with column metadata. "
-                             "If more rows are available the response includes a continuation_token "
-                             "— pass it back to fetch the next page. Body is either a program (same "
-                             "shape as construct_query) or {\"continuation_token\": \"...\"}. See the "
-                             "`metabase://docs/construct-query.md` resource for program syntax.")
+           :description (str "Execute a Metabase query and return results with column "
+                             "metadata. If more rows are available, the response includes a "
+                             "continuation_token — pass it back to get the next page.\n\n"
+                             "The body is either `{\"query\": \"<yaml>\"}` (a representations "
+                             "YAML query, same format as construct_query; see the "
+                             "construct_notebook_query tool for the YAML format reference) or "
+                             "`{\"continuation_token\": \"...\"}` from a previous response.")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params

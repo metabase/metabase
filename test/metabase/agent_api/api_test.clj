@@ -252,57 +252,88 @@
   [response]
   (-> response :query u/decode-base64 json/decode+kw lib.normalize/normalize))
 
+;;; ---------------------------------------- Repr YAML helpers ----------------------------------------
+
+(defn- db-name
+  "Canonical name of the application database \u2014 the literal string the LLM is expected
+  to put as the first element of every portable FK in a representations YAML query."
+  []
+  (t2/select-one-fn :name :model/Database (mt/id)))
+
+(defn- yaml-list-lines
+  "Render a clause-list YAML block (e.g. `aggregation:`, `filters:`) given pre-formatted
+  scalar lines. `nil` collapses to empty string so callers can `(when items ...)` inline."
+  [k items]
+  (when (seq items)
+    (apply str (str "    " k ":\n")
+           (map #(str "      - " % "\n") items))))
+
+(defn- orders-yaml
+  "Build a representations YAML query against the `ORDERS` table in the application database.
+  All clause arguments are inline YAML scalar strings to keep tests compact, e.g.
+
+      (orders-yaml :limit 10)
+      (orders-yaml :aggregation [\"[count, {}]\"])
+      (orders-yaml :filters     [(orders-not-null-id-filter)])
+
+  This is intentionally a thin string builder \u2014 the structural validation lives in
+  `metabase.agent-lib.representations` and is exercised by the repr namespaces' own tests;
+  here we just need a believable YAML payload to drive the HTTP endpoint."
+  [& {:keys [limit aggregation breakout filters order-by]}]
+  (str "lib/type: mbql/query\n"
+       "stages:\n"
+       "  - lib/type: mbql.stage/mbql\n"
+       (format "    source-table: ['%s', PUBLIC, ORDERS]\n" (db-name))
+       (yaml-list-lines "aggregation" aggregation)
+       (yaml-list-lines "breakout"    breakout)
+       (yaml-list-lines "filters"     filters)
+       (yaml-list-lines "order-by"    order-by)
+       (when limit (str "    limit: " limit "\n"))))
+
+(defn- orders-field-ref
+  "YAML-flow field ref against an ORDERS column, e.g. `[field, {}, ['test-data (h2)', PUBLIC, ORDERS, ID]]`."
+  [col-name]
+  (format "[field, {}, ['%s', PUBLIC, ORDERS, %s]]" (db-name) col-name))
+
+;;; ---------------------------------------- /v2/construct-query ----------------------------------------
+
 (deftest construct-query-test
   (testing "Constructs a simple query from a table"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations []
-                                          :prompt     "show orders"})]
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-yaml)})]
       (is (string? (:query response)) "Response should contain a query string")
-      (is (= "show orders" (:prompt response)) "Response should echo the prompt")
       (let [decoded (decode-query response)]
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
-  (testing "Does not require prompt"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations []})]
-      (is (string? (:query response)) "Response should contain a query string")
-      (is (not (contains? response :prompt)) "Response should only echo prompt when supplied")))
-
-  (testing "Rejects oversized prompts before they can be persisted on MCP query handles"
-    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
-                          {:source     {:type "table" :id (mt/id :orders)}
-                           :operations []
-                           :prompt     (apply str (repeat 10001 "x"))}))
-
-  (testing "Respects explicit limit operation"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["limit" 10]]
-                                          :prompt     "show 10 orders"})
+  (testing "Respects explicit limit on the stage"
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-yaml :limit 10)})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
 
-  (testing "Returns 404 for non-existent table"
-    (is (= "Not found."
-           (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
-                                 {:source     {:type "table" :id 999999}
-                                  :operations []
-                                  :prompt     "show orders"})))))
+  (testing "Returns 400 with `:unknown-table` ex-data for an unknown table FK"
+    ;; Note: the new repr contract surfaces unknown-input errors as 400 (`:agent-error?`)
+    ;; rather than the old 404 — the LLM is expected to read the message and self-correct.
+    ;; ex-data values are stringified by the JSON roundtrip, so we match the keyword's name.
+    (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query (str "lib/type: mbql/query\n"
+                                                      "stages:\n"
+                                                      "  - lib/type: mbql.stage/mbql\n"
+                                                      (format "    source-table: ['%s', PUBLIC, NOT_A_TABLE]\n" (db-name)))})]
+      (is (=? {:error "unknown-table"} response)))))
+
+(deftest construct-query-rejects-empty-query-test
+  (testing "Empty / blank :query is rejected by the request schema"
+    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query ""}))
+  (testing "Missing :query in body is rejected by the request schema"
+    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {})))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
-    (let [table-id       (mt/id :orders)
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id table-id}
-                                                :operations [["limit" 5]]
-                                                :prompt     "show 5 orders"})
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-yaml :limit 5)})
           ;; Streaming response returns 202 (accepted) since it starts streaming before completion
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
@@ -316,11 +347,8 @@
               execute-resp))))
 
   (testing "Enforces agent query row limit even when query specifies a higher limit"
-    (let [table-id       (mt/id :orders)
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id table-id}
-                                                :operations [["limit" 300]]
-                                                :prompt     "show all orders"})
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-yaml :limit 300)})
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
@@ -355,44 +383,41 @@
                                      :type          :metric
                                      :database_id   (mt/id)
                                      :dataset_query (orders-count-query)}]
-    (testing "Constructs a query from a metric"
+    (testing "Constructs a query that references a metric by entity_id in an aggregation"
       (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                           {:source     {:type "metric" :id (:id metric)}
-                                            :operations []
-                                            :prompt     "show metric"})]
+                                           {:query (orders-yaml
+                                                    :aggregation [(format "[metric, {}, %s]" (:entity_id metric))])})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
-          (is (= (mt/id) (lib/database-id decoded))))))
+          (is (= (mt/id) (lib/database-id decoded)))
+          (is (= 1 (count (lib/aggregations decoded)))))))
 
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
-                                   {:source     {:type "metric" :id 999999}
-                                    :operations []
-                                    :prompt     "show metric"}))))))
+    (testing "Returns 400 with `:unknown-card` ex-data for an unknown metric entity_id"
+      ;; The entity_id must be a syntactically-valid 21-char NanoID for the resolver to
+      ;; even attempt the lookup; otherwise the metric clause's literal string survives to
+      ;; lib.schema validation and we get a different (less useful) error class. Pick a
+      ;; well-formed but absent eid to drive the `:unknown-card` path specifically.
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                           {:query (orders-yaml
+                                                    :aggregation ["[metric, {}, AAAAAAAAAAAAAAAAAAAAA]"])})]
+        (is (=? {:error "unknown-card"} response))))))
 
 (deftest construct-query-with-count-aggregation-test
   (testing "Count aggregation produces a valid query"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["aggregate" ["count"]]
-                                                       ["limit" 10]]
-                                          :prompt     "count orders"})]
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-yaml :aggregation ["[count, {}]"]
+                                                              :limit 10)})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (= 1 (count (lib/aggregations decoded))))))))
 
 (deftest construct-query-with-filters-test
   (testing "Constructs a query with filters"
-    (let [table-id (mt/id :orders)
-          field-id (mt/id :orders :id)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["filter" ["not-null" ["field" field-id]]]
-                                                       ["limit" 10]]
-                                          :prompt     "show filtered orders"})]
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-yaml
+                                                  :filters [(format "[not-null, {}, %s]" (orders-field-ref "ID"))]
+                                                  :limit   10)})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
@@ -418,12 +443,9 @@
 
 (deftest combined-query-test
   (testing "Returns results for a table query that fits in a single page"
-    (let [table-id (mt/id :orders)
-          field-id (visible-field-id table-id "ID")
-          response (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["order-by" ["field" field-id]]
-                                                       ["limit" 5]]})]
+    (let [response (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                         {:query (orders-yaml :order-by [(format "[asc, {}, %s]" (orders-field-ref "ID"))]
+                                                              :limit    5)})]
       (is (=? {:status             "completed"
                :row_count          5
                :continuation_token nil?
@@ -432,14 +454,11 @@
               response))))
 
   (testing "Continuation token returns next page of results when the total limit exceeds the page size"
-    (let [table-id   (mt/id :orders)
-          field-id   (visible-field-id table-id "ID")
-          page-size  200
+    (let [page-size  200
           total-rows 250
           page1      (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                           {:source     {:type "table" :id table-id}
-                                            :operations [["order-by" ["field" field-id]]
-                                                         ["limit" total-rows]]})
+                                           {:query (orders-yaml :order-by [(format "[asc, {}, %s]" (orders-field-ref "ID"))]
+                                                                :limit    total-rows)})
           page2      (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                            {:continuation_token (:continuation_token page1)})]
       (is (=? {:row_count          page-size
@@ -458,15 +477,13 @@
     (is (=? {:status             "completed"
              :continuation_token nil?}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:source     {:type "table" :id (mt/id :orders)}
-                                   :operations [["aggregate" ["count"]]]}))))
+                                  {:query (orders-yaml :aggregation ["[count, {}]"])}))))
 
   (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:source     {:type "table" :id (mt/id :orders)}
-                                   :operations [["limit" 1000]]})))))
+                                  {:query (orders-yaml :limit 1000)})))))
 
 (defn- make-continuation-token [pagination]
   (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
@@ -493,12 +510,12 @@
                                      :type          :metric
                                      :database_id   (mt/id)
                                      :dataset_query (orders-count-query)}]
-    (testing "Returns results for a metric query"
+    (testing "Returns results for a query that aggregates via a metric reference"
       (is (=? {:status    "completed"
                :row_count pos?}
               (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                    {:source     {:type "metric" :id (:id metric)}
-                                     :operations []}))))))
+                                    {:query (orders-yaml
+                                             :aggregation [(format "[metric, {}, %s]" (:entity_id metric))])}))))))
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]

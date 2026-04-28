@@ -580,10 +580,13 @@
                                     (reset! streamed? true)
                                     (original-fn response))]
         (let [[session-id _] (initialize!)
-              construct-data (call-tool session-id "construct_query"
-                                        {:source     {:type "table" :id (mt/id :orders)}
-                                         :operations [["limit" 5]]
-                                         :prompt     "show 5 orders"})
+              db-name        (t2/select-one-fn :name :model/Database (mt/id))
+              yaml           (str "lib/type: mbql/query\n"
+                                  "stages:\n"
+                                  "  - lib/type: mbql.stage/mbql\n"
+                                  (format "    source-table: ['%s', PUBLIC, ORDERS]\n" db-name)
+                                  "    limit: 5\n")
+              construct-data (call-tool session-id "construct_query" {:query yaml})
               execute-data   (call-tool session-id "execute_query"
                                         {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
