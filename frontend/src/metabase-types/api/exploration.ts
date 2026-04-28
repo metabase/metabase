@@ -58,7 +58,7 @@ export interface ExplorationQuery {
   exploration_thread_id: ExplorationThreadId;
   name: string | null;
   card_id: CardId;
-  dimension_ids: string[];
+  dimension_id: string;
   display: string | null;
   visualization_settings: Record<string, unknown> | null;
   dataset_query: Record<string, unknown>;

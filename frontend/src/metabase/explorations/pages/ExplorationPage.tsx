@@ -40,9 +40,9 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
                             {q.name ?? t`Chart for metric ${q.card_id}`}
                           </Text>
                           <Text size="sm" c="text-secondary">
-                            {q.dimension_ids.length === 0
-                              ? t`No dimensions`
-                              : t`Breakouts: ${q.dimension_ids.join(", ")}`}
+                            {!q.dimension_id
+                              ? t`No dimension`
+                              : t`Breakouts: ${q.dimension_id}`}
                           </Text>
                         </Group>
                       </Card>
