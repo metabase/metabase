@@ -262,6 +262,50 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.83 -- unwrap boolean wrapper clauses.
+;;;
+;;; LLMs occasionally write `["true", x]` thinking of it as "wrap this clause as truthy",
+;;; or `["false", x]` as "wrap this clause as falsy". Neither has any meaning in lib; the
+;;; canonical equivalents are just `x` and `["not", {}, x]`. We unwrap when we see them.
+;;; Carried over from the sexp pipeline's `syntax/boolean-wrapper-form?` (see
+;;; `repr-deletion-followups.md` § 1.4).
+;;;
+;;; Form recognised: `["true"  {} x]` (1 arg) - unwrap to `x`.
+;;;                  `["false" {} x]` (1 arg) - rewrite to `["not" {} x]`.
+;;;
+;;; The 0-arg literal forms `["true" {}]` and `["false" {}]` (boolean literals) are NOT
+;;; touched. Multi-arg variants (≥2 args) we don't touch either - those would be
+;;; legitimate uses of the head.
+;;; ============================================================
+
+(defn- boolean-wrapper-clause?
+  "True when `node` is `[\"true\" {} x]` or `[\"false\" {} x]` - exactly one arg."
+  [node]
+  (and (vector? node)
+       (= 3 (count node))
+       (string? (nth node 0))
+       (map? (nth node 1))
+       (let [head (str/lower-case (nth node 0))]
+         (or (= head "true")
+             (= head "false")))))
+
+(defn- unwrap-boolean-wrapper [node]
+  (let [head (str/lower-case (nth node 0))
+        x    (nth node 2)]
+    (case head
+      "true"  x
+      "false" ["not" {} x])))
+
+(defn- unwrap-boolean-wrappers*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (boolean-wrapper-clause? node)
+       (unwrap-boolean-wrapper node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
 ;;; `[absolute-datetime, {}, <iso-str>, "day"]`.
 ;;;
@@ -1294,6 +1338,7 @@
   [parsed]
   (-> parsed
       ensure-clause-options*
+      unwrap-boolean-wrappers*
       unwrap-nested-field-clauses*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*

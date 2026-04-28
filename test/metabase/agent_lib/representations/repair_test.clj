@@ -259,6 +259,60 @@
     (is (= "ASC" (repair/repair trivial-mp "ASC")))))
 
 ;;; ============================================================
+;;; Pass 1.83 - unwrap boolean wrapper clauses
+;;; ============================================================
+
+(deftest unwrap-boolean-wrapper-true-test
+  (testing "[true {} x] unwraps to x"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          inner ["=" {} field "alice"]
+          input ["true" {} inner]]
+      (is (= inner (repair/repair trivial-mp input)))))
+  (testing "[true {} <bare-clause-without-options>] still unwraps after Pass 1 fills the
+           inner options"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          ;; before repair: ["true" ["=" field "alice"]] (Pass 1 fills both options).
+          input ["true" ["=" field "alice"]]]
+      (is (= ["=" {} field "alice"] (repair/repair trivial-mp input))))))
+
+(deftest unwrap-boolean-wrapper-false-test
+  (testing "[false {} x] rewrites to [not {} x]"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          inner ["=" {} field "alice"]
+          input ["false" {} inner]]
+      (is (= ["not" {} inner]
+             (repair/repair trivial-mp input))))))
+
+(deftest boolean-literal-clauses-untouched-test
+  (testing "[true {}] (0-arg boolean literal) is left alone"
+    (is (= ["true" {}] (repair/repair trivial-mp ["true" {}]))))
+  (testing "[false {}] (0-arg boolean literal) is left alone"
+    (is (= ["false" {}] (repair/repair trivial-mp ["false" {}])))))
+
+(deftest boolean-wrapper-mixed-case-test
+  (testing "case-insensitive head matching"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          inner ["=" {} field "alice"]]
+      (doseq [variant ["TRUE" "True"]]
+        (is (= inner (repair/repair trivial-mp [variant {} inner]))
+            variant))
+      (doseq [variant ["FALSE" "False"]]
+        (is (= ["not" {} inner] (repair/repair trivial-mp [variant {} inner]))
+            variant)))))
+
+(deftest boolean-wrapper-nested-test
+  (testing "nested wrapper clauses unwrap from the inside out"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          inner ["=" {} field "alice"]
+          input ["true" {} ["true" {} ["true" {} inner]]]]
+      (is (= inner (repair/repair trivial-mp input)))))
+  (testing "[false {} [true {} x]] -> [not {} x]"
+    (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
+          inner ["=" {} field "alice"]
+          input ["false" {} ["true" {} inner]]]
+      (is (= ["not" {} inner] (repair/repair trivial-mp input))))))
+
+;;; ============================================================
 ;;; Pass 1.86 - wrap bare ISO-date strings as absolute-datetime in between
 ;;; ============================================================
 
