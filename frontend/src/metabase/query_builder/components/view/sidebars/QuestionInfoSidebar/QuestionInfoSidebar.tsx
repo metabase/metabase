@@ -16,6 +16,7 @@ import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/componen
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { UpsellContentVerificationPill } from "metabase/common/components/upsells/UpsellContentVerification";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { useDispatch } from "metabase/redux";
@@ -109,6 +110,9 @@ export const QuestionInfoSidebar = ({
                     <PLUGIN_MODERATION.ModerationReviewTextForQuestion
                       question={question}
                     />
+                    {!isIAQuestion && (
+                      <UpsellContentVerificationPill source="question-info-sidebar" />
+                    )}
                   </Stack>
                 </Stack>
               </SidesheetCard>
