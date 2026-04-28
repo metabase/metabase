@@ -231,8 +231,10 @@
                     (lib/query meta/metadata-provider)
                     (sql.qp/mbql->native :h2))))))))
 
-(defn- join->mbql5 [join]
-  (-> join (#'lib.util/join->pipeline) lib.convert/->mbql5))
+(defn- legacy-join->honeysql [join]
+  (sql.qp/join->honeysql :h2 (if (isa? driver/hierarchy :h2 :sql-mbql5)
+                               (lib.convert/->mbql5 (#'lib.util/join->pipeline join))
+                               join)))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
@@ -243,35 +245,29 @@
                 [:=
                  (h2x/with-database-type-info (h2x/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                  (h2x/identifier :field "card" "id")]]
-               (cond->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                         :alias        "card"
-                         :strategy     :left-join
-                         :condition    [:=
-                                        [:field (meta/id :checkins :venue-id) {::add/source-table (meta/id :checkins)
-                                                                               ::add/source-alias "VENUE_ID"}]
-                                        [:field "id" {:join-alias        "card"
-                                                      :base-type         :type/Integer
-                                                      ::add/source-table "card"
-                                                      ::add/source-alias "id"}]]}
-                 (isa? driver/hierarchy :h2 :sql-mbql5) (join->mbql5)
-                 :always (sql.qp/join->honeysql :h2))))))))
+               (legacy-join->honeysql {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                                       :alias        "card"
+                                       :strategy     :left-join
+                                       :condition    [:=
+                                                      [:field (meta/id :checkins :venue-id) {::add/source-table (meta/id :checkins)
+                                                                                             ::add/source-alias "VENUE_ID"}]
+                                                      [:field "id" {:join-alias        "card"
+                                                                    :base-type         :type/Integer
+                                                                    ::add/source-table "card"
+                                                                    ::add/source-alias "id"}]]})))))))
 
 (defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [join (cond->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                           :alias        "card"
-                           :strategy     :left-join
-                           :condition    [:=
-                                          [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
-                                                                           ::add/source-alias "VENUE_ID"}]
-                                          [:field "id" {:base-type         :type/Text
-                                                        ::add/source-table "card"
-                                                        ::add/source-alias "id"}]]}
-                   (isa? driver/hierarchy driver :sql-mbql5)
-                   (join->mbql5)
-
-                   :always (sql.qp/join->honeysql driver))]
+      (let [join (legacy-join->honeysql {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                                         :alias        "card"
+                                         :strategy     :left-join
+                                         :condition    [:=
+                                                        [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
+                                                                                         ::add/source-alias "VENUE_ID"}]
+                                                        [:field "id" {:base-type         :type/Text
+                                                                      ::add/source-table "card"
+                                                                      ::add/source-alias "id"}]]})]
         (sql.qp/format-honeysql driver {:join join})))))
 
 ;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs
