@@ -1,3 +1,12 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "onto",
+        "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
+      ],
+      "branch": "emb-1632-visualize_query-tool-call-must-use-stored-query-result-to"
+    }
+  ]
 }
