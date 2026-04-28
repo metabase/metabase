@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1620-apply-the-shared-query-explorer-bar",
-    "hash": "c4783e3f9745c5d0eb2b99f7a3e77e19a1218e6e"
+    "hash": "fb49371971eee1c3c58c2411250e7c734bf49f8c"
   },
   "upstream": {
     "branch": "emb-1623-store-query-payload-in-sessions-instead-of-in-memory-atoms"
