@@ -49,12 +49,3 @@
              #(instance? java.util.List %)]]
    [:has_more_values :boolean]
    [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
-
-(mr/def ::field-finalize-info
-  "Shape of a finalize-pass record — projected from `::field-info` during phase 4.
-  `parent_id` and `fk_target_field_id` are explicitly nullable here; this differs
-  from `::field-info` where a missing reference is expressed by omitting the key."
-  [:map
-   [:id                 ::lib.schema.id/field]
-   [:parent_id          {:optional true} [:maybe ::lib.schema.id/field]]
-   [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]])
