@@ -215,7 +215,7 @@ saved later when it is ready."
   ([card]
    (populate-result-metadata card nil))
 
-  ([{query :dataset_query metadata :result_metadata :as card} changes]
+  ([{query :dataset_query :as card} changes]
    (-> (cond
          ;; not updating the query => no-op
          (and (not-empty changes)
