@@ -924,7 +924,7 @@
            emission on this node, even when the last-successful fingerprint is stale — prevents
            the boot and cron paths from both computing and publishing for the same fingerprint"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (let [current-fp (#'task.complexity-score/current-fingerprint)
+      (let [current-fp (complexity/current-fingerprint)
             ;; Serialize a sibling/cron claim for the same fingerprint, timestamped just now so
             ;; it's well inside the TTL.
             active-claim (pr-str {:fingerprint current-fp :claimed-at (#'task.complexity-score/now-ms)})
@@ -946,7 +946,7 @@
   (testing "an expired (TTL-exceeded) scoring claim must not permanently suppress scoring — a
            crashed or orphaned claim from a prior run should be replaced and scoring proceed"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (let [current-fp (#'task.complexity-score/current-fingerprint)
+      (let [current-fp (complexity/current-fingerprint)
             ;; 1 hour ago — older than the 30-minute TTL, so this claim is treated as orphaned.
             expired-claim (pr-str {:fingerprint current-fp
                                    :claimed-at (- (#'task.complexity-score/now-ms)
@@ -971,7 +971,7 @@
       ;; Stub scoring so that while this node is mid-run the persisted claim is replaced with a
       ;; sibling's fresh claim (different :owner). This simulates: our run hung past the 30-min
       ;; TTL → sibling saw an expired claim → sibling wrote its own → our run finally returns.
-      (let [sibling-claim (pr-str {:fingerprint (#'task.complexity-score/current-fingerprint)
+      (let [sibling-claim (pr-str {:fingerprint (complexity/current-fingerprint)
                                    :claimed-at  (System/currentTimeMillis)
                                    :owner       "sibling-node-owner-token"})]
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
@@ -990,7 +990,7 @@
            current fingerprint — the shared claim protocol serializes the two paths so they can't
            both compute and publish in parallel"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (let [current-fp (#'task.complexity-score/current-fingerprint)
+      (let [current-fp (complexity/current-fingerprint)
             boot-claim (pr-str {:fingerprint current-fp
                                 :claimed-at  (#'task.complexity-score/now-ms)
                                 :owner       "boot-path-owner-token"})

@@ -34,7 +34,7 @@
 
 (deftest complexity-endpoint-superuser-gets-consistent-totals-test
   (testing "check invariants not covered by schema"
-    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
+    (let [resp (mt/user-http-request :crowberto :get 200 endpoint :refresh true)
           measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
           component-score  (fn [cat k] (get-in resp [cat :components k :score]))
           ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
@@ -77,7 +77,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                {:use_verified_content false :collection_id nil}
-        (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
+        (let [resp (mt/user-http-request :crowberto :get 200 endpoint :refresh true)]
           (is (= (:universe resp) (:metabot resp)))))))
   (testing ":metabot is scored separately when :content-verification + use_verified_content are both active"
     ;; Positive path: verified-only filtering restricts Cards to those with an active verified
@@ -91,7 +91,7 @@
                                                  :archived    false}]
         (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                  {:use_verified_content true :collection_id nil}
-          (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
+          (let [resp (mt/user-http-request :crowberto :get 200 endpoint :refresh true)]
             (is (< (get-in resp [:metabot  :components :entity-count :measurement])
                    (get-in resp [:universe :components :entity-count :measurement]))
                 ":metabot entity-count must be strictly < :universe when verified-only filters out the injected Card")))))))
@@ -137,7 +137,7 @@
                                   (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                                            {:use_verified_content false
                                                             :collection_id cid}
-                                    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
+                                    (let [resp (mt/user-http-request :crowberto :get 200 endpoint :refresh true)]
                                       {:metabot  (get-in resp [:metabot  :components :entity-count :measurement])
                                        :universe (get-in resp [:universe :components :entity-count :measurement])})))
               empty-counts   (counts-with-scope empty-id)
@@ -192,13 +192,15 @@
                       (.countDown scoring-started)
                       (.await release-scoring 10 TimeUnit/SECONDS)
                       stub-scores)]
-        (let [first-request (future (mt/user-http-request :crowberto :get 200 endpoint))]
+        (let [first-request (future (mt/user-http-request :crowberto :get 200 endpoint :refresh true))]
           (try
             (is (.await scoring-started 10 TimeUnit/SECONDS)
                 "first request must reach the guarded section before we fire the second")
             (testing "concurrent superuser request is rejected with 409"
               (is (= "Data Complexity Score calculation already in progress"
-                     (mt/user-http-request :crowberto :get 409 endpoint))))
+                     ;; `:refresh true` so this request actually tries to compute and trips the guard —
+                     ;; without it the call could hit the cache and return 200 from a prior test run.
+                     (mt/user-http-request :crowberto :get 409 endpoint :refresh true))))
             (finally
               (.countDown release-scoring)
               ;; Drain the in-flight request so the guard is released before the next test
@@ -207,8 +209,76 @@
         (testing "only the first request actually ran scoring; the second short-circuited"
           (is (= 1 @call-count)))
         (testing "guard is released after the in-flight request finishes — a follow-up request succeeds"
-          (mt/user-http-request :crowberto :get 200 endpoint)
+          (mt/user-http-request :crowberto :get 200 endpoint :refresh true)
           (is (= 2 @call-count)))))))
+
+(defn- with-empty-cache!
+  "Run `f` with the cache wiped, restoring the prior row afterwards.
+  The cache table is single-row and instance-scoped, so cache-behaviour tests have to pin
+  the starting state explicitly."
+  [f]
+  (mt/initialize-if-needed! :db)
+  (let [snapshot (some-> (t2/select-one :model/DataComplexityScore)
+                         (select-keys [:fingerprint :score :calculated_at]))]
+    (t2/delete! :model/DataComplexityScore)
+    (try
+      (f)
+      (finally
+        (t2/delete! :model/DataComplexityScore)
+        (when snapshot
+          (t2/insert! :model/DataComplexityScore snapshot))))))
+
+(def ^:private marker-score
+  "Stand-in score map shaped to satisfy `ComplexityScoresResponse` — used to seed the cache and
+  assert it round-trips back through the API verbatim."
+  {:library  empty-catalog
+   :universe empty-catalog
+   :metabot  empty-catalog
+   :meta     {:formula-version 99 :synonym-threshold 0.5}})
+
+(deftest complexity-endpoint-cache-hit-test
+  (testing "a fingerprint match short-circuits scoring and returns the cached row"
+    (with-empty-cache!
+      (fn []
+        (let [call-count (atom 0)]
+          (complexity/cache-score! (complexity/current-fingerprint) marker-score)
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                      (fn [& _] (swap! call-count inc) stub-scores)]
+            (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
+              (is (= 99 (get-in resp [:meta :formula-version]))
+                  "cached score returned verbatim")
+              (is (zero? @call-count)
+                  "compute path was not invoked"))))))))
+
+(deftest complexity-endpoint-cache-miss-on-fingerprint-mismatch-test
+  (testing "a stale fingerprint forces a recompute and overwrites the cache"
+    (with-empty-cache!
+      (fn []
+        (let [call-count (atom 0)]
+          (complexity/cache-score! "stale-fingerprint-from-an-older-config" marker-score)
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                      (fn [& _] (swap! call-count inc) stub-scores)]
+            (mt/user-http-request :crowberto :get 200 endpoint)
+            (is (= 1 @call-count)
+                "compute path ran on the cache miss")
+            (is (= (complexity/current-fingerprint)
+                   (:fingerprint (t2/select-one :model/DataComplexityScore)))
+                "cache row was replaced under the live fingerprint")
+            (mt/user-http-request :crowberto :get 200 endpoint)
+            (is (= 1 @call-count)
+                "follow-up request with no refresh flag hits the freshly-written cache")))))))
+
+(deftest complexity-endpoint-refresh-flag-bypasses-cache-test
+  (testing "?refresh=true recomputes even when a matching cache row exists"
+    (with-empty-cache!
+      (fn []
+        (let [call-count (atom 0)]
+          (complexity/cache-score! (complexity/current-fingerprint) marker-score)
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                      (fn [& _] (swap! call-count inc) stub-scores)]
+            (mt/user-http-request :crowberto :get 200 endpoint :refresh true)
+            (is (= 1 @call-count)
+                "?refresh=true bypasses the cache and runs scoring")))))))
 
 (deftest internal-metabot-scope-test
   (testing ":verified-only? is true only when the premium feature + use_verified_content both apply"

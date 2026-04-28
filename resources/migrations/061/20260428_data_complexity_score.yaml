@@ -1,0 +1,42 @@
+## Persisted cache for the Data Complexity Score result.
+## Single-row table — we keep only the most recent run, keyed by fingerprint so the API can
+## return the cached score whenever the live config still matches what was scored last.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-28T00:00:00
+      author: christruter
+      comment: Create data_complexity_score table to cache the last calculation
+      changes:
+        - createTable:
+            tableName: data_complexity_score
+            remarks: One-row cache of the most recent Data Complexity Score run. The fingerprint captures every input that affects the result (formula version, weights, threshold, embedding model) so a match means recompute is unnecessary.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: ${text.type}
+                  remarks: Scoring fingerprint — formula_version + weights + synonym threshold + embedding model. Identical fingerprints mean identical results.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: score
+                  type: ${text.type}
+                  remarks: JSON-serialized score result (library/universe/metabot catalogs + meta).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: calculated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the score was computed (DB clock, not app-server clock).
+                  constraints:
+                    nullable: false

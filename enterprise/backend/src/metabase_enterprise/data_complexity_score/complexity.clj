@@ -49,6 +49,50 @@
   value was chosen."
   0.90)
 
+(defn current-fingerprint
+  "String capturing every input that affects an emitted score — formula version, weights,
+  threshold, embedding model.
+  Mirrors the Snowplow `formula_version` + `parameters` fields so a tuning change forces a
+  re-score without having to bump `formula-version`."
+  []
+  (let [embedding-model (semantic-search/active-embedding-model)]
+    (pr-str (into (sorted-map)
+                  (cond-> {:formula-version   formula-version
+                           :synonym-threshold synonym-similarity-threshold
+                           :weights           weights}
+                    embedding-model (assoc :embedding-model embedding-model))))))
+
+;;; -------------------------------------- cache --------------------------------------
+;;;
+;;; Single-row persistence keyed by fingerprint, so a matching live config short-circuits the
+;;; expensive full-catalog walk. Reads and writes both stamp `:meta.:calculated-at` from the
+;;; DB-side timestamp the row was inserted with — same shape from cache hit or miss.
+
+(defn- with-calculated-at [score calculated-at]
+  (assoc-in score [:meta :calculated-at] calculated-at))
+
+(defn cached-score
+  "Cached score (with `:meta.:calculated-at`) when the row's fingerprint matches, else nil."
+  [fingerprint]
+  (t2/select-one-fn (fn [{:keys [score calculated_at]}]
+                      (with-calculated-at score calculated_at))
+                    [:model/DataComplexityScore :score :calculated_at]
+                    :fingerprint fingerprint))
+
+(defn cache-score!
+  "Replace the single cached row with `fingerprint`/`score`.
+  `calculated_at` is left to the DB's `current_timestamp` default and read back via
+  [[t2/insert-returning-instance!]] so we record one canonical timestamp regardless of
+  app-server clock skew."
+  [fingerprint score]
+  (let [{:keys [calculated_at]}
+        (t2/with-transaction [_conn]
+          (t2/delete! :model/DataComplexityScore)
+          (t2/insert-returning-instance! :model/DataComplexityScore
+                                         {:fingerprint fingerprint
+                                          :score       score}))]
+    (with-calculated-at score calculated_at)))
+
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
 (defn- table-field-counts

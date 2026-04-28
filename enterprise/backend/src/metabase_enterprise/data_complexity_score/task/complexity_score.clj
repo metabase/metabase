@@ -8,7 +8,6 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.settings :as settings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -21,34 +20,23 @@
 (def ^:private job-key     (jobs/key "metabase.task.data-complexity-score.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
-(defn- current-fingerprint
-  "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
-  `formula_version` + `parameters` fields. Includes `weights` so re-tuning forces a re-score
-  without bumping `formula-version`; only structural changes to the scoring algorithm need that."
-  []
-  (let [embedding-model (semantic-search/active-embedding-model)]
-    (pr-str (into (sorted-map)
-                  (cond-> {:formula-version   complexity/formula-version
-                           :synonym-threshold complexity/synonym-similarity-threshold
-                           :weights           complexity/weights}
-                    embedding-model (assoc :embedding-model embedding-model))))))
-
 (defn- run-scoring!
-  "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
-  scoring without unscheduling the job.
+  "One scoring pass.
+  Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence scoring without
+  unscheduling the job.
 
-  `claim-fingerprint` is the fingerprint carried on the scoring claim that authorized this run.
-  Using it (rather than re-sampling [[current-fingerprint]] at commit time) means a config change
-  mid-run cannot make us stamp a fingerprint onto `last-fingerprint` that we didn't actually score.
+  `claim-fingerprint` is the fingerprint that authorized this run; using it (rather than
+  re-sampling [[complexity/current-fingerprint]] at commit time) prevents a mid-run config
+  change from stamping `last-fingerprint`/the cached row with a fingerprint we didn't score.
 
-  Returns the score result (with `::complexity/snowplow-published?` metadata) when scoring ran, or
-  nil when skipped / threw. Only a confirmed Snowplow publish advances `last-fingerprint` — any
-  other outcome leaves it untouched so the next boot or cron retries and telemetry doesn't
-  silently stall behind a transient publish failure."
+  The cached row is refreshed on every successful score so the API has fresh data regardless
+  of Snowplow's status. `last-fingerprint` only advances on a confirmed publish so a disabled
+  collector forces the next boot/cron to retry telemetry."
   [claim-fingerprint]
   (if (settings/data-complexity-scoring-enabled)
     (try
       (let [result (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
+        (complexity/cache-score! claim-fingerprint result)
         (if (::complexity/snowplow-published? (meta result))
           (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
           (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
@@ -113,7 +101,7 @@
   (cluster-lock/with-cluster-lock {:lock ::complexity-score-run
                                    :timeout-seconds 10}
     (binding [config/*disable-setting-cache* true]
-      (let [current (current-fingerprint)]
+      (let [current (complexity/current-fingerprint)]
         (when (and (settings/data-complexity-scoring-enabled)
                    (or (not require-fingerprint-change?)
                        (not= current (settings/data-complexity-scoring-last-fingerprint)))

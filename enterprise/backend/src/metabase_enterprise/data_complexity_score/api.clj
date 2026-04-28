@@ -5,7 +5,8 @@
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]))
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,33 +52,34 @@
     [:map
      [:formula-version   pos-int?]
      [:synonym-threshold number?]
-     [:embedding-model {:optional true} EmbeddingModelMeta]]]])
+     [:embedding-model {:optional true} EmbeddingModelMeta]
+     [:calculated-at    ms/TemporalInstant]]]])
 
-;; Per-JVM single-flight guard for the /complexity endpoint. Each scoring run walks the entire
-;; app-db catalog and emits Snowplow events, so concurrent superuser requests on the same node
-;; would just multiply load and noise without producing different results — fast-fail with 409
-;; instead. In a clustered deployment the guard is per-node, so up to one pass per node can still
-;; run concurrently; we accept that since superuser API traffic is low-volume. The Quartz job
-;; already has its own concurrency control (`DisallowConcurrentExecution` + cluster lock for boot
-;; emission), so we deliberately don't share this guard with the task path; a daily cron run that
-;; coincided with an API call shouldn't be cancelled.
+;; Per-JVM single-flight guard for the compute path. Concurrent scoring on one node only adds
+;; load and noise, so we fast-fail the second compute with 409. The Quartz job has its own
+;; cluster-wide guard, so we deliberately don't share this one — a coinciding cron tick should
+;; not cancel an admin's API call.
 (defonce ^:private ^java.util.concurrent.atomic.AtomicBoolean api-scoring-running?
   (java.util.concurrent.atomic.AtomicBoolean. false))
 
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
   "Return the current Data Complexity Score for this instance.
-  Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent
-  requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db
-  catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered
-  deployment each node can still run one pass concurrently."
-  [_route _query _body]
+  Returns the cached row when the live fingerprint matches; pass `?refresh=true` to force a
+  recompute. Compute paths emit Snowplow events and fast-fail concurrent requests with 409."
+  [_route
+   {:keys [refresh]} :- [:map [:refresh {:default false} [:maybe ms/BooleanValue]]]
+   _body]
   (api/check-superuser)
-  (when-not (.compareAndSet api-scoring-running? false true)
-    (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
-  (try
-    (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
-    (finally
-      (.set api-scoring-running? false))))
+  (let [fingerprint (complexity/current-fingerprint)]
+    (or (when-not refresh (complexity/cached-score fingerprint))
+        (do
+          (when-not (.compareAndSet api-scoring-running? false true)
+            (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
+          (try
+            (->> (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
+                 (complexity/cache-score! fingerprint))
+            (finally
+              (.set api-scoring-running? false)))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-complexity-score` routes."

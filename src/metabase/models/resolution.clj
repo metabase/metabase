@@ -38,6 +38,7 @@
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
+    :model/DataComplexityScore               metabase-enterprise.data-complexity-score.models.data-complexity-score
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
