@@ -7,6 +7,7 @@ import _ from "underscore";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
+import { UpsellSnippetCollectionsPill } from "metabase/common/components/upsells/UpsellSnippetCollections";
 import CS from "metabase/css/core/index.css";
 import { Search } from "metabase/entities/search";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
@@ -161,7 +162,10 @@ class SnippetSidebarInner extends React.Component {
               ) : (
                 <>
                   {snippetCollection.id === "root" ? (
-                    <SidebarHeader title={t`Snippets`} />
+                    <Flex align="center" gap="sm">
+                      <SidebarHeader title={t`Snippets`} />
+                      <UpsellSnippetCollectionsPill source="snippet-sidebar" />
+                    </Flex>
                   ) : (
                     <SidebarHeader
                       title={snippetCollection.name}
