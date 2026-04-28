@@ -259,6 +259,95 @@
     (is (= "ASC" (repair/repair trivial-mp "ASC")))))
 
 ;;; ============================================================
+;;; Pass 1.84 - normalise alternative case / if argument shapes
+;;; ============================================================
+
+(deftest case-three-bare-args-test
+  (testing "[case {} pred then else] -> canonical pairs + default"
+    (let [pred  ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["case" {} pred 100 0]]
+      (is (= ["case" {} [[pred 100]] 0]
+             (repair/repair trivial-mp input))))))
+
+(deftest case-two-bare-args-test
+  (testing "[case {} pred then] (no default) -> canonical pairs only"
+    (let [pred  ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["case" {} pred 100]]
+      (is (= ["case" {} [[pred 100]]]
+             (repair/repair trivial-mp input))))))
+
+(deftest case-branch-pairs-as-separate-args-test
+  (testing "branch pairs as separate args + trailing default"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          p2 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 2]
+          input ["case" {} [p1 100] [p2 200] 0]]
+      (is (= ["case" {} [[p1 100] [p2 200]] 0]
+             (repair/repair trivial-mp input)))))
+  (testing "branch pairs as separate args without default"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          p2 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 2]
+          input ["case" {} [p1 100] [p2 200]]]
+      (is (= ["case" {} [[p1 100] [p2 200]]]
+             (repair/repair trivial-mp input))))))
+
+(deftest case-flat-alternating-args-test
+  (testing "flat even-arity alternating: [case {} p1 t1 p2 t2]"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          p2 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 2]
+          input ["case" {} p1 100 p2 200]]
+      (is (= ["case" {} [[p1 100] [p2 200]]]
+             (repair/repair trivial-mp input)))))
+  (testing "flat odd-arity alternating: [case {} p1 t1 p2 t2 default]"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          p2 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 2]
+          input ["case" {} p1 100 p2 200 0]]
+      (is (= ["case" {} [[p1 100] [p2 200]] 0]
+             (repair/repair trivial-mp input))))))
+
+(deftest case-trailing-else-branch-test
+  (testing "trailing [\"else\" x] inside the pairs vector is stripped, x becomes default"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["case" {} [[p1 100] ["else" 0]]]]
+      (is (= ["case" {} [[p1 100]] 0]
+             (repair/repair trivial-mp input)))))
+  (testing "trailing else branch + explicit fallback: pair-trailing-else takes precedence"
+    ;; In practice this would be malformed, but we still normalise it without throwing.
+    ;; The trailing else inside the vector wins; the explicit fallback is dropped.
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["case" {} [[p1 100] ["else" 0]] -1]]
+      (is (= ["case" {} [[p1 100]] 0]
+             (repair/repair trivial-mp input))))))
+
+(deftest case-already-canonical-test
+  (testing "canonical [case {} [[p t]]] is unchanged"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["case" {} [[p1 100]]]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "canonical with default unchanged"
+    (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["case" {} [[p1 100]] 0]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest case-if-alias-test
+  (testing "`if` alias is normalised the same way as case"
+    (let [pred  ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
+          input ["if" {} pred 100 0]]
+      (is (= ["if" {} [[pred 100]] 0]
+             (repair/repair trivial-mp input))))))
+
+(deftest case-idempotent-test
+  (testing "normalisation is idempotent"
+    (let [pred ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]]
+      (doseq [input [["case" {} pred 100 0]
+                     ["case" {} pred 100]
+                     ["case" {} [pred 100] [pred 200] 0]
+                     ["case" {} pred 100 pred 200]
+                     ["case" {} [[pred 100] ["else" 0]]]]]
+        (let [once  (repair/repair trivial-mp input)
+              twice (repair/repair trivial-mp once)]
+          (is (= once twice) (str "input: " input)))))))
+
+;;; ============================================================
 ;;; Pass 1.83 - unwrap boolean wrapper clauses
 ;;; ============================================================
 

@@ -262,6 +262,149 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.84 -- normalise alternative `case` / `if` argument shapes.
+;;;
+;;; lib's canonical shape is `[case, {}, [[pred1 then1] [pred2 then2] ...] default?]` -
+;;; a single vector of branch pairs in slot 2, optional default in slot 3. LLMs sometimes
+;;; emit alternative shapes that are unambiguously interpretable:
+;;;
+;;;   1. Three bare args: `[case, {}, pred, then, else]`
+;;;      → `[case, {}, [[pred then]], else]`
+;;;   2. Branch pairs as separate args: `[case, {}, [p1 t1], [p2 t2], default]`
+;;;      → `[case, {}, [[p1 t1] [p2 t2]], default]`
+;;;   3. Flat alternating: `[case, {}, p1, t1, p2, t2, default?]`
+;;;      → `[case, {}, [[p1 t1] [p2 t2]], default?]`
+;;;   4. Trailing `["else" x]` branch inside the pairs vector
+;;;      → strip and treat `x` as the default.
+;;;
+;;; `if` is a documented alias for `case`; we normalise it the same way (lib accepts both
+;;; tags and treats them identically). Carried over from the sexp pipeline's
+;;; `repair/normalize/forms.clj/repair-case-args` (see `repr-deletion-followups.md`
+;;; § 1.8).
+;;;
+;;; Idempotency: after the first rewrite the args are exactly `[<vector-of-pairs>]` or
+;;; `[<vector-of-pairs>, <default>]`, neither of which matches the alternative-shape
+;;; classifiers below.
+;;; ============================================================
+
+(defn- branch-pair? [v]
+  (and (vector? v) (= 2 (count v))))
+
+(defn- else-branch?
+  "True for `[\"else\" x]` or its post-Pass-1 form `[\"else\" {} x]`. Pass 1
+  (`ensure-clause-options*`) runs before us, so by the time this pass sees an LLM-authored
+  `[\"else\" 0]` it has already been rewritten to `[\"else\" {} 0]`."
+  [v]
+  (and (vector? v)
+       (string? (nth v 0))
+       (= "else" (str/lower-case (nth v 0)))
+       (or (= 2 (count v))
+           (and (= 3 (count v)) (map? (nth v 1))))))
+
+(defn- else-branch-payload [v]
+  (if (= 2 (count v)) (nth v 1) (nth v 2)))
+
+(defn- split-trailing-else
+  "If the last entry of `branches` is an `else-branch?`, peel it off and use its payload
+  as the default; otherwise return inputs unchanged."
+  [branches default]
+  (if (and (seq branches) (else-branch? (peek branches)))
+    [(pop branches) (else-branch-payload (peek branches))]
+    [branches default]))
+
+(defn- canonical-case-args
+  "Build the canonical `[<vector-of-pairs> default?]` arg sequence given already-classified
+  `branches` (vector of pairs) and an optional `default`. Strips a trailing `else` branch
+  from `branches`. Returns the canonical args vector for splicing into a `case` / `if`
+  clause."
+  [branches default]
+  (let [[branches default] (split-trailing-else (vec branches) default)]
+    (if (some? default)
+      [(vec branches) default]
+      [(vec branches)])))
+
+(defn- pair-or-else? [v]
+  (or (branch-pair? v) (else-branch? v)))
+
+(defn- classify-case-args
+  "Given the args of a `case` / `if` clause (everything after head + opts), return
+  `[branches default]` for one of the recognised shapes - including the canonical one (so
+  the central `canonical-case-args` step uniformly handles trailing-else stripping). Return
+  `nil` only when the args are unrecognised."
+  [args]
+  (cond
+    ;; Already canonical or canonical-with-trailing-else: a single vector in slot 0 whose
+    ;; entries are branch-pairs (or a final else-branch), with optional explicit default in
+    ;; slot 1.
+    (and (or (= 1 (count args)) (= 2 (count args)))
+         (vector? (nth args 0))
+         (seq (nth args 0))
+         (every? pair-or-else? (nth args 0)))
+    [(nth args 0) (when (= 2 (count args)) (nth args 1))]
+
+    ;; Three bare non-pair args: pred, then, else
+    (and (= 3 (count args))
+         (not (branch-pair? (nth args 0))))
+    [[[(nth args 0) (nth args 1)]] (nth args 2)]
+
+    ;; Two bare non-pair args: pred, then (no default)
+    (and (= 2 (count args))
+         (not (branch-pair? (nth args 0))))
+    [[[(nth args 0) (nth args 1)]] nil]
+
+    ;; Leading branch pairs followed by an optional non-pair fallback
+    ;; (covers \"branch pairs as separate args\").
+    (and (>= (count args) 2)
+         (branch-pair? (nth args 0)))
+    (let [pairs    (vec (take-while branch-pair? args))
+          remainder (drop (count pairs) args)]
+      [pairs (when (= 1 (count remainder)) (first remainder))])
+
+    ;; Flat alternating pred/then args (≥4 args). Falls through from "branch pairs as
+    ;; separate args" above when the first arg is a non-2-tuple vector like `["=" {} field
+    ;; val]`.
+    (and (>= (count args) 4))
+    (let [n          (count args)
+          even-cnt   (- n (rem n 2))
+          pred-thens (partition 2 (take even-cnt args))
+          default    (when (odd? n) (nth args (dec n)))]
+      [(mapv vec pred-thens) default])
+
+    :else nil))
+
+(defn- case-clause? [v]
+  (and (vector? v)
+       (>= (count v) 2)
+       (string? (nth v 0))
+       (map? (nth v 1))
+       (contains? #{"case" "if"} (nth v 0))))
+
+(defn- normalise-case-args
+  "Inspect the args of `clause`; if they match a recognised shape, return the clause with
+  canonical args (uniformly stripping any trailing `else` branch from the pairs vector).
+  Unrecognised args pass through untouched."
+  [clause]
+  (let [head (nth clause 0)
+        opts (nth clause 1)
+        args (subvec clause 2)]
+    (if-let [[branches default] (classify-case-args args)]
+      (let [canonical-args (canonical-case-args branches default)
+            new-clause     (into [head opts] canonical-args)]
+        ;; Idempotency: only return the rewritten form when it's actually different.
+        ;; Identical → the input was already canonical.
+        (if (= new-clause clause) clause new-clause))
+      clause)))
+
+(defn- normalise-case-clauses*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (case-clause? node)
+       (normalise-case-args node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.83 -- unwrap boolean wrapper clauses.
 ;;;
 ;;; LLMs occasionally write `["true", x]` thinking of it as "wrap this clause as truthy",
@@ -1345,6 +1488,7 @@
       wrap-iso-date-bounds*
       wrap-now-literals*
       swap-between-bounds*
+      normalise-case-clauses*
       normalize-expressions-shape*
       ensure-lib-types*))
 
