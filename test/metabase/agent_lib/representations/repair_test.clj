@@ -178,6 +178,42 @@
              output)))))
 
 ;;; ============================================================
+;;; Pass 1.8 - rewrite temporal-bucket-extraction aliases to canonical names
+;;; ============================================================
+
+(deftest rewrite-temporal-bucket-aliases-test
+  (testing "each alias rewrites to its canonical lib head"
+    (doseq [[alias canonical] [["dayofweek"       "get-day-of-week"]
+                               ["day-of-week"     "get-day-of-week"]
+                               ["hour-of-day"     "get-hour"]
+                               ["month-of-year"   "get-month"]
+                               ["quarter-of-year" "get-quarter"]]]
+      (let [input  [alias {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]]
+        (is (= [canonical {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+               (repair/repair trivial-mp input))
+            (str alias " -> " canonical)))))
+  (testing "alias appearing nested inside another clause is rewritten too"
+    (let [input  ["=" {}
+                  ["day-of-week" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+                  3]]
+      (is (= ["=" {}
+              ["get-day-of-week" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+              3]
+             (repair/repair trivial-mp input)))))
+  (testing "canonical heads are left alone (not double-rewritten)"
+    (let [input  ["get-day-of-week" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "alias with missing options is also handled (Pass 1 fills the {} first)"
+    (let [input  ["day-of-week" ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]]
+      (is (= ["get-day-of-week" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+             (repair/repair trivial-mp input)))))
+  (testing "unrelated heads matching only by string substring are not touched"
+    ;; A column named "day-of-week" inside an FK path is not a clause head; we won't
+    ;; touch it.
+    (let [input  ["field" {} ["Sample" "PUBLIC" "T" "day-of-week"]]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+;;; ============================================================
 ;;; Pass 2 - fill in missing `lib/type`
 ;;; ============================================================
 

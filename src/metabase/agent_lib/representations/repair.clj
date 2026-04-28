@@ -167,6 +167,49 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.8 -- canonicalise temporal-bucket extraction aliases.
+;;;
+;;; LLMs naturally pick up English-flavoured operator names like `dayofweek`,
+;;; `day-of-week`, `hour-of-day`, `month-of-year`, `quarter-of-year` for the temporal-
+;;; extraction helpers. lib's canonical names are `get-day-of-week`, `get-hour`,
+;;; `get-month`, `get-quarter` (see `metabase.lib.schema.expression.temporal`). We
+;;; rewrite the alias forms to canonical so downstream resolve/validate doesn't reject
+;;; them.
+;;;
+;;; Carried over from `metabase.agent-lib.repair.normalize.forms` (see
+;;; `repr-deletion-followups.md` § 1.2). Idempotent: the rewrite only fires when the head
+;;; is a known alias; canonical heads are left alone.
+;;; ============================================================
+
+(def ^:private temporal-bucket-extraction-aliases
+  "Map from LLM-favoured alias to canonical lib operator name."
+  {"dayofweek"       "get-day-of-week"
+   "day-of-week"     "get-day-of-week"
+   "hour-of-day"     "get-hour"
+   "month-of-year"   "get-month"
+   "quarter-of-year" "get-quarter"})
+
+(defn- temporal-bucket-alias-clause?
+  "True when `node` is a clause whose head is a known temporal-bucket-extraction alias.
+  Requires an options map in slot 1 - the bare-clause case (no options) is handled by
+  Pass 1, which runs first."
+  [node]
+  (and (vector? node)
+       (>= (count node) 2)
+       (string? (nth node 0))
+       (map? (nth node 1))
+       (contains? temporal-bucket-extraction-aliases (nth node 0))))
+
+(defn- rewrite-temporal-bucket-aliases*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (temporal-bucket-alias-clause? node)
+       (assoc node 0 (get temporal-bucket-extraction-aliases (nth node 0)))
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -998,6 +1041,7 @@
   (-> parsed
       ensure-clause-options*
       unwrap-nested-field-clauses*
+      rewrite-temporal-bucket-aliases*
       normalize-expressions-shape*
       ensure-lib-types*))
 
