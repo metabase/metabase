@@ -122,24 +122,6 @@
   (ws/delete-workspace! id)
   {:id id :deleted true})
 
-(api.macros/defendpoint :post "/:id/add-database" :- WorkspaceResponse
-  "Add a database to a Workspace. Requires at least one input schema."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [database_id input_schemas]} :- [:map
-                                           [:database_id   ms/PositiveInt]
-                                           [:input_schemas [:sequential {:min 1} ms/NonBlankString]]]]
-  (api/check-superuser)
-  (present-workspace (ws/add-database! id database_id :input_schemas input_schemas)))
-
-(api.macros/defendpoint :post "/:id/remove-database" :- WorkspaceResponse
-  "Remove a database from a Workspace. Only allowed when all databases are unprovisioned."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [database_id]} :- [:map [:database_id ms/PositiveInt]]]
-  (api/check-superuser)
-  (present-workspace (ws/remove-database! id database_id)))
-
 (api.macros/defendpoint :post "/:id/provision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
   "Provision all unprovisioned databases. Can retry after partial failure."
