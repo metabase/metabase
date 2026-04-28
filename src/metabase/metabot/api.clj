@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -14,7 +13,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
-   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -22,6 +20,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -33,7 +32,6 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -76,72 +74,6 @@
                                        (apply +))
                  :ai_proxied      (boolean ai-proxy?)})))
 
-(defn- extract-usage
-  "Extract usage from parts, taking the last `:usage` per model.
-
-  The agent loop emits cumulative usage — each `:usage` part subsumes all prior
-  usage for that model — so we simply take the last one per model rather than
-  summing. Returns a map keyed by model name:
-  {\"model-name\" {:prompt X :completion Y}}"
-  [parts]
-  (transduce
-   (filter #(= :usage (:type %)))
-   (completing
-    (fn [acc {:keys [usage model]}]
-      (let [model (or model "unknown")]
-        (assoc acc model {:prompt     (:promptTokens usage 0)
-                          :completion (:completionTokens usage 0)}))))
-   {}
-   parts))
-
-(defn- strip-tool-output-bloat
-  "For :tool-output parts, keep only :output in the result map.
-  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
-  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
-  is transient runtime data consumed during streaming and can be very large."
-  [{:keys [type] :as part}]
-  (cond-> part
-    (= :tool-output type) (update :result select-keys [:output])))
-
-(defn- store-native-parts!
-  "Store assistant response parts directly to the database.
-
-  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
-  avoiding the intermediate 'aisdk messages' format.
-
-  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
-  [conversation-id profile-id parts]
-  (let [state-part (u/seek #(and (= :data (:type %))
-                                 (= "state" (:data-type %)))
-                           parts)
-        usage      (extract-usage parts)
-        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out :start, :usage, :finish stream metadata. Data parts are
-        ;; persisted (so the analytics view can surface them) except :state,
-        ;; which is salvaged to MetabotConversation.state above.
-        content    (->> parts
-                        (remove #(#{:start :usage :finish} (:type %)))
-                        (filter streaming/persistable-data-part?)
-                        (mapv strip-tool-output-bloat))]
-    (prometheus/observe! :metabase-metabot/message-persist-bytes
-                         {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count (json/encode content)))
-    (t2/with-transaction [_conn]
-      (when state-part
-        (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                                  (constantly {:user_id api/*current-user-id*
-                                               :state   (:data state-part)})))
-      (t2/insert! :model/MetabotMessage
-                  {:conversation_id conversation-id
-                   :data            content
-                   :usage           usage
-                   :role            :assistant
-                   :profile_id      profile-id
-                   :total_tokens    (->> (vals usage)
-                                         (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))
-                   :ai_proxied      (boolean ai-proxy?)}))))
-
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -162,22 +94,6 @@
          (.flush os)
          (catch org.eclipse.jetty.io.EofException _
            (reduced acc)))))))
-
-(defn- combine-text-parts-xf []
-  (fn [rf]
-    (let [pending (volatile! nil)]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [p @pending]
-           (rf (if p (rf result p) result))))
-        ([result part]
-         (let [prev @pending]
-           (if (and prev (= :text (:type prev) (:type part)))
-             (do (vswap! pending update :text str (:text part))
-                 result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
 
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
@@ -214,7 +130,9 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (metabot.persistence/store-native-parts!
+             conversation-id profile-id
+             (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."

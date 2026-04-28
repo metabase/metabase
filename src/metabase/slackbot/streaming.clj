@@ -11,10 +11,8 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -223,15 +221,16 @@
                  :state      {}
                  :profile-id :slackbot
                  :context    context}))
-    (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
-          pk        (metabot.persistence/store-message!
-                     conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
-                     :channel-id   channel-id
-                     :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                     :user-id      api/*current-user-id*
-                     :ai-proxy?   (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))]
+    ;; Stores raw native parts (not the lossy AI-SDK-message round-trip) so
+    ;; tool-output :structured-output survives for analytics extraction.
+    (let [parts @parts-atom
+          pk    (metabot.persistence/store-native-parts!
+                 conversation-id "slackbot"
+                 (into [] (metabot.persistence/combine-text-parts-xf) parts)
+                 :channel-id   channel-id
+                 :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+                 :user-id      api/*current-user-id*
+                 :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))]
       (when stored-msg-id
         (reset! stored-msg-id pk)))))
 
