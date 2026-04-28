@@ -8,6 +8,7 @@ import { useAsync, useMount } from "react-use";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicDocumentProvider } from "metabase/public/contexts/PublicDocumentContext";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -121,40 +122,45 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
   });
 
   return (
-    <EmbedFrame
-      theme={theme}
-      titled={false}
-      className={S.container}
-      contentClassName={S.documentArea}
-      background={false}
-      withFooter={hasEmbedBranding}
-    >
-      <LoadingAndErrorWrapper
-        loading={loading}
-        noBackground
-        style={{
-          display: "flex",
-          flex: 1,
-          flexDirection: "column",
-        }}
+    <EmbeddingEntityContextProvider uuid={uuid} token={null}>
+      <EmbedFrame
+        theme={theme}
+        titled={false}
+        className={S.container}
+        contentClassName={S.documentArea}
+        background={false}
+        withFooter={hasEmbedBranding}
       >
-        {document && editor && (
-          <PublicDocumentProvider
-            value={{
-              publicDocumentUuid: uuid,
-              publicDocument: document,
-              publicDocumentCards: document.cards,
-            }}
-          >
-            <Box maw={900} mx="auto" p="xl" w="100%">
-              <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
-              <div className={S.editorContent}>
-                <EditorContent data-testid="document-content" editor={editor} />
-              </div>
-            </Box>
-          </PublicDocumentProvider>
-        )}
-      </LoadingAndErrorWrapper>
-    </EmbedFrame>
+        <LoadingAndErrorWrapper
+          loading={loading}
+          noBackground
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+          }}
+        >
+          {document && editor && (
+            <PublicDocumentProvider
+              value={{
+                publicDocumentUuid: uuid,
+                publicDocument: document,
+                publicDocumentCards: document.cards,
+              }}
+            >
+              <Box maw={900} mx="auto" p="xl" w="100%">
+                <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
+                <div className={S.editorContent}>
+                  <EditorContent
+                    data-testid="document-content"
+                    editor={editor}
+                  />
+                </div>
+              </Box>
+            </PublicDocumentProvider>
+          )}
+        </LoadingAndErrorWrapper>
+      </EmbedFrame>
+    </EmbeddingEntityContextProvider>
   );
 };

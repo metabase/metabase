@@ -7,6 +7,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type {
   CardId,
   CustomVizPlugin,
+  DashboardId,
   DocumentContent,
   Parameter,
 } from "metabase-types/api";
@@ -731,7 +732,7 @@ describe("admin > custom visualizations", () => {
         { wrapId: true, idAlias: "publicQuestionId" },
       );
 
-      cy.get<number>("@publicQuestionId").then(H.visitPublicQuestion);
+      cy.get<CardId>("@publicQuestionId").then(H.visitPublicQuestion);
 
       cy.findByTestId("table-root").should("be.visible");
     });
@@ -941,7 +942,7 @@ describe("admin > custom visualizations", () => {
           { wrapId: true, idAlias: "targetDashboardId" },
         );
 
-        cy.get<number>("@targetDashboardId").then((targetDashboardId) => {
+        cy.get<DashboardId>("@targetDashboardId").then((targetDashboardId) => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
@@ -982,7 +983,7 @@ describe("admin > custom visualizations", () => {
           { wrapId: true, idAlias: "targetQuestionId" },
         );
 
-        cy.get<number>("@targetQuestionId").then((targetQuestionId) => {
+        cy.get<CardId>("@targetQuestionId").then((targetQuestionId) => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
@@ -1206,23 +1207,8 @@ describe("admin > custom visualizations", () => {
         });
       });
 
-      it("renders the custom viz when viewed via a public link", () => {
-        H.interceptPluginBundle();
+      it("falls back to the default viz on a public document", () => {
         H.visitPublicDocument("@documentId");
-        cy.wait("@pluginBundle");
-
-        H.getDocumentCard(DOC_QUESTION_NAME)
-          .findByText("Custom viz rendered successfully")
-          .should("be.visible");
-      });
-
-      it("falls back to the default visualization in a public document when the bundle fails", () => {
-        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
-          statusCode: 500,
-          body: "boom",
-        }).as("failedBundle");
-        H.visitPublicDocument("@documentId");
-        cy.wait("@failedBundle");
 
         H.getDocumentCard(DOC_QUESTION_NAME)
           .findByTestId("table-root")
@@ -1291,7 +1277,7 @@ describe("admin > custom visualizations", () => {
         { name: DASHBOARD_NAME },
         { wrapId: true, idAlias: "dashboardId" },
       );
-      cy.get<number>("@dashboardId").then((dashboardId) => {
+      cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
         cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
       });
 
