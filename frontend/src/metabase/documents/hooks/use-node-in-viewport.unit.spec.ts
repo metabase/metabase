@@ -3,6 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { useNodeInViewport } from "./use-node-in-viewport";
 
 const mockUseIntersection = jest.fn();
+const mockUsePrintContext = jest.fn();
 
 jest.mock("@mantine/hooks", () => ({
   useIntersection: (...args: unknown[]) => mockUseIntersection(...args),
@@ -12,9 +13,17 @@ jest.mock("metabase/documents/contexts/ScrollContainerContext", () => ({
   useScrollContainer: () => null,
 }));
 
+jest.mock("metabase/documents/contexts/PrintContext", () => ({
+  usePrintContext: () => mockUsePrintContext(),
+}));
+
 describe("useNodeInViewport", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUsePrintContext.mockReturnValue({
+      isPrinting: false,
+      prepareForPrint: async () => {},
+    });
   });
 
   it("treats null entry (initial state) as out-of-viewport so queries are deferred", () => {
@@ -48,6 +57,21 @@ describe("useNodeInViewport", () => {
     const { result } = renderHook(() => useNodeInViewport());
 
     expect(result.current.isInViewport).toBe(false);
+  });
+
+  it("returns true when printing regardless of intersection entry", () => {
+    mockUsePrintContext.mockReturnValue({
+      isPrinting: true,
+      prepareForPrint: async () => {},
+    });
+    mockUseIntersection.mockReturnValue({
+      ref: jest.fn(),
+      entry: { isIntersecting: false },
+    });
+
+    const { result } = renderHook(() => useNodeInViewport());
+
+    expect(result.current.isInViewport).toBe(true);
   });
 
   it("passes rootMargin 50% to useIntersection", () => {

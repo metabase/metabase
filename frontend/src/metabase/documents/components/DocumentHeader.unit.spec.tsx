@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
@@ -138,7 +138,9 @@ describe("DocumentHeader", () => {
 
       await userEvent.click(screen.getByLabelText("More options"));
       await userEvent.click(screen.getByText("Print Document"));
-      expect(window.print).toHaveBeenCalled();
+      // handlePrint dispatches beforeprint and waits two animation frames
+      // so off-screen card embeds re-render before window.print() snapshots.
+      await waitFor(() => expect(window.print).toHaveBeenCalled());
 
       window.print = originalPrint;
     });

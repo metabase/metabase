@@ -1,17 +1,21 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
 import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 import type { Card, Dataset, RawSeries } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import {
+  documentCardLoadingFinished,
+  documentCardLoadingStarted,
+} from "../documents.slice";
 import { getCardWithDraft } from "../selectors";
 
 interface UseCardDataProps {
@@ -160,6 +164,27 @@ export function useCardData({
   );
 
   const isLoading = isLoadingCard || isLoadingDataset;
+
+  const dispatch = useDispatch();
+  const prevIsLoading = useRef(false);
+  useEffect(() => {
+    if (skip) {
+      return;
+    }
+    if (isLoading && !prevIsLoading.current) {
+      dispatch(documentCardLoadingStarted(id));
+    } else if (!isLoading && prevIsLoading.current) {
+      dispatch(documentCardLoadingFinished(id));
+    }
+    prevIsLoading.current = isLoading;
+  }, [isLoading, skip, id, dispatch]);
+
+  // Remove from loading list on unmount to avoid stale entries
+  useEffect(() => {
+    return () => {
+      dispatch(documentCardLoadingFinished(id));
+    };
+  }, [id, dispatch]);
 
   const hasDataForVisualization = cardToUse && dataset?.data;
   const series = hasDataForVisualization

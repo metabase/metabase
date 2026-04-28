@@ -9,6 +9,7 @@ import {
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -85,10 +86,13 @@ export const DocumentHeader = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const handlePrint = useCallback(() => {
+  const { prepareForPrint } = usePrintContext();
+
+  const handlePrint = useCallback(async () => {
+    await prepareForPrint();
     window.print();
     trackDocumentPrint(document);
-  }, [document]);
+  }, [document, prepareForPrint]);
 
   return (
     <Flex

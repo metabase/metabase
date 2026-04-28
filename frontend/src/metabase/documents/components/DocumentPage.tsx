@@ -39,8 +39,9 @@ import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/utils/urls";
 import * as Urls from "metabase/utils/urls";
@@ -57,6 +58,7 @@ import {
   trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
+import { PrintContext } from "../contexts/PrintContext";
 import { ScrollContainerProvider } from "../contexts/ScrollContainerContext";
 import {
   clearDraftCards,
@@ -71,6 +73,7 @@ import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
+  getAreDocumentCardsLoading,
   getDraftCards,
   getHasUnsavedChanges,
   getIsHistorySidebarOpen,
@@ -103,6 +106,44 @@ export const DocumentPage = ({
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
+  const store = useStore();
+
+  // --- Print preparation ---
+  // Cards skip data fetches while off-screen (see useNodeInViewport / useCardData).
+  // `isPrinting` forces every card into viewport so their queries fire.
+  // `prepareForPrint` is called by DocumentHeader before window.print():
+  //   1. sets isPrinting=true
+  //   2. waits two frames for React to commit and off-screen card queries to start
+  //   3. polls the Redux store until all card queries finish (or 15 s timeout)
+  // Browser-initiated Cmd+P fires `beforeprint`, which also sets isPrinting=true
+  // (print preview on Chrome/Safari updates live as card data arrives).
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    const handleBeforePrint = () => setIsPrinting(true);
+    const handleAfterPrint = () => setIsPrinting(false);
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
+  const prepareForPrint = useCallback(async () => {
+    setIsPrinting(true);
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+    const deadline = Date.now() + 15_000;
+    while (Date.now() < deadline) {
+      if (!getAreDocumentCardsLoading(store.getState() as State)) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }, [store]);
+
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
@@ -475,162 +516,170 @@ export const DocumentPage = ({
   }, [isLeaveConfirmModalOpen, documentData]);
 
   return (
-    <Box className={styles.documentPage}>
-      {documentData?.archived && <DocumentArchivedEntityBanner />}
-      <Box className={styles.contentArea}>
-        <Box className={styles.mainContent} ref={setMainContentEl}>
-          <ScrollContainerProvider value={mainContentEl}>
-            <Box className={styles.documentContainer}>
-              <DocumentHeader
-                document={documentData}
-                documentTitle={documentTitle}
-                isNewDocument={isNewDocument}
-                canWrite={canWrite ?? false}
-                showSaveButton={showSaveButton ?? false}
-                isBookmarked={isBookmarked}
-                onTitleChange={setDocumentTitle}
-                onTitleSubmit={focusEditorBody}
-                onSave={() => {
-                  if (isNewDocument) {
-                    setCollectionPickerMode("save");
-                  } else {
-                    handleSave();
-                  }
-                }}
-                onMove={() => setCollectionPickerMode("move")}
-                onDuplicate={handleDuplicate}
-                onToggleBookmark={handleToggleBookmark}
-                onArchive={() => handleUpdate({ archived: true })}
-                onShowHistory={handleShowHistory}
-              />
-              <Editor
-                onEditorReady={setEditorInstance}
-                onCardEmbedsChange={updateCardEmbeds}
-                onQuestionSelect={handleQuestionSelect}
-                initialContent={documentContent}
-                onChange={handleChange}
-                editable={canWrite && !isSaving}
-                isLoading={isDocumentLoading}
-                editorContainerRef={editorContainerRef}
-              />
-            </Box>
-          </ScrollContainerProvider>
-        </Box>
+    <PrintContext.Provider value={{ isPrinting, prepareForPrint }}>
+      <Box className={styles.documentPage}>
+        {documentData?.archived && <DocumentArchivedEntityBanner />}
+        <Box className={styles.contentArea}>
+          <Box className={styles.mainContent} ref={setMainContentEl}>
+            <ScrollContainerProvider value={mainContentEl}>
+              <Box className={styles.documentContainer}>
+                <DocumentHeader
+                  document={documentData}
+                  documentTitle={documentTitle}
+                  isNewDocument={isNewDocument}
+                  canWrite={canWrite ?? false}
+                  showSaveButton={showSaveButton ?? false}
+                  isBookmarked={isBookmarked}
+                  onTitleChange={setDocumentTitle}
+                  onTitleSubmit={focusEditorBody}
+                  onSave={() => {
+                    if (isNewDocument) {
+                      setCollectionPickerMode("save");
+                    } else {
+                      handleSave();
+                    }
+                  }}
+                  onMove={() => setCollectionPickerMode("move")}
+                  onDuplicate={handleDuplicate}
+                  onToggleBookmark={handleToggleBookmark}
+                  onArchive={() => handleUpdate({ archived: true })}
+                  onShowHistory={handleShowHistory}
+                />
+                <Editor
+                  onEditorReady={setEditorInstance}
+                  onCardEmbedsChange={updateCardEmbeds}
+                  onQuestionSelect={handleQuestionSelect}
+                  initialContent={documentContent}
+                  onChange={handleChange}
+                  editable={canWrite && !isSaving}
+                  isLoading={isDocumentLoading}
+                  editorContainerRef={editorContainerRef}
+                />
+              </Box>
+            </ScrollContainerProvider>
+          </Box>
 
-        {selectedQuestionId &&
-          selectedEmbedIndex !== null &&
-          editorInstance && (
-            <Box className={styles.sidebar} data-testid="document-card-sidebar">
-              <EmbedQuestionSettingsSidebar
-                cardId={selectedQuestionId}
-                editorInstance={editorInstance}
-              />
-            </Box>
+          {selectedQuestionId &&
+            selectedEmbedIndex !== null &&
+            editorInstance && (
+              <Box
+                className={styles.sidebar}
+                data-testid="document-card-sidebar"
+              >
+                <EmbedQuestionSettingsSidebar
+                  cardId={selectedQuestionId}
+                  editorInstance={editorInstance}
+                />
+              </Box>
+            )}
+
+          {collectionPickerMode && (
+            <CollectionPickerModal
+              title={t`Where should we save this document?`}
+              onClose={() => setCollectionPickerMode(null)}
+              entityType="document"
+              onChange={(collection) => {
+                if (collectionPickerMode === "save") {
+                  handleSave(canonicalCollectionId(collection.id));
+                  setCollectionPickerMode(null);
+                } else if (collectionPickerMode === "move") {
+                  handleUpdate({
+                    collection_id: canonicalCollectionId(collection.id),
+                  });
+                }
+              }}
+            />
           )}
 
-        {collectionPickerMode && (
-          <CollectionPickerModal
-            title={t`Where should we save this document?`}
-            onClose={() => setCollectionPickerMode(null)}
-            entityType="document"
-            onChange={(collection) => {
-              if (collectionPickerMode === "save") {
-                handleSave(canonicalCollectionId(collection.id));
-                setCollectionPickerMode(null);
-              } else if (collectionPickerMode === "move") {
-                handleUpdate({
-                  collection_id: canonicalCollectionId(collection.id),
+          {duplicateModalMode === "duplicate" && documentData && (
+            <EntityCopyModal
+              entityType="documents"
+              onClose={() => setDuplicateModalMode(null)}
+              onSaved={(document) => {
+                setDuplicateModalMode(null);
+                scheduleNavigation(() => {
+                  dispatch(push(Urls.document(document)));
                 });
+              }}
+              entityObject={documentData}
+              title={t`Duplicate "${documentData?.name}"`}
+              overwriteOnInitialValuesChange
+              copy={async (object) => {
+                if (!documentData?.id) {
+                  throw new Error(
+                    "Cannot duplicate document that has not been saved",
+                  );
+                }
+
+                const response = await copyDocument({
+                  ...object,
+                  id: documentData.id,
+                });
+
+                if (!response.data) {
+                  throw (
+                    response.error ?? new Error("Failed to duplicate document")
+                  );
+                }
+
+                const _document = response.data;
+                trackDocumentDuplicated(_document);
+                return _document;
+              }}
+            />
+          )}
+
+          {children}
+
+          <LeaveRouteConfirmModal
+            // `key` remounts this modal when navigating between different documents or to a new document.
+            // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
+            key={location.key}
+            isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
+            route={route}
+            onOpenChange={(open) => {
+              if (open) {
+                trackDocumentUnsavedChangesWarningDisplayed(documentData);
               }
             }}
           />
-        )}
 
-        {duplicateModalMode === "duplicate" && documentData && (
-          <EntityCopyModal
-            entityType="documents"
+          <LeaveConfirmModal
+            // only applies when going from /new -> /new
+            opened={isLeaveConfirmModalOpen}
+            onConfirm={resetDocument}
+            onClose={() => forceUpdate()}
+          />
+
+          <ConfirmModal
+            // only applies when trying to duplicate a document that has unsaved changes
+            opened={duplicateModalMode === "leave"}
+            confirmButtonText={t`Save changes`}
+            confirmButtonProps={{ color: "brand" }}
+            data-testid="save-confirmation"
+            message={t`You need to save before you can duplicate this document.`}
+            title={t`Save your changes first`}
+            onConfirm={async () => {
+              if ((await handleSave())?.error) {
+                throw new Error("Failed to save document");
+              }
+              setDuplicateModalMode("duplicate");
+            }}
             onClose={() => setDuplicateModalMode(null)}
-            onSaved={(document) => {
-              setDuplicateModalMode(null);
-              scheduleNavigation(() => {
-                dispatch(push(Urls.document(document)));
-              });
-            }}
-            entityObject={documentData}
-            title={t`Duplicate "${documentData?.name}"`}
-            overwriteOnInitialValuesChange
-            copy={async (object) => {
-              if (!documentData?.id) {
-                throw new Error(
-                  "Cannot duplicate document that has not been saved",
-                );
-              }
-
-              const response = await copyDocument({
-                ...object,
-                id: documentData.id,
-              });
-
-              if (!response.data) {
-                throw (
-                  response.error ?? new Error("Failed to duplicate document")
-                );
-              }
-
-              const _document = response.data;
-              trackDocumentDuplicated(_document);
-              return _document;
-            }}
-          />
-        )}
-
-        {children}
-
-        <LeaveRouteConfirmModal
-          // `key` remounts this modal when navigating between different documents or to a new document.
-          // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
-          key={location.key}
-          isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-          route={route}
-          onOpenChange={(open) => {
-            if (open) {
-              trackDocumentUnsavedChangesWarningDisplayed(documentData);
-            }
-          }}
-        />
-
-        <LeaveConfirmModal
-          // only applies when going from /new -> /new
-          opened={isLeaveConfirmModalOpen}
-          onConfirm={resetDocument}
-          onClose={() => forceUpdate()}
-        />
-
-        <ConfirmModal
-          // only applies when trying to duplicate a document that has unsaved changes
-          opened={duplicateModalMode === "leave"}
-          confirmButtonText={t`Save changes`}
-          confirmButtonProps={{ color: "brand" }}
-          data-testid="save-confirmation"
-          message={t`You need to save before you can duplicate this document.`}
-          title={t`Save your changes first`}
-          onConfirm={async () => {
-            if ((await handleSave())?.error) {
-              throw new Error("Failed to save document");
-            }
-            setDuplicateModalMode("duplicate");
-          }}
-          onClose={() => setDuplicateModalMode(null)}
-        />
-      </Box>
-      {isHistorySidebarOpen && documentData && (
-        <Box className={styles.sidebar} data-testid="document-history-sidebar">
-          <DocumentRevisionHistorySidebar
-            document={documentData}
-            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
           />
         </Box>
-      )}
-    </Box>
+        {isHistorySidebarOpen && documentData && (
+          <Box
+            className={styles.sidebar}
+            data-testid="document-history-sidebar"
+          >
+            <DocumentRevisionHistorySidebar
+              document={documentData}
+              onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+            />
+          </Box>
+        )}
+      </Box>
+    </PrintContext.Provider>
   );
 };

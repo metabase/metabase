@@ -95,3 +95,8 @@ export const getIsHistorySidebarOpen = createSelector(
   getDocumentsState,
   (documents) => documents.isHistorySidebarOpen,
 );
+
+export const getAreDocumentCardsLoading = createSelector(
+  getDocumentsState,
+  (documents) => documents.loadingCardIds.length > 0,
+);
