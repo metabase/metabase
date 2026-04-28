@@ -1965,7 +1965,7 @@ describe("sandbox", () => {
       });
     }).as("injectedBundle");
 
-    cy.get<number>("@sandboxCardId").then((id) => {
+    cy.get<CardId>("@sandboxCardId").then((id) => {
       cy.visit(`/question/${id}`, {
         onBeforeLoad(win) {
           cy.spy(win.console, "error").as("consoleError");
