@@ -61,8 +61,7 @@
   [metadata-provider parsed-repr]
   (let [kw-form  (keywordize-query parsed-repr)
         resolver (resolve.mp/import-resolver metadata-provider)
-        resolved (binding [resolve/*import-resolver* resolver]
-                   (resolve/import-mbql kw-form))
+        resolved (resolve/import-mbql resolver kw-form)
         with-mp  (assoc resolved :lib/metadata metadata-provider)]
     (lib.normalize/normalize ::lib.schema/query with-mp)))
 
