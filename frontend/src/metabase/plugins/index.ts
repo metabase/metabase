@@ -118,7 +118,6 @@ export {
   PLUGIN_SNIPPET_FOLDERS,
   type MoveSnippetModalProps,
   type SnippetFormModalProps,
-  type SnippetCollectionMenuProps,
   type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
 } from "./oss/snippets";

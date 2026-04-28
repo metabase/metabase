@@ -12,11 +12,8 @@ const ICON_SIZE = 16;
 
 class CollectionRow extends Component {
   render() {
-    const {
-      snippetCollection: collection,
-      setSnippetCollectionId,
-      setSidebarState,
-    } = this.props;
+    const { snippetCollection: collection, setSnippetCollectionId } =
+      this.props;
     const onSelectCollection = () => {
       if (setSnippetCollectionId) {
         setSnippetCollectionId(collection.id);
@@ -31,7 +28,7 @@ class CollectionRow extends Component {
           CS.hoverVisibility,
           CS.flex,
           CS.alignCenter,
-          CS.py2,
+          CS.py1,
           CS.px3,
           CS.textBrand,
         )}
@@ -46,16 +43,7 @@ class CollectionRow extends Component {
         <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
           {collection.name}
         </Ellipsified>
-        <SnippetCollectionMenu
-          className={CS.flexNoShrink}
-          collection={collection}
-          onEditDetails={() => {
-            setSidebarState({ modalSnippetCollection: collection });
-          }}
-          onChangePermissions={() => {
-            setSidebarState({ permissionsModalCollectionId: collection.id });
-          }}
-        />
+        <SnippetCollectionMenu collection={collection} />
       </div>
     );
   }

@@ -45,8 +45,6 @@ export type SnippetFormModalProps = {
 
 export type SnippetCollectionMenuProps = {
   collection: Collection;
-  onEditDetails?: (collection: Collection) => void;
-  onChangePermissions?: (collectionId: CollectionId) => void;
 };
 
 export type SnippetCollectionPermissionsModalProps = {

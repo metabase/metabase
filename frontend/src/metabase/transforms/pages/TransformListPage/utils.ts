@@ -75,7 +75,7 @@ export function buildTreeData(
       nodeType: "folder",
       icon: getCollectionIcon(collection).name,
       children: [...childFolders, ...childTransforms],
-      collectionId: collection.id as number,
+      collection,
     };
   }
 

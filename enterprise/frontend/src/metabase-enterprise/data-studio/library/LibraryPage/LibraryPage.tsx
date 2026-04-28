@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -42,7 +43,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
@@ -106,11 +106,6 @@ export function LibraryPage() {
 
 function LibraryPageContent() {
   const { location } = useRouter();
-  const [editingCollection, setEditingCollection] = useState<Collection | null>(
-    null,
-  );
-  const [permissionsCollectionId, setPermissionsCollectionId] =
-    useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -301,29 +296,29 @@ function LibraryPageContent() {
         width: 48,
         cell: ({ row }) => {
           const { data } = row.original;
-          if (isEmptyStateData(data)) {
+
+          if (
+            isEmptyStateData(data) ||
+            !isCollection(data) ||
+            data.model !== "collection"
+          ) {
             return null;
           }
-          if (
-            isCollection(data) &&
-            data.model === "collection" &&
-            data.namespace === "snippets"
-          ) {
-            if (data.id === "root") {
-              return (
-                <RootSnippetsCollectionMenu
-                  setPermissionsCollectionId={setPermissionsCollectionId}
-                />
-              );
-            } else {
-              return (
-                <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
-                  collection={data}
-                  onEditDetails={setEditingCollection}
-                  onChangePermissions={setPermissionsCollectionId}
-                />
-              );
-            }
+
+          const isSnippetCollection = data.namespace === "snippets";
+          const isLibraryCollection =
+            data.type === "library-data" && !data.is_library_root;
+
+          if (isSnippetCollection && data.id === "root") {
+            return <RootSnippetsCollectionMenu collectionId={data.id} />;
+          }
+
+          if (isSnippetCollection) {
+            return <PLUGIN_SNIPPET_FOLDERS.CollectionMenu collection={data} />;
+          }
+
+          if (isLibraryCollection) {
+            return <CollectionRowMenu collection={data} />;
           }
 
           return null;
@@ -494,19 +489,6 @@ function LibraryPageContent() {
           )}
         </Stack>
       </SectionLayout>
-      {editingCollection && (
-        <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
-          collection={editingCollection}
-          onClose={() => setEditingCollection(null)}
-          onSaved={() => setEditingCollection(null)}
-        />
-      )}
-      {permissionsCollectionId !== null && (
-        <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
-          collectionId={permissionsCollectionId}
-          onClose={() => setPermissionsCollectionId(null)}
-        />
-      )}
       <PublishTableModal
         opened={isPublishTableModalOpen}
         onClose={() => setIsPublishTableModalOpen(false)}

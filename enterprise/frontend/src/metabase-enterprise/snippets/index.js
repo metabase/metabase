@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { Modal } from "metabase/common/components/Modal";
 import {
   PLUGIN_SNIPPET_FOLDERS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -28,7 +26,6 @@ export function initializePlugin() {
     PLUGIN_SNIPPET_FOLDERS.isEnabled = true;
     PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = SnippetCollectionPickerModal;
     PLUGIN_SNIPPET_FOLDERS.CollectionFormModal = SnippetCollectionFormModal;
-    PLUGIN_SNIPPET_FOLDERS.CollectionMenu = SnippetCollectionMenu;
     PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
       SnippetCollectionPermissionsModal;
     PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
@@ -59,45 +56,15 @@ export function initializePlugin() {
             }}
           />
         ),
-      (snippetSidebar) =>
-        snippetSidebar.state.permissionsModalCollectionId != null && (
-          <Modal
-            onClose={() =>
-              snippetSidebar.setState({ permissionsModalCollectionId: null })
-            }
-          >
-            <CollectionPermissionsModal
-              params={{
-                slug: snippetSidebar.state.permissionsModalCollectionId,
-              }}
-              onClose={() =>
-                snippetSidebar.setState({ permissionsModalCollectionId: null })
-              }
-              namespace="snippets"
-            />
-          </Modal>
-        ),
     );
 
     // Set collection row renderer
     PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 
     // Add header button
-    PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
+    PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar) => {
       const collection = snippetSidebar.props.snippetCollection;
-      const setSidebarState = snippetSidebar.setState.bind(snippetSidebar);
-
-      return (
-        <SnippetCollectionMenu
-          collection={collection}
-          onEditDetails={() => {
-            setSidebarState({ modalSnippetCollection: collection });
-          }}
-          onChangePermissions={() => {
-            setSidebarState({ permissionsModalCollectionId: collection.id });
-          }}
-        />
-      );
+      return <SnippetCollectionMenu collection={collection} />;
     });
   }
 }

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollection,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -52,7 +52,7 @@ export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
           }
 
           if (isCollection(data)) {
-            return <PLUGIN_SNIPPET_FOLDERS.CollectionMenu collection={data} />;
+            return <CollectionRowMenu collection={data} />;
           }
 
           return (
