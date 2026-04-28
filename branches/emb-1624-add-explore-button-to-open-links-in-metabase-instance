@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1620-apply-the-shared-query-explorer-bar",
-    "hash": "0db624f8451fdd10250991a2663416cf51abbf6c"
+    "hash": "a02fe6df2646d1ea40cd197693752cbcc4fb05d7"
   },
   "upstream": {
     "branch": "emb-1624-add-explore-button-to-open-links-in-metabase-instance"
