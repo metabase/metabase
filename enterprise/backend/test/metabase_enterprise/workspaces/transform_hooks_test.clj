@@ -88,7 +88,7 @@
     (body-fn)))
 
 (deftest python-transforms-inherit-target-rewrite-test
-  (testing "Python transforms see the rewritten target via the wrapper-level gate (regression for GHY-3479)"
+  (testing "Python transforms see the rewritten target via the wrapper-level gate"
     (mt/with-temp [:model/Workspace         {ws-id :id} {:name (str "ws-" (random-uuid))}
                    :model/WorkspaceDatabase _ {:workspace_id     ws-id
                                                :database_id      (mt/id)
