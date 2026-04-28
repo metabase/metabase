@@ -395,7 +395,7 @@
           (finally
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
-                   (log/warnf t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during test cleanup")))
+                   (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during test cleanup")))
             ;; Belt-and-suspenders: directly delete the input dataset and workspace SA,
             ;; regardless of whether destroy succeeded. Both are idempotent.
             (try (bq-drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
