@@ -14,7 +14,6 @@ import {
   getActiveToolCalls,
   getAgentErrorMessages,
   getDebugMode,
-  getFinalNavigateToMessageIdsPerTurn,
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
@@ -158,9 +157,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     cancelRequest,
     metabotId: useSelector(getMetabotId),
     messages: useSelector((state) => getMessages(state, agentId)),
-    finalNavigateToMessageIdsPerTurn: useSelector((state) =>
-      getFinalNavigateToMessageIdsPerTurn(state, agentId),
-    ),
     errorMessages: useSelector((state) =>
       getAgentErrorMessages(state, agentId),
     ),

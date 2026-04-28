@@ -14,7 +14,9 @@ import type {
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
+import { getFinalNavigateToMessageIdsPerTurn } from "metabase/metabot/state";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import { useSelector } from "metabase/redux";
 
 /**
  * Public-facing hook for interacting with Metabot in the SDK.
@@ -76,7 +78,10 @@ export const useMetabot = (): UseMetabotResult => {
     agentResetConversation();
   }, [agentResetConversation]);
 
-  const finalNavigateToIds = agent.finalNavigateToMessageIdsPerTurn;
+  // keep only the last navigate_to per turn — agent may emit several mid-stream
+  const finalNavigateToIds = useSelector((state) =>
+    getFinalNavigateToMessageIdsPerTurn(state, "omnibot"),
+  );
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
