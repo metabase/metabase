@@ -29,6 +29,7 @@
        :threshold  0.90
        :top-n      15
        :output     \"...\"})"
+  (:refer-clojure :exclude [run!])
   (:require
    [clojure.pprint :as pprint]
    [clojure.set :as set]

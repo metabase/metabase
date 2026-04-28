@@ -11,6 +11,7 @@
        :embeddings \"names_arctic-l_1024d.json\"   ; or \"search-text_arctic-l_1024d.json\"
        :catalog    :library                        ; or :universe
        :output     \"enterprise/backend/test_resources/semantic_layer/analysis/sample_pairs_library_names_L.edn\"})"
+  (:refer-clojure :exclude [run!])
   (:require
    [clojure.pprint :as pprint]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
