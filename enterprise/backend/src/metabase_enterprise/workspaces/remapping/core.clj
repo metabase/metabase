@@ -5,7 +5,10 @@
    reads from the `table_remapping` app-DB table via Toucan2. Tests can bind
    [[*remapping-store*]] with a simple map-backed implementation to avoid DB access."
   (:require
+   [metabase-enterprise.workspaces.models.table-remapping]
    [toucan2.core :as t2]))
+
+(comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
 (set! *warn-on-reflection* true)
 
