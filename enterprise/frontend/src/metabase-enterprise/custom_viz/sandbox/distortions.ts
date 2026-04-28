@@ -2,6 +2,8 @@ import {
   ALLOWED_FUNCTIONS,
   CREATE_ELEMENT,
   INSERT_ADJACENT_HTML,
+  SET_ATTRIBUTE,
+  SET_ATTRIBUTE_NS,
 } from "./allowlist";
 import { getFunctionName } from "./debugging";
 
@@ -33,6 +35,14 @@ export function makeDistortionCallback(pluginId: string) {
 
     if (fun === INSERT_ADJACENT_HTML) {
       return insertAdjacentHTMLDistortion();
+    }
+
+    if (fun === SET_ATTRIBUTE) {
+      return setAttributeDistortion(pluginId);
+    }
+
+    if (fun === SET_ATTRIBUTE_NS) {
+      return setAttributeNSDistortion(pluginId);
     }
 
     if (ALLOWED_FUNCTIONS.has(fun)) {
@@ -130,6 +140,40 @@ function createElementDistortion(pluginId: string) {
       throw new Error(`[plugin ${pluginId}] blocked createElement: ${tag}`);
     }
     return CREATE_ELEMENT.call(this, tag, options as ElementCreationOptions);
+  };
+}
+
+// Inline `on*` handler attributes execute as JavaScript when the element is
+// wired up — equivalent to `eval` on a string. Block them at the setAttribute
+// boundary; legitimate event listeners use addEventListener instead.
+function isInlineEventHandlerName(name: unknown): boolean {
+  return typeof name === "string" && /^on/i.test(name);
+}
+
+function setAttributeDistortion(pluginId: string) {
+  return function setAttribute(this: Element, name: string, value: string) {
+    if (isInlineEventHandlerName(name)) {
+      throw new Error(
+        `[plugin ${pluginId}] blocked setAttribute for inline event handler: ${name}`,
+      );
+    }
+    return SET_ATTRIBUTE.call(this, name, value);
+  };
+}
+
+function setAttributeNSDistortion(pluginId: string) {
+  return function setAttributeNS(
+    this: Element,
+    namespace: string | null,
+    qualifiedName: string,
+    value: string,
+  ) {
+    if (isInlineEventHandlerName(qualifiedName)) {
+      throw new Error(
+        `[plugin ${pluginId}] blocked setAttributeNS for inline event handler: ${qualifiedName}`,
+      );
+    }
+    return SET_ATTRIBUTE_NS.call(this, namespace, qualifiedName, value);
   };
 }
 
