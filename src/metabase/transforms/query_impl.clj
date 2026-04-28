@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -14,14 +15,33 @@
 
 (set! *warn-on-reflection* true)
 
+(defenterprise resolve-transform-target
+  "Hook for workspace isolation: given a database id and a transform's canonical target
+  `{:schema ..., :name ...}`, returns the target the transform should actually write to.
+
+  When workspace isolation is active for `db-id`, the EE impl rewrites the target's
+  `:schema` to the workspace's output schema and records a `TableRemapping` so that
+  subsequent queries against the canonical `(schema, name)` pair resolve to the
+  workspace copy via the QP middleware.
+
+  OSS / no-workspace fallback: returns the target unchanged."
+  metabase-enterprise.workspaces.transform-hooks
+  [_db-id target]
+  target)
+
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target owner_user_id creator_id] :as transform}
+  ([{:keys [id source owner_user_id creator_id] :as transform}
     {:keys [run-method start-promise user-id]}]
    (try
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
+           ;; If workspace isolation is active for this DB, the hook rewrites :schema to
+           ;; the workspace output schema and records a TableRemapping so reads against
+           ;; the canonical name resolve to this copy. Otherwise it returns target unchanged.
+           target      (resolve-transform-target (:id db) (:target transform))
+           transform   (assoc transform :target target)
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
