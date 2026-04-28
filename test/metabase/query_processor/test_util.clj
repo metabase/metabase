@@ -67,6 +67,21 @@
 
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
+(defn derived-from
+  "Filter `drivers` to those whose driver hierarchy descends from `parent`. Useful
+   for slicing a feature-filtered driver set into hierarchy-defined subsets, e.g.
+   `(derived-from :sql-jdbc (mt/normal-drivers-with-feature :workspace))` keeps the
+   JDBC-shaped drivers and drops non-JDBC ones like `:bigquery-cloud-sdk` (which
+   descends from `:sql` but not `:sql-jdbc`)."
+  [parent drivers]
+  (set (filter #(isa? driver/hierarchy % parent) drivers)))
+
+(defn not-derived-from
+  "Inverse of [[derived-from]] — drivers in `drivers` whose hierarchy does NOT
+   descend from `parent`."
+  [parent drivers]
+  (set (remove #(isa? driver/hierarchy % parent) drivers)))
+
 ;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
 ;; writing the same results several times
 

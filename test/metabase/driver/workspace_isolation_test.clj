@@ -20,7 +20,6 @@
    `workspace-user-cannot-write-to-input-schema-test`."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -131,7 +130,7 @@
   ;; BigQuery isn't a JDBC driver (its workspace isolation goes through GCP IAM
   ;; rather than SQL ACLs), so it's covered by `workspace-isolation-perms-bigquery-test`
   ;; below. Everything else fans out through this single JDBC-shaped test.
-  (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :workspace) #{:bigquery-cloud-sdk})
+  (mt/test-drivers (mt/derived-from :sql-jdbc (mt/normal-drivers-with-feature :workspace))
     (testing "workspace user gets read-only access to input schema, full access to output schema"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -337,7 +336,7 @@
          (catch Throwable _ nil))))
 
 (deftest ^:synchronized workspace-isolation-perms-bigquery-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :workspace) #{:bigquery-cloud-sdk})
+  (mt/test-drivers (mt/not-derived-from :sql-jdbc (mt/normal-drivers-with-feature :workspace))
     (testing "workspace SA gets read-only access to input dataset, full access to output dataset"
       (let [database     (mt/db)
             details      (:details database)
