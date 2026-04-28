@@ -157,8 +157,7 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{agent-lib
-              api
+   :uses    #{api
               auth-identity
               dashboards
               events
@@ -178,8 +177,7 @@
 
   agent-lib
   {:team "Metabot"
-   :api  #{metabase.agent-lib.core
-           metabase.agent-lib.representations
+   :api  #{metabase.agent-lib.representations
            metabase.agent-lib.representations.repair
            metabase.agent-lib.representations.resolve}
    :uses #{lib
