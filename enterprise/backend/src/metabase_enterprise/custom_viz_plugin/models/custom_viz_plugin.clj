@@ -33,6 +33,22 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(def non-blob-columns
+  "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
+  [:id :identifier :display_name :icon :status :error_message :enabled
+   :manifest :metabase_version :bundle_hash :dev_bundle_url
+   :created_at :updated_at])
+
+(defn select-one-non-blob
+  "Like `t2/select-one` on `:model/CustomVizPlugin`, but excludes the bundle blob."
+  [& conditions]
+  (apply t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) conditions))
+
+(defn select-non-blob
+  "Like `t2/select` on `:model/CustomVizPlugin`, but excludes the bundle blob."
+  [& conditions]
+  (apply t2/select (into [:model/CustomVizPlugin] non-blob-columns) conditions))
+
 (defmethod mi/can-read? :model/CustomVizPlugin
   ([_instance]   (some? api/*current-user-id*))
   ([_model _pk]  (some? api/*current-user-id*)))

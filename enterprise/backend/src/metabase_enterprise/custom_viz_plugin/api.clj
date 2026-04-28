@@ -5,7 +5,7 @@
    [clojure.core.async :as a]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
-   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -105,26 +105,6 @@
            :manifest     manifest}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
-;; Every selector except the raw `/bundle` serve path wants the full plugin row
-;; *without* the bundle blob — loading a multi-MB archive on every list / update
-;; would be wasteful. These helpers drive that: they target the same column set
-;; as a normal `t2/select` but omit `:bundle`.
-
-(def ^:private non-blob-columns
-  [:id :identifier :display_name :icon :status :error_message :enabled
-   :manifest :metabase_version :bundle_hash :dev_bundle_url
-   :created_at :updated_at])
-
-(defn- select-one-plugin
-  "Like `t2/select-one` on `:model/CustomVizPlugin`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) conditions))
-
-(defn- select-plugins
-  "Like `t2/select` on `:model/CustomVizPlugin`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select (into [:model/CustomVizPlugin] non-blob-columns) conditions))
-
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
 (api.macros/defendpoint :post "/" :- CustomVizPluginResponse
@@ -204,7 +184,7 @@
   "List all registered custom visualization plugins."
   []
   (api/check-superuser)
-  (->> (select-plugins {:order-by [[:display_name :asc]]})
+  (->> (custom-viz-plugin/select-non-blob {:order-by [[:display_name :asc]]})
        (mapv (comp plugin->response api/read-check))))
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
@@ -213,9 +193,9 @@
    Dev-only plugins are excluded when dev mode is disabled."
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-        plugins   (select-plugins :status :active
-                                  :enabled true
-                                  {:order-by [[:display_name :asc]]})]
+        plugins   (custom-viz-plugin/select-non-blob :status :active
+                                                     :enabled true
+                                                     {:order-by [[:display_name :asc]]})]
     (->> plugins
          (filter manifest/compatible?)
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
@@ -224,7 +204,7 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (select-one-plugin :id id))]
+  (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
     (t2/delete! :model/CustomVizPlugin :id id)
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
@@ -237,11 +217,11 @@
    _query-params
    body :- [:map
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (select-one-plugin :id id))
+  (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
         updates  (select-keys body [:enabled])]
     (when (seq updates)
       (t2/update! :model/CustomVizPlugin id updates))
-    (let [result (select-one-plugin :id id)]
+    (let [result (custom-viz-plugin/select-one-non-blob :id id)]
       (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                               :previous-object existing
                                                               :user-id         api/*current-user-id*})
@@ -263,7 +243,7 @@
          ["file" [:map
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass File)]]]]]]]
-  (let [existing (api/write-check (select-one-plugin :id id))
+  (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
         tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
@@ -292,7 +272,7 @@
    respond
    raise]
   (try
-    (let [plugin  (api/read-check (select-one-plugin :id id))
+    (let [plugin  (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
           dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
@@ -324,7 +304,7 @@
    respond
    raise]
   (try
-    (let [plugin       (api/read-check (select-one-plugin :id id))
+    (let [plugin       (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
@@ -352,7 +332,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
-  (api/write-check (select-one-plugin :id id))
+  (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
@@ -395,7 +375,7 @@
    plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (select-one-plugin :id id))]
+  (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
     (api/check-400 (dev-only-plugin? plugin)
                    "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
     (let [dev-url      (or (cache/resolve-dev-bundle id)
@@ -408,7 +388,7 @@
                    :icon             (:icon manifest)
                    :manifest         manifest
                    :metabase_version version-str})
-      (let [result (select-one-plugin :id id)]
+      (let [result (custom-viz-plugin/select-one-non-blob :id id)]
         (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                                 :previous-object plugin
                                                                 :user-id         api/*current-user-id*})
