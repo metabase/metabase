@@ -87,7 +87,6 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
         referenced_tables("SELECT * FROM myproject.analytics.events", "bigquery")
         => '[["myproject", "analytics", "events"]]'
     """
-
     ast = sqlglot.parse_one(sql, read=dialect)
     root_scope = optimizer.build_scope(ast)
 
@@ -131,7 +130,6 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
         referenced_fields("SELECT * FROM myproject.analytics.events", "bigquery")
         => '[["myproject", "analytics", "events", "*"]]'
     """
-
     ast = sqlglot.parse_one(sql, read=dialect)
     root_scope = optimizer.build_scope(ast)
 
@@ -275,7 +273,6 @@ def validate_query(dialect, sql, default_table_schema, sqlglot_schema_json):
     # - Permissive mode: no schema → only check syntax, infer schema from query
     strict_mode = sqlglot_schema is not None and len(sqlglot_schema) > 0
 
-
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
         ast = qualify.qualify(ast,
@@ -352,7 +349,6 @@ def simple_query(sql: str, dialect: str = None) -> str:
         simple_query("WITH cte AS (SELECT 1) SELECT * FROM cte")
         => '{"is_simple": false, "reason": "Contains a CTE"}'
     """
-
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
 
@@ -432,7 +428,6 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_
     """
     # Decode schema from JSON (passed from Clojure to avoid polyglot map issues)
     sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
-
 
     ast = sqlglot.parse_one(sql, read=dialect)
     ast = qualify.qualify(ast,
@@ -637,7 +632,6 @@ def field_references(sql: str, dialect: str = "postgres") -> str:
     - used_fields: list of fields used (for custom_field)
     - member_fields: list of fields (for composite_field)
     """
-
     try:
         ast = sqlglot.parse_one(sql, read=dialect)
     except ParseError:
@@ -1618,7 +1612,6 @@ def is_single_select_stmt(sql: str, dialect: str = None) -> str:
     """Validates that a query is a single SELECT statement
     and returns the query reconstructed from the parsed AST.
     """
-
     is_single_select = {"is_single_select?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
