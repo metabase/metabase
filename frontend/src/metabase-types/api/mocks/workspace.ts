@@ -6,7 +6,6 @@ export function createMockWorkspaceDatabase(
   return {
     database_id: 1,
     input_schemas: ["public"],
-    status: "unprovisioned",
     ...opts,
   };
 }

@@ -1,5 +1,8 @@
 import type {
+  CreateWorkspaceDatabaseRequest,
   CreateWorkspaceRequest,
+  DeleteWorkspaceDatabaseRequest,
+  UpdateWorkspaceDatabaseRequest,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
@@ -11,7 +14,6 @@ import {
   invalidateTags,
   listTag,
   provideWorkspaceListTags,
-  provideWorkspaceTags,
 } from "./tags";
 
 export const workspaceApi = EnterpriseApi.injectEndpoints({
@@ -22,14 +24,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/workspace",
       }),
       providesTags: (workspaces = []) => provideWorkspaceListTags(workspaces),
-    }),
-    getWorkspace: builder.query<Workspace, WorkspaceId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/${id}`,
-      }),
-      providesTags: (workspace) =>
-        workspace ? provideWorkspaceTags(workspace) : [],
     }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: (body) => ({
@@ -48,21 +42,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
-      onQueryStarted: async (
-        { id, ...patch },
-        { dispatch, queryFulfilled },
-      ) => {
-        const patchResult = dispatch(
-          workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
-            Object.assign(draft, patch);
-          }),
-        );
-        try {
-          await queryFulfilled;
-        } catch {
-          patchResult.undo();
-        }
-      },
     }),
     deleteWorkspace: builder.mutation<void, WorkspaceId>({
       query: (id) => ({
@@ -72,61 +51,59 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
-    provisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
-      query: (id) => ({
+    createWorkspaceDatabase: builder.mutation<
+      Workspace,
+      CreateWorkspaceDatabaseRequest
+    >({
+      query: ({ workspaceId, database_id, input_schemas }) => ({
         method: "POST",
-        url: `/api/ee/workspace/${id}/provision`,
+        url: `/api/ee/workspace/${workspaceId}/database`,
+        body: { database_id, input_schemas },
       }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
-      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
-        const patchResult = dispatch(
-          workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
-            draft.databases = draft.databases.map((database) => ({
-              ...database,
-              status: "provisioning",
-            }));
-          }),
-        );
-        try {
-          await queryFulfilled;
-        } catch {
-          patchResult.undo();
-        }
-      },
+      invalidatesTags: (_, error, { workspaceId }) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", workspaceId),
+        ]),
     }),
-    deprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
-      query: (id) => ({
-        method: "POST",
-        url: `/api/ee/workspace/${id}/deprovision`,
+    updateWorkspaceDatabase: builder.mutation<
+      Workspace,
+      UpdateWorkspaceDatabaseRequest
+    >({
+      query: ({ workspaceId, database_id, input_schemas }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace/${workspaceId}/database/${database_id}`,
+        body: { input_schemas },
       }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
-      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
-        const patchResult = dispatch(
-          workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
-            draft.databases = draft.databases.map((database) => ({
-              ...database,
-              status: "deprovisioning",
-            }));
-          }),
-        );
-        try {
-          await queryFulfilled;
-        } catch {
-          patchResult.undo();
-        }
-      },
+      invalidatesTags: (_, error, { workspaceId }) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", workspaceId),
+        ]),
+    }),
+    deleteWorkspaceDatabase: builder.mutation<
+      Workspace,
+      DeleteWorkspaceDatabaseRequest
+    >({
+      query: ({ workspaceId, database_id }) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace/${workspaceId}/database/${database_id}`,
+      }),
+      invalidatesTags: (_, error, { workspaceId }) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", workspaceId),
+        ]),
     }),
   }),
 });
 
 export const {
   useListWorkspacesQuery,
-  useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,
-  useProvisionWorkspaceMutation,
-  useDeprovisionWorkspaceMutation,
+  useCreateWorkspaceDatabaseMutation,
+  useUpdateWorkspaceDatabaseMutation,
+  useDeleteWorkspaceDatabaseMutation,
 } = workspaceApi;

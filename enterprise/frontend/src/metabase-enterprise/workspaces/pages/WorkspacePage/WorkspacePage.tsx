@@ -1,15 +1,20 @@
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Center } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
-import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
+import {
+  useListWorkspacesQuery,
+  useUpdateWorkspaceMutation,
+} from "metabase-enterprise/api";
+import type { Workspace } from "metabase-types/api";
 
-import { WorkspaceEditor } from "../../components/WorkspaceEditor";
+import { DatabaseSection } from "../../components/DatabaseSection";
+import { SetupSection } from "../../components/SetupSection";
+import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
-import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
 type WorkspacePageProps = {
   params: { workspaceId: string };
@@ -17,7 +22,8 @@ type WorkspacePageProps = {
 
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
-  const { workspace, isLoading, error } = useFetchWorkspace(workspaceId);
+  const { data: workspaces, isLoading, error } = useListWorkspacesQuery();
+  const workspace = workspaces?.find((ws) => ws.id === workspaceId);
 
   if (isLoading || error != null || workspace == null) {
     return (
@@ -48,22 +54,17 @@ function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
     }
   };
 
-  const handleDatabasesChange = async (databases: WorkspaceDatabase[]) => {
-    const { error } = await updateWorkspace({
-      id: workspace.id,
-      databases,
-    });
-    if (error) {
-      sendErrorToast(t`Failed to update workspace`);
-    }
-  };
-
   return (
-    <WorkspaceEditor
-      workspace={workspace}
-      menu={<WorkspaceMoreMenu workspace={workspace} />}
-      onNameChange={handleNameChange}
-      onDatabasesChange={handleDatabasesChange}
-    />
+    <PageContainer data-testid="workspace-page" gap="2.5rem">
+      <WorkspaceHeader
+        workspace={workspace}
+        menu={<WorkspaceMoreMenu workspace={workspace} />}
+        onNameChange={handleNameChange}
+      />
+      <Stack gap="3.25rem">
+        <DatabaseSection workspace={workspace} />
+        <SetupSection workspace={workspace} />
+      </Stack>
+    </PageContainer>
   );
 }

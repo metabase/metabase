@@ -4,8 +4,8 @@ import type {
   WorkspaceDatabase,
 } from "metabase-types/api";
 
-export type DatabaseConfigRow = {
+export type DatabaseRow = {
   id: DatabaseId;
-  config: WorkspaceDatabase;
+  workspaceDatabase: WorkspaceDatabase;
   database?: Database;
 };

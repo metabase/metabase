@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
 import { Box, Button, Code, Divider, Stack, Text } from "metabase/ui";
+import type { Workspace } from "metabase-types/api";
 
-import type { WorkspaceInfo } from "../../../types";
 import { TitleSection } from "../TitleSection";
 
 const DOCKER_COMMAND = `docker run -d -p 3000:3000 \\
@@ -12,7 +12,7 @@ const DOCKER_COMMAND = `docker run -d -p 3000:3000 \\
   metabase/metabase-enterprise:latest`;
 
 type SetupSectionProps = {
-  workspace: WorkspaceInfo;
+  workspace: Workspace;
 };
 
 export function SetupSection({ workspace }: SetupSectionProps) {

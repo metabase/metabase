@@ -1,17 +1,9 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Group, Icon, Loader, type TreeTableColumnDef } from "metabase/ui";
+import type { TreeTableColumnDef } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import type { Workspace } from "metabase-types/api";
-
-import {
-  isDatabaseDeprovisioning,
-  isDatabaseProvisioned,
-  isDatabaseProvisioning,
-  isDatabaseUnprovisioned,
-} from "../../../utils";
 
 export function getNameColumn(): TreeTableColumnDef<Workspace> {
   return {
@@ -22,22 +14,6 @@ export function getNameColumn(): TreeTableColumnDef<Workspace> {
     minWidth: 200,
     accessorFn: (workspace) => workspace.name,
     cell: ({ getValue }) => String(getValue()),
-  };
-}
-
-export function getStatusColumn(): TreeTableColumnDef<Workspace> {
-  return {
-    id: "status",
-    header: t`Status`,
-    width: "auto",
-    minWidth: 160,
-    accessorFn: (workspace) => getStatusLabel(workspace),
-    cell: ({ row, getValue }) => (
-      <Group gap="sm" wrap="nowrap">
-        {getStatusIcon(row.original)}
-        {String(getValue())}
-      </Group>
-    ),
   };
 }
 
@@ -66,43 +42,9 @@ export function getCreatedAtColumn(): TreeTableColumnDef<Workspace> {
 }
 
 export function getColumns(): TreeTableColumnDef<Workspace>[] {
-  return [
-    getNameColumn(),
-    getStatusColumn(),
-    getCreatedByColumn(),
-    getCreatedAtColumn(),
-  ];
+  return [getNameColumn(), getCreatedByColumn(), getCreatedAtColumn()];
 }
 
 export function getEmptyLabel(isFiltered: boolean): string {
   return isFiltered ? t`No workspaces found` : t`No workspaces yet`;
-}
-
-function getStatusLabel(workspace: Workspace): string {
-  if (workspace.databases.some(isDatabaseProvisioning)) {
-    return t`Provisioning…`;
-  }
-  if (workspace.databases.some(isDatabaseDeprovisioning)) {
-    return t`Deprovisioning…`;
-  }
-  if (workspace.databases.every(isDatabaseProvisioned)) {
-    return t`Provisioned`;
-  }
-  if (workspace.databases.every(isDatabaseUnprovisioned)) {
-    return t`Not provisioned`;
-  }
-  return t`Partially provisioned`;
-}
-
-function getStatusIcon(workspace: Workspace): ReactNode {
-  if (workspace.databases.some(isDatabaseProvisioning)) {
-    return <Loader size="sm" />;
-  }
-  if (workspace.databases.some(isDatabaseDeprovisioning)) {
-    return <Loader size="sm" />;
-  }
-  if (workspace.databases.every(isDatabaseProvisioned)) {
-    return <Icon name="check_filled" c="success" />;
-  }
-  return <Icon name="warning" c="warning" />;
 }

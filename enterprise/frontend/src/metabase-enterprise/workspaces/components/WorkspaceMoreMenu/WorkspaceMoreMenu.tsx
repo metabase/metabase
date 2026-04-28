@@ -4,13 +4,10 @@ import { t } from "ttag";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
-import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
-
-import { isDatabaseUnprovisioned } from "../../utils";
 
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
@@ -21,7 +18,6 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { modalContent, show } = useConfirmation();
-  const isUnprovisioned = workspace.databases.every(isDatabaseUnprovisioned);
 
   const handleDelete = () => {
     show({
@@ -50,19 +46,9 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Tooltip
-            label={t`Deprovision this workspace before deleting it.`}
-            disabled={isUnprovisioned}
-            openDelay={TOOLTIP_OPEN_DELAY}
-          >
-            <Menu.Item
-              leftSection={<Icon name="trash" />}
-              disabled={!isUnprovisioned}
-              onClick={handleDelete}
-            >
-              {t`Delete`}
-            </Menu.Item>
-          </Tooltip>
+          <Menu.Item leftSection={<Icon name="trash" />} onClick={handleDelete}>
+            {t`Delete`}
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
       {modalContent}

@@ -6,10 +6,6 @@ export function workspaceList() {
   return WORKSPACES_ROOT;
 }
 
-export function newWorkspace() {
-  return `${WORKSPACES_ROOT}/new`;
-}
-
 export function workspace(workspaceId: WorkspaceId) {
   return `${WORKSPACES_ROOT}/${workspaceId}`;
 }

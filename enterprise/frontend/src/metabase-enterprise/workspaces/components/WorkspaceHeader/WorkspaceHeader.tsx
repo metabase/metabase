@@ -8,24 +8,19 @@ import {
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/utils/urls";
-
-import type { WorkspaceInfo } from "../../../types";
+import type { Workspace } from "metabase-types/api";
 
 type WorkspaceHeaderProps = {
-  workspace: WorkspaceInfo;
+  workspace: Workspace;
   menu?: ReactNode;
-  actions?: ReactNode;
   onNameChange: (name: string) => void;
 };
 
 export function WorkspaceHeader({
   workspace,
   menu,
-  actions,
   onNameChange,
 }: WorkspaceHeaderProps) {
-  const isNew = workspace.id == null;
-
   return (
     <PaneHeader
       py={0}
@@ -34,19 +29,16 @@ export function WorkspaceHeader({
           <Link key="workspace-list" to={Urls.workspaceList()}>
             {t`Workspaces`}
           </Link>
-          {isNew ? t`New workspace` : workspace.name}
+          {workspace.name}
         </DataStudioBreadcrumbs>
       }
       title={
         <PaneHeaderInput
           initialValue={workspace.name}
-          placeholder={t`New workspace`}
-          isOptional={isNew}
           onChange={onNameChange}
         />
       }
       menu={menu}
-      actions={actions}
       showMetabotButton
     />
   );
