@@ -209,17 +209,18 @@
               (is (re-find #"(?i)venues_unsynced" rewritten)
                   "Phase 2 emits the to-side table name in the rewritten SQL"))))))))
 
-;;; ============================================ Read-path ladder ===============================================
+;;; ========================================= Read-path tests ===================================================
 ;;;
-;;; Progressive coverage of every read-path query shape we ship. Each rung adds one bit of complexity. Each rung
-;;; asserts the same invariant: remapped tables resolve to the workspace schema; non-remapped tables stay
+;;; Progressive coverage of every read-path query shape we ship. Each test adds one bit of complexity, all
+;;; asserting the same invariant: remapped tables resolve to the workspace schema; non-remapped tables stay
 ;;; canonical.
 ;;;
-;;; The ladder subsumes the call-site survey's bypass-path concern from a different angle — instead of enumerating
+;;; This subsumes the call-site survey's bypass-path concern from a different angle — instead of enumerating
 ;;; call sites where remapping might miss, enumerate query shapes and prove each one rewrites correctly.
 ;;;
-;;; All rungs run through Dan's `MapRemappingStore` (no DB temps) and assert on the rewritten SQL produced by
-;;; Phase 2. Rungs 8-10 add the MBQL preprocess pipeline, Card execution, and Dashboard execution respectively.
+;;; All single-table-through-subquery tests run through Dan's `MapRemappingStore` (no DB temps) and assert on
+;;; the rewritten SQL produced by Phase 2. The MBQL Phase 1, Card, and Dashboard tests add the MBQL preprocess
+;;; pipeline, Card execution, and Dashboard execution respectively.
 
 (defn- rewrite-via-phase-2
   "Run `sql` through Phase 2 with the given remappings and return the rewritten SQL."
@@ -232,8 +233,8 @@
       (wrapped {:database db-id :qp/compiled {:query sql}} identity)
       (get-in @captured [:qp/compiled :query]))))
 
-(deftest ladder-rung-1-single-table-remapped-test
-  (testing "Rung 1: a single remapped table is rewritten to the workspace schema"
+(deftest single-remapped-table-rewrite-test
+  (testing "a single remapped table is rewritten to the workspace schema"
     (mt/with-premium-features #{:workspaces}
       (let [rewritten (rewrite-via-phase-2 (mt/id)
                                            {["PUBLIC" "ORDERS"] ["ws_alice" "orders_workspace"]}
@@ -243,8 +244,8 @@
         (is (not (re-find #"(?i)PUBLIC\.ORDERS\b" rewritten))
             "no canonical reference survives the rewrite")))))
 
-(deftest ladder-rung-2-single-table-not-remapped-test
-  (testing "Rung 2: a non-remapped table passes through unchanged (canonical pass-through)"
+(deftest non-remapped-table-passthrough-test
+  (testing "a non-remapped table passes through unchanged (canonical pass-through)"
     (mt/with-premium-features #{:workspaces}
       (let [sql       "SELECT * FROM PUBLIC.VENUES"
             rewritten (rewrite-via-phase-2 (mt/id)
@@ -256,8 +257,8 @@
         (is (not (re-find #"(?i)ws_alice" rewritten))
             "the unrelated workspace schema must not appear")))))
 
-(deftest ladder-rung-3-join-one-remapped-test
-  (testing "Rung 3: in a join, only the remapped side is rewritten"
+(deftest join-one-side-remapped-test
+  (testing "in a join, only the remapped side is rewritten"
     (mt/with-premium-features #{:workspaces}
       (let [rewritten (rewrite-via-phase-2 (mt/id)
                                            {["PUBLIC" "ORDERS"] ["ws_alice" "orders_workspace"]}
@@ -269,8 +270,8 @@
         (is (re-find #"(?i)PUBLIC\.USERS" rewritten)
             "USERS has no remapping — its canonical reference survives")))))
 
-(deftest ladder-rung-4-join-both-remapped-test
-  (testing "Rung 4: in a join, both remapped sides are rewritten"
+(deftest join-both-sides-remapped-test
+  (testing "in a join, both remapped sides are rewritten"
     (mt/with-premium-features #{:workspaces}
       (let [rewritten (rewrite-via-phase-2 (mt/id)
                                            {["PUBLIC" "ORDERS"] ["ws_alice" "orders_workspace"]
@@ -283,8 +284,8 @@
         (is (not (re-find #"(?i)PUBLIC\.ORDERS\b" rewritten)))
         (is (not (re-find #"(?i)PUBLIC\.USERS\b"  rewritten)))))))
 
-(deftest ladder-rung-5-three-tables-mixed-remapping-test
-  (testing "Rung 5: three tables, mixed remapping — only the configured ones are rewritten"
+(deftest three-tables-mixed-remapping-test
+  (testing "three tables, mixed remapping — only the configured ones are rewritten"
     (mt/with-premium-features #{:workspaces}
       (let [rewritten (rewrite-via-phase-2 (mt/id)
                                            {["PUBLIC" "ORDERS"]   ["ws_alice" "orders_workspace"]
@@ -298,8 +299,8 @@
         (is (re-find #"(?i)PUBLIC\.USERS" rewritten)
             "USERS is the only un-remapped table; its canonical ref survives")))))
 
-(deftest ladder-rung-6-cte-mixed-remapping-test
-  (testing "Rung 6: a CTE referencing both remapped and non-remapped tables is rewritten correctly"
+(deftest cte-mixed-remapping-test
+  (testing "a CTE referencing both remapped and non-remapped tables is rewritten correctly"
     (mt/with-premium-features #{:workspaces}
       (let [rewritten (rewrite-via-phase-2 (mt/id)
                                            {["PUBLIC" "ORDERS"] ["ws_alice" "orders_workspace"]}
@@ -314,8 +315,8 @@
         (is (re-find #"(?i)PUBLIC\.USERS" rewritten)
             "USERS outside the CTE keeps its canonical ref")))))
 
-(deftest ladder-rung-7-subquery-mixed-remapping-test
-  (testing "Rung 7: a nested subquery referencing both kinds of tables is rewritten correctly"
+(deftest subquery-mixed-remapping-test
+  (testing "a nested subquery referencing both kinds of tables is rewritten correctly"
     (mt/with-premium-features #{:workspaces}
       (let [rewritten (rewrite-via-phase-2 (mt/id)
                                            {["PUBLIC" "ORDERS"] ["ws_alice" "orders_workspace"]}
@@ -327,8 +328,8 @@
         (is (re-find #"(?i)PUBLIC\.USERS" rewritten)
             "USERS in the outer query keeps its canonical ref")))))
 
-(deftest ladder-rung-8-mbql-phase-1-metadata-override-test
-  (testing "Rung 8: MBQL preprocess (Phase 1) overrides table metadata so HoneySQL emits workspace identifiers"
+(deftest mbql-phase-1-metadata-override-test
+  (testing "MBQL preprocess (Phase 1) overrides table metadata so HoneySQL emits workspace identifiers"
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         (let [venues          (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
@@ -344,8 +345,8 @@
                 (is (= "venues_workspace" (:name after))
                     "Phase 1 wrote the workspace table name into the cached metadata")))))))))
 
-(deftest ladder-rung-9-card-execution-path-test
-  (testing "Rung 9: a Card whose dataset_query targets a remapped table compiles to workspace SQL"
+(deftest card-execution-path-test
+  (testing "a Card whose dataset_query targets a remapped table compiles to workspace SQL"
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         (let [venues          (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
@@ -373,8 +374,8 @@
                 (is (re-find #"(?i)ws_alice|venues_workspace" rewritten)
                     "Card MBQL → preprocess → compile → Phase 2 produces workspace identifiers")))))))))
 
-(deftest ladder-rung-10-dashboard-multiple-cards-mixed-remapping-test
-  (testing "Rung 10: a Dashboard with multiple cards rewrites each card's SQL according to the remapping config"
+(deftest dashboard-multiple-cards-mixed-remapping-test
+  (testing "a Dashboard with multiple cards rewrites each card's SQL according to the remapping config"
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         ;; One card targets a remapped table (VENUES), the other a non-remapped table (CHECKINS).
