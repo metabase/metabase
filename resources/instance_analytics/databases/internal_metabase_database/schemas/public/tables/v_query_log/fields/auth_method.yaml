@@ -7,6 +7,7 @@ database_type: varchar
 base_type: type/Text
 effective_type: type/Text
 semantic_type: type/Category
+dimensions: []
 position: 28
 custom_position: 0
 database_position: 28
