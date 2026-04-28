@@ -4,17 +4,13 @@
     "hash": "72eadc3d4b453922e9235a3b3855bf4ac6b36204"
   },
   "upstream": {
-    "branch": "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
+    "branch": "emb-1650-trigger-new-charts-thru-drills-and-show-title-without-time"
   },
   "change": {
     "github": {
       "pr": {
-        "number": 73277,
-        "gqlID": "PR_kwDOAczgH87WPoId"
-      },
-      "comment": {
-        "gqlID": "IC_kwDOAczgH88AAAABAkjYOA",
-        "url": "https://github.com/metabase/metabase/pull/73277#issuecomment-4333295672"
+        "number": 73278,
+        "gqlID": "PR_kwDOAczgH87WPy7I"
       }
     }
   }
