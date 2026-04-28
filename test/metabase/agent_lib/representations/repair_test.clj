@@ -178,6 +178,91 @@
              output)))))
 
 ;;; ============================================================
+;;; Pass 1.81 - rewrite operator-name aliases to canonical lib heads
+;;; ============================================================
+
+(deftest rewrite-shell-style-comparison-aliases-test
+  (testing "shell-style comparison operators rewrite to canonical"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
+      (doseq [[alias canonical] [["eq"  "="]
+                                 ["ne"  "!="]
+                                 ["lt"  "<"]
+                                 ["le"  "<="]
+                                 ["lte" "<="]
+                                 ["gt"  ">"]
+                                 ["ge"  ">="]
+                                 ["gte" ">="]]]
+        (is (= [canonical {} field 10]
+               (repair/repair trivial-mp [alias {} field 10]))
+            (str alias " -> " canonical))))))
+
+(deftest rewrite-verbose-comparison-aliases-test
+  (testing "verbose comparison spellings"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
+      (is (= ["=" {} field 10]
+             (repair/repair trivial-mp ["equals" {} field 10])))
+      (is (= ["!=" {} field 10]
+             (repair/repair trivial-mp ["not-equals" {} field 10]))))))
+
+(deftest rewrite-aggregation-aliases-test
+  (testing "aggregation lib-renames"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]
+          pred  ["=" {} field 1]]
+      (is (= ["count-where" {} pred]
+             (repair/repair trivial-mp ["count-if" {} pred])))
+      (is (= ["var" {} field]
+             (repair/repair trivial-mp ["variance" {} field])))
+      (is (= ["stddev" {} field]
+             (repair/repair trivial-mp ["stddev-pop" {} field])))
+      (is (= ["distinct" {} field]
+             (repair/repair trivial-mp ["count-distinct" {} field])))
+      (is (= ["distinct" {} field]
+             (repair/repair trivial-mp ["distinct-count" {} field]))))))
+
+(deftest rewrite-temporal-and-null-aliases-test
+  (testing "temporal & null lib-renames"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "DATE"]]]
+      (is (= ["relative-datetime" {} -7 "day"]
+             (repair/repair trivial-mp ["relative-date" {} -7 "day"])))
+      (is (= ["datetime-diff" {} field field "day"]
+             (repair/repair trivial-mp ["temporal-diff" {} field field "day"])))
+      (is (= ["not-null" {} field]
+             (repair/repair trivial-mp ["is-not-null" {} field]))))))
+
+(deftest operator-alias-case-insensitive-test
+  (testing "alias matching is case-insensitive"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
+      (doseq [variant ["EQ" "Eq" "EQUALS" "Equals"]]
+        (is (= ["=" {} field 10]
+               (repair/repair trivial-mp [variant {} field 10]))
+            variant)))))
+
+(deftest operator-alias-canonical-untouched-test
+  (testing "already-canonical heads are not double-rewritten (cheap idempotency)"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
+      (doseq [canonical ["=" "!=" "<" "<=" ">" ">="]]
+        (let [input [canonical {} field 10]]
+          (is (= input (repair/repair trivial-mp input)) canonical))))))
+
+(deftest operator-alias-nested-test
+  (testing "alias nested deep inside a tree gets rewritten"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]
+          input ["and" {}
+                 ["eq" {} field 1]
+                 ["gt" {} field 5]]]
+      (is (= ["and" {}
+              ["=" {} field 1]
+              [">" {} field 5]]
+             (repair/repair trivial-mp input))))))
+
+(deftest operator-alias-fk-path-untouched-test
+  (testing "a column literally named 'eq' or 'gt' inside an FK path is NOT rewritten"
+    (is (= ["field" {} ["Sample" "PUBLIC" "T" "eq"]]
+           (repair/repair trivial-mp ["field" {} ["Sample" "PUBLIC" "T" "eq"]])))
+    (is (= ["field" {} ["Sample" "PUBLIC" "T" "gt"]]
+           (repair/repair trivial-mp ["field" {} ["Sample" "PUBLIC" "T" "gt"]])))))
+
+;;; ============================================================
 ;;; Pass 1.8 - rewrite temporal-bucket-extraction aliases to canonical names
 ;;; ============================================================
 

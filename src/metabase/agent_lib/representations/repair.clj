@@ -167,6 +167,86 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.81 -- canonicalise common operator-name aliases.
+;;;
+;;; LLMs are heavily-trained on shell scripts, Python comparison protocols, and SQL-ish
+;;; idioms. They occasionally pick up:
+;;;
+;;;   * shell-style comparison operators: `eq`, `ne`, `lt`, `lte` / `le`, `gt`, `gte` / `ge`
+;;;     (cf. `man test`);
+;;;   * verbose comparison spellings: `equals`, `not-equals`;
+;;;   * lib-renamed aggregation / clause names that stuck around:
+;;;       - `count-if`            → `count-where`
+;;;       - `variance`            → `var`
+;;;       - `stddev-pop`          → `stddev`
+;;;       - `count-distinct`      → `distinct`
+;;;       - `distinct-count`      → `distinct`
+;;;       - `relative-date`       → `relative-datetime`
+;;;       - `temporal-diff`       → `datetime-diff`
+;;;       - `is-not-null`         → `not-null`
+;;;
+;;; The lib-rename set is carried over from the sexp pipeline's
+;;; `metabase.agent-lib.syntax/canonical-operator-aliases` (see
+;;; `repr-deletion-followups.md` § 1.1) - the original commentary recommended against
+;;; reintroducing aliases, but we add the shell/SQL aliases anyway because LLMs are
+;;; demonstrably shell-literate and the cost of supporting these names is one extra
+;;; lookup at the start of the pipeline. The temporal-bucket aliases (`dayofweek`,
+;;; `day-of-week`, `hour-of-day`, `month-of-year`, `quarter-of-year`) are kept in their
+;;; own pass (1.8) for separate testing and because they target different lib heads
+;;; depending on the unit.
+;;;
+;;; Notably **not** ported:
+;;;   * `if` → `case`: lib accepts both (§conditional.cljc explicitly aliases them);
+;;;   * `month` → `get-month`: ambiguous (could also be `:temporal-bucket :month`);
+;;;   * `|` → `or`: too symbolic, unlikely from any model.
+;;; ============================================================
+
+(def ^:private operator-name-aliases
+  "Lowercased alias → canonical lib head. Match is case-insensitive on lookup."
+  {;; Shell-style / Python-style comparison
+   "eq"             "="
+   "equals"         "="
+   "ne"             "!="
+   "not-equals"     "!="
+   "lt"             "<"
+   "le"             "<="
+   "lte"            "<="
+   "gt"             ">"
+   "ge"             ">="
+   "gte"            ">="
+   ;; Lib renames (carried over from sexp `canonical-operator-aliases`)
+   "count-if"       "count-where"
+   "variance"       "var"
+   "stddev-pop"     "stddev"
+   "count-distinct" "distinct"
+   "distinct-count" "distinct"
+   "relative-date"  "relative-datetime"
+   "temporal-diff"  "datetime-diff"
+   "is-not-null"    "not-null"})
+
+(defn- operator-alias-clause?
+  "True when `node` is a clause whose head (case-insensitive) matches a known alias and
+  is not already canonical. Requires options-map at slot 1 - bare-clause case is handled
+  by Pass 1, which runs first."
+  [node]
+  (and (vector? node)
+       (>= (count node) 2)
+       (string? (nth node 0))
+       (map? (nth node 1))
+       (let [lower (str/lower-case (nth node 0))]
+         (and (contains? operator-name-aliases lower)
+              (not= (nth node 0) (get operator-name-aliases lower))))))
+
+(defn- rewrite-operator-name-aliases*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (operator-alias-clause? node)
+       (assoc node 0 (get operator-name-aliases (str/lower-case (nth node 0))))
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.8 -- canonicalise temporal-bucket extraction aliases.
 ;;;
 ;;; LLMs naturally pick up English-flavoured operator names like `dayofweek`,
@@ -1617,6 +1697,7 @@
       ensure-clause-options*
       unwrap-boolean-wrappers*
       unwrap-nested-field-clauses*
+      rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
       wrap-iso-date-bounds*
