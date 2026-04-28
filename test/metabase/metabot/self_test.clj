@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
@@ -405,9 +405,28 @@
            (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
 
 (deftest format-error-line-test
-  (testing "formats error message as JSON string with 3: prefix"
+  (testing "formats plain error message as a JSON string with 3: prefix"
     (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
-    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"})))))
+    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"}))))
+  (testing "formats structured error with error-code as a JSON object"
+    (let [line   (self.core/format-error-line {:error {:message    "You've used all of your included AI service tokens."
+                                                       :error-code "metabase_ai_managed_locked"}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (str/starts-with? line "3:"))
+      (is (= "You've used all of your included AI service tokens." (:message parsed)))
+      (is (= "metabase_ai_managed_locked" (:error-code parsed)))))
+  (testing "formats ai_usage_limit_reached error-code as a JSON object"
+    (let [line   (self.core/format-error-line {:error {:message    "You have reached your AI usage limit."
+                                                       :error-code "ai_usage_limit_reached"}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (str/starts-with? line "3:"))
+      (is (= "You have reached your AI usage limit." (:message parsed)))
+      (is (= "ai_usage_limit_reached" (:error-code parsed)))))
+  (testing "coerces keyword error-code to string"
+    (let [line   (self.core/format-error-line {:error {:message    "Usage limit reached"
+                                                       :error-code :metabase_ai_managed_locked}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (= "metabase_ai_managed_locked" (:error-code parsed))))))
 
 (deftest format-tool-call-line-test
   (testing "formats tool call with toolCallId, toolName, and args"
@@ -598,8 +617,8 @@
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
         ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
@@ -618,9 +637,9 @@
                                        (assoc labels :error-type "ExceptionInfo"))))
             (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-retries)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-retries)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors on non-retryable failure, no retries"
           (with-redefs [openrouter/openrouter
@@ -635,9 +654,9 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-errors)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-errors)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (with-redefs [openrouter/openrouter
@@ -682,8 +701,8 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
@@ -700,9 +719,9 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-retries)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-retries)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors on non-retryable failure, no retries"
           (with-redefs [openrouter/openrouter
@@ -714,9 +733,9 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
-        (prometheus/clear! :metabase-metabot/llm-requests)
-        (prometheus/clear! :metabase-metabot/llm-errors)
-        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+        (analytics/clear! :metabase-metabot/llm-requests)
+        (analytics/clear! :metabase-metabot/llm-errors)
+        (analytics/clear! :metabase-metabot/llm-duration-ms)
 
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (with-redefs [openrouter/openrouter

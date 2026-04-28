@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -219,10 +220,10 @@
                       {:provider provider :model model-name}
                       total-tokens)
       (when snowplow?
-        (analytics/track-token-usage!
+        (analytics.core/track-token-usage!
          {:snowplow            true
           :prometheus          false    ; already tracked via inc! above
-          :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
+          :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
           :model-id            model-name
           :total-tokens        total-tokens
           :prompt-tokens       prompt-tokens

@@ -17,8 +17,8 @@ import type {
   VisualizerVizDefinitionWithColumns,
   VisualizerVizDefinitionWithColumnsAndFallbacks,
 } from "metabase/redux/store/visualizer";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { clone } from "metabase/utils/clone";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {

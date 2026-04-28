@@ -10,10 +10,10 @@ import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useQuestionListQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { modelIconMap } from "metabase/utils/icon";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import visualizations from "metabase/visualizations";
 

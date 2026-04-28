@@ -11,7 +11,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]

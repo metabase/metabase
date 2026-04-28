@@ -7,8 +7,8 @@ import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import { isEmbedPreview } from "metabase/embedding/config";
+import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 

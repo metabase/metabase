@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
@@ -12,7 +13,6 @@ import { deleteSession, initiateSLO } from "metabase/utils/auth";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { loadLocalization } from "metabase/utils/i18n";
 import { passwordComplexityDescription } from "metabase/utils/password";
-import { createAsyncThunk } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 import type { LoginData } from "./types";

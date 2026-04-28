@@ -28,6 +28,7 @@ import type {
 } from "metabase/metabot/state/types";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -47,7 +48,6 @@ import {
   Title,
 } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { getUserName } from "metabase/utils/user";
 import { useGetTenantQuery } from "metabase-enterprise/api";

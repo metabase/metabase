@@ -32,6 +32,7 @@ import type {
   FieldReference,
   FieldValuesType,
   FieldVisibilityType,
+  NormalizedField,
 } from "metabase-types/api";
 
 import Base from "./Base";
@@ -78,7 +79,7 @@ export default class Field extends Base {
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
 
-  getPlainObject(): IField {
+  getPlainObject(): NormalizedField {
     return this._plainObject;
   }
 

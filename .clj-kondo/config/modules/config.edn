@@ -181,9 +181,10 @@
    :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
-           metabase.analytics.prometheus
+           metabase.analytics.settings
            metabase.analytics.snowplow}
-   :uses #{api
+   :uses #{analytics-interface
+           api
            app-db
            appearance
            config
@@ -194,6 +195,7 @@
            models
            permissions
            premium-features
+           request
            session
            settings
            sso
@@ -222,6 +224,11 @@
                     :model/Transform
                     :model/TransformRun
                     :model/User}}
+
+  analytics-interface
+  {:team "Querying Platform"
+   :api  #{metabase.analytics-interface.core}
+   :uses #{}}
 
   analyze
   {:team "Graphy"
@@ -459,6 +466,7 @@
            metabase.channel.template.core
            metabase.channel.urls}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            appearance
@@ -815,7 +823,7 @@
            metabase.driver.sql.util
            metabase.driver.sync
            metabase.driver.util}
-   :uses #{analytics
+   :uses #{analytics-interface
            app-db
            appearance
            auth-provider
@@ -900,11 +908,13 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
+           models
            premium-features
            server
            settings
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard}
+   :model-exports #{:model/EmbeddingTheme}}
 
   embedding-rest
   {:team "Embedding"
@@ -924,7 +934,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -957,7 +967,7 @@
   frontend-errors
   {:team "UX West"
    :api  #{metabase.frontend-errors.api}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            request
            util}}
@@ -1204,6 +1214,7 @@
    :uses    #{activity-feed
               agent-lib
               analytics
+              analytics-interface
               api
               api-scope
               app-db
@@ -1355,6 +1366,7 @@
            metabase.notification.models
            metabase.notification.payload.core}
    :uses #{analytics
+           analytics-interface
            api
            appearance
            auth-identity
@@ -1501,7 +1513,7 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            app-db
            classloader
@@ -1612,6 +1624,7 @@
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
    :uses #{analytics
+           analytics-interface
            analyze
            api
            app-db
@@ -1736,6 +1749,7 @@
               metabase.query-processor.util
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
+           analytics-interface
            analyze
            api
            app-db
@@ -1786,9 +1800,11 @@
   request
   {:team "UX West"
    :api  #{metabase.request.core
+           metabase.request.current
            metabase.request.init
-           metabase.request.schema}
-   :uses #{analytics
+           metabase.request.schema
+           metabase.request.user-agent}
+   :uses #{analytics-interface
            api
            config
            embedding
@@ -1848,6 +1864,7 @@
            metabase.search.spec
            metabase.search.task.search-index}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            appearance
@@ -1906,6 +1923,7 @@
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
+           analytics-interface
            api
            api-keys
            app-db
@@ -2006,6 +2024,7 @@
               metabase.slackbot.init}
    :friends #{metabot}
    :uses    #{analytics
+              analytics-interface
               api
               channel
               config
@@ -2040,7 +2059,7 @@
   sql-parsing
   {:team "DevEx"
    :api #{metabase.sql-parsing.core}
-   :uses #{analytics
+   :uses #{analytics-interface
            util}}
 
   sql-tools
@@ -2048,6 +2067,7 @@
    :api #{metabase.sql-tools.core
           metabase.sql-tools.init}
    :uses #{analytics
+           analytics-interface
            driver
            lib
            settings
@@ -2095,7 +2115,7 @@
            metabase.sync.schedules
            metabase.sync.task.sync-databases
            metabase.sync.util}
-   :uses #{analytics
+   :uses #{analytics-interface
            analyze
            api
            app-db
@@ -2220,7 +2240,7 @@
            metabase.transforms.init
            metabase.transforms.schema
            metabase.transforms.util}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            app-db
            channel
@@ -2317,6 +2337,7 @@
            metabase.upload.db
            metabase.upload.init}
    :uses #{analytics
+           analytics-interface
            api
            appearance
            driver
@@ -2508,7 +2529,7 @@
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            app-db
            audit-app
@@ -2825,6 +2846,7 @@
    :api  #{metabase-enterprise.data-complexity-score.api
            metabase-enterprise.data-complexity-score.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            audit-app
@@ -2969,6 +2991,7 @@
    :api  #{metabase-enterprise.gsheets.api
            metabase-enterprise.gsheets.init}
    :uses #{analytics
+           analytics-interface
            api
            premium-features
            settings
@@ -3073,7 +3096,7 @@
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            app-db
            collections
@@ -3081,6 +3104,7 @@
            models
            premium-features
            settings
+           startup
            task
            task-history
            util
@@ -3166,7 +3190,7 @@
    :api  #{metabase-enterprise.scim.core
            metabase-enterprise.scim.init
            metabase-enterprise.scim.routes}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            api-keys
            models
@@ -3217,6 +3241,7 @@
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
+           analytics-interface
            api
            app-db
            config
@@ -3363,7 +3388,7 @@
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            app-db
            config

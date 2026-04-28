@@ -20,6 +20,7 @@ import {
 } from "metabase/metabot/state";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
@@ -32,7 +33,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

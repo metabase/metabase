@@ -13,9 +13,9 @@ import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { createAsyncThunk } from "metabase/utils/redux";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -39,6 +39,7 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
+  MetabotAgentChartMessage,
   MetabotAgentDataPartMessage,
   MetabotAgentId,
   MetabotErrorMessage,
@@ -115,6 +116,16 @@ const handleResponseError = (
       },
       shouldRetry: true,
     }))
+    .with(
+      { "error-code": "ai_usage_limit_reached", message: P.string },
+      ({ message }) => ({
+        errorMessage: {
+          type: "message" as const,
+          message,
+        },
+        shouldRetry: true,
+      }),
+    )
     .with(P.string, (err) => ({
       errorMessage: {
         type: "message" as const,
@@ -370,6 +381,18 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
+      /**
+       * Hold the chart message until the stream finishes so it renders after
+       * the agent's final text. `navigate_to` arrives mid-stream, before the
+       * last message, so inserting it eagerly would show the chart above later
+       * text.
+       *
+       * Last navigate_to wins, matching setNavigateToPath/CurrentChart semantics.
+       * In practice we don't expect more than one navigate_to in a single stream.
+       */
+      let pendingChartMessage:
+        | { type: "chart"; navigateTo: string }
+        | undefined = undefined;
 
       const response = await aiStreamingQuery(
         {
@@ -402,6 +425,19 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
+
+                if (isEmbeddingSdk()) {
+                  if (pendingChartMessage) {
+                    console.warn("Overwriting pending navigate_to: ", {
+                      previous: pendingChartMessage.navigateTo,
+                      next: part.value,
+                    });
+                  }
+                  pendingChartMessage = {
+                    type: "chart",
+                    navigateTo: part.value,
+                  };
+                }
 
                 if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
@@ -459,6 +495,15 @@ export const sendAgentRequest = createAsyncThunk<
           },
         },
       );
+
+      // Preserve any chart the agent already committed via `navigate_to`,
+      // even if the stream errored or was cancelled before the closing text
+      // arrived.
+      if (pendingChartMessage != null) {
+        const chartMessage: Omit<MetabotAgentChartMessage, "id" | "role"> =
+          pendingChartMessage;
+        dispatch(addAgentMessage({ ...chartMessage, agentId }));
+      }
 
       if (error) {
         throw error;

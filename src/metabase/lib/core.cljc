@@ -49,8 +49,9 @@
     existing calls when practical. Will be unexported when there are no callers left. Docstrings should suggest an
     alternative to calling these functions.
   - **Deprecated:** Stronger than Leak - the function should be removed altogether, not just unexported."
+  {:clj-kondo/ignore [:unused-excluded-var]}
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref var float])
+                            + - * / time abs concat replace ref float])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
