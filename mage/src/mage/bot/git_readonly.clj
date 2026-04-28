@@ -76,9 +76,18 @@
     (let [stash-sub (first args)]
       (contains? #{"list" "show" nil} stash-sub))
 
-    ;; config: read-only unless --set/--unset/--add/--replace-all/--remove-section/--rename-section
+    ;; config: read iff explicit read flag (--get*, --list, --show-*, --name-only) OR
+    ;; at most one positional arg (e.g. `git config user.email` displays the value).
+    ;; `git config <key> <value>` (positional set) and any --set/--unset/--add/--edit
+    ;; flag are writes.
     (= subcommand "config")
-    (not (some #(re-matches #"--set|--unset.*|--add|--replace-all|--remove-section|--rename-section|--edit|-e" %) args))
+    (let [write-flag? (some #(re-matches #"--set|--set-all|--unset|--unset-all|--add|--replace-all|--remove-section|--rename-section|--edit|-e" %) args)
+          read-flag?  (some #(re-matches #"--get|--get-all|--get-regexp|--get-urlmatch|--get-color|--get-colorbool|--list|-l|--show-origin|--show-scope|--name-only" %) args)
+          positional  (remove #(str/starts-with? % "-") args)]
+      (cond
+        write-flag? false
+        read-flag?  true
+        :else       (<= (count positional) 1)))
 
     ;; remote: read-only unless add/remove/rename/set-url/set-head/prune
     (= subcommand "remote")
@@ -130,21 +139,32 @@
 
           :else (recur (rest remaining)))))))
 
+(defn- find-method-arg
+  "Find the value of --method or -X in args, handling both
+   `--method POST` (separate args) and `--method=POST` (single arg) forms."
+  [args]
+  (loop [remaining args]
+    (when (seq remaining)
+      (let [a (first remaining)]
+        (cond
+          (or (= a "--method") (= a "-X"))
+          (some-> (second remaining) str/upper-case)
+
+          (str/starts-with? a "--method=")
+          (str/upper-case (subs a (count "--method=")))
+
+          (str/starts-with? a "-X=")
+          (str/upper-case (subs a (count "-X=")))
+
+          :else (recur (rest remaining)))))))
+
 (defn- gh-api-readonly?
   "Check if a `gh api` call is read-only. GET is read-only, everything else writes.
    Also blocks --input @file which can read arbitrary files into the request body."
   [args]
   (if (gh-api-input-from-file? args)
     false
-    (let [method-idx (.indexOf ^java.util.List (vec args) "--method")
-          method     (when (and (>= method-idx 0) (< (inc method-idx) (count args)))
-                       (str/upper-case (nth args (inc method-idx))))
-          ;; Also check -X shorthand
-          x-idx      (.indexOf ^java.util.List (vec args) "-X")
-          x-method   (when (and (>= x-idx 0) (< (inc x-idx) (count args)))
-                       (str/upper-case (nth args (inc x-idx))))
-          effective-method (or method x-method "GET")]
-      (= effective-method "GET"))))
+    (= (or (find-method-arg args) "GET") "GET")))
 
 (defn- gh-command-readonly?
   "Returns true if the gh command is read-only."

@@ -1,6 +1,7 @@
 (ns mage.bot.autobot
   "Unified autobot session management — launch, stop, list, quit."
   (:require
+   [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.bot.preflight :as preflight]
@@ -103,11 +104,8 @@
                                       "git" "rev-parse" "--git-common-dir")]
     (when (zero? exit)
       (let [git-dir (str/trim (str/join "" out))
-            ;; git-common-dir is usually `<main>/.git` or an absolute path ending in `/.git`
-            abs     (if (str/starts-with? git-dir "/")
-                      git-dir
-                      (str (System/getProperty "user.dir") "/" git-dir))]
-        (str/replace abs #"/\.git/?$" "")))))
+            abs     (str (fs/absolutize git-dir))]
+        (str (fs/parent abs))))))
 
 (defn- detect-current-session
   "Detect the current session name when the caller is inside a worktree.
@@ -261,9 +259,11 @@
         (println (c/bold (c/green "Relaunching session: ") (c/cyan session-name)))
         (println)
 
-        ;; Kill any leftover tmux session before reopening (was previously
-        ;; only done in the not-in-tmux branch; safe to do unconditionally).
-        (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session-name)
+        ;; Only kill a leftover tmux session when we're not currently attached
+        ;; to it: killing the session you're attached to evicts the user mid-edit,
+        ;; and `workmux open` will reattach/add a window when one already exists.
+        (when (and (not attached?) (tmux-session-running? session-name))
+          (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session-name))
 
         (shell/sh {:dir wt-path}
                   "workmux" "open" session-name
@@ -412,8 +412,7 @@
             (do
               (println (c/yellow "Found existing worktree: " existing))
               (relaunch-existing-session!
-               {:bot-name       bot-name
-                :session-name   session-name
+               {:session-name   session-name
                 :wt-path        wt-path
                 :prompt-file    prompt-file
                 :workmux-config config}))
@@ -517,7 +516,5 @@
   [_parsed]
   (println (c/bold (c/green "Autobot Sessions")))
   (println)
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "list")]
-    (when (zero? exit)
-      (doseq [line out]
-        (println line)))))
+  (doseq [line (workmux-list-raw)]
+    (println line)))

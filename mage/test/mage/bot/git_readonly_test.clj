@@ -10,22 +10,22 @@
 (def ^:private gh-api-ro?    #'mage.bot.git-readonly/gh-api-readonly?)
 (def ^:private parse-args     #'mage.bot.git-readonly/parse-git-args)
 
-(deftest git-always-readonly-subcommands
+(deftest git-always-readonly-subcommands-test
   (testing "Unconditionally read-only subcommands"
     (doseq [cmd ["blame" "diff" "log" "status" "show" "rev-parse" "ls-files" "ls-tree"
                  "merge-base" "describe" "shortlog" "show-ref" "cat-file" "version"]]
       (is (true? (git-readonly? cmd [])) (str cmd " should be read-only")))))
 
-(deftest git-always-write-subcommands
+(deftest git-always-write-subcommands-test
   (testing "Unconditionally write subcommands"
     (doseq [cmd ["commit" "push" "pull" "reset" "checkout" "merge" "rebase" "add" "rm"
                  "cherry-pick" "revert" "clean" "switch" "restore" "mv"]]
       (is (false? (git-readonly? cmd [])) (str cmd " should be blocked")))))
 
-(deftest git-fetch-is-allowed
+(deftest git-fetch-is-allowed-test
   (is (true? (git-readonly? "fetch" []))))
 
-(deftest git-branch-conditional
+(deftest git-branch-conditional-test
   (testing "branch with no flags is read-only (listing)"
     (is (true? (git-readonly? "branch" [])))
     (is (true? (git-readonly? "branch" ["-a"])))
@@ -37,7 +37,7 @@
     (is (false? (git-readonly? "branch" ["--delete" "my-branch"])))
     (is (false? (git-readonly? "branch" ["--move" "old" "new"])))))
 
-(deftest git-tag-conditional
+(deftest git-tag-conditional-test
   (testing "tag with no args is read-only (listing)"
     (is (true? (git-readonly? "tag" [])))
     (is (true? (git-readonly? "tag" ["-l"])))
@@ -47,23 +47,34 @@
     (is (false? (git-readonly? "tag" ["--delete" "v1.0"])))
     (is (false? (git-readonly? "tag" ["-f" "v1.0"])))))
 
-(deftest git-stash-conditional
+(deftest git-stash-conditional-test
   (testing "stash list and show are read-only"
     (is (true? (git-readonly? "stash" ["list"])))
     (is (true? (git-readonly? "stash" ["show"]))))
   (testing "stash with no subcommand defaults to list (read-only)"
     (is (true? (git-readonly? "stash" [])))))
 
-(deftest git-config-conditional
+(deftest git-config-conditional-test
   (testing "config read operations"
     (is (true? (git-readonly? "config" ["--get" "user.name"])))
-    (is (true? (git-readonly? "config" ["--list"]))))
+    (is (true? (git-readonly? "config" ["--get-all" "user.name"])))
+    (is (true? (git-readonly? "config" ["--list"])))
+    (is (true? (git-readonly? "config" ["-l"])))
+    (is (true? (git-readonly? "config" ["--show-origin" "--get" "user.name"]))))
+  (testing "single positional arg is a read (displays the value)"
+    (is (true? (git-readonly? "config" ["user.email"]))))
   (testing "config write operations are blocked"
     (is (false? (git-readonly? "config" ["--set" "user.name" "test"])))
     (is (false? (git-readonly? "config" ["--unset" "user.name"])))
-    (is (false? (git-readonly? "config" ["--edit"])))))
+    (is (false? (git-readonly? "config" ["--unset-all" "user.name"])))
+    (is (false? (git-readonly? "config" ["--edit"])))
+    (is (false? (git-readonly? "config" ["-e"]))))
+  (testing "positional `git config <key> <value>` (no flag) is a write"
+    (is (false? (git-readonly? "config" ["user.email" "me@example.com"])))
+    (is (false? (git-readonly? "config" ["foo.bar" "value"])))
+    (is (false? (git-readonly? "config" ["--global" "user.email" "me@example.com"])))))
 
-(deftest git-remote-conditional
+(deftest git-remote-conditional-test
   (testing "remote read operations"
     (is (true? (git-readonly? "remote" ["show" "origin"])))
     (is (true? (git-readonly? "remote" ["get-url" "origin"]))))
@@ -72,10 +83,10 @@
     (is (false? (git-readonly? "remote" ["remove" "origin"])))
     (is (false? (git-readonly? "remote" ["rename" "old" "new"])))))
 
-(deftest git-unknown-subcommands-are-blocked
+(deftest git-unknown-subcommands-are-blocked-test
   (is (false? (git-readonly? "unknown-command" []))))
 
-(deftest gh-command-classification
+(deftest gh-command-classification-test
   (testing "read-only gh commands"
     (is (true? (gh-readonly? ["pr" "view"])))
     (is (true? (gh-readonly? ["pr" "list"])))
@@ -94,7 +105,7 @@
   (testing "unknown commands are blocked"
     (is (false? (gh-readonly? ["unknown" "thing"])))))
 
-(deftest gh-api-method-detection
+(deftest gh-api-method-detection-test
   (testing "default is GET (read-only)"
     (is (true? (gh-api-ro? ["/repos/metabase/metabase"]))))
   (testing "explicit GET is read-only"
@@ -103,9 +114,17 @@
     (is (false? (gh-api-ro? ["--method" "POST" "/repos"]))))
   (testing "-X shorthand"
     (is (false? (gh-api-ro? ["-X" "DELETE" "/repos"])))
-    (is (true? (gh-api-ro? ["-X" "GET" "/repos"])))))
+    (is (true? (gh-api-ro? ["-X" "GET" "/repos"]))))
+  (testing "--method=VALUE single-arg form is detected"
+    (is (false? (gh-api-ro? ["--method=POST" "/repos"])))
+    (is (false? (gh-api-ro? ["--method=DELETE" "/repos"])))
+    (is (false? (gh-api-ro? ["--method=PATCH" "/repos"])))
+    (is (true? (gh-api-ro? ["--method=GET" "/repos"]))))
+  (testing "-X=VALUE single-arg form is detected"
+    (is (false? (gh-api-ro? ["-X=POST" "/repos"])))
+    (is (true? (gh-api-ro? ["-X=GET" "/repos"])))))
 
-(deftest parse-git-args-skips-global-flags
+(deftest parse-git-args-skips-global-flags-test
   (testing "finds subcommand after -C"
     (is (= {:subcommand "log" :args ["--oneline"]}
            (parse-args ["-C" "/some/dir" "log" "--oneline"]))))
@@ -119,7 +138,7 @@
     (is (= {:subcommand "log" :args ["--oneline" "-5"]}
            (parse-args ["log" "--oneline" "-5"])))))
 
-(deftest parse-git-args-rejects-dangerous-globals
+(deftest parse-git-args-rejects-dangerous-globals-test
   (testing "-c key=value is rejected (can set config that executes commands)"
     (is (contains? (parse-args ["-c" "core.sshCommand=evil" "fetch"]) :error))
     (is (contains? (parse-args ["-c" "core.gitProxy=evil" "fetch"]) :error))
@@ -133,7 +152,7 @@
   (testing "empty args returns error"
     (is (contains? (parse-args []) :error))))
 
-(deftest git-fetch-blocks-upload-pack-and-receive-pack
+(deftest git-fetch-blocks-upload-pack-and-receive-pack-test
   (testing "fetch with --upload-pack is blocked"
     (is (false? (git-readonly? "fetch" ["--upload-pack=evil" "origin"])))
     (is (false? (git-readonly? "fetch" ["--upload-pack" "evil" "origin"]))))
@@ -144,7 +163,7 @@
   (testing "plain fetch is still allowed"
     (is (true? (git-readonly? "fetch" ["origin" "master"])))))
 
-(deftest gh-api-blocks-input-from-file
+(deftest gh-api-blocks-input-from-file-test
   (testing "--input @file is blocked (would read arbitrary files into request body)"
     (is (false? (gh-api-ro? ["--input" "@/etc/passwd" "/repos"])))
     (is (false? (gh-api-ro? ["--input=@/etc/passwd" "/repos"]))))

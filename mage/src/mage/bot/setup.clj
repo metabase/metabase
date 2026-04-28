@@ -2,6 +2,7 @@
   "Bot worktree setup — installs workmux-status hooks for autobot worktrees."
   (:require
    [babashka.fs :as fs]
+   [babashka.json :as json]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.util :as u]))
@@ -9,10 +10,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private hooks-json-content
-  (str "{\"version\":1,\"hooks\":{"
-       "\"userPromptSubmitted\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],"
-       "\"postToolUse\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],"
-       "\"agentStop\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status done\"}]}}"))
+  (json/write-str
+   {:version 1
+    :hooks   {:userPromptSubmitted [{:type "command" :bash "workmux set-window-status working"}]
+              :postToolUse         [{:type "command" :bash "workmux set-window-status working"}]
+              :agentStop           [{:type "command" :bash "workmux set-window-status done"}]}}))
 
 (defn- write-hooks!
   "Write workmux-status hooks.json for Claude Code status reporting."

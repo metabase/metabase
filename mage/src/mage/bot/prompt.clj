@@ -48,7 +48,7 @@
                    (if (.exists (java.io.File. ^String full-path))
                      (slurp full-path)
                      (do
-                       (println (c/yellow "Warning: include file not found: " full-path))
+                       (println (c/yellow "Warning: {{FILE:" path "}} not found at " full-path))
                        (str "<!-- FILE NOT FOUND: " path " -->")))))))
 
 (defn generate-prompt!

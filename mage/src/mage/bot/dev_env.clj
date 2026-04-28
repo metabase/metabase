@@ -100,7 +100,7 @@
   [root-dir slot-override]
   (if slot-override
     slot-override
-    (mod (Math/abs (.hashCode ^String (worktree-name root-dir))) 100)))
+    (Math/floorMod (.hashCode ^String (worktree-name root-dir)) 100)))
 
 (defn container-prefix
   "Prefix for all docker containers for this worktree."

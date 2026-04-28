@@ -26,20 +26,18 @@
 
 (def ^:private issue-query
   "query IssueByIdentifier($id: String!) {
-     searchIssues(term: $id, first: 1) {
-       nodes {
-         identifier
-         title
-         description
-         url
-         branchName
-         state { name }
-         comments {
-           nodes {
-             body
-             user { name }
-             createdAt
-           }
+     issue(id: $id) {
+       identifier
+       title
+       description
+       url
+       branchName
+       state { name }
+       comments {
+         nodes {
+           body
+           user { name }
+           createdAt
          }
        }
      }
@@ -64,20 +62,18 @@
     (when-let [errors (:errors response)]
       (println (c/red "Linear API error:") (pr-str errors))
       (u/exit 1))
-    (let [nodes (get-in response [:data :searchIssues :nodes])]
-      (when (seq nodes)
-        (let [issue (first nodes)]
-          {:identifier  (:identifier issue)
-           :title       (:title issue)
-           :description (or (:description issue) "")
-           :url         (:url issue)
-           :branch-name (:branchName issue)
-           :state       (get-in issue [:state :name])
-           :comments    (mapv (fn [c]
-                                {:body       (:body c)
-                                 :author     (get-in c [:user :name])
-                                 :created-at (:createdAt c)})
-                              (get-in issue [:comments :nodes]))})))))
+    (when-let [issue (get-in response [:data :issue])]
+      {:identifier  (:identifier issue)
+       :title       (:title issue)
+       :description (or (:description issue) "")
+       :url         (:url issue)
+       :branch-name (:branchName issue)
+       :state       (get-in issue [:state :name])
+       :comments    (mapv (fn [c]
+                            {:body       (:body c)
+                             :author     (get-in c [:user :name])
+                             :created-at (:createdAt c)})
+                          (get-in issue [:comments :nodes]))})))
 
 (defn print-issue!
   "Fetch and print a Linear issue. Entry point for the CLI task."
