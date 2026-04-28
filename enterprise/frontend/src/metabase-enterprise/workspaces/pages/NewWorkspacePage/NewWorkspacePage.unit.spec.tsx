@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -5,7 +7,10 @@ import { NewWorkspacePage } from "./NewWorkspacePage";
 
 function setup() {
   setupDatabaseListEndpoint([]);
-  renderWithProviders(<NewWorkspacePage />, { withRouter: true });
+  renderWithProviders(<Route path="/" component={NewWorkspacePage} />, {
+    withRouter: true,
+    initialRoute: "/",
+  });
 }
 
 describe("NewWorkspacePage", () => {

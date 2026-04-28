@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
@@ -12,16 +15,20 @@ import type { WorkspaceDatabase } from "metabase-types/api";
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import type { WorkspaceInfo } from "../../types";
 
-export function NewWorkspacePage() {
+type NewWorkspacePageProps = {
+  route: Route;
+};
+
+export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   const dispatch = useDispatch();
   const [createWorkspace, { isLoading: isSaving }] =
     useCreateWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const [workspace, setWorkspace] = useState<WorkspaceInfo>(
-    getInitialWorkspace(),
-  );
+  const initialWorkspace = useMemo(() => getInitialWorkspace(), []);
+  const [workspace, setWorkspace] = useState(initialWorkspace);
 
   const { isValid, errorMessage } = validateWorkspace(workspace);
+  const isDirty = !_.isEqual(workspace, initialWorkspace);
 
   const handleNameChange = (name: string) => {
     setWorkspace({ ...workspace, name });
@@ -49,21 +56,24 @@ export function NewWorkspacePage() {
   };
 
   return (
-    <WorkspaceEditor
-      workspace={workspace}
-      actions={
-        <PaneHeaderActions
-          isValid={isValid}
-          isSaving={isSaving}
-          isDirty
-          errorMessage={errorMessage ?? undefined}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
-      }
-      onNameChange={handleNameChange}
-      onDatabasesChange={handleDatabasesChange}
-    />
+    <>
+      <WorkspaceEditor
+        workspace={workspace}
+        actions={
+          <PaneHeaderActions
+            isValid={isValid}
+            isSaving={isSaving}
+            isDirty
+            errorMessage={errorMessage}
+            onSave={handleSave}
+            onCancel={handleCancel}
+          />
+        }
+        onNameChange={handleNameChange}
+        onDatabasesChange={handleDatabasesChange}
+      />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+    </>
   );
 }
 
@@ -84,5 +94,5 @@ function validateWorkspace(workspace: WorkspaceInfo) {
       errorMessage: t`At least one database is required.`,
     };
   }
-  return { isValid: true, errorMessage: null };
+  return { isValid: true };
 }
