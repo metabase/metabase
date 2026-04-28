@@ -140,16 +140,15 @@ function getCachedChartComponent(
 // for the full rationale.
 type PublicChatMessage = Exclude<
   MetabotChatMessage,
-  { type: "tool_call" | "edit_suggestion" | "action" | "todo_list" }
+  { type: "tool_call" | "data_part" | "action" }
 >;
 
 const isPublicMessage = (
   message: MetabotChatMessage,
 ): message is PublicChatMessage =>
   message.type !== "tool_call" &&
-  message.type !== "edit_suggestion" &&
-  message.type !== "action" &&
-  message.type !== "todo_list";
+  message.type !== "data_part" &&
+  message.type !== "action";
 
 const mapMessage = (
   message: PublicChatMessage,
