@@ -146,6 +146,8 @@ export type SdkQuestionProviderProps = PropsWithChildren<
        * Called when a drill-through action is about to navigate to a new card.
        * Receives the navigation params and a `defaultNavigate` callback.
        * Call `defaultNavigate()` to allow normal navigation, or omit it to intercept.
+       *
+       * @internal
        */
       onDrillThrough?: (
         params: {

@@ -40,18 +40,18 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       if (isStayDrill(drillName)) {
         await defaultNavigate();
       } else if (app) {
+        const encodedQuery = utf8_to_b64(
+          JSON.stringify(nextCard.dataset_query),
+        );
+
+        const { instanceUrl, sessionToken, mcpSessionId } =
+          (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+
+        if (!instanceUrl || !sessionToken || !mcpSessionId) {
+          return;
+        }
+
         try {
-          const encodedQuery = utf8_to_b64(
-            JSON.stringify(nextCard.dataset_query),
-          );
-
-          const { instanceUrl, sessionToken, mcpSessionId } =
-            (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
-
-          if (!instanceUrl || !sessionToken || !mcpSessionId) {
-            return;
-          }
-
           // Store the card server-side in the MCP session. This is universal —
           // works in all MCP clients (Claude Desktop, Cursor, VS Code).
           // The render_drill_through tool will consume it with no LLM-visible payload.
@@ -73,8 +73,8 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
               },
             ],
           });
-        } catch (e) {
-          // handle error
+        } catch {
+          // do not trigger the prompt if storing drills query fails
         }
       }
     },

@@ -61,16 +61,16 @@ export function McpUiAppRoute() {
     }
   }, [query]);
 
+  const theme = useMemo(
+    () => buildMcpAppsTheme(hostCssVariables, scheme),
+    [hostCssVariables, scheme],
+  );
+
   const isReady = !!(
     instanceUrl &&
     hostContext &&
     isSettingsReady &&
     deserializedCard
-  );
-
-  const theme = useMemo(
-    () => buildMcpAppsTheme(hostCssVariables, scheme),
-    [hostCssVariables, scheme],
   );
 
   // The OSS no-op initAuth never loads user or settings. Do it ourselves so
