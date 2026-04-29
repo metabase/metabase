@@ -16,6 +16,10 @@ export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader() {
       to: Urls.workspaceInstanceOverview(),
     },
     {
+      label: t`Changes`,
+      to: Urls.workspaceInstanceChanges(),
+    },
+    {
       label: t`Table remappings`,
       to: Urls.workspaceInstanceRemappings(),
     },

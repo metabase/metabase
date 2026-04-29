@@ -22,3 +22,7 @@ export function workspaceInstanceOverview() {
 export function workspaceInstanceRemappings() {
   return `${WORKSPACE_INSTANCE_ROOT}/remappings`;
 }
+
+export function workspaceInstanceChanges() {
+  return `${WORKSPACE_INSTANCE_ROOT}/changes`;
+}

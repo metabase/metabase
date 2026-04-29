@@ -14,6 +14,8 @@
   :visibility :authenticated
   :export?    false
   :setter     :none
-  :getter     (fn [] (some? (ws/instance-workspace)))
+  ;; STUB: hardcoded to true for FE testing — replace with the commented getter below to read the atom.
+  ;; :getter (fn [] (some? (ws/instance-workspace)))
+  :getter     (constantly true)
   :audit      :never
   :doc        false)

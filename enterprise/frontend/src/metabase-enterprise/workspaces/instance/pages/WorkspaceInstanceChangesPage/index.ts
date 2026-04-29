@@ -1,0 +1,1 @@
+export { WorkspaceInstanceChangesPage } from "./WorkspaceInstanceChangesPage";
