@@ -1,6 +1,6 @@
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
+import { editParamsForUserControlledScheduling } from "./databases";
 
 it("adds full_sync param if user will control scheduling", () => {
   const inputDatabase = createMockDatabase({

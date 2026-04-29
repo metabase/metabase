@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { Databases } from "metabase/entities/databases";
+import type { Dispatch } from "metabase/redux/store";
 import type { DatabaseData } from "metabase-types/api";
 
 export const editParamsForUserControlledScheduling = _.compose(
@@ -34,3 +36,19 @@ function editScheduleParamsForUserControlledScheduling(
     return database;
   }
 }
+
+export const createDatabase = function (inputDatabase: DatabaseData) {
+  const database = editParamsForUserControlledScheduling(inputDatabase);
+
+  return async function (dispatch: Dispatch) {
+    try {
+      const action = await dispatch(Databases.actions.create(database));
+      const savedDatabase = Databases.HACK_getObjectFromAction(action);
+
+      return savedDatabase;
+    } catch (error) {
+      console.error("error creating a database", error);
+      throw error;
+    }
+  };
+};
