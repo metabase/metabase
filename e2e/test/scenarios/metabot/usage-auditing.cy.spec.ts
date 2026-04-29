@@ -614,6 +614,32 @@ function assertTodayConversationTable(): void {
   ]);
 }
 
+function assertLatestHourConversationTable(): void {
+  assertConversationTableContains([
+    "Bobby Tables",
+    "Transforms codegen",
+    "10.0.0.7",
+  ]);
+  assertConversationTableDoesNotContain([
+    "Robert Tableton",
+    "NLQ",
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+    "10.0.0.99",
+  ]);
+}
+
+function assertHourDateFilterInUrl(): void {
+  cy.location("search").then((search) => {
+    const date = new URLSearchParams(search).get("date");
+
+    expect(date).to.match(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:00:00~\d{4}-\d{2}-\d{2}T\d{2}:00:00$/,
+    );
+  });
+}
+
 function clickLastTimeseriesChartDot(title: string): void {
   getChartCard(title).within(() => {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -812,6 +838,44 @@ describe("scenarios > metabot > usage auditing", () => {
     });
   });
 
+  it("drills through from the tenants chart to the conversations list", () => {
+    setupUsageAuditingTenants().then(({ bobbyTenant, robertTenant }) => {
+      visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
+      interceptConversationsApi();
+
+      clickRowChartBarForLabel(
+        TENANT_CONVERSATIONS_CHART_TITLE,
+        bobbyTenant.name,
+      );
+
+      waitForConversations();
+      cy.location("pathname").should(
+        "eq",
+        "/admin/metabot/usage-auditing/conversations",
+      );
+      cy.location("search").should("include", `tenant=${bobbyTenant.id}`);
+      H.main().findByDisplayValue(bobbyTenant.name).should("be.visible");
+      assertConversationTableContains([
+        "Bobby Tables",
+        "Internal",
+        "NLQ",
+        "Slackbot",
+        "Transforms codegen",
+        "10.0.0.1",
+        "10.0.0.2",
+        "10.0.0.6",
+        "10.0.0.7",
+      ]);
+      assertConversationTableDoesNotContain([
+        robertTenant.name,
+        "Robert Tableton",
+        "10.0.0.3",
+        "10.0.0.4",
+        "10.0.0.5",
+      ]);
+    });
+  });
+
   it("drills through from conversation charts to the conversations list and updates list filters", () => {
     visitUsageStatsPage();
     interceptConversationsApi();
@@ -894,8 +958,8 @@ describe("scenarios > metabot > usage auditing", () => {
         "eq",
         "/admin/metabot/usage-auditing/conversations",
       );
-      cy.location("search").should("include", `date=${body.date}`);
-      assertTodayConversationTable();
+      assertHourDateFilterInUrl();
+      assertLatestHourConversationTable();
     });
   });
 
