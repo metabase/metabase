@@ -12,6 +12,7 @@ import type {
   MetricDimension,
   MetricOrMeasure,
 } from "metabase/explorations/types";
+import { createMockCollection } from "metabase-types/api/mocks";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -31,6 +32,10 @@ const dimShared = createMockMetricDimension({
   id: "dim-shared",
   "display-name": "Country",
 });
+const dimLibrary = createMockMetricDimension({
+  id: "dim-library",
+  "display-name": "Tier",
+});
 
 const metricRevenue = createMockMetric({
   id: 1,
@@ -43,6 +48,13 @@ const metricChurn = createMockMetric({
   name: "Churn rate",
   description: "Customers lost",
   dimensions: [dimChurn, dimShared],
+});
+const metricLibrary = createMockMetric({
+  id: 3,
+  name: "Active users",
+  description: "Daily active users",
+  dimensions: [dimLibrary],
+  collection: createMockCollection({ type: "library-metrics" }),
 });
 
 const revenueAsMetric: MetricOrMeasure = {
@@ -69,7 +81,9 @@ function setup({
   initialMetrics = [],
   initialDimensions = [],
 }: SetupOpts = {}) {
-  setupMetricsEndpoints([metricRevenue, metricChurn]);
+  // Library metric is intentionally last in the server response so that the
+  // assertion in "Library metrics first" is meaningful.
+  setupMetricsEndpoints([metricRevenue, metricChurn, metricLibrary]);
 
   const onSelectedItemsChange = jest.fn();
   const onClose = jest.fn();
@@ -111,6 +125,26 @@ describe("AddMetricsModal", () => {
     expect(screen.getByText("Customer size")).toBeInTheDocument();
     expect(screen.getByText("Plan")).toBeInTheDocument();
     expect(screen.getByText("Country")).toBeInTheDocument();
+  });
+
+  it("displays Library metrics at the top of the list", async () => {
+    setup();
+    await screen.findByText("Active users");
+
+    const items = screen.getAllByRole("listitem");
+    const libIndex = items.findIndex((el) =>
+      within(el).queryByText("Active users"),
+    );
+    const churnIndex = items.findIndex((el) =>
+      within(el).queryByText("Churn rate"),
+    );
+    const revenueIndex = items.findIndex((el) =>
+      within(el).queryByText("Monthly recurring revenue"),
+    );
+
+    expect(libIndex).toBeGreaterThanOrEqual(0);
+    expect(libIndex).toBeLessThan(churnIndex);
+    expect(libIndex).toBeLessThan(revenueIndex);
   });
 
   it("toggles do not call onSelectedItemsChange until Done is clicked", async () => {

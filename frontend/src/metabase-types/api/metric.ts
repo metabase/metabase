@@ -21,7 +21,6 @@ export type Metric = {
   dimensions: MetricDimension[];
   dimension_mappings?: DimensionMapping[];
   collection_id: CollectionId | null;
-  collection: Collection | null;
   result_column_name?: string;
 };
 

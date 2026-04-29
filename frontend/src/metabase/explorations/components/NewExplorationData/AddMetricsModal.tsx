@@ -9,7 +9,10 @@ import type {
   MetricDimension,
   MetricOrMeasure,
 } from "metabase/explorations/types";
-import { toMetricOrMeasure } from "metabase/explorations/utils";
+import {
+  isLibraryMetric,
+  toMetricOrMeasure,
+} from "metabase/explorations/utils";
 import { useDispatch } from "metabase/redux";
 import {
   Box,
@@ -76,6 +79,10 @@ function useFullMetrics(opened: boolean) {
     let cancelled = false;
     setIsLoadingDetails(true);
     setDetailsError(null);
+
+    const collectionById = new Map(
+      response.data.map((metric) => [metric.id, metric.collection]),
+    );
     Promise.all(
       response.data.map((metric) =>
         dispatch(metricApi.endpoints.getMetric.initiate(metric.id)).unwrap(),
@@ -83,7 +90,12 @@ function useFullMetrics(opened: boolean) {
     )
       .then((results) => {
         if (!cancelled) {
-          setItems(results);
+          setItems(
+            results.map((metric) => ({
+              ...metric,
+              collection: metric.collection ?? collectionById.get(metric.id),
+            })),
+          );
         }
       })
       .catch((err) => {
@@ -143,7 +155,17 @@ export function AddMetricsModal({
   }, [draftMetrics, draftDimensions, onSelectedItemsChange, onClose]);
 
   const allMetrics = useMemo(
-    () => rawMetrics.map(toMetricOrMeasure),
+    () =>
+      [...rawMetrics]
+        .sort((a, b) => {
+          const aLib = isLibraryMetric(a);
+          const bLib = isLibraryMetric(b);
+          if (aLib === bLib) {
+            return 0;
+          }
+          return aLib ? -1 : 1;
+        })
+        .map(toMetricOrMeasure),
     [rawMetrics],
   );
 

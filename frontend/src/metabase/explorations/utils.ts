@@ -12,3 +12,7 @@ export function toMetricOrMeasure(metric: Metric): MetricOrMeasure {
     dimension_mappings: metric.dimension_mappings,
   };
 }
+
+export function isLibraryMetric(metric: Metric): boolean {
+  return metric.collection?.type === "library-metrics";
+}
