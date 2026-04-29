@@ -9,6 +9,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 
@@ -27,7 +28,10 @@ import {
 
 import { BreakoutChart } from "./BreakoutChart";
 import S from "./ConversationStatsPage.module.css";
-import { ConversationsByDayChart } from "./ConversationsByDayChart";
+import {
+  ConversationsByDayChart,
+  isSingleDayFilter,
+} from "./ConversationsByDayChart";
 import { DataComplexityCards } from "./DataComplexityCards";
 import {
   type StatsFilters,
@@ -197,10 +201,19 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   const handleDayClick = useCallback(
     (value: string) => {
-      const dateStr = dayjs(value).format("YYYY-MM-DD");
+      const bucketStart = dayjs(value);
+      const dateStr = isSingleDayFilter(dateFilter)
+        ? serializeDateParameterValue({
+            type: "specific",
+            operator: "between",
+            values: [bucketStart.toDate(), bucketStart.add(1, "hour").toDate()],
+            hasTime: true,
+          })
+        : bucketStart.format("YYYY-MM-DD");
+
       navigateToConversations({ date: dateStr });
     },
-    [navigateToConversations],
+    [dateFilter, navigateToConversations],
   );
 
   const handleUserClick = useCallback(
