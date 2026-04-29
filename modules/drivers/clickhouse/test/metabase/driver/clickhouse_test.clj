@@ -487,17 +487,27 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
+(defn- check-legacy-dbname [dbname exp-name]
+  (let [details (assoc (:details (mt/db)) :dbname dbname)
+        spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+    (is (true? (driver/can-connect? :clickhouse details)))
+    (is (= (format "//localhost:8123/%s" exp-name)
+           (:subname spec)))))
+
 (deftest ^:parallel handle-db-names-with-spaces-test
   (mt/test-driver :clickhouse
-    (are [dbname exp-name] (let [details (assoc (:details (mt/db)) :dbname dbname)
-                                 spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-                             (is (true? (driver/can-connect? :clickhouse details)))
-                             (is (= (format "//localhost:8123/%s" exp-name)
-                                    (:subname spec))))
+    (are [dbname exp-name] (check-legacy-dbname dbname exp-name)
       "test_data default fake_db" "test_data"
-      "test_data" "test_data"
-      "" ""
-      nil "default")))
+      "test_data"                 "test_data"
+      ""                          ""
+      nil                         "default")))
+
+(deftest ^:parallel handle-db-names-with-commas-test
+  (mt/test-driver :clickhouse
+    (are [dbname exp-name] (check-legacy-dbname dbname exp-name)
+      "test_data, fake_db" "test_data"
+      "test_data,fake_db"  "test_data"
+      "test_data,"         "test_data")))
 
 ;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
 ;;                           at the moment to avoid potential log flooding. We should revisit this during further
