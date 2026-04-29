@@ -406,7 +406,7 @@
                          {:description "Duration (ms) of a full Data Complexity Score run end-to-end (enumerate + score for all three catalogs + Snowplow publish)."
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
    (prometheus/histogram :metabase-data-complexity/phase-duration-ms
-                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring) for one catalog within a Data Complexity Score run."
+                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
 
