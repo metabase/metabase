@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-complexity-score.test-util
   "Shared helpers for data-complexity-score tests."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase.test :as mt]))
 
@@ -33,7 +34,7 @@
   A bare `(with-synonym-source [] ...)` pretends nothing else has touched these settings."
   [overrides & body]
   (let [parsed   (apply hash-map overrides)
-        unknown  (clojure.set/difference (set (keys parsed)) (set (keys setting-key)))
+        unknown  (set/difference (set (keys parsed)) (set (keys setting-key)))
         _        (when (seq unknown)
                    (throw (ex-info (str "Unknown override keys: " unknown
                                         ". Allowed: " (set (keys setting-key)))
