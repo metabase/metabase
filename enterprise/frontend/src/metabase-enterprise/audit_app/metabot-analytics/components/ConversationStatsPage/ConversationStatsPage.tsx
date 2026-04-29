@@ -131,6 +131,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     dateFilter,
     userId,
     groupId,
+    groupNoFilterValue,
     tenantId,
     userOptions,
     groupOptions,
@@ -223,6 +224,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val })}
+            groupNoFilterValue={groupNoFilterValue}
             tenant={tenant}
             onTenantChange={(val) => patchUrlState({ tenant: val })}
             userOptions={userOptions}
@@ -288,7 +290,9 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             {...sharedChartProps}
             titles={groupTitles}
             display="row"
-            buildQuery={buildGroupBreakoutQuery}
+            buildQuery={(opts) =>
+              buildGroupBreakoutQuery({ ...opts, excludeAllUsers: !hasTenants })
+            }
             h={500}
           />
           <BreakoutChart

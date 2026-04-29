@@ -272,6 +272,10 @@ type BreakoutQueryOpts = StatsFilters & {
   groupMembersTable: TableMetadata | CardMetadata;
 };
 
+type GroupBreakoutQueryOpts = BreakoutQueryOpts & {
+  excludeAllUsers: boolean;
+};
+
 export function excludeAllUsersGroup(query: Query): Query {
   const col = findColumn(query, "group_id", Lib.filterableColumns);
   if (!col) {
@@ -301,13 +305,14 @@ export function buildGroupBreakoutQuery({
   groupId,
   tenantId,
   metric,
-}: BreakoutQueryOpts): Query {
+  excludeAllUsers,
+}: GroupBreakoutQueryOpts): Query {
   let q = Lib.queryFromTableOrCardMetadata(provider, table);
   q = applyDateFilter(q, dateFilter);
   q = applyIdFilter(q, "user_id", userId);
   q = applyIdFilter(q, "tenant_id", tenantId);
   q = joinGroupMembers(q, groupMembersTable);
-  q = excludeAllUsersGroup(q);
+  q = excludeAllUsers ? excludeAllUsersGroup(q) : q;
   q = applyIdFilter(q, "group_id", groupId);
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByJoinedGroupName(q);

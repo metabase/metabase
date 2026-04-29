@@ -16,6 +16,7 @@ type ConversationFiltersProps = {
   onUserChange: (val: string | null) => void;
   group: string | null;
   onGroupChange: (val: string | null) => void;
+  groupNoFilterValue: string;
   tenant: string | null;
   onTenantChange: (val: string | null) => void;
   userOptions: { value: string; label: string }[];
@@ -31,6 +32,7 @@ export function ConversationFilters({
   onUserChange,
   group,
   onGroupChange,
+  groupNoFilterValue,
   tenant,
   onTenantChange,
   userOptions,
@@ -76,8 +78,10 @@ export function ConversationFilters({
       <Select
         placeholder={t`Group`}
         data={groupOptions}
-        value={group}
-        onChange={onGroupChange}
+        value={group ?? groupNoFilterValue}
+        onChange={(val) =>
+          onGroupChange(val === groupNoFilterValue ? null : val)
+        }
         searchable
         w={180}
         bdrs="sm"

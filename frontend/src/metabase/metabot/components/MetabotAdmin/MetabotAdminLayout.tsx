@@ -14,7 +14,7 @@ export const MetabotAdminLayout = ({
   <AdminSettingsLayout sidebar={<MetabotNavPane />} fullWidth={fullWidth}>
     <ErrorBoundary>
       {fullWidth ? (
-        <Box py="lg" px="xl" maw="100rem">
+        <Box py="lg" px="xl" maw="100rem" mx="auto">
           {children}
         </Box>
       ) : (

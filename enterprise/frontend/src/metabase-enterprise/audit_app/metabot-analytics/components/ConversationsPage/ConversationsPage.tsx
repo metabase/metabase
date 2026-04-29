@@ -23,6 +23,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
   const {
     userId,
     groupId,
+    groupNoFilterValue,
     tenantId,
     userOptions,
     groupOptions,
@@ -69,6 +70,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+            groupNoFilterValue={groupNoFilterValue}
             tenant={tenant}
             onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
             userOptions={userOptions}

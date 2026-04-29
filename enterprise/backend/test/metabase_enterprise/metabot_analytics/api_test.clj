@@ -230,7 +230,7 @@
         (is (=? {:total 0
                  :data  []}
                 (mt/user-http-request :crowberto :get 200
-                                      (format "ee/metabot-analytics/conversations?user-id=%s"
+                                      (format "ee/metabot-analytics/conversations?user_id=%s"
                                               empty-user-id))))))))
 
 (deftest list-conversations-requires-audit-app-feature-test

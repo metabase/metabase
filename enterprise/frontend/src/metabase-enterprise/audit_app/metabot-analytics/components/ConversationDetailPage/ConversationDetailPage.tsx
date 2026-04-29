@@ -43,6 +43,7 @@ import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { convertSlackChatMessage } from "./slack-mrkdwn";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
@@ -54,6 +55,14 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = useGetMetabotConversationQuery(convoId, {
     refetchOnMountOrArgChange: true,
   });
+
+  const chatMessages = useMemo(() => {
+    const isSlackbot =
+      conversation?.profile_id === "slackbot" ||
+      conversation?.profile_id === "slack";
+    const msgs = conversation?.chat_messages ?? [];
+    return isSlackbot ? msgs.map(convertSlackChatMessage) : msgs;
+  }, [conversation]);
 
   if (isLoading || error) {
     return (
@@ -99,7 +108,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 <FeedbackCard
                   key={item.id}
                   feedback={item}
-                  chatMessages={conversation.chat_messages ?? []}
+                  chatMessages={chatMessages}
                 />
               ))}
             </Stack>
@@ -117,7 +126,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
-              messages={conversation.chat_messages ?? []}
+              messages={chatMessages}
               errorMessages={[]}
               isDoingScience={false}
               debug

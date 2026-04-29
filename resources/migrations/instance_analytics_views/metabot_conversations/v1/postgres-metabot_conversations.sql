@@ -51,6 +51,7 @@ SELECT
      LIMIT 1)                                                         AS source,
     (SELECT CASE aul.source
                 WHEN 'metabot_agent'                     THEN 'Metabot'
+                WHEN 'agent'                             THEN 'Metabot'
                 WHEN 'document_generate_content'         THEN 'Documents'
                 WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
                 WHEN 'slack'                             THEN 'Slackbot'
