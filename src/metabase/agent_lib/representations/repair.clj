@@ -2084,6 +2084,35 @@
      node)
    form))
 
+;;; ----- E6: numeric `[field, opts, 100]` (sexp legacy form) -------------------------
+
+(defn- numeric-field-id-error!
+  "Detect any `[field, <opts>, <id>]` clause whose third slot is an integer (the sexp /
+  legacy-MBQL numeric field-id form). repr requires a portable FK in the third slot:
+  either a vector `[<db>, <schema>, <table>, <column>]` (resolved against the metadata
+  provider) OR a string column name (cross-stage reference). lib's schema rejects bare
+  numeric ids, but the error is a generic shape mismatch; this detector gives an
+  LLM-actionable explanation pointing at the portable-FK syntax.
+
+  Carried over from the sexp pipeline's
+  `validate/operators.clj/validate-operator-specific!` `field` branch."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (when (and (vector? node)
+                (not (map-entry? node))
+                (= 3 (count node))
+                (= "field" (nth node 0))
+                (map? (nth node 1))
+                (integer? (nth node 2)))
+       (throw (ex-info
+               (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
+               {:agent-error? true
+                :error        :numeric-field-id
+                :clause       node})))
+     node)
+   form))
+
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
 (defn- friendly-errors*
@@ -2097,7 +2126,8 @@
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (sexp-legacy-measure-error! query)
-    (blank-expression-ref-error! query))
+    (blank-expression-ref-error! query)
+    (numeric-field-id-error! query))
   query)
 
 ;;; ============================================================

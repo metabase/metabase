@@ -2286,3 +2286,42 @@
                                            ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 1]]
                           "filters"      [["=" {} ["expression" {} "my-expr"] 0]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
+
+;;; ----- E6: numeric [field, opts, 100] (sexp legacy form) ---------------------------
+
+(deftest friendly-error-numeric-field-id-test
+  (testing "`[field, {}, 100]` (numeric id) raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["field" {} 100] 0]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :numeric-field-id (:error data)))
+            (is (re-find #"portable FK" (ex-message e)))
+            (is (re-find #"column-name" (ex-message e)))))))))
+
+(deftest friendly-error-portable-fk-passes-test
+  (testing "canonical portable-FK `[field, {}, [Sample, PUBLIC, ORDERS, COL]]` does NOT trigger"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]}]}]
+      (is (some? (repair/repair trivial-mp q))))))
+
+(deftest friendly-error-cross-stage-string-col-passes-test
+  (testing "cross-stage string column-name `[field, {}, \"count\"]` does NOT trigger"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]}
+                         {"lib/type" "mbql.stage/mbql"
+                          "filters"  [[">" {} ["field" {} "count"] 10]]}]}]
+      (is (some? (repair/repair trivial-mp q))))))
