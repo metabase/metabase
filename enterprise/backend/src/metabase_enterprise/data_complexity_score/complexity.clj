@@ -376,6 +376,14 @@
 (defn- truncate-error [s]
   (cond-> s (< max-error-length (count s)) (subs 0 max-error-length)))
 
+(defn- with-score
+  "Attach `:score` to `event` only when it is non-nil.
+  The `data_complexity` Snowplow schema flags `score` as non-nullable but optional, so an
+  uncomputed sub-score (or a rollup that cascaded nil from one) must omit the key entirely
+  rather than emit `\"score\": null`."
+  [event score]
+  (cond-> event (some? score) (assoc :score score)))
+
 (defn- emit-snowplow!
   "Submits Snowplow events for every score, every group aggregation, and the grand total.
   Returns true when they are all successfully delivered.
@@ -387,23 +395,23 @@
         events (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
                      event (concat (for [[component sub] (:components result)]
                                      ;; leaf component
-                                     (cond-> (assoc base
-                                                    :catalog     catalog
-                                                    :key         (dotted-key (component->group component) component)
-                                                    :score       (:score sub)
-                                                    :measurement (:measurement sub))
+                                     (cond-> (-> base
+                                                 (assoc :catalog     catalog
+                                                        :key         (dotted-key (component->group component) component)
+                                                        :measurement (:measurement sub))
+                                                 (with-score (:score sub)))
                                        (:error sub) (assoc :error (truncate-error (:error sub)))))
                                    (for [[group entries] (group-by #(component->group (key %)) (:components result))]
                                      ;; group total
-                                     (assoc base
-                                            :catalog catalog
-                                            :key     (dotted-key group :total)
-                                            :score   (nil-safe-sum (map (comp :score val) entries))))
+                                     (-> base
+                                         (assoc :catalog catalog
+                                                :key     (dotted-key group :total))
+                                         (with-score (nil-safe-sum (map (comp :score val) entries)))))
                                    ;; grand total
-                                   [(assoc base
-                                           :catalog catalog
-                                           :key     (dotted-key :total)
-                                           :score   (:total result))])]
+                                   [(-> base
+                                        (assoc :catalog catalog
+                                               :key     (dotted-key :total))
+                                        (with-score (:total result)))])]
                  event)]
     ;; No short-circuiting - even if they are failures, attempt the rest.
     (reduce (fn [all-ok? event]

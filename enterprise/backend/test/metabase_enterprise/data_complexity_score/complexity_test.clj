@@ -728,11 +728,11 @@
           (testing ":error is only present on the originating leaf — aggregates use null score instead"
             (is (not-any? #(contains? % "error")
                           (vals (dissoc by-key "ambiguity.synonym_pairs")))))
-          (testing "the failed leaf publishes null :score (no zero-fallback)"
-            (is (nil? (get-in by-key ["ambiguity.synonym_pairs" "score"]))))
-          (testing "aggregates that include the failed leaf cascade null :score"
-            (is (nil? (get-in by-key ["ambiguity.total" "score"])))
-            (is (nil? (get-in by-key ["total"           "score"]))))
+          (testing "the failed leaf omits :score entirely (schema flags it non-nullable but optional, no zero-fallback)"
+            (is (not (contains? (get by-key "ambiguity.synonym_pairs") "score"))))
+          (testing "aggregates that include the failed leaf omit :score (cascade)"
+            (is (not (contains? (get by-key "ambiguity.total") "score")))
+            (is (not (contains? (get by-key "total")           "score"))))
           (testing "unaffected aggregates keep their numeric :score (cascade is leaf-scoped, not catalog-wide)"
             ;; size group has no synonym dependency, so its rollup must still be a real number even
             ;; when ambiguity falls through. Catches a regression where the cascade goes too far.
