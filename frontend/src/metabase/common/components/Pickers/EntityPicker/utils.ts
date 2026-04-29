@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
+import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconData } from "metabase/utils/icon";
 import type {
   CollectionItemModel,
   CollectionNamespace,

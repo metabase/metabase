@@ -9,9 +9,9 @@ import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
+import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useColorScheme } from "metabase/ui";
-import type { IconData } from "metabase/utils/icon";
 import { getSubpathSafeUrl } from "metabase/utils/urls";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {

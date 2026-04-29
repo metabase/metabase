@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Markdown } from "metabase/common/components/Markdown";
+import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Icon } from "metabase/ui";
-import type { IconData } from "metabase/utils/icon";
 import { isEmpty } from "metabase/utils/validate";
 import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
