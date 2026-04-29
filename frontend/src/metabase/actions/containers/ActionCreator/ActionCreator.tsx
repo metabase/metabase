@@ -15,9 +15,9 @@ import type {
 import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { connect } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

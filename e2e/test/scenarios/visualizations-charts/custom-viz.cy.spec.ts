@@ -7,6 +7,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type {
   CardId,
   CustomVizPlugin,
+  DashboardId,
   DocumentContent,
   Parameter,
 } from "metabase-types/api";
@@ -59,37 +60,29 @@ describe("admin > custom visualizations", () => {
         H.getAddVisualizationLink().should("not.exist");
       });
 
-      it("should show manage page with valid token", () => {
+      it("should enable and disable custom visualizations", () => {
         H.activateToken("bleeding-edge");
 
         H.visitCustomVizSettings();
 
         H.main()
-          .findByText(
-            "Should custom visualizations be enabled for this instance? Enabling this will reload the page.",
-          )
-          .should("be.visible");
-        H.main()
-          .findByRole("switch", { name: /Enable Custom Visualizations/ })
+          .findByRole("button", { name: /Enable custom visualizations/ })
+          .should("be.visible")
           .click();
 
-        H.main()
-          .findByRole("heading", { name: "Custom visualizations" })
-          .should("be.visible");
         H.getAddVisualizationLink().should("be.visible");
 
         H.main()
-          .findByText(
-            "Should custom visualizations be enabled for this instance? Disabling this will reload the page.",
-          )
-          .should("be.visible");
-        H.main()
-          .findByRole("switch", { name: /Enable Custom Visualizations/ })
+          .findByRole("button", { name: /More options/ })
           .click();
+        H.popover().findByText("Deactivate custom visualizations").click();
 
         H.main()
-          .findByRole("heading", { name: "Custom visualizations" })
+          .findByRole("heading", { name: "Add a new visualization" })
           .should("not.exist");
+        H.main()
+          .findByRole("heading", { name: "Enable custom visualizations" })
+          .should("be.visible");
       });
 
       it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
@@ -109,6 +102,38 @@ describe("admin > custom visualizations", () => {
         cy.findByTestId("admin-layout-sidebar")
           .findByText("Custom visualizations")
           .should("not.exist");
+      });
+
+      it("should not show nested sidebar navigation when custom viz plugin dev mode is disabled", () => {
+        cy.intercept("GET", "/api/session/properties", (req) => {
+          req.continue((res) => {
+            res.body["custom-viz-plugin-dev-mode-enabled"] = false;
+          });
+        });
+
+        H.activateToken("bleeding-edge");
+        H.setupCustomVizRepo();
+        H.updateSetting("custom-viz-enabled", true);
+        H.visitCustomVizSettings();
+        H.getAddVisualizationLink().click();
+
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Development/ })
+          .should("not.exist");
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Manage visualizations/ })
+          .should("not.exist");
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Custom visualizations/ })
+          .should("have.attr", "data-active", "true");
+
+        cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+        cy.findByRole("button", { name: "Add visualization" }).click();
+        cy.findByRole("link", { name: /demo-viz/ }).click();
+
+        cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Custom visualizations/ })
+          .should("have.attr", "data-active", "true");
       });
     });
 
@@ -148,21 +173,8 @@ describe("admin > custom visualizations", () => {
         "be.enabled",
       );
 
-      cy.log("Clicking submit opens the confirmation modal");
-      cy.findByRole("button", { name: "Add visualization" }).click();
-
       H.interceptPluginCreate();
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Add this visualization?" }).should(
-          "be.visible",
-        );
-        // Body text has a <strong> inside so findByText's default leaf
-        // matcher misses it — cy.contains matches across children.
-        cy.contains(
-          /Be aware that custom visualizations.*can execute arbitrary code.*should only be added from trusted sources/,
-        ).should("be.visible");
-        cy.findByRole("button", { name: "Add this visualization" }).click();
-      });
+      cy.findByRole("button", { name: "Add visualization" }).click();
       cy.wait("@pluginCreate");
 
       // Should redirect to list and show the plugin
@@ -201,28 +213,27 @@ describe("admin > custom visualizations", () => {
 
       H.visitCustomVizNewForm();
 
+      cy.findByRole("link", { name: /Manage visualizations/ }).should(
+        "have.attr",
+        "data-active",
+        "true",
+      );
+
       cy.findByLabelText(/Repository URL/).type(invalidRepoUrl);
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin").as(
         "pluginCreateInvalid",
       );
       cy.findByRole("button", { name: "Add visualization" }).click();
-      H.modal()
-        .findByRole("button", { name: "Add this visualization" })
-        .click();
 
       cy.wait("@pluginCreateInvalid")
         .its("response.statusCode")
         .should("eq", 400);
 
-      cy.log("Error is surfaced inside the confirmation modal");
-      H.modal()
-        .findByText(/Failed to clone git repository/)
-        .should("be.visible");
-
-      H.modal()
-        .findByRole("button", { name: /Cancel/ })
-        .click();
+      cy.log("Error is surfaced inline in the form");
+      cy.findByTestId("custom-viz-settings-form").within(() => {
+        cy.findByText(/Failed to clone git repository/).should("be.visible");
+      });
 
       cy.location("pathname").should(
         "eq",
@@ -290,9 +301,6 @@ describe("admin > custom visualizations", () => {
       }).as("pluginCreateWithToken");
 
       cy.findByRole("button", { name: "Add visualization" }).click();
-      H.modal()
-        .findByRole("button", { name: "Add this visualization" })
-        .click();
       cy.wait("@pluginCreateWithToken");
     });
 
@@ -340,74 +348,6 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("custom-viz-settings-form").within(() => {
         cy.findAllByText(/required/i).should("have.length.at.least", 2);
       });
-    });
-
-    it("should show a confirmation modal before adding a plugin and skip it after 'Don't warn me about this again' is selected", () => {
-      H.setupCustomVizRepo();
-      H.setupCustomVizRepo2();
-
-      H.visitCustomVizNewForm();
-      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
-      cy.findByRole("button", { name: "Add visualization" }).click();
-
-      cy.log("Modal shows the warning, ack checkbox, and both buttons");
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Add this visualization?" }).should(
-          "be.visible",
-        );
-        cy.contains(
-          /Be aware that custom visualizations.*can execute arbitrary code.*should only be added from trusted sources/,
-        ).should("be.visible");
-        cy.findByLabelText(/Don't warn me about this again/).should(
-          "be.visible",
-        );
-        cy.findByRole("button", { name: /Cancel/ }).should("be.visible");
-        cy.findByRole("button", {
-          name: "Add this visualization",
-        }).should("be.visible");
-      });
-
-      cy.log(
-        "Cancel closes the modal without submitting and keeps the URL in the form",
-      );
-      H.modal()
-        .findByRole("button", { name: /Cancel/ })
-        .click();
-      cy.findByRole("dialog").should("not.exist");
-      cy.findByLabelText(/Repository URL/).should(
-        "have.value",
-        H.CUSTOM_VIZ_REPO_URL,
-      );
-
-      cy.log("Re-open the modal, check 'Don't warn me again', and confirm");
-      cy.findByRole("button", { name: "Add visualization" }).click();
-
-      cy.intercept(
-        "PUT",
-        "/api/user-key-value/namespace/user_acknowledgement/key/*",
-      ).as("ackWarning");
-      H.interceptPluginCreate();
-
-      H.modal().within(() => {
-        cy.findByLabelText(/Don't warn me about this again/).click();
-        cy.findByRole("button", { name: "Add this visualization" }).click();
-      });
-      cy.wait("@ackWarning");
-      cy.wait("@pluginCreate");
-
-      H.main().findByText("demo-viz").should("be.visible");
-
-      cy.log("Next add: modal should be skipped and the POST fires directly");
-      H.getAddVisualizationLink().click();
-      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL_2);
-      cy.findByRole("button", { name: "Add visualization" }).click();
-
-      // If the modal had opened, no POST would fire until the user clicks
-      // "Add this visualization" inside it — waiting on the intercept without
-      // any further interaction asserts the modal was skipped.
-      cy.wait("@pluginCreate");
-      cy.findByRole("dialog").should("not.exist");
-      H.main().findByText("demo-viz-2").should("be.visible");
     });
 
     describe("updating a plugin", () => {
@@ -471,6 +411,12 @@ describe("admin > custom visualizations", () => {
         H.enableTracking();
         H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
           H.visitCustomVizEditForm(plugin.id);
+
+          cy.findByRole("link", { name: /Manage visualizations/ }).should(
+            "have.attr",
+            "data-active",
+            "true",
+          );
 
           // Wait for the plugin data to populate the form before interacting
           // — enableReinitialize would reset any user input if the plugin
@@ -625,6 +571,11 @@ describe("admin > custom visualizations", () => {
           H.main().findByText("demo-viz").realHover();
           cy.findByRole("button", { name: "Plugin actions" }).click();
           H.popover().findByText("Remove").click();
+
+          H.modal().within(() => {
+            cy.findByText("Remove this visualization?").should("be.visible");
+            cy.findByRole("button", { name: "Remove" }).click();
+          });
 
           H.main()
             .findByText("You don't have any custom visualizations.")
@@ -825,7 +776,7 @@ describe("admin > custom visualizations", () => {
         { wrapId: true, idAlias: "publicQuestionId" },
       );
 
-      cy.get<number>("@publicQuestionId").then(H.visitPublicQuestion);
+      cy.get<CardId>("@publicQuestionId").then(H.visitPublicQuestion);
 
       cy.findByTestId("table-root").should("be.visible");
     });
@@ -1035,7 +986,7 @@ describe("admin > custom visualizations", () => {
           { wrapId: true, idAlias: "targetDashboardId" },
         );
 
-        cy.get<number>("@targetDashboardId").then((targetDashboardId) => {
+        cy.get<DashboardId>("@targetDashboardId").then((targetDashboardId) => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
@@ -1076,7 +1027,7 @@ describe("admin > custom visualizations", () => {
           { wrapId: true, idAlias: "targetQuestionId" },
         );
 
-        cy.get<number>("@targetQuestionId").then((targetQuestionId) => {
+        cy.get<CardId>("@targetQuestionId").then((targetQuestionId) => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
@@ -1300,23 +1251,8 @@ describe("admin > custom visualizations", () => {
         });
       });
 
-      it("renders the custom viz when viewed via a public link", () => {
-        H.interceptPluginBundle();
+      it("falls back to the default viz on a public document", () => {
         H.visitPublicDocument("@documentId");
-        cy.wait("@pluginBundle");
-
-        H.getDocumentCard(DOC_QUESTION_NAME)
-          .findByText("Custom viz rendered successfully")
-          .should("be.visible");
-      });
-
-      it("falls back to the default visualization in a public document when the bundle fails", () => {
-        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
-          statusCode: 500,
-          body: "boom",
-        }).as("failedBundle");
-        H.visitPublicDocument("@documentId");
-        cy.wait("@failedBundle");
 
         H.getDocumentCard(DOC_QUESTION_NAME)
           .findByTestId("table-root")
@@ -1385,7 +1321,7 @@ describe("admin > custom visualizations", () => {
         { name: DASHBOARD_NAME },
         { wrapId: true, idAlias: "dashboardId" },
       );
-      cy.get<number>("@dashboardId").then((dashboardId) => {
+      cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
         cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
       });
 

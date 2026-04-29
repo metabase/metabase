@@ -34,6 +34,7 @@
   (concat data-model
           content
           ["CustomVizPlugin"
+           "EmbeddingTheme"
            "FieldValues"
            "Metabot"
            "PythonLibrary"

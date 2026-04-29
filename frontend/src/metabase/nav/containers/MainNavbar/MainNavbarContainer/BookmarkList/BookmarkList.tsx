@@ -17,8 +17,9 @@ import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
 
@@ -83,11 +84,17 @@ const BookmarkItem = ({
   const getIcon = useGetIcon();
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
+  const isTenantUser = useSelector(getIsTenantUser);
 
-  const icon = getIcon({
-    model: getBookmarkModel(bookmark),
-    display: bookmark.display,
-  });
+  const icon = getIcon(
+    {
+      model: getBookmarkModel(bookmark),
+      display: bookmark.display,
+      authority_level: bookmark.authority_level,
+      is_remote_synced: bookmark.is_remote_synced,
+    },
+    { isTenantUser },
+  );
   const onRemove = () => onDeleteBookmark(bookmark);
 
   const isIrregularCollection =

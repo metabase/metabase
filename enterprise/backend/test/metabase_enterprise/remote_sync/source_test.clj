@@ -21,9 +21,6 @@
   (read-file [_ _path]
     nil)
 
-  (read-file-bytes [_ _path]
-    nil)
-
   (write-files! [_ message files]
     (let [realized-files (vec files)]
       (reset! written-files {:message message :files realized-files}))

@@ -147,8 +147,8 @@ export function customVizAdd() {
   return `${customViz()}/new`;
 }
 
-export function customVizEdit(id: CustomVizPluginId) {
-  return `${customViz()}/edit/${id}`;
+export function customVizEdit(id: CustomVizPluginId | undefined) {
+  return `${customViz()}/edit/${id ?? ""}`;
 }
 
 export function customVizDev() {

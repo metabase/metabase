@@ -1,5 +1,4 @@
 (ns metabase-enterprise.serialization.cmd
-  (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -133,7 +132,6 @@
                              :settings        (not (:no-settings opts))
                              :field_values    (boolean (:include-field-values opts))
                              :secrets         (boolean (:include-database-secrets opts))
-                             :custom_viz_token (boolean (:include-custom-viz-token opts))
                              :success         (nil? @err)
                              :error_message   (when @err
                                                 (u/strip-error @err nil))})

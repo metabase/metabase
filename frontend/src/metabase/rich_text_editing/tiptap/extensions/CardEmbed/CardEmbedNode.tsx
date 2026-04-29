@@ -38,6 +38,7 @@ import {
 } from "metabase/documents/selectors";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
+import { useDispatch, useSelector } from "metabase/redux";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -50,7 +51,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";

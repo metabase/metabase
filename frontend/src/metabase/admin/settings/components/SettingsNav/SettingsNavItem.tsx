@@ -5,8 +5,8 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
 } from "metabase/admin/components/AdminNav";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { useSelector } from "metabase/utils/redux";
 
 /**
  * Find the child whose path is the best (longest) prefix match for the current
@@ -44,7 +44,7 @@ export function SettingsNavItem({
   ...navItemProps
 }: AdminNavItemProps & { active?: boolean }) {
   const children = React.Children.toArray(childrenProp) as ReactElement[];
-  const currentPath: string = useSelector(getLocation)?.pathname ?? "";
+  const currentPath = useSelector(getLocation)?.pathname ?? "";
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
     folderPattern ? currentPath.includes(folderPattern) : false,
   );

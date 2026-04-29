@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { replace } from "react-router-redux";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import { isNotNull } from "metabase/utils/types";
 import { extractCollectionId } from "metabase/utils/urls";
 

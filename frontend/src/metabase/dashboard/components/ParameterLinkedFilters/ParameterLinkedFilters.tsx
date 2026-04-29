@@ -10,6 +10,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
 import { usableAsLinkedFilter } from "metabase/parameters/utils/linked-filters";
+import { useDispatch } from "metabase/redux";
 import { showAddParameterPopover } from "metabase/redux/dashboard";
 import {
   Box,
@@ -23,7 +24,6 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId, ParameterId } from "metabase-types/api";
 

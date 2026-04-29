@@ -9,8 +9,6 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(set! *warn-on-reflection* true)
-
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
   Optionally accepts `:parent-id` for nested collections and `:namespace` for
@@ -193,17 +191,6 @@ width: fixed
       :branch-error (throw (Exception. "Invalid branch specified"))
       ;; Default success case - return file content from atom
       (get-in @files-atom [branch path] "")))
-
-  (read-file-bytes [_this path]
-    (case fail-mode
-      :read-file-error (throw (Exception. "Failed to read file"))
-      :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      :auth-error (throw (Exception. "Authentication failed"))
-      :repo-not-found (throw (Exception. "Repository not found"))
-      :branch-error (throw (Exception. "Invalid branch specified"))
-      ;; Default success case - return file content as bytes
-      (when-let [content (get-in @files-atom [branch path])]
-        (.getBytes ^String content "UTF-8"))))
 
   (write-files! [_this _message files]
     (case fail-mode

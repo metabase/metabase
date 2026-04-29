@@ -5,7 +5,8 @@
  */
 
 import { IndexedEntitySchema } from "metabase/schema";
-import { createEntity } from "metabase/utils/entities";
+
+import { createEntity } from "../utils";
 
 /**
  * @deprecated use "metabase/api" instead

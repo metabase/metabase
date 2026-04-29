@@ -9,8 +9,8 @@ import { DashboardPickerModal } from "metabase/common/components/Pickers/Dashboa
 import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 

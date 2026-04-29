@@ -4,7 +4,7 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";

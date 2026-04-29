@@ -147,7 +147,7 @@
 
 (defmethod model-details :model/CustomVizPlugin
   [plugin _event-type]
-  (select-keys plugin [:identifier :display_name :repo_url :status :enabled :resolved_commit]))
+  (select-keys plugin [:identifier :display_name :status :enabled :bundle_hash]))
 
 (defmethod model-details :model/RemoteSyncTask
   [task _event-type]
