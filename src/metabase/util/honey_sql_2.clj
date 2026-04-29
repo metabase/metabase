@@ -151,7 +151,7 @@
   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
   strings."
   [identifier-type :- IdentifierType
-   & components    :- [:* {:min 1} [:maybe [:or :keyword ms/NonBlankString [:fn identifier?]]]]]
+   & components    :- [:* {:min 1} [:maybe [:or :keyword :string [:fn identifier?]]]]]
   [::identifier
    identifier-type
    (vec (for [component components
