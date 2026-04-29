@@ -212,14 +212,10 @@ function UpdateDatabaseForm({
       confirmButtonText: t`Remove`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        const { error } = await deleteWorkspaceDatabase({
+        await deleteWorkspaceDatabase({
           workspace_id: workspace.id,
           database_id: databaseId,
-        });
-        if (error) {
-          sendErrorToast(t`Failed to remove database`);
-          return;
-        }
+        }).unwrap();
         onClose();
       },
     });

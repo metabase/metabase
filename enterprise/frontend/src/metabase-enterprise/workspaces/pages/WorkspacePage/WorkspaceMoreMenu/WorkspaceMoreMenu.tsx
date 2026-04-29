@@ -16,7 +16,7 @@ type WorkspaceMoreMenuProps = {
 export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const dispatch = useDispatch();
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendSuccessToast } = useMetadataToasts();
   const { modalContent, show } = useConfirmation();
 
   const handleDelete = () => {
@@ -26,11 +26,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
       confirmButtonText: t`Delete workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        const { error } = await deleteWorkspace(workspace.id);
-        if (error) {
-          sendErrorToast(t`Failed to delete workspace`);
-          return;
-        }
+        await deleteWorkspace(workspace.id).unwrap();
         sendSuccessToast(t`Workspace deleted`);
         dispatch(push(Urls.workspaceList()));
       },
