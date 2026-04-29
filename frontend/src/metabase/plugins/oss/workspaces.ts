@@ -1,28 +1,19 @@
 import type { ReactNode } from "react";
 
 import type { State } from "metabase/redux/store";
-import type { WorkspaceInstance } from "metabase-types/api";
 
 type WorkspacesPlugin = {
   isEnabled: boolean;
-  canManageWorkspaces: (state: State) => boolean;
-  getDataStudioWorkspaceRoutes: () => ReactNode;
+  canAccessWorkspaces: (state: State) => boolean;
+  getDataStudioWorkspaceManagerRoutes: () => ReactNode;
   getDataStudioWorkspaceInstanceRoutes: () => ReactNode;
-  useCurrentWorkspace: () => {
-    currentWorkspace: WorkspaceInstance | null;
-    isLoading: boolean;
-  };
 };
 
 const getDefaultPlugin = (): WorkspacesPlugin => ({
   isEnabled: false,
-  canManageWorkspaces: () => false,
-  getDataStudioWorkspaceRoutes: () => null,
+  canAccessWorkspaces: () => false,
+  getDataStudioWorkspaceManagerRoutes: () => null,
   getDataStudioWorkspaceInstanceRoutes: () => null,
-  useCurrentWorkspace: () => ({
-    currentWorkspace: null,
-    isLoading: false,
-  }),
 });
 
 export const PLUGIN_WORKSPACES = getDefaultPlugin();

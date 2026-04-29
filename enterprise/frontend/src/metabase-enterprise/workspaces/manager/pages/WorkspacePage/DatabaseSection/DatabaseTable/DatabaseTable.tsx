@@ -3,9 +3,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Text, TreeTable, useTreeTableInstance } from "metabase/ui";
+import { getDatabasesById } from "metabase-enterprise/workspaces/common/utils";
 import type { Database, WorkspaceDatabase } from "metabase-types/api";
-
-import { toDatabasesById } from "../../../../utils";
 
 import type { DatabaseRow } from "./types";
 import { getColumns, getRows } from "./utils";
@@ -23,7 +22,7 @@ export function DatabaseTable({
   onEdit,
   onDelete,
 }: DatabaseTableProps) {
-  const databasesById = useMemo(() => toDatabasesById(databases), [databases]);
+  const databasesById = useMemo(() => getDatabasesById(databases), [databases]);
   const rows = useMemo(
     () => getRows(workspaceDatabases, databasesById),
     [workspaceDatabases, databasesById],

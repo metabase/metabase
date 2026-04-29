@@ -79,7 +79,7 @@ export function getDataStudioRoutes(
         <Route path="git-sync" component={GitSyncSectionLayout} />
         {PLUGIN_WORKSPACES.isEnabled && (
           <Route path="workspaces" component={WorkspacesSectionLayout}>
-            {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
+            {PLUGIN_WORKSPACES.getDataStudioWorkspaceManagerRoutes()}
           </Route>
         )}
         {PLUGIN_WORKSPACES.isEnabled && (

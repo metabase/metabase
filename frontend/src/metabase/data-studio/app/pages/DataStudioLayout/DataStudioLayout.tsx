@@ -6,6 +6,7 @@ import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
@@ -100,10 +101,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
-  const canManageWorkspaces = useSelector(
-    PLUGIN_WORKSPACES.canManageWorkspaces,
+  const canAccessWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canAccessWorkspaces,
   );
-  const { currentWorkspace } = PLUGIN_WORKSPACES.useCurrentWorkspace();
+  const hasActiveWorkspace = useSetting("active-workspace");
 
   const currentTab = getCurrentTab(pathname);
 
@@ -201,8 +202,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isGated
             />
           )}
-          {PLUGIN_WORKSPACES.isEnabled &&
-            (currentWorkspace ? (
+          {canAccessWorkspaces &&
+            (hasActiveWorkspace ? (
               <DataStudioTab
                 label={t`Workspace`}
                 icon="folder_database"
@@ -210,7 +211,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
                 isSelected={currentTab === "workspace"}
                 showLabel={isNavbarOpened}
               />
-            ) : canManageWorkspaces ? (
+            ) : (
               <DataStudioTab
                 label={t`Workspaces`}
                 icon="folder_database"
@@ -218,7 +219,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
                 isSelected={currentTab === "workspaces"}
                 showLabel={isNavbarOpened}
               />
-            ) : null)}
+            ))}
           {canAccessTransforms && (
             <DataStudioTab
               label={t`Jobs`}

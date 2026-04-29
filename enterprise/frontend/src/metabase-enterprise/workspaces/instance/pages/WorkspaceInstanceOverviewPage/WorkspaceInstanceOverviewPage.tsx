@@ -7,15 +7,15 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Center, Stack } from "metabase/ui";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
+import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
+import { getDatabasesById } from "metabase-enterprise/workspaces/common/utils";
 import type {
   Database,
   DatabaseId,
   WorkspaceInstance,
 } from "metabase-types/api";
 
-import { TitleSection } from "../../components/TitleSection";
 import { WorkspaceInstanceHeader } from "../../components/WorkspaceInstanceHeader";
-import { toDatabasesById } from "../../utils";
 
 import { DatabaseOverviewTable } from "./DatabaseOverviewTable";
 import { WorkspaceDetailsSection } from "./WorkspaceDetailsSection";
@@ -37,7 +37,7 @@ export function WorkspaceInstanceOverviewPage() {
   } = useListDatabasesQuery();
 
   const databasesById = useMemo(
-    () => toDatabasesById(databasesResponse?.data ?? []),
+    () => getDatabasesById(databasesResponse?.data ?? []),
     [databasesResponse],
   );
 

@@ -1,9 +1,8 @@
 import { jt, t } from "ttag";
 
 import { Box, Button, Code, Divider, Stack, Text, Tooltip } from "metabase/ui";
+import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
 import type { Workspace } from "metabase-types/api";
-
-import { TitleSection } from "../../../components/TitleSection";
 
 const DOCKER_COMMAND = `docker run -d -p 3000:3000 \\
   -v $(pwd)/config.yml:/config.yml \\
@@ -16,7 +15,7 @@ type SetupSectionProps = {
 };
 
 export function SetupSection({ workspace }: SetupSectionProps) {
-  const configUrl = `/api/ee/workspace/${workspace.id}/config/yaml`;
+  const configUrl = `/api/ee/workspace-manager/${workspace.id}/config/yaml`;
   const hasDatabases = workspace.databases.length > 0;
 
   return (

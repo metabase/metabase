@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Button, Tooltip } from "metabase/ui";
 import { useDeleteWorkspaceDatabaseMutation } from "metabase-enterprise/api";
+import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
 import type {
   Database,
   DatabaseId,
@@ -12,7 +13,6 @@ import type {
   WorkspaceDatabase,
 } from "metabase-types/api";
 
-import { TitleSection } from "../../../components/TitleSection";
 import { getAvailableDatabases } from "../../../utils";
 
 import { CreateDatabaseModal, UpdateDatabaseModal } from "./DatabaseModal";

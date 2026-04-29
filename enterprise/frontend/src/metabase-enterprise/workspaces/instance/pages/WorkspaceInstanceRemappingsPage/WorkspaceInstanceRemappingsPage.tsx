@@ -8,10 +8,10 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Center, Flex, Stack } from "metabase/ui";
 import { useListTableRemappingsQuery } from "metabase-enterprise/api";
+import { getDatabasesById } from "metabase-enterprise/workspaces/common/utils";
 import type { TableRemappingId } from "metabase-types/api";
 
 import { WorkspaceInstanceHeader } from "../../components/WorkspaceInstanceHeader";
-import { toDatabasesById } from "../../utils";
 
 import { RemappingSidebar } from "./RemappingSidebar";
 import { RemappingTable } from "./RemappingTable";
@@ -43,7 +43,7 @@ export function WorkspaceInstanceRemappingsPage() {
 
   const databases = databasesResponse?.data;
   const databasesById = useMemo(
-    () => toDatabasesById(databases ?? []),
+    () => getDatabasesById(databases ?? []),
     [databases],
   );
 

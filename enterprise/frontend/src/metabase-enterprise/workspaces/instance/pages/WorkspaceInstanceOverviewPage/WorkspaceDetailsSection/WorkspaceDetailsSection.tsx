@@ -2,9 +2,8 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Group, Stack, Text } from "metabase/ui";
+import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
 import type { WorkspaceInstance } from "metabase-types/api";
-
-import { TitleSection } from "../../../components/TitleSection";
 
 type WorkspaceDetailsSectionProps = {
   workspace: WorkspaceInstance;
