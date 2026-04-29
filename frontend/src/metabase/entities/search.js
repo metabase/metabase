@@ -122,15 +122,6 @@ export const Search = createEntity({
   },
 
   objectActions: {
-    setArchived: (object, archived) => {
-      return (dispatch) => {
-        const entity = entityForObject(object);
-        return entity
-          ? dispatch(entity.actions.setArchived(object, archived))
-          : warnEntityAndReturnObject(object);
-      };
-    },
-
     delete: (object) => {
       return (dispatch) => {
         const entity = entityForObject(object);

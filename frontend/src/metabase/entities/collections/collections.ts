@@ -109,17 +109,6 @@ export const Collections = createEntity({
   },
 
   objectActions: {
-    setArchived: (
-      { id }: Collection,
-      archived: boolean,
-      opts: Record<string, unknown>,
-    ) =>
-      Collections.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`collection`, archived ? t`trashed` : t`restored`),
-      ),
-
     setCollection: (
       { id }: Collection,
       collection: Collection,
