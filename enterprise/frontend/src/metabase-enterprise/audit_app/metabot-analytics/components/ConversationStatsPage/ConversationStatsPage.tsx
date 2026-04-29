@@ -226,6 +226,16 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     [navigateToConversations, userOptions],
   );
 
+  const handleTenantClick = useCallback(
+    (tenantName: string) => {
+      const match = tenantOptions.find((opt) => opt.label === tenantName);
+      if (match) {
+        navigateToConversations({ tenant: match.value });
+      }
+    },
+    [navigateToConversations, tenantOptions],
+  );
+
   return (
     <MetabotAdminLayout fullWidth>
       <SettingsPageWrapper mt="sm" title={t`Usage stats`}>
@@ -302,6 +312,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
               display="row"
               buildQuery={buildTenantBreakoutQuery}
               labelMapper={labelTenantName}
+              onDimensionClick={handleTenantClick}
               h={500}
             />
           )}
