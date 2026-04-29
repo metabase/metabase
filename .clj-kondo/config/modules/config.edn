@@ -3401,7 +3401,7 @@
    :model-imports #{:model/Database :model/Table}}
 
   enterprise/workspaces
-  {:team "Metabot"
+  {:team "Graphy"
    :api  #{}
    :uses #{driver
            lib
