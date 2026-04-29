@@ -499,6 +499,7 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
+      cy.intercept("POST", "/api/dashboard").as("createDashboard");
       H.createCollection(collectionInRoot).then(({ body: { id } }) => {
         H.createDashboard({
           name: "Extra Dashboard",
@@ -638,7 +639,12 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.wait("@createDashboard").then(({ response }) => {
+          cy.location("pathname").should(
+            "eq",
+            `/dashboard/${response.body.id}-new-dashboard`,
+          );
+        });
       });
 
       it("when selecting a collection with no child dashboards (metabase#47000)", () => {
@@ -670,7 +676,12 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.wait("@createDashboard").then(({ response }) => {
+          cy.location("pathname").should(
+            "eq",
+            `/dashboard/${response.body.id}-new-dashboard`,
+          );
+        });
       });
 
       it("when a dashboard is currently selected", () => {
@@ -696,7 +707,12 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.wait("@createDashboard").then(({ response }) => {
+          cy.location("pathname").should(
+            "eq",
+            `/dashboard/${response.body.id}-new-dashboard`,
+          );
+        });
       });
     });
   });
