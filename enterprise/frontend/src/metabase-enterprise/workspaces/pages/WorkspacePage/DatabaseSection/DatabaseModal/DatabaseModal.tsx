@@ -219,7 +219,7 @@ function UpdateDatabaseForm({
         <Form>
           <Stack gap="lg">
             <Text c="text-secondary">
-              {t`Recreate the isolation schema and the database user with different permissions.`}
+              {t`Recreates the isolation schema and the database user with different permissions.`}
             </Text>
             <DatabaseSelect availableDatabases={availableDatabases} />
             <DatabaseSchemaSelect
