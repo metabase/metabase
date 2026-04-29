@@ -137,6 +137,20 @@ export function useLibraryCollectionTree(
     [dispatch],
   );
 
+  const refreshCollections = useCallback(
+    async (collectionIds: CollectionId[]) => {
+      for (const id of collectionIds) {
+        const key = String(id);
+        if (!loadingIds.current.has(key)) {
+          continue;
+        }
+        loadingIds.current.delete(key);
+      }
+      await Promise.all(collectionIds.map(loadCollectionItems));
+    },
+    [loadCollectionItems],
+  );
+
   // 3. Build tree
   const tree = useMemo((): TreeItem[] => {
     if (isLoading || !topLevelItems || !collection) {
@@ -203,7 +217,14 @@ export function useLibraryCollectionTree(
     [],
   );
 
-  return { tree, isLoading, error, watchRows, isChildrenLoading };
+  return {
+    tree,
+    isLoading,
+    error,
+    watchRows,
+    isChildrenLoading,
+    refreshCollections,
+  };
 }
 
 const SEARCH_DEBOUNCE_MS = 300;

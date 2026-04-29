@@ -45,6 +45,7 @@ import * as Urls from "metabase/utils/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
+import { TableMoreMenu } from "../tables/components/TableHeader/TableMoreMenu";
 
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
@@ -177,6 +178,7 @@ function LibraryPageContent() {
     error: tablesError,
     watchRows: watchTableRows,
     isChildrenLoading: isTableChildrenLoading,
+    refreshCollections: refreshTableCollections,
   } = useLibraryCollectionTree(tableCollection, "data");
   const {
     tree: metricsTree,
@@ -295,13 +297,19 @@ function LibraryPageContent() {
         id: "actions",
         width: 48,
         cell: ({ row }) => {
-          const { data } = row.original;
+          const { data, children } = row.original;
 
-          if (
-            isEmptyStateData(data) ||
-            !isCollection(data) ||
-            data.model !== "collection"
-          ) {
+          if (isEmptyStateData(data)) {
+            return null;
+          }
+
+          if (data.model === "table" && "collection_id" in data) {
+            return (
+              <TableMoreMenu table={data} onMoved={refreshTableCollections} />
+            );
+          }
+
+          if (!isCollection(data) || data.model !== "collection") {
             return null;
           }
 
@@ -318,14 +326,23 @@ function LibraryPageContent() {
           }
 
           if (isLibraryCollection) {
-            return <CollectionRowMenu collection={data} />;
+            return (
+              <CollectionRowMenu
+                collection={data}
+                customArchiveMessage={
+                  children?.length
+                    ? t`Archiving this collection will also unpublish the tables inside it and archive any other child items.`
+                    : undefined
+                }
+              />
+            );
           }
 
           return null;
         },
       },
     ],
-    [setIsPublishTableModalOpen, isRemoteSyncReadOnly],
+    [setIsPublishTableModalOpen, isRemoteSyncReadOnly, refreshTableCollections],
   );
 
   const getRowHref = useCallback(

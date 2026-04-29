@@ -2,22 +2,23 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
-import { useUpdateTableMutation } from "metabase/api";
+import { collectionApi, useUpdateTableMutation } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
-import type { Table } from "metabase-types/api";
+import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 
 type TableModalType = "unpublish" | "move";
 
-type TableMoreMenuProps = {
-  table: Table;
+export type TableMoreMenuProps = {
+  table: Table | CollectionItem;
+  onMoved?: (collectionIds: CollectionId[]) => void;
 };
 
-export function TableMoreMenu({ table }: TableMoreMenuProps) {
+export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
   const dispatch = useDispatch();
   const [modalType, setModalType] = useState<TableModalType>();
   const [updateTable] = useUpdateTableMutation();
@@ -25,47 +26,82 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
+  const dbId = "db_id" in table ? table.db_id : table.database_id;
+
   const handleUnpublish = () => {
     setModalType(undefined);
     dispatch(push(Urls.dataStudioLibrary()));
   };
 
   const handleMove = async (newCollection: { id: number | string }) => {
+    const sourceCollectionId = table.collection_id;
     await updateTable({
       id: table.id,
       collection_id: newCollection.id as number,
     }).unwrap();
+    dispatch(
+      collectionApi.util.invalidateTags([
+        { type: "collection", id: `${sourceCollectionId}-items` },
+        { type: "collection", id: `${newCollection.id}-items` },
+      ]),
+    );
+    const affectedIds: CollectionId[] = [newCollection.id as CollectionId];
+    if (sourceCollectionId != null) {
+      affectedIds.push(sourceCollectionId);
+    }
+    onMoved?.(affectedIds);
     setModalType(undefined);
   };
 
   return (
-    <>
-      <Menu>
+    <Box
+      onClick={(event) => {
+        event.stopPropagation();
+        event.preventDefault();
+      }}
+    >
+      <Menu withinPortal>
         <Menu.Target>
-          <ActionIcon size="sm" aria-label={t`Show table options`}>
+          <ActionIcon
+            aria-label={t`Show table options`}
+            size="sm"
+            onClick={(event) => {
+              event.preventDefault();
+            }}
+          >
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="external" />}
-            component={ForwardRefLink}
-            to={Urls.queryBuilderTable(table.id, table.db_id)}
-            target="_blank"
-          >
-            {c("A verb, not a noun").t`View`}
-          </Menu.Item>
+          {dbId != null && (
+            <Menu.Item
+              leftSection={<Icon name="external" />}
+              component={ForwardRefLink}
+              to={Urls.queryBuilderTable(table.id, dbId)}
+              target="_blank"
+            >
+              {c("A verb, not a noun").t`View`}
+            </Menu.Item>
+          )}
           {!remoteSyncReadOnly && (
             <>
               <Menu.Item
                 leftSection={<Icon name="move" />}
-                onClick={() => setModalType("move")}
+                onClick={(event) => {
+                  setModalType("move");
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
               >
                 {t`Move`}
               </Menu.Item>
               <Menu.Item
                 leftSection={<Icon name="unpublish" />}
-                onClick={() => setModalType("unpublish")}
+                onClick={(event) => {
+                  setModalType("unpublish");
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
               >
                 {t`Unpublish`}
               </Menu.Item>
@@ -99,6 +135,6 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
           }}
         />
       )}
-    </>
+    </Box>
   );
 }
