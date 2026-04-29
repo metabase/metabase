@@ -2,7 +2,7 @@ import type { Row } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Text, TreeTable, useTreeTableInstance } from "metabase/ui";
+import { Text, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { Database, WorkspaceDatabase } from "metabase-types/api";
 
 import { toDatabasesById } from "../../../../utils";
@@ -48,9 +48,7 @@ export function DatabaseTable({
       instance={treeTableInstance}
       onRowClick={handleRowClick}
       emptyState={
-        <Box p="md">
-          <Text c="text-secondary">{t`No databases configured yet.`}</Text>
-        </Box>
+        <Text c="text-secondary">{t`No databases configured yet.`}</Text>
       }
     />
   );
