@@ -2388,7 +2388,6 @@
            lib
            lib-be
            models
-           queries
            settings
            task
            util}}
