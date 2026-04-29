@@ -294,10 +294,21 @@ export function excludeAllUsersGroup(query: Query): Query {
   );
 }
 
+function normalizeBreakoutName(name?: string): string {
+  return name?.toLowerCase().replace(/[\s_-]/g, "") ?? "";
+}
+
 function breakoutByJoinedGroupName(query: Query): Query {
   const col = Lib.breakoutableColumns(query, 0).find((col) => {
     const info = Lib.displayInfo(query, 0, col);
-    return info.name === "group_name" && info.isFromJoin;
+    const names = [info.name, info.displayName, info.longDisplayName].map(
+      normalizeBreakoutName,
+    );
+
+    return (
+      info.isFromJoin &&
+      names.some((name) => name === "groupname" || name.endsWith("groupname"))
+    );
   });
   return col ? Lib.breakout(query, 0, col) : query;
 }
@@ -320,8 +331,8 @@ export function buildGroupBreakoutQuery({
   q = joinGroupMembers(q, groupMembersTable);
   q = excludeAllUsers ? excludeAllUsersGroup(q) : q;
   q = applyIdFilter(q, "group_id", groupId);
-  q = applyUsageStatsAggregation(q, metric);
   q = breakoutByJoinedGroupName(q);
+  q = applyUsageStatsAggregation(q, metric);
   q = applyMetricOrderBy(q, metric);
   return q;
 }
