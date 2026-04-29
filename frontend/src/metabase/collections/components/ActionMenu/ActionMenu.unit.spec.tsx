@@ -162,7 +162,6 @@ describe("ActionMenu", () => {
         can_write: true,
         personal_owner_id: 1,
         setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
         copy: true,
       });
 
@@ -179,7 +178,6 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: false,
         setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
         copy: true,
       });
 
