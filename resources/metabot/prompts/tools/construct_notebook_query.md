@@ -6,17 +6,19 @@ Return a payload with:
 
 ## The query YAML
 
+The examples below use the sample database's exact name, `Sample Database`. In real queries, replace every portable FK path segment with the exact values returned by metadata tools.
+
 A minimal example — count of orders by month:
 
 ```yaml
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     aggregation:
       - [count, {}]
     breakout:
-      - [field, {temporal-unit: month}, [Sample, PUBLIC, ORDERS, CREATED_AT]]
+      - [field, {temporal-unit: month}, ['Sample Database', PUBLIC, ORDERS, CREATED_AT]]
 ```
 
 ### Top-level shape
@@ -27,7 +29,7 @@ stages:
 ### Stage shape
 
 - `lib/type: mbql.stage/mbql` — required marker.
-- `source-table: [<db-name>, <schema-or-null>, <table-name>]` — a **portable table FK** (3-element vector of strings; the middle slot is `null` for schemaless databases like MongoDB).
+- `source-table: ['<db-name>', '<schema-or-null>', '<table-name>']` — a **portable table FK** (3-element vector of strings; the middle slot is `null` for schemaless databases like MongoDB).
 - Any of: `filters`, `aggregation`, `breakout`, `order-by`, `fields`, `limit`, `joins`.
 
 ### Clauses
@@ -40,7 +42,7 @@ Every operation is a vector `[operator, {options}, …args]`.
 ### Field references
 
 ```yaml
-[field, {}, [<db-name>, <schema-or-null>, <table-name>, <field-name>]]
+[field, {}, ['<db-name>', '<schema-or-null>', '<table-name>', '<field-name>']]
 ```
 
 The third slot is the **portable field FK** — a 4+ element vector of strings. The last segment is the field name; additional segments describe JSON-unfolded nested paths.
@@ -55,21 +57,21 @@ Common field options (in the `{…}` map):
 **Filter (comparison):**
 ```yaml
 filters:
-  - ['>', {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]], 100]
+  - ['>', {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]], 100]
 ```
 
 **Filter (boolean combination):**
 ```yaml
 filters:
   - [and, {},
-     ['>', {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]], 100],
-     ['=', {}, [field, {}, [Sample, PUBLIC, ORDERS, STATUS]], "paid"]]
+     ['>', {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]], 100],
+     ['=', {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, STATUS]], "paid"]]
 ```
 
 **Aggregation on a field:**
 ```yaml
 aggregation:
-  - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]
+  - [sum, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]]
 ```
 
 **Count (no argument):**
@@ -81,21 +83,21 @@ aggregation:
 **Breakout with temporal bucket:**
 ```yaml
 breakout:
-  - [field, {temporal-unit: month}, [Sample, PUBLIC, ORDERS, CREATED_AT]]
+  - [field, {temporal-unit: month}, ['Sample Database', PUBLIC, ORDERS, CREATED_AT]]
 ```
 
 **Order by (direction clause wraps a field ref):**
 ```yaml
 order-by:
-  - [desc, {}, [field, {}, [Sample, PUBLIC, ORDERS, CREATED_AT]]]
+  - [desc, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, CREATED_AT]]]
 ```
 
 **Order by an aggregation** — use the literal aggregation expression in `order-by`; we will rewrite it to an aggregation reference for you. Always re-state the aggregation **identically** to how it appears in the `aggregation:` list (same operator, same args, options can be `{}`):
 ```yaml
 aggregation:
-  - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]
+  - [sum, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]]
 order-by:
-  - [desc, {}, [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]]
+  - [desc, {}, [sum, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]]]
 ```
 The inner `order-by` clause must match one of the entries in `aggregation:`. If it doesn't match anything (e.g. you ordered by `[avg, ...]` but only added `[sum, ...]`), you'll get a validation error — add the missing aggregation, or order by the matching one.
 
@@ -107,8 +109,8 @@ limit: 50
 **Fields projection:**
 ```yaml
 fields:
-  - [field, {}, [Sample, PUBLIC, ORDERS, ID]]
-  - [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]
+  - [field, {}, ['Sample Database', PUBLIC, ORDERS, ID]]
+  - [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]
 ```
 
 ### Querying a saved question or model
@@ -184,11 +186,11 @@ The column's name is whatever the previous stage's aggregation / breakout / fiel
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     aggregation:
       - [count, {}]
     breakout:
-      - [field, {}, [Sample, PUBLIC, ORDERS, PRODUCT_ID]]
+      - [field, {}, ['Sample Database', PUBLIC, ORDERS, PRODUCT_ID]]
   - lib/type: mbql.stage/mbql
     filters:
       - ['>', {}, [field, {}, count], 10]
@@ -202,11 +204,11 @@ The stage-1 filter is a post-aggregation filter: the database groups orders by `
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     aggregation:
-      - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]
+      - [sum, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]]
     breakout:
-      - [field, {temporal-unit: day}, [Sample, PUBLIC, ORDERS, CREATED_AT]]
+      - [field, {temporal-unit: day}, ['Sample Database', PUBLIC, ORDERS, CREATED_AT]]
   - lib/type: mbql.stage/mbql
     aggregation:
       - [avg, {}, [field, {}, sum]]
@@ -232,21 +234,21 @@ For cross-table queries where the user wants columns from a specific related tab
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     joins:
       - alias: Products
         strategy: left-join
         stages:
           - lib/type: mbql.stage/mbql
-            source-table: [Sample, PUBLIC, PRODUCTS]
+            source-table: ['Sample Database', PUBLIC, PRODUCTS]
         conditions:
           - ['=', {},
-             [field, {}, [Sample, PUBLIC, ORDERS, PRODUCT_ID]],
-             [field, {join-alias: Products}, [Sample, PUBLIC, PRODUCTS, ID]]]
+             [field, {}, ['Sample Database', PUBLIC, ORDERS, PRODUCT_ID]],
+             [field, {join-alias: Products}, ['Sample Database', PUBLIC, PRODUCTS, ID]]]
     aggregation:
       - [count, {}]
     breakout:
-      - [field, {join-alias: Products}, [Sample, PUBLIC, PRODUCTS, CATEGORY]]
+      - [field, {join-alias: Products}, ['Sample Database', PUBLIC, PRODUCTS, CATEGORY]]
 ```
 
 Rules for joins:
@@ -262,21 +264,21 @@ You can reference a field on another table **directly** — as long as there is 
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     aggregation:
       - [count, {}]
     breakout:
-      - [field, {}, [Sample, PUBLIC, PRODUCTS, CATEGORY]]
+      - [field, {}, ['Sample Database', PUBLIC, PRODUCTS, CATEGORY]]
 ```
 
-No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout field to `[field, {source-field: [Sample, PUBLIC, ORDERS, PRODUCT_ID]}, [Sample, PUBLIC, PRODUCTS, CATEGORY]]`.
+No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout field to `[field, {source-field: ['Sample Database', PUBLIC, ORDERS, PRODUCT_ID]}, ['Sample Database', PUBLIC, PRODUCTS, CATEGORY]]`.
 
 **Rules:**
 
 - Only works when the source table has **exactly one** FK to the target table.
 - If there is more than one FK (e.g. an `ORDERS.CREATED_BY` FK and an `ORDERS.UPDATED_BY` FK both pointing at `USERS`), you'll get an `:ambiguous-fk` error listing the candidate FK columns. Retry with an explicit `source-field` in the field's options map:
   ```yaml
-  - [field, {source-field: [Sample, PUBLIC, ORDERS, CREATED_BY]}, [Sample, PUBLIC, USERS, NAME]]
+  - [field, {source-field: ['Sample Database', PUBLIC, ORDERS, CREATED_BY]}, ['Sample Database', PUBLIC, USERS, NAME]]
   ```
 - If there is **no** FK path from source to target, you'll get a `:no-fk-path` error. In that case, switch to an explicit `joins:` entry or use a field on the source table instead.
 - Inside an explicit `joins:` block, field references continue to require `{join-alias: <alias>}`; the implicit-join pass does not rewrite those.
@@ -290,7 +292,7 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
 <field id="892" name="customer_id" type="string" fk_target_fully_qualified_name="customerio_data.customer.id"></field>
 ```
 
-This tells you `customer_id` joins to `customerio_data.customer`. To reach a field on the related table (e.g. `email`), write `[field, {}, [<db>, customerio_data, customer, email]]` — **do not** guess that `email` is on the current table. If you need a column that doesn't exist on the current table, always look for an FK via `fk_target_fully_qualified_name` before writing the query.
+This tells you `customer_id` joins to `customerio_data.customer`. To reach a field on the related table (e.g. `email`), write `[field, {}, ['<db-name>', customerio_data, customer, email]]` — **do not** guess that `email` is on the current table. If you need a column that doesn't exist on the current table, always look for an FK via `fk_target_fully_qualified_name` before writing the query.
 
 ### Expressions (custom columns)
 
@@ -302,13 +304,13 @@ The easiest form is a map keyed by the expression name:
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     expressions:
       Subtotal:
         - '+'
         - {}
-        - [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]
-        - [field, {}, [Sample, PUBLIC, ORDERS, TAX]]
+        - [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]
+        - [field, {}, ['Sample Database', PUBLIC, ORDERS, TAX]]
     aggregation:
       - [sum, {}, [expression, {}, Subtotal]]
 ```
@@ -318,14 +320,14 @@ String concatenation example:
 ```yaml
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, PEOPLE]
+    source-table: ['Sample Database', PUBLIC, PEOPLE]
     expressions:
       FullName:
         - concat
         - {}
-        - [field, {}, [Sample, PUBLIC, PEOPLE, FIRST_NAME]]
+        - [field, {}, ['Sample Database', PUBLIC, PEOPLE, FIRST_NAME]]
         - ' '
-        - [field, {}, [Sample, PUBLIC, PEOPLE, LAST_NAME]]
+        - [field, {}, ['Sample Database', PUBLIC, PEOPLE, LAST_NAME]]
     breakout:
       - [expression, {}, FullName]
     aggregation:
@@ -352,12 +354,12 @@ Both forms are rewritten to the same canonical MBQL 5 reference; the tool fills 
 lib/type: mbql/query
 stages:
   - lib/type: mbql.stage/mbql
-    source-table: [Sample, PUBLIC, ORDERS]
+    source-table: ['Sample Database', PUBLIC, ORDERS]
     aggregation:
-      - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]  # index 0: sum(total)
+      - [sum, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]]  # index 0: sum(total)
       - [count, {}]                                               # index 1: count
     breakout:
-      - [field, {}, [Sample, PUBLIC, ORDERS, PRODUCT_ID]]
+      - [field, {}, ['Sample Database', PUBLIC, ORDERS, PRODUCT_ID]]
     order-by:
       - [desc, {}, [aggregation, {}, 0]]   # sort by sum(total) desc
 ```
