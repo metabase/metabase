@@ -134,7 +134,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.visit("/admin/metabot/1/customization");
 
-      H.main().findByText("Metabot's icon").should("be.visible");
+      H.main().findByText("AI agent's icon").should("be.visible");
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
         "be.visible",
       );

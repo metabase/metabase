@@ -105,8 +105,8 @@ export function MetabotIconField() {
           className={cx(CS.bgLight, CS.bordered, CS.rounded)}
           align="center"
           justify="center"
-          w="2.5rem"
-          h="2.5rem"
+          w="2.25rem"
+          h="2.25rem"
           flex="0 0 auto"
         >
           {iconPreviewSrc ? (
