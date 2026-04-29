@@ -120,7 +120,18 @@ function RootItemList() {
     ]).length &&
     shouldShowLibrary
   ) {
-    return <LibraryRootItemList libraryCollectionId={libraryCollection.id} />;
+    if (libraryCollection.type === "library") {
+      return <LibraryRootItemList libraryCollectionId={libraryCollection.id} />;
+    }
+    return (
+      <CollectionItemList
+        parent={{
+          model: "collection",
+          id: libraryCollection.id,
+          name: libraryCollection.name,
+        }}
+      />
+    );
   }
 
   return (

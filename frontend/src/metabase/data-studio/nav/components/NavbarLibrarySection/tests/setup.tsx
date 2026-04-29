@@ -26,7 +26,8 @@ export const createChildCollection = (
   createMockCollection({
     id: 10,
     name: "Metrics",
-    type: null,
+    type: "library-metrics",
+    is_library_root: true,
     location: "/1/",
     here: ["card"],
     below: ["card"],

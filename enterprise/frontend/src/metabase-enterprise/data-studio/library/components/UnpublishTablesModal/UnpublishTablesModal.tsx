@@ -115,7 +115,7 @@ function ModalBody({
       trackDataStudioTableUnpublished();
       onUnpublish();
     } catch (error) {
-      sendErrorToast(getErrorMessage(error) || t`Failed to unpublish`);
+      sendErrorToast(getErrorMessage(error, t`Failed to unpublish`));
     }
   };
 

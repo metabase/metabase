@@ -101,8 +101,16 @@ describe("NavbarLibrarySection", () => {
     it("should show badge only for collections with changes", async () => {
       const libraryCollection = createLibraryCollection({
         children: [
-          createChildCollection({ id: 10, name: "Dirty Collection" }),
-          createChildCollection({ id: 11, name: "Clean Collection" }),
+          createChildCollection({
+            id: 10,
+            name: "Dirty Collection",
+            type: "library-metrics",
+          }),
+          createChildCollection({
+            id: 11,
+            name: "Clean Collection",
+            type: "library-data",
+          }),
         ],
       });
 
