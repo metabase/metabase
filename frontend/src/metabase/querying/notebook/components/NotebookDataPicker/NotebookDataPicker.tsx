@@ -200,10 +200,10 @@ function ModernDataPicker({
     ): item is MiniPickerPickableItem => {
       return Boolean(
         !shouldShow(item as DataPickerItem) ||
-          shouldDisableItem?.(item as DataPickerItem) ||
-          (isObjectWithModel(item) &&
-            item.model === "database" &&
-            shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
+        shouldDisableItem?.(item as DataPickerItem) ||
+        (isObjectWithModel(item) &&
+          item.model === "database" &&
+          shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
   }, [
@@ -252,9 +252,9 @@ function ModernDataPicker({
           shouldDisableItem={(i) => {
             return Boolean(
               shouldDisableItem?.(i) ||
-                ("model" in i &&
-                  i.model === "database" &&
-                  shouldDisableDatabase?.(i)),
+              ("model" in i &&
+                i.model === "database" &&
+                shouldDisableDatabase?.(i)),
             );
           }}
         />

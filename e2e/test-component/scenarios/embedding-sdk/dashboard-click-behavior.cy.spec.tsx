@@ -254,9 +254,9 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
     cy.wait("@getCard");
 
-    cy.findByRole("link", { name: "https://example.org/979" })
+    cy.findByRole("link", { name: "https://example.org/3" })
       .should("have.length", 1)
-      .should("have.attr", "href", "https://example.org/979");
+      .should("have.attr", "href", "https://example.org/3");
   });
 
   it("columns that have 'type/URL' semantic type should open URL via click behavior", () => {
@@ -314,11 +314,11 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
             getSdkRoot().within(() => {
               H.getDashboardCard(0)
-                .findAllByText("https://example.org/761")
+                .findAllByText("https://example.org/2")
                 .first()
                 .click();
 
-              expectClickBehaviorForUrl("https://example.org/761");
+              expectClickBehaviorForUrl("https://example.org/2");
             });
           });
         });
@@ -360,9 +360,9 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
 
         getSdkRoot().within(() => {
-          H.getDashboardCard(0).findAllByText("Link to 493").first().click();
+          H.getDashboardCard(0).findAllByText("Link to 1").first().click();
 
-          expectClickBehaviorForUrl("https://example.org/493");
+          expectClickBehaviorForUrl("https://example.org/1");
         });
       });
     });
@@ -404,9 +404,9 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
 
         getSdkRoot().within(() => {
-          H.getDashboardCard(0).findAllByText("Link to 493").first().click();
+          H.getDashboardCard(0).findAllByText("Link to 1").first().click();
 
-          expectClickBehaviorForUrl(`${window.location.origin}/test/493`);
+          expectClickBehaviorForUrl(`${window.location.origin}/test/1`);
         });
       });
     });

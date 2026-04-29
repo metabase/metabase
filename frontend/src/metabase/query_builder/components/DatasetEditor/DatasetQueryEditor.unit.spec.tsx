@@ -94,9 +94,8 @@ const setup = async ({
  * would have been used in tests instead of the actual implementation.
  */
 const importDatasetQueryEditor = async () => {
-  const { default: DatasetQueryEditor } = await import(
-    "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
-  );
+  const { default: DatasetQueryEditor } =
+    await import("metabase/query_builder/components/DatasetEditor/DatasetQueryEditor");
   return DatasetQueryEditor;
 };
 

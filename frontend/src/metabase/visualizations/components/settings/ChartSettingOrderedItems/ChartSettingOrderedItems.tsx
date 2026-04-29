@@ -28,8 +28,9 @@ interface SortableColumnFunctions<T> {
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
 }
-interface ChartSettingOrderedItemsProps<T extends SortableItem>
-  extends SortableColumnFunctions<T> {
+interface ChartSettingOrderedItemsProps<
+  T extends SortableItem,
+> extends SortableColumnFunctions<T> {
   onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;

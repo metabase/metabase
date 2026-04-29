@@ -9,8 +9,10 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 export type FormFileInputEncoding = "base64";
 
-export interface FormFileInputProps
-  extends Omit<FileInputProps, "value" | "onChange" | "onBlur"> {
+export interface FormFileInputProps extends Omit<
+  FileInputProps,
+  "value" | "onChange" | "onBlur"
+> {
   name: string;
   encoding?: FormFileInputEncoding;
   title?: string;

@@ -225,28 +225,36 @@
 
         :else (merge table changes)))))
 
+(defn- group-perm-defaults
+  "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
+  [table all-users-group non-magic-groups non-admin-groups]
+  (let [au-id    (u/the-id all-users-group)
+        is-audit (= (:db_id table) audit/audit-db-id)
+        defaults (fn [groups perm-type value]
+                   (mapv (fn [g] {:group-id (u/the-id g) :perm-type perm-type :default-value value}) groups))]
+    (concat
+     ;; view-data: all non-admin → :unrestricted
+     (defaults non-admin-groups :perms/view-data :unrestricted)
+     ;; create-queries
+     (if is-audit
+       (defaults non-admin-groups :perms/create-queries :no)
+       (concat [{:group-id au-id :perm-type :perms/create-queries :default-value :query-builder}]
+               (defaults non-magic-groups :perms/create-queries :no)))
+     ;; download-results
+     [{:group-id au-id :perm-type :perms/download-results :default-value :one-million-rows}]
+     (defaults non-magic-groups :perms/download-results :no)
+     ;; manage-table-metadata
+     (defaults non-admin-groups :perms/manage-table-metadata :no))))
+
 (defn- set-new-table-permissions!
   [table]
-  (t2/with-transaction [_conn]
+  (perms/with-db-scoped-permissions-lock (:db_id table)
     (let [all-users-group  (perms/all-users-group)
           non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
-      ;; Data access permissions
-      (if (= (:db_id table) audit/audit-db-id)
-        (do
-         ;; Tables in audit DB should start out with no query access in all groups
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
-        (do
-          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
-      ;; Download permissions
-      (perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
-      (perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
-      ;; Table metadata management
-      (perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
+      (perms/set-default-table-permissions!
+       table
+       (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
 
 (t2/define-after-insert :model/Table
   [table]

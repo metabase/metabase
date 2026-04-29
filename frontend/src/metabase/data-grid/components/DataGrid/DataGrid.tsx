@@ -48,8 +48,7 @@ export type DataGridStylesProps = {
 };
 
 export interface DataGridProps<TData>
-  extends DataGridInstance<TData>,
-    DataGridStylesProps {
+  extends DataGridInstance<TData>, DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
   rowsTruncated?: number;

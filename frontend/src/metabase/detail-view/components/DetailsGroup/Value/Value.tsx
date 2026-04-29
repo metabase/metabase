@@ -26,8 +26,8 @@ export const Value = ({ children, column, field, value }: Props) => {
   const newTableId = field?.target?.table_id;
   const isValidLink = Boolean(
     column.settings?.view_as === "link" &&
-      column.settings.link_text &&
-      column.settings.link_url,
+    column.settings.link_text &&
+    column.settings.link_url,
   );
   const json = useMemo(() => getJson(column, value), [column, value]);
 
