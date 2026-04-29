@@ -130,6 +130,8 @@ describe("scenarios > data studio > library", () => {
         select: true,
       });
 
+      H.modal().findByText("Publish to").should("be.visible");
+      H.modal().findByText("Data").should("be.visible");
       H.modal().button("Publish this table").click();
 
       cy.log("Verify the table is published");
@@ -219,6 +221,8 @@ describe("scenarios > data studio > library", () => {
       H.entityPickerModalItem(1, "Sample Database").click();
       H.entityPickerModalItem(2, "Orders").click();
       H.entityPickerModal().button("Publish").click();
+      H.modal().findByText("Publish to").should("be.visible");
+      H.modal().findByText("Data").should("be.visible");
       H.modal().button("Publish this table").click();
 
       cy.log("Navigate back to Library via breadcrumbs");

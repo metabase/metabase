@@ -264,6 +264,10 @@ export interface BulkTableSelection {
   table_ids?: TableId[];
 }
 
+export interface PublishTablesRequest extends BulkTableSelection {
+  collection_id: number;
+}
+
 export interface BulkTableSelectionInfo {
   // if only one table was selected, returns this table, otherwise null
   selected_table: BulkTableInfo | null;
