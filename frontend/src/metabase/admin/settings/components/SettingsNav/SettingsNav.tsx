@@ -1,13 +1,12 @@
-import React from "react";
 import { t } from "ttag";
 
 import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Divider, Flex } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
 import { SettingsNavItem } from "./SettingsNavItem";

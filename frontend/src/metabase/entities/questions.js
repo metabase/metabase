@@ -19,12 +19,8 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
@@ -37,12 +33,12 @@ export const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetCardQuery,
     }),
     useListQuery: useListCardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -164,7 +160,6 @@ export const Questions = createEntity({
 
   objectSelectors: {
     getName: (card) => card && card.name,
-    getColor: () => color("text-secondary"),
     getCollection: (card) => card && normalizedCollection(card.collection),
   },
 

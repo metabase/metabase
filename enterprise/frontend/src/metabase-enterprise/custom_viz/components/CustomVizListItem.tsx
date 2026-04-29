@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import {
   ActionIcon,
@@ -34,14 +35,16 @@ type Props = {
 
 export function CustomVizListItem({ plugin, onDelete }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
   const [refreshPlugin, { isLoading: isRefreshing }] =
     useRefreshCustomVizPluginMutation();
 
-  const handleDelete = useCallback(async () => {
+  const handleConfirmDelete = useCallback(async () => {
     setIsDeleting(true);
     try {
       await onDelete(plugin.id);
+      setIsConfirmOpen(false);
     } finally {
       setIsDeleting(false);
     }
@@ -147,12 +150,21 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
             <Menu.Item
               leftSection={<Icon name="trash" />}
               color="error"
-              onClick={handleDelete}
+              onClick={() => setIsConfirmOpen(true)}
             >
               {t`Remove`}
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
+        <ConfirmModal
+          opened={isConfirmOpen}
+          title={t`Remove this visualization?`}
+          message={t`Any saved question that uses it will switch to a default visualization based on its data.`}
+          confirmButtonText={t`Remove`}
+          confirmButtonProps={{ disabled: isDeleting }}
+          onClose={() => setIsConfirmOpen(false)}
+          onConfirm={handleConfirmDelete}
+        />
       </Box>
     </Flex>
   );

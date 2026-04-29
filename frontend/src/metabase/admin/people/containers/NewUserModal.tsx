@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { useCreateUserMutation } from "metabase/api";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
-import { useDispatch } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Urls from "metabase/utils/urls";
 import type { User as UserType } from "metabase-types/api";

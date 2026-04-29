@@ -16,11 +16,11 @@ import {
   type PublicOrEmbeddedQuestionViewProps,
 } from "metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestionView";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import {
   createMockCard,
   createMockDataset,

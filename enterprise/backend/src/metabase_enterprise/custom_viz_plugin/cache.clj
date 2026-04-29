@@ -16,6 +16,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -240,7 +241,7 @@
   [{:keys [id]} validated]
   (t2/update! :model/CustomVizPlugin id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (t2/select-one :model/CustomVizPlugin :id id))
+  (custom-viz-plugin/select-one-non-blob :id id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
