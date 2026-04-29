@@ -102,6 +102,7 @@ export const COLLECTION_ITEM_MODELS = [
   "document",
   "table",
   "transform",
+  "measure",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 

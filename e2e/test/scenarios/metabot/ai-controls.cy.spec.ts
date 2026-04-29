@@ -41,29 +41,37 @@ describe("AI Controls > Metabot access and customization", () => {
         cy.findByText("Other tools").should("be.visible");
       });
 
-      // Admins row should be locked/checked
+      // Admins row checkboxes should be always checked and disabled
       cy.findByRole("row", { name: /Administrators permissions/ }).within(
         () => {
           cy.findByRole("switch").should("be.checked").and("be.disabled");
         },
       );
 
-      // All Users row should have the metabot switch checked (default is yes)
       cy.findByRole("row", { name: /All Users permissions/ }).within(() => {
-        // Toggle the metabot AI features switch off
+        // Toggle the metabot AI features switch off (default is checked)
         cy.findByRole("switch").should("be.checked").click({ force: true });
-      });
 
-      // Wait for the debounced PUT request to complete
-      cy.wait("@updatePermissions")
-        .its("response.statusCode")
-        .should("eq", 200);
+        cy.wait("@updatePermissions")
+          .its("response.statusCode")
+          .should("eq", 200);
 
-      // Verify sub-permission checkboxes are now disabled after disabling metabot
-      cy.findByRole("row", { name: /All Users permissions/ }).within(() => {
+        // Check that the switch is off and all checkboxes are unchecked
         cy.findByRole("switch").should("not.be.checked");
         cy.findAllByRole("checkbox").each(($checkbox) => {
-          cy.wrap($checkbox).should("be.disabled");
+          cy.wrap($checkbox).should("not.be.checked");
+        });
+
+        // Toggle the metabot AI features switch on again
+        cy.findByRole("switch").click({ force: true });
+
+        cy.wait("@updatePermissions")
+          .its("response.statusCode")
+          .should("eq", 200);
+
+        // When metabot permission is toggled on, all tools should be enabled by default
+        cy.findAllByRole("checkbox").each(($checkbox) => {
+          cy.wrap($checkbox).should("be.checked");
         });
       });
     });

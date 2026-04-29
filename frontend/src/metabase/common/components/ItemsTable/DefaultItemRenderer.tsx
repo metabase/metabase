@@ -5,7 +5,7 @@ import type { OnToggleSelectedWithItem } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { getIcon } from "metabase/utils/icon";
+import { getIcon } from "metabase/common/utils/icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 

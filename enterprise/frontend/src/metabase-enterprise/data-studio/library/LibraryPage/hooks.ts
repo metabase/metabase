@@ -10,6 +10,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { getIcon } from "metabase/common/utils/icon";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -20,7 +21,6 @@ import {
 } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getIcon } from "metabase/utils/icon";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   Collection,
