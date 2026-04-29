@@ -17,4 +17,5 @@
    [metabase-enterprise.similarity.views.direct-dependency]
    [metabase-enterprise.similarity.views.ensemble]
    [metabase-enterprise.similarity.views.field-jaccard-idf]
-   [metabase-enterprise.similarity.views.source-table-jaccard]))
+   [metabase-enterprise.similarity.views.source-table-jaccard]
+   [metabase-enterprise.similarity.views.title-desc-ebr]))

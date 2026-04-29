@@ -15,7 +15,7 @@
    them through eval lift. Phase 3 ships only [:card :card]."
   {[:card :card]
    {:views            [:direct-dependency :co-dashboard :source-table-jaccard
-                       :co-execution :field-jaccard-idf]
+                       :co-execution :field-jaccard-idf :title-desc-ebr]
     :weights          {:direct-dependency 1.5
                        :co-dashboard      1.2}
     :k                60

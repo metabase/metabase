@@ -19,10 +19,15 @@
    [potemkin :as p]
    [toucan2.realize :as t2.realize]))
 
+#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
-  search-index-embedder])
+  search-index-embedder]
+ [metabase-enterprise.semantic-search.pgvector-api
+  indexed-row-count
+  neighbors-of
+  reduce-indexed-ids])
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."

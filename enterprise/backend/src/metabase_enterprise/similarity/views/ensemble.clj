@@ -3,16 +3,35 @@
 
    For each typed pair in `fusion/ensemble-config`, we:
    1. Pull base-view rows from `similar_edge`.
-   2. Rank each row within `(from_entity, view)` by score-desc.
-   3. Sum `weight(view) / (k + rank)` over views per `(from, to)` candidate.
-   4. Apply a `top-K-per-source` cap on the fused list.
-   5. Insert the survivors back as `view = :ensemble`.
+   2. Tie-collapse: within each `(from_entity, view)`, drop all-but-one row per
+      tied score group. The 200-card diagnostic showed that `co-dashboard`
+      routinely produces 5–10+ tied score-1.0 edges from a single dashboard
+      cluster, and `ROW_NUMBER`-based ranking treated each as an independent
+      endorsement, packing the ensemble head with one cluster's followers and
+      crowding out other views (notably `title-desc-ebr`).
+   3. Rank each surviving row within `(from_entity, view)` by score-desc.
+   4. Sum `weight(view) / (k + rank)` over views per `(from, to)` candidate.
+   5. Apply a `top-K-per-source` cap on the fused list.
+   6. Insert the survivors back as `view = :ensemble`.
+
+   Tie-collapse is a bridge-fix until Phase 8's community detection lands —
+   communities will keep all cluster members as candidates and let
+   `dedupe-by-community` choose a representative at retrieval time. Until
+   then, dropping tied followers is a cheap proxy that materially improves
+   ensemble visibility for non-clustered views.
 
    The whole pipeline runs as a single SQL statement per typed pair using
    window functions; the JVM only ferries rows from the result cursor into
    `t2/insert!` batches. `metabase-enterprise.similarity.fusion/fuse-ranks`
    exists as the unit-testable reference impl and as a JVM-side fallback if
-   the SQL path hits a portability issue."
+   the SQL path hits a portability issue. The JVM impl does *not* tie-collapse
+   — it expects pre-deduped ranked lists from the caller; this divergence is
+   intentional since tie-collapse is a SQL-side policy applied to raw edges.
+
+   Postgres-only. The CTE chain stacks two window-bearing CTEs (`:base` →
+   `:deduped` → `:ranked`); H2's planner returns 0 rows from that shape, so
+   tests for this view are gated on `(= :postgres (mdb/db-type))`. Postgres is
+   the appdb engine for the PoC, so this is acceptable."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.similarity.fusion :as fusion]
@@ -46,12 +65,27 @@
     {:with [[:base
              {:select [:from_entity_type :from_entity_id
                        :to_entity_type   :to_entity_id
-                       :view :score]
+                       :view :score
+                       ;; Per-tied-score-group position; only `tie_position=1`
+                       ;; survives the `:deduped` filter below. ORDER BY
+                       ;; `:to_entity_id` makes the choice deterministic across
+                       ;; runs (lowest id wins inside a tie group).
+                       [[:over [[:row_number]
+                                {:partition-by [:from_entity_type :from_entity_id
+                                                :view :score]
+                                 :order-by     [[:to_entity_id]]}]]
+                        :tie_position]]
               :from   [:similar_edge]
               :where  [:and
                        [:= :from_entity_type from-name]
                        [:= :to_entity_type   to-name]
                        [:in :view view-names]]}]
+            [:deduped
+             {:select [:from_entity_type :from_entity_id
+                       :to_entity_type   :to_entity_id
+                       :view :score]
+              :from   [:base]
+              :where  [:= :tie_position [:inline 1]]}]
             [:ranked
              {:select [:from_entity_type :from_entity_id
                        :to_entity_type   :to_entity_id
@@ -60,7 +94,7 @@
                                 {:partition-by [:from_entity_type :from_entity_id :view]
                                  :order-by     [[:score :desc]]}]]
                         :within_view_rank]]
-              :from   [:base]}]
+              :from   [:deduped]}]
             [:fused
              {:select   [:from_entity_type :from_entity_id
                          :to_entity_type   :to_entity_id

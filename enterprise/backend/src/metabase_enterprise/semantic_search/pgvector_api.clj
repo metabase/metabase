@@ -8,16 +8,20 @@
   Important: The pgvector database must be setup for metadata by calling (init-semantic-search!)
   After this, the document management and query functions will work as long as you pass the same index-metadata configuration."
   (:require
+   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs])
   (:import (java.time Instant)))
 
 (set! *warn-on-reflection* true)
@@ -150,6 +154,109 @@
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/delete-from-index! pgvector index model ids)))
 
+(defn- try-active-index-state
+  "Active-index probe that returns nil rather than throwing when the feature is
+   disabled, the datasource is unreachable, or no index is active. Mirrors the
+   private helper of the same name in `embedders.clj` — kept duplicated rather
+   than lifted to a shared util to avoid a circular require, and so that future
+   embedder changes can't accidentally break the read-side helpers below."
+  []
+  (try
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          md       (semantic.env/get-index-metadata)]
+      (when-let [state (semantic.index-metadata/get-active-index-state pgvector md)]
+        {:pgvector   pgvector
+         :table-name (-> state :index :table-name)
+         :model      (-> state :index :embedding-model)}))
+    (catch Throwable t
+      (log/debug t "Semantic-search index not available")
+      nil)))
+
+(defn neighbors-of
+  "Top-K nearest neighbors of `(model, model-id)` from the active pgvector
+   semantic-search index, ordered by ascending cosine distance.
+
+   Returns nil when no active index exists (feature off, datasource down, or
+   no row in the active-index control table). Returns `[]` when the index is
+   reachable but the seed row isn't present.
+
+   Each result row: `{:model :model_id :distance}`. `:distance` is pgvector
+   cosine distance (`<=>`) in `[0, 2]`; convert to similarity at the call
+   site (typically `1 - distance` for unit-norm embeddings).
+
+   Optional kwargs:
+     :target-model      filter results to this model (e.g. \"card\"). nil = any.
+     :exclude-archived? default true; excludes archived rows on both ends."
+  [model model-id k & {:keys [target-model exclude-archived?]
+                       :or   {exclude-archived? true}}]
+  (when-let [{:keys [pgvector table-name]} (try-active-index-state)]
+    (let [model-id-str (str model-id)
+          tbl          (keyword table-name)
+          seed-where   (cond-> [:and [:= :model model] [:= :model_id model-id-str]]
+                         exclude-archived? (conj [:= :archived false]))
+          where        (cond-> [:and [:not [:and [:= :model model]
+                                            [:= :model_id model-id-str]]]]
+                         target-model      (conj [:= :model target-model])
+                         exclude-archived? (conj [:= :archived false]))
+          sql-vec      (sql/format
+                        {:with     [[:seed {:select [:embedding]
+                                            :from   [tbl]
+                                            :where  seed-where
+                                            :limit  1}]]
+                         :select   [:model :model_id
+                                    [[:raw "embedding <=> (SELECT embedding FROM seed)"]
+                                     :distance]]
+                         :from     [tbl]
+                         :where    where
+                         :order-by [[[:raw "embedding <=> (SELECT embedding FROM seed)"] :asc]]
+                         :limit    k}
+                        {:quoted true})
+          rows         (jdbc/execute! pgvector sql-vec
+                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      ;; The seed CTE returns 0 rows when `(model, model-id)` isn't indexed; the
+      ;; scalar subquery is then NULL and every row's distance is NULL too. We
+      ;; flatten that to `[]` so callers can treat "missing seed" as "no
+      ;; neighbors" without a special-case.
+      (if (some-> rows first :distance some?)
+        rows
+        []))))
+
+(defn indexed-row-count
+  "Count of `model = ?` rows in the active index, optionally filtered to
+   non-archived. Returns 0 when no active index is available."
+  [model & {:keys [exclude-archived?] :or {exclude-archived? true}}]
+  (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
+    (let [where (cond-> [:and [:= :model model]]
+                  exclude-archived? (conj [:= :archived false]))
+          row   (jdbc/execute-one! pgvector
+                                   (sql/format {:select [[[:count :*] :ct]]
+                                                :from   [(keyword table-name)]
+                                                :where  where}
+                                               {:quoted true})
+                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (or (:ct row) 0))
+    0))
+
+(defn reduce-indexed-ids
+  "Streams `{:model :model_id}` rows for `model = ?` from the active index.
+   `rf` is invoked per row (no batching — `next.jdbc/plan` is the source).
+   Returns the final reduction. Returns `init` when no active index is
+   available.
+
+   Use this instead of returning a vector when the caller iterates many rows:
+   avoids materializing the id list in memory."
+  [model rf init & {:keys [exclude-archived?] :or {exclude-archived? true}}]
+  (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
+    (let [where (cond-> [:and [:= :model model]]
+                  exclude-archived? (conj [:= :archived false]))
+          sql   (sql/format {:select [:model :model_id]
+                             :from   [(keyword table-name)]
+                             :where  where}
+                            {:quoted true})]
+      (transduce identity (completing rf) init
+                 (jdbc/plan pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+    init))
+
 #_{:clj-kondo/ignore [:unresolved-require :metabase/modules]}
 (comment
   (init-semantic-search! pgvector index-metadata embedding-model)
@@ -163,8 +270,7 @@
   (def index (:index index-state))
 
   ;; warning: deletes everything
-  (require 'next.jdbc)
-  (next.jdbc/execute! pgvector ((requiring-resolve 'honey.sql/format) {:delete-from (keyword (:table-name index))} :quoted true))
+  (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:table-name index))} {:quoted true}))
   (def searchable-documents (vec ((requiring-resolve 'metabase.search.ingestion/searchable-documents))))
   (index-documents! pgvector index-metadata searchable-documents)
   (mt/as-admin (query pgvector index-metadata {:search-string "sharp objects"})))

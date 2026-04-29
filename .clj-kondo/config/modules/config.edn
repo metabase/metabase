@@ -3283,7 +3283,8 @@
    :uses #{app-db
            models
            util
-           enterprise/dependencies}}
+           enterprise/dependencies
+           enterprise/semantic-search}}
 
   enterprise/snippet-collections
   {:team "Graphy"

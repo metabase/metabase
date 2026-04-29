@@ -16,6 +16,7 @@
     :source-table-jaccard
     :co-execution
     :field-jaccard-idf
+    :title-desc-ebr
     :ensemble})
 
 (mr/def ::view-name
