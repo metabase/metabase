@@ -5,7 +5,7 @@ summary: "Use an agent with skills to create Metabase content on your local mach
 
 # Agent-driven development
 
-{% include plans-blockquote.html feature="File-based development" %}
+{% include plans-blockquote.html feature="Agent-driven development" %}
 
 Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files by hand, sure, but now that we have actual genies, you can just ask them to edit them for you (call it "lamp-rubbing development").
 
@@ -31,7 +31,7 @@ Some things to put into place to get a workflow going:
 
 Once you have these set up, you can step through one of the example workflows.
 
-### Set up a development Metabase
+### 1. Set up a development Metabase
 
 1. Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
@@ -48,8 +48,8 @@ MB_INSTALL_ANALYTICS_DATABASE: "false"
 ### Set up a repository to version your YAML files
 
 1. Initialize a new repo.
-2. Add the skills to the repo (like .claude/skills directory).
-3. Add a `.gitignore` file and add `.metabase` and `.env`.
+2. Add the skills to the repo (like `.claude/skills` directory).
+3. Add a `.gitignore` file and add `.metabase/` and `.env`.
 4. Add the following to your .env:
 
 ```
@@ -243,7 +243,7 @@ The check validates the shape of every YAML file against the Representation Form
 
 ### Semantic checker for deeper validation
 
-> The semantic checker is only available in the Pro/Enterprise edition.
+> The semantic checker is only available in the Pro/Enterprise plans.
 
 The **semantic checker** catches things like references to tables that don't exist or columns the agent invented.
 
