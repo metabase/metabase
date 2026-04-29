@@ -104,7 +104,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessWorkspaces = useSelector(
     PLUGIN_WORKSPACES.canAccessWorkspaces,
   );
-  const hasActiveWorkspace = useSetting("active-workspace");
+  const hasActiveWorkspace = useSetting("has-active-workspace");
 
   const currentTab = getCurrentTab(pathname);
 

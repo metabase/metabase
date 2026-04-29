@@ -10,21 +10,21 @@
                         (finally
                           (ws/clear-instance-workspace!)))))
 
-(deftest active-workspace-false-when-atom-empty-test
-  (testing "active-workspace is false when no :workspace section has been loaded"
+(deftest has-active-workspace-false-when-atom-empty-test
+  (testing "has-active-workspace is false when no :workspace section has been loaded"
     (ws/clear-instance-workspace!)
-    (is (false? (ws.settings/active-workspace)))))
+    (is (false? (ws.settings/has-active-workspace)))))
 
-(deftest active-workspace-true-when-atom-populated-test
-  (testing "active-workspace flips to true once the loader populates the in-process atom"
+(deftest has-active-workspace-true-when-atom-populated-test
+  (testing "has-active-workspace flips to true once the loader populates the in-process atom"
     (ws/clear-instance-workspace!)
-    (is (false? (ws.settings/active-workspace)))
+    (is (false? (ws.settings/has-active-workspace)))
     (ws/set-instance-workspace! {:name "Acme" :databases {}})
-    (is (true? (ws.settings/active-workspace)))))
+    (is (true? (ws.settings/has-active-workspace)))))
 
-(deftest active-workspace-flips-back-to-false-on-clear-test
-  (testing "active-workspace returns to false after clear-instance-workspace!"
+(deftest has-active-workspace-flips-back-to-false-on-clear-test
+  (testing "has-active-workspace returns to false after clear-instance-workspace!"
     (ws/set-instance-workspace! {:name "Acme" :databases {}})
-    (is (true? (ws.settings/active-workspace)))
+    (is (true? (ws.settings/has-active-workspace)))
     (ws/clear-instance-workspace!)
-    (is (false? (ws.settings/active-workspace)))))
+    (is (false? (ws.settings/has-active-workspace)))))

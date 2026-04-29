@@ -8,7 +8,7 @@
   "Marker so callers can `(comment ...keep-me)` to retain the require that registers the settings in this ns."
   nil)
 
-(defsetting active-workspace
+(defsetting has-active-workspace
   (deferred-tru "True iff a workspace is loaded on this instance from a config.yml :workspace section. Read-only projection of the in-process atom populated by the boot-time loader; nil/false on parent and unconfigured instances.")
   :type       :boolean
   :visibility :authenticated
