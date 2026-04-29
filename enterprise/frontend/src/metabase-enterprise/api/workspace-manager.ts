@@ -14,6 +14,7 @@ import {
   invalidateTags,
   listTag,
   provideWorkspaceListTags,
+  provideWorkspaceTags,
 } from "./tags";
 
 export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
@@ -24,6 +25,14 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/workspace-manager",
       }),
       providesTags: (workspaces = []) => provideWorkspaceListTags(workspaces),
+    }),
+    getWorkspace: builder.query<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace-manager/${id}`,
+      }),
+      providesTags: (workspace) =>
+        workspace ? provideWorkspaceTags(workspace) : [],
     }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: (body) => ({
@@ -100,6 +109,7 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListWorkspacesQuery,
+  useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,

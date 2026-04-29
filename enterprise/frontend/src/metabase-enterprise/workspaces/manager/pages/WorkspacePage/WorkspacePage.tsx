@@ -1,9 +1,9 @@
-import { useListDatabasesQuery } from "metabase/api";
+import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
-import { useListWorkspacesQuery } from "metabase-enterprise/api";
+import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
 import { DatabaseSection } from "./DatabaseSection";
@@ -18,19 +18,18 @@ type WorkspacePageProps = {
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
   const {
-    data: workspaces,
-    isLoading: isLoadingWorkspaces,
-    error: workspacesError,
-  } = useListWorkspacesQuery();
+    data: workspace,
+    isLoading: isLoadingWorkspace,
+    error: workspaceError,
+  } = useGetWorkspaceQuery(workspaceId ?? skipToken);
   const {
     data: databasesResponse,
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery();
-  const workspace = workspaces?.find((ws) => ws.id === workspaceId);
   const databases = databasesResponse?.data;
-  const isLoading = isLoadingWorkspaces || isLoadingDatabases;
-  const error = workspacesError ?? databasesError;
+  const isLoading = isLoadingWorkspace || isLoadingDatabases;
+  const error = workspaceError ?? databasesError;
 
   if (isLoading || error != null || workspace == null || databases == null) {
     return (
