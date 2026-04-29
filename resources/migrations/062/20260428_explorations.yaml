@@ -658,6 +658,12 @@ databaseChangeLog:
                   remarks: When the result was written
                   constraints:
                     nullable: false
+              - column:
+                  name: interestingness_score
+                  type: double
+                  remarks: Chart interestingness score in [0.0, 1.0]; null when the result can't be meaningfully scored (e.g. empty rows, no numeric measure).
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v62.qresuq

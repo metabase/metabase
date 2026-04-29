@@ -6,6 +6,8 @@
   the tx, and the row is left as `pending` for another worker to pick up."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.interestingness.core :as interestingness]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.startup.core :as startup]
@@ -46,6 +48,20 @@
      (in qp-result)
      (result-fn))))
 
+(defn- safe-score
+  "Best-effort interestingness score for `qp-result`. Logs and returns nil on any failure so the
+  worker still persists the result row — a scoring bug must never flip a successful query to
+  errored."
+  [exploration-query qp-result]
+  (try
+    (when-let [chart-config (explorations.interestingness/qp-result->chart-config
+                             exploration-query qp-result)]
+      (interestingness/chart-interestingness chart-config))
+    (catch Throwable e
+      (log/warnf e "Failed to compute interestingness for ExplorationQuery %d"
+                 (:id exploration-query))
+      nil)))
+
 (defn- run-one-iteration!
   "Try to claim and execute a single pending query. Returns truthy when work was done so the
   caller knows whether to sleep."
@@ -55,10 +71,12 @@
       (let [started (OffsetDateTime/now)]
         (try
           (let [qp-result (qp/process-query (qp/userland-query (:dataset_query row)))
-                bytes     (serialize-result qp-result)]
+                bytes     (serialize-result qp-result)
+                score     (safe-score row qp-result)]
             (t2/insert! :model/ExplorationQueryResult
-                        {:exploration_query_id (:id row)
-                         :result_data          bytes})
+                        {:exploration_query_id  (:id row)
+                         :result_data           bytes
+                         :interestingness_score score})
             (t2/update! :model/ExplorationQuery (:id row)
                         {:status      "done"
                          :started_at  started

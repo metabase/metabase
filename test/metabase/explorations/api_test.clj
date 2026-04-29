@@ -1,6 +1,8 @@
 (ns metabase.explorations.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.metadata.jvm :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -40,8 +42,10 @@
         (is (= 1 (count (:queries thread))))
         (is (= "d1" (:dimension_id q)))
         (is (= "pending" (:status q)))
-        (is (= [["field" {} 1]] (-> q :dataset_query :query :breakout))
-            "snapshot MBQL adds a breakout from the dimension's target")))))
+        (let [mp  (lib-be/application-database-metadata-provider 1)
+              qry (lib/query mp (:dataset_query q))]
+          (is (= 1 (count (lib/breakouts qry)))
+              "snapshot MBQL adds a breakout from the dimension's target"))))))
 
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
@@ -138,7 +142,27 @@
           (is (= "pending" (:status s)))
           (is (contains? s :position))
           (is (not (contains? s :dataset_query)) "dataset_query must not leak")
-          (is (not (contains? s :result_data)) "result blob must not leak"))))))
+          (is (not (contains? s :result_data)) "result blob must not leak")
+          (is (contains? s :interestingness_score) "score is included via the result-table left-join")
+          (is (nil? (:interestingness_score s)) "pending queries have no result row, hence nil score"))))))
+
+(deftest exploration-list-queries-includes-score-from-result-test
+  (testing "GET /:id/queries surfaces the score on done queries via the result-table left-join"
+    (mt/with-temp [:model/User u {:email "score-list@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "score-list"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            eid (:id resp)
+            qid (-> resp :threads first :queries first :id)]
+        (t2/insert! :model/ExplorationQueryResult
+                    {:exploration_query_id  qid
+                     :result_data           (byte-array [0])
+                     :interestingness_score 0.42})
+        (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
+          (is (= 0.42 (:interestingness_score s))))))))
 
 (deftest exploration-list-queries-permissions-test
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"

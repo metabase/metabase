@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib-be.metadata.jvm :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -34,15 +36,15 @@
         dimension-mappings))
 
 (defn- build-snapshot-mbql
-  "Build a snapshot MBQL by taking the metric Card's dataset_query and adding breakouts for the
-  given dimensions. Each dimension's `target` is read from the metric selection's
-  snapshotted `dimension_mappings`."
-  [card-dataset-query dimension-ids dimension-mappings]
-  (let [breakouts (->> dimension-ids
-                       (keep #(find-dimension-target % dimension-mappings))
-                       vec)]
-    (cond-> card-dataset-query
-      (seq breakouts) (assoc-in [:query :breakout] breakouts))))
+  "Wrap the metric Card's `:dataset_query` in a Lib query and add a breakout for the given
+  dimension's target. Cards may store their query in legacy MBQL 4 or MBQL 5; `lib/query`
+  normalizes both into MBQL 5 so the QP receives a single, well-formed shape. The target is a
+  JSON-decoded legacy ref (string operator + string-typed option values), so we run it through
+  `lib/normalize` against the ref schema to coerce it into well-formed MBQL 5 before adding the
+  breakout."
+  [mp card-dataset-query target]
+  (-> (lib/query mp card-dataset-query)
+      (lib/breakout (lib/normalize :metabase.lib.schema.ref/ref target))))
 
 (defn- generate-queries!
   "Materialize one `exploration_query` row per (metric, dimension) pair where the dimension is
@@ -51,22 +53,22 @@
   never executes a no-breakout duplicate of the metric's own query."
   [thread-id metrics dimensions]
   (when (and (seq metrics) (seq dimensions))
-    (let [cards (t2/select-pk->fn identity [:model/Card :id :name :dataset_query :card_schema]
+    (let [cards (t2/select-pk->fn identity [:model/Card :id :name :database_id :dataset_query :card_schema]
                                   :id [:in (distinct (map :card_id metrics))])
           rows  (for [metric metrics
                       dim    dimensions
-                      :let [dim-id     (:dimension_id dim)
-                            card       (get cards (:card_id metric))
-                            card-q     (:dataset_query card)
-                            target     (find-dimension-target dim-id (:dimension_mappings metric))]
-                      :when (and card-q target)]
+                      :let [dim-id (:dimension_id dim)
+                            card   (get cards (:card_id metric))
+                            target (find-dimension-target dim-id (:dimension_mappings metric))]
+                      :when (and card target)
+                      :let [mp (lib-be/application-database-metadata-provider (:database_id card))]]
                   {:exploration_thread_id thread-id
                    :card_id               (:card_id metric)
                    :dimension_id          dim-id
                    :name                  (tru "{0} by {1}"
                                                (:name card)
                                                (or (:display_name dim) dim-id))
-                   :dataset_query         (build-snapshot-mbql card-q [dim-id] (:dimension_mappings metric))
+                   :dataset_query         (build-snapshot-mbql mp (:dataset_query card) target)
                    :status                "pending"})]
       (when (seq rows)
         (t2/insert! :model/ExplorationQuery
@@ -148,15 +150,24 @@
     (hydrate-exploration expl)))
 
 (api.macros/defendpoint :get "/:id/queries"
-  "Lightweight list of queries for an exploration. Excludes `dataset_query` and result data —
-  intended for the frontend to poll while pending queries finish."
+  "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
+  intended for the frontend to poll while pending queries finish. The `interestingness_score`
+  column is left-joined from `exploration_query_result` so clients can rank/highlight without a
+  second roundtrip; pending or errored queries get `nil`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check (get-exploration-or-404 id))
   (t2/select [:model/ExplorationQuery
-              :id :exploration_thread_id :card_id :dimension_id :name :position
-              :status :error_message :started_at :finished_at :entity_id]
+              :exploration_query.id :exploration_query.exploration_thread_id
+              :exploration_query.card_id :exploration_query.dimension_id
+              :exploration_query.name :exploration_query.position
+              :exploration_query.status :exploration_query.error_message
+              :exploration_query.started_at :exploration_query.finished_at
+              :exploration_query.entity_id
+              [:exploration_query_result.interestingness_score :interestingness_score]]
              {:left-join [:exploration_thread
-                          [:= :exploration_query.exploration_thread_id :exploration_thread.id]]
+                          [:= :exploration_query.exploration_thread_id :exploration_thread.id]
+                          :exploration_query_result
+                          [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
               :where     [:= :exploration_thread.exploration_id id]
               :order-by  [[:exploration_query.position :asc]
                           [:exploration_query.id :asc]]}))
