@@ -164,11 +164,10 @@
    (< (abs (- actual expected)) epsilon)))
 
 (deftest inc!-test
-  (testing "inc starts a system if it wasn't started"
+  (testing "inc no-ops and does not initialise the system when called before setup!"
     (with-redefs [prometheus/system nil]
-      (mt/with-temporary-setting-values [prometheus-server-port 0]
-        (prometheus/inc! :metabase-email/messages) ; << Does not throw.
-        (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
+      (prometheus/inc! :metabase-email/messages) ; << Does not throw.
+      (is (nil? @#'prometheus/system))))
 
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
@@ -186,11 +185,10 @@
       (is (approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/card}))))))
 
 (deftest dec!-test
-  (testing "dec starts a system if it wasn't started"
-    (mt/with-temporary-setting-values [prometheus-server-port 0]
-      (with-redefs [prometheus/system nil]
-        (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
-        (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
+  (testing "dec no-ops and does not initialise the system when called before setup!"
+    (with-redefs [prometheus/system nil]
+      (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
+      (is (nil? @#'prometheus/system))))
 
   (testing "dec throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
@@ -209,11 +207,10 @@
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
 (deftest observe!-test
-  (testing "observe! starts a system if it wasn't started"
+  (testing "observe! no-ops and does not initialise the system when called before setup!"
     (with-redefs [prometheus/system nil]
-      (mt/with-temporary-setting-values [prometheus-server-port 0]
-        (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
-        (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
+      (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
+      (is (nil? @#'prometheus/system))))
 
   (testing "observe! with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
