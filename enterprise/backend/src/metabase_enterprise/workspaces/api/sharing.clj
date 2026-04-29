@@ -48,6 +48,12 @@
                            (group-by :db_id
                                      (t2/select :model/Table
                                                 :db_id [:in db-ids]
+                                                :active true)))
+        table-ids        (mapcat (fn [tables] (map :id tables)) (vals tables-by-db))
+        fields-by-table  (when (seq table-ids)
+                           (group-by :table_id
+                                     (t2/select [:model/Field :id :name :base_type :database_type :semantic_type :table_id]
+                                                :table_id [:in table-ids]
                                                 :active true)))]
     {:workspace {:name (:name ws)
                  :id   (:id ws)}
@@ -67,7 +73,14 @@
                       :tables        (mapv (fn [t]
                                              {:id     (:id t)
                                               :name   (:name t)
-                                              :schema (:schema t)})
+                                              :schema (:schema t)
+                                              :fields (mapv (fn [f]
+                                                              {:id            (:id f)
+                                                               :name          (:name f)
+                                                               :base_type     (:base_type f)
+                                                               :database_type (:database_type f)
+                                                               :semantic_type (:semantic_type f)})
+                                                            (get fields-by-table (:id t) []))})
                                            relevant-tables)}])))
            provisioned-wsds)}))
 

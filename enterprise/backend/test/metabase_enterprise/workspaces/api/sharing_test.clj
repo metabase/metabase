@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api.sharing-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -82,6 +83,13 @@
         (is (string? res))
         (is (re-find #"Public Config Test" res))))))
 
+(defn- stub-provisioner []
+  (reify provisioning/Provisioner
+    (init! [_ _ _ _]
+      {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
+    (grant! [_ _ _ _ _] nil)
+    (destroy! [_ _ _ _] nil)))
+
 (deftest public-metadata-test
   (testing "metadata is accessible via sharing key without auth"
     (mt/with-model-cleanup [:model/Workspace]
@@ -92,6 +100,29 @@
             res (mt/client :get 200 (str "ee/workspace-sharing/" key "/metadata"))]
         (is (= "Public Metadata Test" (get-in res [:workspace :name])))
         (is (map? (:databases res)))))))
+
+(deftest public-metadata-includes-fields-test
+  (testing "metadata includes fields for each table"
+    (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                        {:name "Fields Test"})
+              _   (mt/user-http-request :crowberto :post 200
+                                        (str "ee/workspace-manager/" (:id ws) "/database")
+                                        {:database_id (mt/id) :input_schemas ["PUBLIC"]})
+              key (:sharing_key (mt/user-http-request :crowberto :post 200
+                                                      (str "ee/workspace-manager/" (:id ws) "/sharing-key")))
+              res (mt/client :get 200 (str "ee/workspace-sharing/" key "/metadata"))
+              db  (get (:databases res) (mt/id))]
+          (is (some? db) "database entry should exist")
+          (when db
+            (is (seq (:tables db)) "should have tables")
+            (when-let [table (first (:tables db))]
+              (is (seq (:fields table)) "tables should have fields")
+              (when-let [field (first (:fields table))]
+                (is (contains? field :name))
+                (is (contains? field :base_type))
+                (is (contains? field :database_type))))))))))
 
 (deftest public-invalid-key-test
   (testing "invalid sharing key returns 404"
