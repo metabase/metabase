@@ -5,7 +5,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
@@ -17,7 +16,6 @@
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
@@ -42,17 +40,7 @@
 (defn- validate-bearer-token
   "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure."
   [token-string]
-  (when-let [provider (oauth-server/get-provider)]
-    (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
-      (let [expiry (:expiry token-data)]
-        (when (or (nil? expiry)
-                  (t/after? (t/instant expiry) (t/instant)))
-          (let [user-id (some-> (:user-id token-data) parse-long)
-                scopes  (when-let [scope-vec (:scope token-data)]
-                          (into #{} scope-vec))]
-            (when user-id
-              {:user-id user-id
-               :scopes  (or scopes #{})})))))))
+  (oauth-server/validate-bearer-token token-string))
 
 ;;; ------------------------------------------------- JSON-RPC 2.0 --------------------------------------------------
 

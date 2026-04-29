@@ -3,11 +3,14 @@
    all logic lives in [[metabase-enterprise.workspaces.core]]."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.scope :as ws.scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.oauth-server.core :as oauth-server]
    [metabase.util.malli.schema :as ms]
    [metabase.util.yaml :as yaml]
+   [oidc-provider.core :as oidc]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
@@ -204,6 +207,58 @@
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (yaml/generate-string
                {:name (:name workspace)})}))
+
+;;; ------------------------------------------ Token management --------------------------------------------------
+
+(defn- workspace-resource-uri [workspace-id]
+  (str "urn:metabase:workspace:" workspace-id))
+
+(def ^:private workspace-scopes
+  [ws.scope/workspace-config-read
+   ws.scope/workspace-metadata-read])
+
+(api.macros/defendpoint :post "/:id/token"
+  "Create an OAuth access token for external access to this workspace.
+   The token is scoped to workspace:config:read and workspace:metadata:read.
+   Returns the plaintext tokens — store them securely, they cannot be retrieved again."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (ws/get-workspace id))
+  (let [provider    (oauth-server/get-provider)
+        ;; Register a dedicated OAuth client for this workspace
+        client-config {:redirect-uris  ["http://127.0.0.1/callback"]
+                       :grant-types    ["authorization_code" "refresh_token"]
+                       :response-types ["code"]
+                       :scopes         workspace-scopes
+                       :client-name    (str "workspace-" id "-token")}
+        registered  (oidc/register-client provider client-config)
+        client-id   (:client-id registered)
+        resource    [(workspace-resource-uri id)]
+        tokens      (oauth-server/mint-tokens! api/*current-user-id* client-id
+                                               workspace-scopes resource)]
+    {:workspace_id  id
+     :client_id     client-id
+     :access_token  (:access-token tokens)
+     :refresh_token (:refresh-token tokens)
+     :expires_in    (:expires-in tokens)
+     :scopes        workspace-scopes
+     :resource      (workspace-resource-uri id)}))
+
+(api.macros/defendpoint :delete "/:id/token"
+  "Revoke all OAuth tokens associated with this workspace and delete the OAuth clients."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (ws/get-workspace id))
+  ;; Find and delete all OAuth clients named for this workspace
+  (let [client-name-prefix (str "workspace-" id "-token")]
+    (doseq [client (t2/select :model/OAuthClient :client_name client-name-prefix)]
+      ;; Revoke all access tokens for this client
+      (t2/update! :model/OAuthAccessToken {:client_id (:client_id client)} {:revoked_at :%now})
+      ;; Revoke all refresh tokens for this client
+      (t2/update! :model/OAuthRefreshToken {:client_id (:client_id client)} {:revoked_at :%now})
+      ;; Delete the client
+      (t2/delete! :model/OAuthClient :client_id (:client_id client))))
+  {:workspace_id id :revoked true})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"

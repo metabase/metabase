@@ -5,6 +5,7 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
@@ -219,7 +220,7 @@
       {:status 404 :body {:error "not_found"}}))
 
 (api.macros/defendpoint :get "/authorize"
-  :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
+  :- [:map [:status [:enum 200 302 400 403 404]] [:body [:or :string :map]]]
   "Handles the authorization endpoint (GET /oauth/authorize)."
   [_route-params query-params _body
    request]
@@ -229,21 +230,41 @@
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
           (try
-            (let [parsed       (oidc/parse-authorization-request provider query-params)
-                  client       (proto/get-client (:client-store provider) (:client_id parsed))
-                  csrf-token   (generate-csrf-token)
-                  oauth-params (select-keys parsed oauth-param-keys)
-                  params-sig   (sign-oauth-params csrf-token oauth-params)]
-              (-> {:status  200
-                   :headers {"Content-Type" "text/html; charset=utf-8"}
-                   :body    (consent-page/render-consent-page
-                             {:client-name  (some-> (:client-name client) (truncate 64))
-                              :client-id    (:client_id parsed)
-                              :nonce        (:nonce request)
-                              :csrf-token   csrf-token
-                              :params-sig   params-sig
-                              :oauth-params oauth-params})}
-                  (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
+            (let [parsed          (oidc/parse-authorization-request provider query-params)
+                  requested-scope (or (api-scope/parse-scopes (:scope parsed)) #{})
+                  admin-scopes    (api-scope/scopes-requiring-superuser requested-scope)]
+              (if (and (seq admin-scopes)
+                       (not (:is-superuser? request)))
+                {:status  403
+                 :headers {"Content-Type" "text/html; charset=utf-8"}
+                 :body    (str "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Authorization Denied</title>"
+                               "<style>body{font-family:system-ui,sans-serif;display:flex;justify-content:center;"
+                               "align-items:center;min-height:100vh;margin:0;background:#f9fafb}"
+                               ".card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);"
+                               "padding:2rem;max-width:480px;text-align:center}"
+                               "h2{color:#dc2626;margin-top:0}p{color:#4b5563;line-height:1.5}"
+                               ".scopes{background:#fef2f2;border-radius:4px;padding:0.75rem;margin:1rem 0;"
+                               "font-family:monospace;font-size:0.875rem;color:#991b1b}</style></head>"
+                               "<body><div class=\"card\">"
+                               "<h2>Authorization Denied</h2>"
+                               "<p>The requested scopes require administrator privileges.</p>"
+                               "<div class=\"scopes\">" (str/join "<br>" (sort admin-scopes)) "</div>"
+                               "<p>Please ask a Metabase administrator to authorize this application.</p>"
+                               "</div></body></html>")}
+                (let [client       (proto/get-client (:client-store provider) (:client_id parsed))
+                      csrf-token   (generate-csrf-token)
+                      oauth-params (select-keys parsed oauth-param-keys)
+                      params-sig   (sign-oauth-params csrf-token oauth-params)]
+                  (-> {:status  200
+                       :headers {"Content-Type" "text/html; charset=utf-8"}
+                       :body    (consent-page/render-consent-page
+                                 {:client-name  (some-> (:client-name client) (truncate 64))
+                                  :client-id    (:client_id parsed)
+                                  :nonce        (:nonce request)
+                                  :csrf-token   csrf-token
+                                  :params-sig   params-sig
+                                  :oauth-params oauth-params})}
+                      (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))))
             (catch ExceptionInfo e
               (log/warn e "OAuth authorize request failed")
               {:status  400

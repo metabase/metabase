@@ -90,3 +90,31 @@
   (when (string? scope-string)
     (when-not (str/blank? scope-string)
       (into #{} (str/split (str/trim scope-string) #"\s+")))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Superuser-required scopes
+;;; ──────────────────────────────────────────────────────────────────
+
+(defonce ^{:private true
+           :doc "Scope prefixes that require superuser to authorize. Stored as prefix strings
+                  (e.g. \"workspace:\") so that any scope starting with that prefix is covered."}
+  superuser-required-prefixes
+  (atom #{}))
+
+(defn require-superuser-for-prefix!
+  "Register a scope prefix as requiring superuser authorization. Any scope that
+   starts with `prefix` will require the authorizing user to be a superuser.
+   E.g. `(require-superuser-for-prefix! \"workspace:\")` means `workspace:config:read`
+   requires superuser."
+  [prefix]
+  (swap! superuser-required-prefixes conj prefix))
+
+(defn scopes-requiring-superuser
+  "Given a collection of scope strings, return those that require superuser
+   authorization. Returns an empty set if none require it."
+  [scopes]
+  (let [prefixes @superuser-required-prefixes]
+    (into #{}
+          (filter (fn [scope]
+                    (some (fn [prefix] (str/starts-with? scope prefix)) prefixes)))
+          scopes)))
