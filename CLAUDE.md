@@ -47,7 +47,7 @@ If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not f
 ./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
 ```
 
-For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves these to test directories: `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo`, otherwise `test/metabase/<name>` (see `metabase.test-runner/parse-options`).
+For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. See `metabase.test-runner/module-folders` for how module names map to test directories.
 
 ```bash
 ./bin/test-agent :module enterprise/workspaces
