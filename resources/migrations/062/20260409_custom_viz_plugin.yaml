@@ -50,7 +50,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: bundle
-                  type: ${blob.type}
+                  type: ${longblob.type}
                   remarks: Raw bytes of the uploaded zip bundle. Null for dev-only plugins served from a dev server.
                   constraints:
                     nullable: true
@@ -97,22 +97,3 @@ databaseChangeLog:
                   name: dev_bundle_url
                   type: varchar(1024)
                   remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)
-
-  - changeSet:
-      id: v62.2026-04-24T10:00:01
-      author: bronsa
-      comment: Use longblob for custom_viz_plugin.bundle on MySQL/MariaDB so it can hold multi-MB zip uploads
-      changes:
-        - modifyDataType:
-            tableName: custom_viz_plugin
-            columnName: bundle
-            newDataType: longblob
-      rollback:
-        - modifyDataType:
-            tableName: custom_viz_plugin
-            columnName: bundle
-            newDataType: ${blob.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb

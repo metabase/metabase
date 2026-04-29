@@ -22,11 +22,11 @@
   (testing "validate-bundle! returns parsed manifest and a stable sha256"
     (let [bytes (cvp.tu/valid-bundle-bytes "my-viz" {:icon "icon.svg"})
           res   (cache/validate-bundle! bytes)]
-      (is (= "my-viz" (get-in res [:manifest :name])))
-      (is (= "icon.svg" (get-in res [:manifest :icon])))
-      (is (bytes? (:bytes res)))
-      (is (string? (:hash res)))
-      (is (= 64 (count (:hash res))) "sha256 hex is 64 chars")
+      (is (=? {:bytes       bytes?
+               :hash        (every-pred string? #(= 64 (count %)))
+               :manifest    {:name "my-viz", :icon "icon.svg"}
+               :version-str nil}
+              res))
       (testing "hash is deterministic"
         (is (= (:hash res) (:hash (cache/validate-bundle! bytes))))))))
 

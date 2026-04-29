@@ -124,6 +124,7 @@
           bytes  (.getBytes "pretend tgz bytes" "UTF-8")
           out    (export bytes)]
       (is (string? out))
+      (is (re-matches #"[A-Za-z0-9+/]*={0,2}" out))
       (is (not= (String. bytes "UTF-8") out)
           "exported value should be b64-encoded, not the raw string")
       (is (= (seq bytes) (seq (import out))))))

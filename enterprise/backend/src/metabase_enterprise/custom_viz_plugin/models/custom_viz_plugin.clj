@@ -20,14 +20,14 @@
     :else              v))
 
 (def ^:private transform-bundle
-  "Coerce JDBC `Blob` values into plain byte arrays on read."
+  "Coerce JDBC `Blob` values into byte arrays on read. On write, JDBC maps byte arrays back to the DB blob type."
   {:in  identity
    :out blob->bytes})
 
 (t2/deftransforms :model/CustomVizPlugin
-  {:status   mi/transform-keyword
+  {:bundle   transform-bundle
    :manifest mi/transform-json
-   :bundle   transform-bundle})
+   :status   mi/transform-keyword})
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
@@ -39,15 +39,26 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
+(defn- select-options [conditions]
+  (let [options    (when (map? (last conditions)) (last conditions))
+        conditions (cond-> conditions options butlast)]
+    (when (odd? (count conditions))
+      (throw (ex-info "Expected an even number of select conditions" {:conditions conditions})))
+    (cond-> (or options {})
+      (seq conditions) (assoc :where (into [:and]
+                                           (map (fn [[k v]]
+                                                  [:= k (if (keyword? v) [:lift (name v)] v)]))
+                                           (partition 2 conditions))))))
+
 (defn select-one-non-blob
   "Like `t2/select-one` on `:model/CustomVizPlugin`, but excludes the bundle blob."
   [& conditions]
-  (apply t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) conditions))
+  (t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) (select-options conditions)))
 
 (defn select-non-blob
   "Like `t2/select` on `:model/CustomVizPlugin`, but excludes the bundle blob."
   [& conditions]
-  (apply t2/select (into [:model/CustomVizPlugin] non-blob-columns) conditions))
+  (t2/select (into [:model/CustomVizPlugin] non-blob-columns) (select-options conditions)))
 
 (defmethod mi/can-read? :model/CustomVizPlugin
   ([_instance]   (some? api/*current-user-id*))

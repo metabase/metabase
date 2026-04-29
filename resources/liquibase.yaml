@@ -15,6 +15,18 @@ databaseChangeLog:
       name: blob.type
       value: bytea
       dbms: postgresql
+  - property:
+      name: longblob.type
+      value: blob
+      dbms: h2
+  - property:
+      name: longblob.type
+      value: longblob
+      dbms: mysql,mariadb
+  - property:
+      name: longblob.type
+      value: bytea
+      dbms: postgresql
   # In MySQL, use LONGTEXT instead of TEXT (#7006)
   - property:
       name: text.type

@@ -443,7 +443,12 @@
   (fetch! source)
   (let [version (commit-sha source (:branch source))]
     (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
+      (->GitSnapshot (:git source)
+                     (:remote-url source)
+                     (:branch source)
+                     version
+                     (:token source)
+                     (:managed-dirs source))
       (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
 
 (defn- snapshot
