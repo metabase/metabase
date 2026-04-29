@@ -297,7 +297,6 @@
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
-                               :source_entity {:type "table" :id orders-table-id}
                                :query         query-yaml
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
