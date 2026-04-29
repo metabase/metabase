@@ -125,7 +125,7 @@ export function RenderChart(
     options.applicationColors,
   );
 
-  if (enterpriseOverrides) {
+  if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();
   }
 

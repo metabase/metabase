@@ -92,7 +92,8 @@
    :user_id    (or user-id api/*current-user-id*)
    :model_id   (or object-id (u/id object))
    :has_access has-access
-   :context    context})
+   :context    context
+   :tenant_id  (:tenant_id @api/*current-user*)})
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)

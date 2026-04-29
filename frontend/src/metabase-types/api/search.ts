@@ -105,6 +105,7 @@ export interface SearchResult<
   model_index_id: number | null;
   table_description: string | null;
   table_name: string | null;
+  table_display_name: string | null;
   initial_sync_status: InitialSyncStatus | null;
   dashboard_count: number | null;
   context: any; // this might be a dead property

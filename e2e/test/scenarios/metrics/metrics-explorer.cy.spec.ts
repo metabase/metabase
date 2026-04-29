@@ -9,6 +9,8 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
+
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
   SAMPLE_DATABASE;
 
@@ -403,8 +405,51 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
+    });
+
+    it("should add metrics and measures from the entity picker", () => {
+      H.activateToken("pro-self-hosted");
+      createLibraryWithTable();
+      H.MetricsViewer.goToViewer();
+
+      cy.log("Add a metric from the entity picker");
+      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.pickEntity({ path: ["Our analytics", "Count of orders"] });
+
+      cy.log("Add a measure from the entity picker");
+      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.pickEntity({ path: ["Library", "Data", "Orders", "Test Measure"] });
+
+      H.MetricsViewer.runButton().click();
+
+      verifyMetricCount(2);
+
+      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.pickEntity({ path: ["Databases", "Sample Database"] });
+
+      cy.log("People is disabled because it doesn't have measures");
+      H.entityPickerModalItem(2, "People").should(
+        "have.attr",
+        "data-disabled",
+        "true",
+      );
+
+      cy.log("Orders is not disabled because it has measures");
+      H.entityPickerModalItem(2, "Orders").should(
+        "not.have.attr",
+        "data-disabled",
+      );
+
+      cy.log("Can search for measures");
+      H.entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("Test");
+        H.entityPickerModalItem(1, "Test Measure").should("be.visible");
+      });
     });
 
     it("should not show me metrics that live in collections I do not have permissions to see", () => {
@@ -413,7 +458,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Count of");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
 
       H.MetricsViewer.searchInput().clear().type("Test Measure");
@@ -426,7 +471,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Test Measure");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
 
       H.MetricsViewer.searchInput().clear();
@@ -1912,6 +1957,67 @@ describe("scenarios > metrics > explorer", () => {
             .children()
             .should("have.length", legendHexColors.length);
         });
+    });
+  });
+
+  describe("Segments", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+    });
+
+    it("should apply a segment as a filter to a metric", () => {
+      const SEGMENT_NAME = "Big orders";
+
+      H.createSegment({
+        name: SEGMENT_NAME,
+        description: "Orders with a total over $100",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          filter: [">", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      addMetric("Count of orders");
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getFilterButton().click();
+
+      cy.log(
+        "segment should appear alongside dimensions in the filter popover",
+      );
+      H.popover().findByText(SEGMENT_NAME).should("be.visible");
+
+      cy.log("search should match segment names");
+      H.popover().findByPlaceholderText("Search dimensions...").type("big");
+      H.popover().findByText(SEGMENT_NAME).should("be.visible");
+      H.popover().findByPlaceholderText("Search dimensions...").clear();
+
+      cy.log("clicking a segment applies it directly as a filter");
+      H.popover().findByText(SEGMENT_NAME).click();
+
+      H.MetricsViewer.getAllFilterPills()
+        .should("have.length", 1)
+        .should("contain.text", SEGMENT_NAME);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_added",
+        triggered_from: "metric_filter",
+      });
+
+      cy.log("removing the segment pill removes the filter");
+      H.MetricsViewer.getAllFilterPills()
+        .eq(0)
+        .findByLabelText("Remove")
+        .click();
+
+      H.MetricsViewer.getAllFilterPills().should("have.length", 0);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_removed",
+        triggered_from: "metric_filter",
+      });
     });
   });
 

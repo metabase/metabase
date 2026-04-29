@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getIcon } from "metabase/common/utils/icon";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import * as Urls from "metabase/utils/urls";
 import type { RecentItem } from "metabase-types/api";

@@ -15,7 +15,6 @@ import {
 } from "metabase/entities/collections/utils";
 import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { color } from "metabase/ui/colors";
 
 import {
   createEntity,
@@ -178,7 +177,6 @@ export const Dashboards = createEntity({
     getName: (dashboard) => dashboard && dashboard.name,
     getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
-    getColor: () => color("dashboard"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

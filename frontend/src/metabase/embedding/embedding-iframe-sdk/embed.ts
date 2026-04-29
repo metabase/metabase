@@ -189,6 +189,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ...attributesConverted,
       componentName: this._componentName,
       _isLocalhost: this._getIsLocalhost(),
+      _embedReferrer: window.location.href,
     } as SdkIframeEmbedElementSettings;
   }
 
@@ -605,7 +606,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     // Only works in React 19
     const objectCustomContext = this["custom-context"];
-    const stringCustomContext = this.getAttribute("custom-context");
+    // parseAttributeValue parses it if it's a stringified JSON
+    const stringCustomContext = parseAttributeValue(
+      this.getAttribute("custom-context"),
+    );
     const customContext = objectCustomContext ?? stringCustomContext;
     const body = {
       entityType,
