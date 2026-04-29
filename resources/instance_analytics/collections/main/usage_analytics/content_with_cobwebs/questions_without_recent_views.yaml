@@ -17,7 +17,7 @@ dataset_query:
     - - datetime-diff
       - {lib/expression-name: Days since last view}
       - - field
-        - {join-alias: Last content viewed at - Entity Qualified, base-type: type/DateTimeWithLocalTZ, lib/uuid: a14971e1-c577-4ddd-922d-28dfdea34402}
+        - {base-type: type/DateTimeWithLocalTZ, join-alias: Last content viewed at - Entity Qualified, lib/uuid: a14971e1-c577-4ddd-922d-28dfdea34402}
         - max
       - - now
         - {}
@@ -62,7 +62,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Last content viewed at - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Last content viewed at - Entity Qualified}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
       fields: none
       stages:

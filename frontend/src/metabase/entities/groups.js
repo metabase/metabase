@@ -6,7 +6,8 @@ import {
   useGetPermissionsGroupQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -15,12 +16,12 @@ export const Groups = createEntity({
   name: "groups",
   path: "/api/permissions/group",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListPermissionsGroupsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

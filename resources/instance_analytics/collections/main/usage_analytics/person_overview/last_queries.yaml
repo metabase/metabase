@@ -41,14 +41,14 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_query_log, card_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Card Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Card Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields:
       - - field
-        - {base-type: type/Text, join-alias: Content - Card Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Card Qualified}
         - [Internal Metabase Database, public, v_content, name]
       - - field
-        - {base-type: type/Integer, join-alias: Content - Card Qualified, effective-type: type/Integer}
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Card Qualified}
         - [Internal Metabase Database, public, v_content, entity_id]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
@@ -63,14 +63,14 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Dashboard Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Dashboard Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields:
       - - field
-        - {base-type: type/Text, join-alias: Content - Dashboard Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Dashboard Qualified}
         - [Internal Metabase Database, public, v_content, name]
       - - field
-        - {base-type: type/Integer, join-alias: Content - Dashboard Qualified, effective-type: type/Integer}
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Dashboard Qualified}
         - [Internal Metabase Database, public, v_content, entity_id]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
@@ -85,14 +85,14 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_query_log, database_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Databases - Database Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Databases - Database Qualified}
           - [Internal Metabase Database, public, v_databases, entity_qualified_id]
       fields:
       - - field
-        - {base-type: type/Integer, join-alias: Databases - Database Qualified, effective-type: type/Integer}
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Databases - Database Qualified}
         - [Internal Metabase Database, public, v_databases, entity_id]
       - - field
-        - {base-type: type/Text, join-alias: Databases - Database Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Databases - Database Qualified}
         - [Internal Metabase Database, public, v_databases, name]
       stages:
       - {source-card: -19557ZnrWiDgG4h4cKxF, lib/type: mbql.stage/mbql}

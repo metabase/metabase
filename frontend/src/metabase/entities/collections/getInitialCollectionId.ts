@@ -6,10 +6,10 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/utils/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { ROOT_COLLECTION } from "./constants";
 

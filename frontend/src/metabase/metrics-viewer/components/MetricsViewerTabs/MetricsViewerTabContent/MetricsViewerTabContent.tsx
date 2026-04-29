@@ -1,13 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Center, Flex, Stack } from "metabase/ui";
-import { getObjectKeys } from "metabase/utils/objects";
+import { Box, Flex, Stack } from "metabase/ui";
+import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   SingleSeries,
@@ -19,68 +16,51 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabProjectionConfig,
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
+import type { MetricSlot } from "../../../utils/metric-slots";
 import { buildDimensionItemsFromDefinitions } from "../../../utils/series";
 import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
+import { DimensionPillBar } from "../../DimensionPillBar";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
 type MetricsViewerTabContentProps = {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tab: MetricsViewerTabState;
-  errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  metricSlots: MetricSlot[];
   series: SingleSeries[];
-  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
+  cardIdToEntityIndex: Record<CardId, number>;
   sourceColors: SourceColorMap;
-  isExecuting: (id: MetricSourceId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  onDimensionChange: (
-    definitionId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove: (definitionId: MetricSourceId) => void;
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onDimensionRemove: (slotIndex: number) => void;
 };
 
 export function MetricsViewerTabContent({
   definitions,
+  formulaEntities,
   tab,
-  errorsByDefinitionId,
-  modifiedDefinitions,
+  queriesAreLoading,
+  queriesError,
+  modifiedDefinitionsBySlotIndex,
+  metricSlots,
   series: rawSeries,
-  cardIdToDefinitionId,
+  cardIdToEntityIndex,
   sourceColors,
-  isExecuting,
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
 }: MetricsViewerTabContentProps) {
-  const isLoading = useMemo(() => {
-    return getObjectKeys(tab.dimensionMapping).some(isExecuting);
-  }, [tab.dimensionMapping, isExecuting]);
-
-  const firstError = useMemo(() => {
-    for (const series of rawSeries) {
-      const cols = series.data.cols;
-      if (!cols.some((col) => isMetric(col))) {
-        return t`Non-numeric metrics are not supported`;
-      }
-    }
-
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const err = errorsByDefinitionId.get(sourceId);
-      if (err) {
-        return err;
-      }
-    }
-    return null;
-  }, [tab.dimensionMapping, errorsByDefinitionId, rawSeries]);
-
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
   const dimensionItems = useMemo(
@@ -88,43 +68,45 @@ export function MetricsViewerTabContent({
       buildDimensionItemsFromDefinitions(
         definitions,
         tab.dimensionMapping,
-        modifiedDefinitions,
+        modifiedDefinitionsBySlotIndex,
         sourceColors,
+        metricSlots,
+        formulaEntities,
+        tab.projectionConfig,
         dimensionFilter,
       ),
     [
       definitions,
       tab.dimensionMapping,
-      modifiedDefinitions,
+      modifiedDefinitionsBySlotIndex,
       sourceColors,
+      metricSlots,
+      formulaEntities,
+      tab.projectionConfig,
       dimensionFilter,
     ],
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const entry = definitions.find((d) => d.id === sourceId);
-      if (!entry) {
-        continue;
-      }
-
-      const modDef = modifiedDefinitions.get(entry.id);
+    for (const key of getObjectKeys(tab.dimensionMapping)) {
+      const slotIndex = Number(key);
+      const modDef = modifiedDefinitionsBySlotIndex.get(slotIndex);
       if (!modDef) {
         continue;
       }
-
       const projs = LibMetric.projections(modDef);
       if (projs.length > 0) {
         return modDef;
       }
     }
     return null;
-  }, [definitions, tab.dimensionMapping, modifiedDefinitions]);
+  }, [tab.dimensionMapping, modifiedDefinitionsBySlotIndex]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const modDef = modifiedDefinitions.get(sourceId);
+    for (const key of getObjectKeys(tab.dimensionMapping)) {
+      const slotIndex = Number(key);
+      const modDef = modifiedDefinitionsBySlotIndex.get(slotIndex);
       if (!modDef) {
         continue;
       }
@@ -134,7 +116,7 @@ export function MetricsViewerTabContent({
       }
     }
     return filterDimensions;
-  }, [tab.dimensionMapping, modifiedDefinitions]);
+  }, [tab.dimensionMapping, modifiedDefinitionsBySlotIndex]);
 
   const updateProjectionConfig = useCallback(
     (updates: Partial<MetricsViewerTabProjectionConfig>) => {
@@ -203,39 +185,46 @@ export function MetricsViewerTabContent({
     DISPLAY_TYPE_REGISTRY[tab.display].supportsStacking && rawSeries.length > 1;
 
   const isTimeTab = tab.type === "time";
-  const mappedDimensionCount = Object.values(tab.dimensionMapping).filter(
+
+  const tabConfig = getTabConfig(tab.type);
+  const hasAnyOptions = dimensionItems.some((item) =>
+    item.type === "expression"
+      ? item.metricSources.some((s) => s.availableOptions.length > 0)
+      : item.availableOptions.length > 0,
+  );
+  const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
+
+  const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
     isNotNull,
   ).length;
   const dimensionRemoveHandler =
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
-  if (isLoading || firstError) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={firstError} />
-      </Center>
-    );
-  }
-
-  if (rawSeries.length === 0) {
-    return null;
-  }
-
   return (
-    <Stack flex="1 0 auto" gap="md">
+    <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization
         rawSeries={rawSeries}
-        dimensionItems={dimensionItems}
-        onDimensionChange={onDimensionChange}
-        onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
         definitions={definitions}
+        formulaEntities={formulaEntities}
+        metricSlots={metricSlots}
         tab={tab}
         onTabUpdate={onTabUpdate}
-        cardIdToDefinitionId={cardIdToDefinitionId}
+        cardIdToEntityIndex={cardIdToEntityIndex}
+        queriesAreLoading={queriesAreLoading}
+        queriesError={queriesError}
       />
+      {!hideDimensionPill && (
+        <Box mt="sm">
+          <DimensionPillBar
+            items={dimensionItems}
+            onDimensionChange={onDimensionChange}
+            onDimensionRemove={dimensionRemoveHandler}
+          />
+        </Box>
+      )}
       {definitionForControls && (
-        <Flex justify="center" align="center">
+        <Flex mt="md" justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
             displayType={tab.display}

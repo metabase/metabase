@@ -4,8 +4,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockCard } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { AIMarkdown } from "./AIMarkdown";
 
@@ -33,5 +33,26 @@ describe("AIMarkdown", () => {
 
     // Verify it's rendered as a smart link by checking for the icon
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+  });
+
+  it("should render GFM tables", async () => {
+    setup({
+      children: `
+| Name | Value |
+| --- | --- |
+| Revenue | $42 |
+| Profit | $12 |
+      `.trim(),
+    });
+
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Value" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Revenue" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "$42" })).toBeInTheDocument();
   });
 });

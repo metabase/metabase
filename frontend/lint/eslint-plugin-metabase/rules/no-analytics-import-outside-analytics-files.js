@@ -1,51 +1,52 @@
 /**
- * @fileoverview Rule to ensure imports from metabase/utils/analytics only occur in files named "analytics.ts/tsx/js/jsx"
+ * @fileoverview Rule that restricts `trackSchemaEvent` and `trackSimpleEvent`
+ * imports from `metabase/analytics` to files named `analytics.{ts,tsx,js,jsx}`.
+ *
+ * Every Snowplow event must be wrapped in a feature-local `analytics.ts` so
+ * tracking stays auditable and each feature owns the shape of its events.
+ * Other exports from the barrel (`createSnowplowTracker`, `trackPageView`) are
+ * infrastructure and may be imported anywhere.
  */
 
-//------------------------------------------------------------------------------
-// Rule Definition
-//------------------------------------------------------------------------------
+const BARREL = "metabase/analytics";
+const FORBIDDEN_SPECIFIERS = new Set(["trackSchemaEvent", "trackSimpleEvent"]);
 
-const ERROR_MESSAGE =
-  'Imports from "metabase/utils/analytics" are only allowed in files named "analytics", Please create a type-safe wrapper for the analytics functions in an analytics.ts file, and call that function from your component or module.';
+const errorMessage = (name) =>
+  `importing \`${name}\` from "${BARREL}" is only allowed in files named "analytics". Please create a type-safe wrapper in an analytics.ts file and call that wrapper from your component or module.`;
 
 module.exports = {
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Ensure imports from metabase/utils/analytics only occur in analytics files",
+      description: `Restrict ${[...FORBIDDEN_SPECIFIERS].join(" and ")} imports from "${BARREL}" to analytics.ts files.`,
       category: "Best Practices",
       recommended: true,
     },
     schema: [],
-    messages: {
-      noAnalyticsImportOutsideAnalyticsFile: ERROR_MESSAGE,
-    },
   },
   create(context) {
     const filename = context.getFilename();
-
-    // Get the base filename without path
     const baseFilename = filename.split("/").pop() || "";
-
-    // Check if the file is an analytics file
     const isAnalyticsFile = /^analytics\.(ts|tsx|js|jsx)$/.test(baseFilename);
+
+    if (isAnalyticsFile) {
+      return {};
+    }
 
     return {
       ImportDeclaration(node) {
-        const sourceValue = node.source.value;
+        if (node.source.value !== BARREL) {
+          return;
+        }
 
-        // Check if importing from metabase/utils/analytics
-        if (
-          typeof sourceValue === "string" &&
-          sourceValue === "metabase/utils/analytics"
-        ) {
-          // If not in an analytics file, report an error
-          if (!isAnalyticsFile) {
+        for (const specifier of node.specifiers) {
+          if (
+            specifier.type === "ImportSpecifier" &&
+            FORBIDDEN_SPECIFIERS.has(specifier.imported.name)
+          ) {
             context.report({
-              node,
-              message: ERROR_MESSAGE,
+              node: specifier,
+              message: errorMessage(specifier.imported.name),
             });
           }
         }

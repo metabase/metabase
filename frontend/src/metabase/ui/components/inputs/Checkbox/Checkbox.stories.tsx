@@ -72,6 +72,12 @@ const StateTemplate = (args: CheckboxProps) => (
       disabled
       defaultChecked
     />
+    <Checkbox
+      {...args}
+      label="With an error"
+      defaultChecked
+      error="Oh nooooo something has gone terribly wrong"
+    />
   </Stack>
 );
 
@@ -103,6 +109,9 @@ export const LabelLeftPosition = {
 
 export const Description = {
   render: StateTemplate,
+  args: {
+    description: "How do I look with a description?",
+  },
 };
 
 export const DescriptionLeftPosition = {
@@ -110,6 +119,7 @@ export const DescriptionLeftPosition = {
   name: "Description, left position",
   args: {
     labelPosition: "left",
+    description: "How do I look with a description?",
   },
 };
 

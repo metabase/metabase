@@ -72,8 +72,8 @@ export const UserProvisioning = () => {
   // the regenerate flow to get a new unmasked token
   const isScimIncorrectlyIniailized = Boolean(
     !isScimInitialized &&
-      isScimEnabled &&
-      !(isLoadingToken || maskedTokenRequest.isFetching),
+    isScimEnabled &&
+    !(isLoadingToken || maskedTokenRequest.isFetching),
   );
 
   const samlUserProvisioningEnabled = useSetting(

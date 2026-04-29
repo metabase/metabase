@@ -194,3 +194,39 @@
       (is (= 42 (:id decoded)))
       (is (= "abc" (:lib/uuid decoded)))
       (is (= 1 (count (:projection decoded)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      Numeric Constant Tests                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest bare-integer-constant-test
+  (testing "A bare integer is a valid expression"
+    (is (valid? ::lib-metric.schema/metric-math-expression 42))))
+
+(deftest bare-float-constant-test
+  (testing "A bare float is a valid expression"
+    (is (valid? ::lib-metric.schema/metric-math-expression 3.14))))
+
+(deftest constant-in-arithmetic-test
+  (testing "Constant as operand in arithmetic is valid"
+    (is (valid? ::lib-metric.schema/metric-math-expression
+                [:* {} [:metric {:lib/uuid "a"} 1] 100]))))
+
+(deftest nested-constant-in-arithmetic-test
+  (testing "Constant in nested arithmetic is valid"
+    (is (valid? ::lib-metric.schema/metric-math-expression
+                [:/ {} [:metric {:lib/uuid "a"} 1] [:- {} [:metric {:lib/uuid "b"} 2] 10]]))))
+
+(deftest valid-definition-with-constant-test
+  (testing "Valid definition with constant in arithmetic (no projection needed for constant)"
+    (is (valid-definition?
+         {:expression  [:* {} [:metric {:lib/uuid "a"} 42] 100]
+          :projections [{:type       :metric
+                         :id         42
+                         :lib/uuid   "a"
+                         :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]}))))
+
+(deftest normalize-json-number-passthrough-test
+  (testing "JSON number passes through normalization unchanged"
+    (let [decoded (decode ::lib-metric.schema/metric-math-expression 42)]
+      (is (= 42 decoded)))))

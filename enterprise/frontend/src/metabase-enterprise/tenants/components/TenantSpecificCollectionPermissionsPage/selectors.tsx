@@ -10,10 +10,7 @@ import type {
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type {
-  DataPermissionValue,
-  PermissionEditorType,
-} from "metabase/admin/permissions/types";
+import type { PermissionEditorType } from "metabase/admin/permissions/types";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
@@ -22,6 +19,7 @@ import {
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import type { ExpandedCollection, State } from "metabase/redux/store";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -30,9 +28,9 @@ import {
 import type {
   CollectionId,
   CollectionPermissions,
+  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
-import type { ExpandedCollection, State } from "metabase-types/store";
 
 export const tenantSpecificCollectionsQuery = {
   tree: true,

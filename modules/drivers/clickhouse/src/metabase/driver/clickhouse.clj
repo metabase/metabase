@@ -1,6 +1,5 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
-  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -20,8 +19,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -102,6 +101,17 @@
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
+(defn- first-db-name
+  "Extract a single database name from a legacy `dbname` value. Older configurations stored
+  multiple databases here, separated by spaces, commas, or both (matching the
+  `:db-filters-patterns` syntax). These values weren't migrated, so we have to keep handling
+  them. The chosen name is just the connection's default database — other databases are
+  reached by qualifying queries (#70798, #73175)."
+  [s]
+  (->> (str/split (or s "") #"[\s,]+")
+       (remove str/blank?)
+       first))
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (let [;; ensure defaults merge on top of nils
@@ -109,11 +119,7 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        ;; Handling legacy `dbname` values here. `dbname` used to be a space-separated string of
-        ;; the database names. These `dbname` values weren't migrated so they still need to be handled
-        ;; here. This is the original version that takes the first db. This value is just the default
-        ;; db, we hit other dbs by including the db in the queries (#70798).
-        dbname (first (str/split (str/trim dbname) #" "))
+        dbname (first-db-name dbname)
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
@@ -147,9 +153,11 @@
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there
-      (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-            dbname (first (str/split (str/trim (or (not-empty (:dbname details)) (:db details) "default")) #" "))
-            db    (ddl.i/format-name driver dbname)]
+      (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
+            dbname (or (first-db-name (:dbname details))
+                       (first-db-name (:db details))
+                       "default")
+            db     (ddl.i/format-name driver dbname)]
         (sql-jdbc.execute/do-with-connection-with-options
          driver spec nil
          (fn [^java.sql.Connection conn]
@@ -397,7 +405,7 @@
                                  (sql.u/quote-name :clickhouse :table (:name table))
                                  qu))]
     (when-not read-user-name
-      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]

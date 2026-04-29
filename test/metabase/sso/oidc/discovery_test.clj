@@ -206,35 +206,57 @@
 ;;; ================================================== SSRF Protection Tests ==================================================
 
 (deftest discover-oidc-configuration-ssrf-protection-test
-  (testing "Respects oidc-allowed-networks if set"
+  (testing "Respects oidc-allowed-networks if set — blocked requests return nil (no HTTP request made)"
     (oidc.discovery/clear-cache!)
     (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
       (testing "Rejects internal addresses (localhost)"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
 
       (testing "Rejects internal addresses (127.0.0.1)"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
 
       (testing "Rejects cloud metadata endpoint"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
 
       (testing "Rejects private network addresses (192.168.x.x)"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
 
       (testing "Rejects private network addresses (10.x.x.x)"
         (oidc.discovery/clear-cache!)
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://10.0.0.1/oidc")))))))
+
+;;; ================================================== Endpoint Extraction Validation Tests ==================================================
+
+(deftest get-token-endpoint-blocks-internal-hosts-test
+  (testing "get-token-endpoint rejects internal hosts when oidc-allowed-networks is :external-only"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (let [config {:discovery-document {:token_endpoint "http://169.254.169.254/latest/meta-data/"}}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://10.0.0.1/oidc")))))))
+                              #"address not allowed by network restrictions"
+                              (oidc.discovery/get-token-endpoint config))))))
+
+  (testing "get-token-endpoint allows all hosts when oidc-allowed-networks is :allow-all"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
+      (let [config {:discovery-document {:token_endpoint "https://provider.example.com/token"}}]
+        (is (= "https://provider.example.com/token"
+               (oidc.discovery/get-token-endpoint config)))))))
+
+(deftest get-authorization-endpoint-blocks-internal-hosts-test
+  (testing "get-authorization-endpoint rejects internal hosts"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (let [config {:discovery-document {:authorization_endpoint "http://192.168.1.1/authorize"}}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"address not allowed by network restrictions"
+                              (oidc.discovery/get-authorization-endpoint config)))))))
+
+(deftest get-jwks-uri-blocks-internal-hosts-test
+  (testing "get-jwks-uri rejects internal hosts"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (let [config {:discovery-document {:jwks_uri "http://10.0.0.1/jwks"}}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"address not allowed by network restrictions"
+                              (oidc.discovery/get-jwks-uri config)))))))

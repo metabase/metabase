@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import * as Urls from "metabase/utils/urls";
 import type {
@@ -12,8 +13,6 @@ import type {
   Segment,
   User,
 } from "metabase-types/api";
-
-import { Revision } from "./Revision";
 
 interface Props {
   revisions?: RevisionType[] | null;

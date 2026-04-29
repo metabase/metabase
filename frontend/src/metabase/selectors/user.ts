@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 export const getUser = (state: State) => state.currentUser;
 

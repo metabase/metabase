@@ -4,7 +4,7 @@ import {
   ParametersList,
   type ParametersListProps,
 } from "metabase/parameters/components/ParametersList";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import type { ParameterId } from "metabase-types/api";
 
 import { setParameterValueToDefault } from "../actions";

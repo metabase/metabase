@@ -8,9 +8,9 @@ import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticS
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import type { SearchSettingsWidgetProps } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 
 function useLatch(bool: boolean) {

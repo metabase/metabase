@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
   "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
   in the options and adds `:join-alias` info to those `:field` clauses."
-  (:refer-clojure :exclude [alias mapv some empty? not-empty get-in])
+  (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]

@@ -63,7 +63,7 @@ export function MetabotSetupRequiredAlert() {
     >
       <Text mt="sm">
         <Link
-          to="/admin/metabot/setup"
+          to="/admin/metabot#setup"
           variant="brand"
         >{t`Connect to a provider`}</Link>
       </Text>

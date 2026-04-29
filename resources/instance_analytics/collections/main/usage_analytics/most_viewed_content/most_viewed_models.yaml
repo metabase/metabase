@@ -17,16 +17,16 @@ dataset_query:
       - {lib/uuid: 7b90d293-0c12-4e96-a53f-c66b6dcbe7a7}
     breakout:
     - - field
-      - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
       - [Internal Metabase Database, public, v_content, name]
     - - field
-      - {base-type: type/Integer, join-alias: Content - Entity Qualified, effective-type: type/Integer}
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
       - [Internal Metabase Database, public, v_content, entity_id]
     - - field
-      - {base-type: type/Text, join-alias: V Databases - Question Database, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: V Databases - Question Database}
       - [Internal Metabase Database, public, v_databases, name]
     - - field
-      - {base-type: type/Integer, join-alias: V Databases - Question Database, effective-type: type/Integer}
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: V Databases - Question Database}
       - [Internal Metabase Database, public, v_databases, entity_id]
     filters:
     - - =
@@ -38,7 +38,7 @@ dataset_query:
     - - =
       - {}
       - - field
-        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, entity_type]
       - model
     joins:
@@ -50,7 +50,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
@@ -65,7 +65,7 @@ dataset_query:
           - {base-type: type/Integer, lib/uuid: 98551582-e800-4997-94ab-f3170b6ee0eb}
           - user_id
         - - field
-          - {base-type: type/Integer, join-alias: People - Creator, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - Creator}
           - [Internal Metabase Database, public, v_users, user_id]
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
@@ -80,7 +80,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_view_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
@@ -92,10 +92,10 @@ dataset_query:
       - - =
         - {}
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, question_database_id]
         - - field
-          - {base-type: type/Text, join-alias: V Databases - Question Database, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: V Databases - Question Database}
           - [Internal Metabase Database, public, v_databases, entity_qualified_id]
       fields: all
       stages:

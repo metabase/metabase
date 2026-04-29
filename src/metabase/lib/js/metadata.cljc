@@ -1,5 +1,4 @@
 (ns metabase.lib.js.metadata
-  (:refer-clojure :exclude [keywordize-keys])
   (:require
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])

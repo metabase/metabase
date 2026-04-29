@@ -5,13 +5,13 @@ import { computeQuestionPivotTable } from "metabase/query_builder/actions/core/p
 import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Deferred } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { runQuestionQuerySdk } from "./run-question-query";
 

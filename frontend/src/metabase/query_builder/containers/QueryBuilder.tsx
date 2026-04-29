@@ -23,6 +23,7 @@ import {
   getDatabasesList,
   getSampleDatabaseId,
 } from "metabase/querying/selectors";
+import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   closeQB,
@@ -46,6 +47,7 @@ import {
   setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
+import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -54,14 +56,12 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { connect, useSelector } from "metabase/utils/redux";
 import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Series,
   Timeline,
 } from "metabase-types/api";
-import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import {
   cancelQuery,

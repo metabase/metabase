@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { defer } from "metabase/utils/promise";
 import Question from "metabase-lib/v1/Question";
@@ -21,7 +22,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { runQuestionQuery } from "./services";
 

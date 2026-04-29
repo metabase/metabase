@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
+import { objectFromEntries } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DimensionMetadata,
@@ -17,45 +17,33 @@ import type {
 
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
   SelectedMetric,
   SourceBreakoutColorMap,
   SourceColorMap,
 } from "../types/viewer-state";
-import {
-  applyProjection,
-  buildBinnedBreakoutDefinition,
-  getDefinitionName,
-} from "../utils/definition-builder";
-import { buildDimensionFilterClause } from "../utils/dimension-filters";
-import {
-  findBinningStrategy,
-  findDimensionById,
-  findFilterDimensionById,
-  findTemporalBucket,
-} from "../utils/dimension-lookup";
+import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
+import { getDefinitionName } from "../utils/definition-builder";
 import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
+import { type MetricSlot, computeMetricSlots } from "../utils/metric-slots";
 import {
-  buildRawSeriesFromDefinitions,
+  buildSeries,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
 } from "../utils/series";
-import {
-  createMeasureSourceId,
-  createMetricSourceId,
-  createSourceId,
-} from "../utils/source-ids";
+import { createSourceId } from "../utils/source-ids";
 import {
   type TabInfo,
   createTabFromTabInfo,
-  getDimensionsByType,
-  resolveCommonTabLabel,
+  recomputeTabLabels,
 } from "../utils/tabs";
 
 import { useDefinitionQueries } from "./use-definition-queries";
@@ -63,22 +51,23 @@ import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 export interface UseMetricsViewerResult {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
   activeTabId: string | null;
-
+  initialLoadComplete: boolean;
   loadingIds: Set<MetricSourceId>;
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
-  errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
-  isExecuting: (id: MetricSourceId) => boolean;
-
+  resultsByEntityIndex: Map<number, Dataset>;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
+  metricSlots: MetricSlot[];
   series: SingleSeries[];
-  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
+  cardIdToEntityIndex: Record<CardId, number>;
   activeBreakoutColors: SourceBreakoutColorMap;
   sourceColors: SourceColorMap;
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -94,75 +83,18 @@ export interface UseMetricsViewerResult {
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeTabDimension: (
     tabId: string,
-    definitionId: MetricSourceId,
+    slotIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeTabDimension: (tabId: string, definitionId: MetricSourceId) => void;
-  updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
+  removeTabDimension: (tabId: string, slotIndex: number) => void;
   setBreakoutDimension: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
-}
-
-function buildUrlRestoreTransform(
-  sourceId: MetricSourceId,
-  request: LoadSourcesRequest,
-): ((definition: MetricDefinition) => MetricDefinition) | undefined {
-  const breakoutInfo = request.breakoutBySourceId?.[sourceId];
-  const filters = request.filtersBySourceId?.[sourceId];
-
-  if (!breakoutInfo && (!filters || filters.length === 0)) {
-    return undefined;
-  }
-
-  return (definition: MetricDefinition): MetricDefinition => {
-    let result = definition;
-
-    if (breakoutInfo) {
-      const dimension = findDimensionById(result, breakoutInfo.dimensionId);
-      if (dimension) {
-        const dimensionRef = LibMetric.dimensionReference(dimension);
-
-        let modifiedRef: LibMetric.ProjectionClause | null = null;
-        if (breakoutInfo.temporalUnit) {
-          const bucket = findTemporalBucket(
-            result,
-            dimension,
-            breakoutInfo.temporalUnit,
-          );
-          if (bucket) {
-            modifiedRef = LibMetric.withTemporalBucket(dimensionRef, bucket);
-          }
-        } else if (breakoutInfo.binning) {
-          const strategy = findBinningStrategy(
-            result,
-            dimension,
-            breakoutInfo.binning,
-          );
-          if (strategy) {
-            modifiedRef = LibMetric.withBinning(dimensionRef, strategy);
-          }
-        }
-
-        result = modifiedRef
-          ? applyProjection(result, modifiedRef)
-          : buildBinnedBreakoutDefinition(result, dimensionRef);
-      }
-    }
-
-    if (filters) {
-      for (const filter of filters) {
-        const dimension = findFilterDimensionById(result, filter.dimensionId);
-        if (dimension) {
-          const clause = buildDimensionFilterClause(dimension, filter.value);
-          result = LibMetric.filter(result, clause);
-        }
-      }
-    }
-
-    return result;
-  };
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
 }
 
 export function useMetricsViewer({
@@ -171,8 +103,10 @@ export function useMetricsViewer({
   const {
     state,
     loadingIds,
+    initialLoadComplete,
+    setInitialLoadComplete,
     removeDefinition,
-    updateDefinition,
+    setFormulaEntities,
     selectTab: changeTab,
     addTab,
     removeTab,
@@ -190,21 +124,23 @@ export function useMetricsViewer({
   const handleLoadSources = useCallback(
     (request: LoadSourcesRequest) => {
       for (const metricId of request.metricIds) {
-        const sourceId = createMetricSourceId(metricId);
-        loadAndAddMetric(metricId, buildUrlRestoreTransform(sourceId, request));
+        loadAndAddMetric(metricId);
       }
       for (const measureId of request.measureIds) {
-        const sourceId = createMeasureSourceId(measureId);
-        loadAndAddMeasure(
-          measureId,
-          buildUrlRestoreTransform(sourceId, request),
-        );
+        loadAndAddMeasure(measureId);
       }
     },
     [loadAndAddMetric, loadAndAddMeasure],
   );
 
-  useViewerUrl(state, initialize, handleLoadSources, location);
+  useViewerUrl(
+    state,
+    initialize,
+    handleLoadSources,
+    location,
+    setFormulaEntities,
+    setInitialLoadComplete,
+  );
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
     if (state.tabs.length === 0) {
@@ -216,42 +152,55 @@ export function useMetricsViewer({
   }, [state.tabs, state.selectedTabId]);
 
   const {
-    resultsByDefinitionId,
-    errorsByDefinitionId,
-    modifiedDefinitions,
-    breakoutValuesBySourceId,
-    isExecuting,
-  } = useDefinitionQueries(state.definitions, activeTab);
+    resultsByEntityIndex,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
+    breakoutValuesByEntityIndex,
+  } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
+
+  const definitionValues = useMemo(
+    () => Object.values(state.definitions),
+    [state.definitions],
+  );
 
   const selectedMetrics = useMemo(
-    () => getSelectedMetricsInfo(state.definitions, loadingIds),
-    [state.definitions, loadingIds],
+    () => getSelectedMetricsInfo(definitionValues, loadingIds),
+    [definitionValues, loadingIds],
+  );
+
+  const metricSlots = useMemo(
+    () => computeMetricSlots(state.formulaEntities),
+    [state.formulaEntities],
   );
 
   const sourceBreakoutColors = useMemo(
     () =>
-      computeSourceBreakoutColors(state.definitions, breakoutValuesBySourceId),
-    [state.definitions, breakoutValuesBySourceId],
+      computeSourceBreakoutColors(
+        state.formulaEntities,
+        state.definitions,
+        breakoutValuesByEntityIndex,
+      ),
+    [state.formulaEntities, state.definitions, breakoutValuesByEntityIndex],
   );
 
-  const { series, cardIdToDefinitionId, activeBreakoutColors } = useMemo(() => {
+  const { series, cardIdToEntityIndex, activeBreakoutColors } = useMemo(() => {
     if (!activeTab) {
-      return { series: [], cardIdToDefinitionId: {}, activeBreakoutColors: {} };
+      return { series: [], cardIdToEntityIndex: {}, activeBreakoutColors: {} };
     }
-    return buildRawSeriesFromDefinitions(
-      state.definitions,
-      activeTab.dimensionMapping,
-      activeTab.display,
-      resultsByDefinitionId,
-      modifiedDefinitions,
+    return buildSeries({
+      formulaEntities: state.formulaEntities,
+      definitions: state.definitions,
+      display: activeTab.display,
+      resultsByEntityIndex,
       sourceBreakoutColors,
-      activeTab.visualizationSettings,
-    );
+      extraVizSettings: activeTab.visualizationSettings,
+    });
   }, [
+    state.formulaEntities,
     state.definitions,
     activeTab,
-    resultsByDefinitionId,
-    modifiedDefinitions,
+    resultsByEntityIndex,
     sourceBreakoutColors,
   ]);
 
@@ -273,22 +222,37 @@ export function useMetricsViewer({
   const definitionsBySourceId = useMemo(
     () =>
       objectFromEntries(
-        state.definitions.map((entry) => [entry.id, entry.definition] as const),
+        definitionValues.map((entry) => [entry.id, entry.definition] as const),
       ),
-    [state.definitions],
+    [definitionValues],
   );
 
-  const sourceOrder = useMemo(
-    () => state.definitions.map((entry) => entry.id),
-    [state.definitions],
-  );
+  const sourceOrder = useMemo(() => {
+    const out: MetricSourceId[] = [];
+    const seen = new Set<MetricSourceId>();
+    for (const entry of state.formulaEntities) {
+      if (isMetricEntry(entry) && !seen.has(entry.id)) {
+        out.push(entry.id);
+        seen.add(entry.id);
+      }
+      if (isExpressionEntry(entry)) {
+        for (const token of entry.tokens) {
+          if (token.type === "metric" && !seen.has(token.sourceId)) {
+            out.push(token.sourceId);
+            seen.add(token.sourceId);
+          }
+        }
+      }
+    }
+    return out;
+  }, [state.formulaEntities]);
 
   const sourceDataById = useMemo((): Record<
     MetricSourceId,
     SourceDisplayInfo
   > => {
     const result: Record<MetricSourceId, SourceDisplayInfo> = {};
-    for (const entry of state.definitions) {
+    for (const entry of definitionValues) {
       const { definition } = entry;
       if (!definition) {
         continue;
@@ -304,7 +268,7 @@ export function useMetricsViewer({
       }
     }
     return result;
-  }, [state.definitions]);
+  }, [definitionValues]);
 
   const existingTabDimensionIds = useMemo(
     () =>
@@ -316,50 +280,27 @@ export function useMetricsViewer({
     [state.tabs],
   );
 
-  const effectiveTabs = useMemo(() => {
-    const dimsBySource = new Map(
-      state.definitions
-        .filter((entry) => entry.definition != null)
-        .map(
-          (entry) =>
-            [entry.id, getDimensionsByType(entry.definition!)] as const,
-        ),
-    );
-
-    return state.tabs.map((tab) => {
-      const names: string[] = [];
-      for (const [sourceId, dimensionId] of getObjectEntries(
-        tab.dimensionMapping,
-      )) {
-        if (dimensionId == null) {
-          continue;
-        }
-        const sourceDimensions = dimsBySource.get(sourceId);
-        const dimensionInfo = sourceDimensions?.get(dimensionId);
-        if (dimensionInfo) {
-          names.push(dimensionInfo.displayName);
-        }
-      }
-      const label = resolveCommonTabLabel(names);
-      return label != null && label !== tab.label ? { ...tab, label } : tab;
-    });
-  }, [state.tabs, state.definitions]);
+  const effectiveTabs = useMemo(
+    () => recomputeTabLabels(state.tabs, state.definitions, metricSlots),
+    [state.tabs, metricSlots, state.definitions],
+  );
 
   const availableDimensions = useMemo(
     () =>
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
         sourceOrder,
+        metricSlots,
         existingTabDimensionIds,
       ),
-    [definitionsBySourceId, sourceOrder, existingTabDimensionIds],
+    [definitionsBySourceId, sourceOrder, metricSlots, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(
     (metric: SelectedMetric) => {
       const sourceId = createSourceId(metric.id, metric.sourceType);
 
-      if (state.definitions.some((entry) => entry.id === sourceId)) {
+      if (sourceId in state.definitions) {
         return;
       }
 
@@ -417,21 +358,22 @@ export function useMetricsViewer({
 
   return {
     definitions: state.definitions,
+    formulaEntities: state.formulaEntities,
     tabs: effectiveTabs,
     activeTab,
     activeTabId: state.selectedTabId,
-
+    initialLoadComplete,
     loadingIds,
-    resultsByDefinitionId,
-    errorsByDefinitionId,
-    modifiedDefinitions,
-    isExecuting,
-
+    resultsByEntityIndex,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
+    breakoutValuesByEntityIndex,
+    metricSlots,
     series,
-    cardIdToDefinitionId,
+    cardIdToEntityIndex,
     activeBreakoutColors,
     sourceColors,
-    breakoutValuesBySourceId,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
@@ -447,7 +389,7 @@ export function useMetricsViewer({
     updateActiveTab,
     changeTabDimension,
     removeTabDimension,
-    updateDefinition,
     setBreakoutDimension,
+    setFormulaEntities,
   };
 }

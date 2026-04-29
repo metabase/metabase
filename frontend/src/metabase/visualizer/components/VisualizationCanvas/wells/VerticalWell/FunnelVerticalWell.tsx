@@ -1,7 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 
+import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Text } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {

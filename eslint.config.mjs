@@ -22,7 +22,12 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
+import boundaries from "eslint-plugin-boundaries";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import {
+  elements as boundaryElements,
+  enforcedRules as boundaryRules,
+} from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +47,7 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
-      message: "Please import from `metabase/utils/redux` instead.",
+      message: "Please import from `metabase/redux` instead.",
     },
     {
       name: "@mantine/core",
@@ -272,6 +277,34 @@ const configs = [
     },
   },
   {
+    files: [
+      "frontend/src/**/*.{js,jsx,ts,tsx}",
+      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+    ],
+    plugins: {
+      boundaries,
+    },
+    settings: {
+      "boundaries/elements": boundaryElements,
+      "boundaries/ignore": [
+        "**/*.unit.spec.*",
+        "**/e2e/**",
+        "*.stories.*",
+        "test/**",
+      ],
+    },
+    rules: {
+      "boundaries/element-types": [
+        "error",
+        {
+          default: "disallow",
+          rules: boundaryRules,
+          message: "${file.type} cannot import from ${dependency.type}",
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.js", "**/*.jsx"],
     languageOptions: {
       parser: babelParser,
@@ -312,7 +345,7 @@ const configs = [
   },
   {
     files: [
-      "**/*.unit.spec.*",
+      "**/*.spec.*",
       "frontend/lint/**/*",
       "**/*.stories.*",
       "**/stories-data.*",
@@ -548,7 +581,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
+    files: ["frontend/src/metabase/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -610,7 +643,7 @@ const configs = [
             {
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
-              message: "Please import from `metabase/utils/redux` instead.",
+              message: "Please import from `metabase/redux` instead.",
             },
             {
               name: "@mantine/core",
@@ -837,7 +870,7 @@ const configs = [
               message: 'Please use "useSdkSelector", "useSdkDispatch"',
             },
             {
-              name: "metabase/utils/redux",
+              name: "metabase/redux",
               importNames: ["useStore", "useDispatch"],
               message: 'Please use "useSdkStore", "useSdkDispatch"',
             },

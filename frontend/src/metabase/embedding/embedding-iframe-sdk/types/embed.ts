@@ -17,10 +17,10 @@ import type {
   MetabaseFetchRequestTokenFn,
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
@@ -241,6 +241,9 @@ export type SdkIframeEmbedBaseSettings = {
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
+
+  // Full URL of the host page embedding Metabase. Cannot be set by the user.
+  _embedReferrer?: string;
 
   pluginsConfig?: {
     // Callback to handle link clicks. Return { handled: true } to prevent default navigation.

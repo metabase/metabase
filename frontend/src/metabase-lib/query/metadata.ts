@@ -1,16 +1,43 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
-  Field as ApiField,
   CardId,
   CardType,
   DatabaseId,
   DatasetColumn,
+  Field,
   FieldId,
+  NormalizedField,
   TableId,
 } from "metabase-types/api";
 
-import type Field from "../v1/metadata/Field";
-import type Metadata from "../v1/metadata/Metadata";
+/**
+ * We do not have full type-safety into the CLJS of metabase-lib, so
+ * we mark objects that are instances of Metadata using this symbol
+ * without having to import them here.
+ */
+export declare const MetadataSymbol: unique symbol;
+
+/**
+ * Structural shape consumed by {@link metadataProvider}. The CLJS-side provider
+ * (`metabase.lib.js.metadata/metadata-provider`) only reads these top-level
+ * keys and iterates each entry — it does not call any methods on the value.
+ *
+ * Branded so arbitrary objects do not accidentally satisfy it. Construct a
+ * value either by using v1's `Metadata` class (which declares the brand) or
+ * via the {@link metadataInput} helper.
+ */
+export interface Metadata {
+  readonly [MetadataSymbol]?: void;
+  databases?: Record<string, unknown>;
+  tables?: Record<string, unknown>;
+  fields?: Record<string, unknown>;
+  metrics?: Record<string, unknown>;
+  measures?: Record<string, unknown>;
+  segments?: Record<string, unknown>;
+  questions?: Record<string, unknown>;
+  snippets?: Record<string, unknown>;
+  settings?: object;
+}
 
 import type {
   AggregationClause,
@@ -204,7 +231,7 @@ export function returnedColumns(
 export function fromLegacyColumn(
   query: Query,
   stageIndex: number,
-  columnOrField: DatasetColumn | Field | ApiField,
+  columnOrField: DatasetColumn | NormalizedField | Field,
 ): ColumnMetadata {
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }

@@ -1,17 +1,17 @@
 import type { ComponentType, PropsWithChildren } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
+import { getIcon } from "metabase/common/utils/icon";
 import { Collections } from "metabase/entities/collections";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getIcon } from "metabase/utils/icon";
+import type { State } from "metabase/redux/store";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import type {
   CollectionId,
   Collection as CollectionType,
 } from "metabase-types/api";
 import type { WrappedEntity } from "metabase-types/entities";
-import type { State } from "metabase-types/store";
 
 const IRREGULAR_ICON_WIDTH = 16;
 const IRREGULAR_ICON_PROPS = {

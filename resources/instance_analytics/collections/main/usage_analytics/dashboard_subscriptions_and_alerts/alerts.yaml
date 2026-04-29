@@ -62,11 +62,11 @@ dataset_query:
           - {base-type: type/Integer, lib/uuid: 6637bf3f-7bbd-4685-834e-fdafe8ee78eb}
           - creator_id
         - - field
-          - {base-type: type/Integer, join-alias: People - Creator, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - Creator}
           - [Internal Metabase Database, public, v_users, user_id]
       fields:
       - - field
-        - {base-type: type/Text, join-alias: People - Creator, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: People - Creator}
         - [Internal Metabase Database, public, v_users, full_name]
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
@@ -80,11 +80,11 @@ dataset_query:
           - {base-type: type/Text, lib/uuid: 6f9d06a2-337b-4d79-8933-e28e0276cae0}
           - card_qualified_id
         - - field
-          - {base-type: type/Text, join-alias: Content - Card Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Card Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields:
       - - field
-        - {base-type: type/Text, join-alias: Content - Card Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Card Qualified}
         - [Internal Metabase Database, public, v_content, name]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}

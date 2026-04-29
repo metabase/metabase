@@ -89,6 +89,13 @@ databaseChangeLog:
       id: v61.gresdvx
       author: nvoxland
       comment: Create the ai_usage_log
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v60.gresdvx
+              author: nvoxland
+              changeLogFile: migrations/060_update_migrations.yaml
       changes:
         - createTable:
             tableName: ai_usage_log
@@ -158,11 +165,19 @@ databaseChangeLog:
                   name: request_id
                   type: varchar(36)
                   remarks: 'UUID for correlating with Snowplow events'
+      rollback: ""
 
   - changeSet:
       id: v61.8g8esw
       author: nvoxland
       comment: Index on ai_usage_log.user_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v60.8g8esw
+              author: nvoxland
+              changeLogFile: migrations/060_update_migrations.yaml
       changes:
         - createIndex:
             indexName: idx_ai_usage_log_user_id
@@ -170,3 +185,4 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
+      rollback: ""

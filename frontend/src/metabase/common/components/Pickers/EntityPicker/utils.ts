@@ -1,7 +1,7 @@
 import _ from "underscore";
 
+import { type IconData, getIcon } from "metabase/common/utils/icon";
 import type { ColorName } from "metabase/ui/colors/types";
-import { type IconData, getIcon } from "metabase/utils/icon";
 import type {
   CollectionItemModel,
   CollectionNamespace,

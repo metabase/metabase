@@ -3,7 +3,9 @@ import { useMemo } from "react";
 import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
 
 import type {
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SourceBreakoutColorMap,
 } from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
@@ -11,17 +13,19 @@ import { buildLegendGroups } from "../../utils/legend";
 import S from "./BreakoutLegend.module.css";
 
 type BreakoutLegendProps = {
-  definitions: MetricsViewerDefinitionEntry[];
+  formulaEntities: MetricsViewerFormulaEntity[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   activeBreakoutColors: SourceBreakoutColorMap;
 };
 
 export function BreakoutLegend({
+  formulaEntities,
   definitions,
   activeBreakoutColors,
 }: BreakoutLegendProps) {
   const groups = useMemo(
-    () => buildLegendGroups(definitions, activeBreakoutColors),
-    [definitions, activeBreakoutColors],
+    () => buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    [formulaEntities, definitions, activeBreakoutColors],
   );
 
   if (groups.length === 0) {
@@ -41,7 +45,7 @@ export function BreakoutLegend({
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
           {groups.map((group) => (
-            <Stack key={group.header} gap="sm">
+            <Stack key={group.key} gap="sm">
               <div>
                 <Title fw="bold" size="md" lh={1.3}>
                   {group.header}

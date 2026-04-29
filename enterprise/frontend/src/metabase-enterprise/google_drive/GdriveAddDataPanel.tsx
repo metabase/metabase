@@ -11,6 +11,7 @@ import {
   ContactAdminAlert,
   INNER_WIDTH,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -24,7 +25,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { getSubpathSafeUrl } from "metabase/utils/urls";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import {

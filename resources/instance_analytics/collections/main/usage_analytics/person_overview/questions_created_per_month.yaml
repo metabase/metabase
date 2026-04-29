@@ -17,7 +17,7 @@ dataset_query:
       - {}
     breakout:
     - - field
-      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: month, effective-type: type/DateTimeWithLocalTZ}
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: month}
       - [Internal Metabase Database, public, v_audit_log, timestamp]
     filters:
     - - =
@@ -35,7 +35,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_audit_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Question 1, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Question 1}
           - [Internal Metabase Database, public, v_users, user_id]
       fields: all
       stages:
