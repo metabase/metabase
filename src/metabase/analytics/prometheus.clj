@@ -714,6 +714,7 @@
                                (concat jvm-cols jetty-cols [c3p0-col] product-cols quartz-cols))
         _               (log/info "[prom-init] 8/10 all collectors registered")]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
+      (log/infof "[prom-init] 8.5/10 initial value for %s labels=%s" metric (pr-str labels))
       (prometheus/inc registry metric (qualified-vals labels) value))
     (log/info "[prom-init] 9/10 initial labelled values populated")
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
