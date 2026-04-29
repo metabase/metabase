@@ -695,38 +695,27 @@
   will throw."
   [registry-name]
   (log/info "Starting prometheus metrics collector")
-  (let [registry        (prometheus/collector-registry registry-name)
-        _               (log/info "[prom-init] 1/10 collector-registry created")
-        ring-collectors (collector.ring/initialize registry)
-        _               (log/info "[prom-init] 2/10 ring collectors initialized")
-        jvm-cols        (jvm-collectors)
-        _               (log/info "[prom-init] 3/10 jvm collectors built")
-        jetty-cols      (jetty-collectors)
-        _               (log/info "[prom-init] 4/10 jetty collectors built")
-        c3p0-col        @c3p0-collector
-        _               (log/info "[prom-init] 5/10 c3p0 collector dereffed")
-        product-cols    (product-collectors)
-        _               (log/info "[prom-init] 6/10 product collectors built")
-        quartz-cols     (quartz-collectors)
-        _               (log/info "[prom-init] 7/10 quartz collectors built")
-        registry        (apply prometheus/register
-                               ring-collectors
-                               (concat jvm-cols jetty-cols [c3p0-col] product-cols quartz-cols))
-        _               (log/info "[prom-init] 8/10 all collectors registered")]
+  (let [registry (prometheus/collector-registry registry-name)
+        registry (apply prometheus/register
+                        (collector.ring/initialize registry)
+                        (concat (jvm-collectors)
+                                (jetty-collectors)
+                                [@c3p0-collector]
+                                (product-collectors)
+                                (quartz-collectors)))]
+    (log/info "[prom-init] collectors registered, populating initial labelled values")
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
-      (log/infof "[prom-init] 8.5/10 initial value for %s labels=%s" metric (pr-str labels))
       (prometheus/inc registry metric (qualified-vals labels) value))
-    (log/info "[prom-init] 9/10 initial labelled values populated")
+    (log/info "[prom-init] initial labelled values populated")
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
              #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_hiccups (/ % 1e6)))))
-    (log/info "[prom-init] 10a/10 hiccup-meter started")
     (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
     (reset! jvm-alloc-rate-thread
             (alloc-rate-meter/start-alloc-rate-meter
              #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_allocation_rate %))))
-    (log/info "[prom-init] 10b/10 alloc-rate-meter started — setup-metrics! complete")
+    (log/info "[prom-init] setup-metrics! complete")
     registry))
 
 (defn- start-web-server!
