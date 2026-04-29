@@ -200,13 +200,23 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   }
 
   // Plugin list loaded but no matching plugin found — the custom viz was
-  // removed or is otherwise unavailable.  Stop loading so the visualization
-  // registry falls back to the default (Table).
+  // disabled or removed. Drop the cached registration so questions using this
+  // display fall back to the default visualization (Table) on subsequent
+  // renders, even within the same SPA session.
   if (
     needsCustomViz &&
     plugins &&
     !plugins.find((p) => `custom:${p.identifier}` === display)
   ) {
+    if (visualizations.has(display)) {
+      visualizations.delete(display);
+      for (const [id, entry] of loadedPlugins) {
+        if (entry.identifier === display) {
+          loadedPlugins.delete(id);
+          failedPluginHashes.delete(id);
+        }
+      }
+    }
     return { loading: false };
   }
 

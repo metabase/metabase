@@ -1,7 +1,9 @@
 import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
-import type {
-  DashboardDetails,
-  StructuredQuestionDetails,
+import {
+  type DashboardDetails,
+  type StructuredQuestionDetails,
+  adminAppLinkText,
+  mainAppLinkText,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -176,7 +178,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: "Add visualization" }).click();
       cy.wait("@pluginCreate");
 
-      // Should redirect to list and show the plugin
+      cy.log("Should redirect to the list and show the plugin");
       H.main().findByText("demo-viz").should("be.visible");
       H.expectUnstructuredSnowplowEvent({
         event: "custom_viz_plugin_created",
@@ -191,7 +193,9 @@ describe("admin > custom visualizations", () => {
       H.getCustomVizPluginIcon("demo-viz").should("be.visible");
       H.main().findByText("demo-viz").should("be.visible");
 
-      // Bundle hash chip — first 8 chars of the fixture's deterministic SHA-256.
+      cy.log(
+        "Bundle hash chip is the first 8 chars of the fixture's deterministic SHA-256",
+      );
       H.main()
         .findByText(`Bundle: ${H.CUSTOM_VIZ_FIXTURE_BUNDLE_HASH.slice(0, 8)}`)
         .should("be.visible");
@@ -296,7 +300,7 @@ describe("admin > custom visualizations", () => {
             .its("response.statusCode")
             .should("eq", 200);
 
-          // Should redirect back to the list page.
+          cy.log("Should redirect back to the list page");
           cy.location("pathname").should(
             "eq",
             "/admin/settings/custom-visualizations",
@@ -320,8 +324,9 @@ describe("admin > custom visualizations", () => {
             "true",
           );
 
-          // The 2nd fixture has manifest.name = "demo-viz-2" — the BE rejects
-          // the replace because it doesn't match the existing identifier.
+          cy.log(
+            'The 2nd fixture has manifest.name = "demo-viz-2" — BE rejects because it does not match the existing identifier',
+          );
           H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
 
           cy.intercept(
@@ -374,7 +379,18 @@ describe("admin > custom visualizations", () => {
             .findByText("Custom viz rendered successfully")
             .should("be.visible");
 
-          H.visitCustomVizSettings();
+          H.getProfileLink().click();
+          H.popover().findByText(adminAppLinkText).click();
+
+          cy.findByTestId("admin-layout-sidebar")
+            .findByText("Custom visualizations")
+            .click();
+
+          cy.findByTestId("admin-layout-sidebar")
+            .findByText("Manage visualizations")
+            .should("be.visible")
+            .click();
+
           // Actions menu is only visible on row hover
           H.main().findByText("demo-viz").realHover();
           cy.findByRole("button", { name: "Plugin actions" }).click();
@@ -389,14 +405,25 @@ describe("admin > custom visualizations", () => {
           cy.findByRole("button", { name: "Plugin actions" }).click();
           H.popover().findByText("Enable").should("be.visible");
 
+          H.getProfileLink().click();
+          H.popover().findByText(mainAppLinkText).click();
+
+          cy.get("main").within(() => {
+            cy.contains("Custom Viz Disable Test").click();
+          });
           // Reload the question — plugin is disabled, should fall back
-          H.visitQuestion("@disableCardId");
+
+          cy.log("make sure viz is table - fallback");
           cy.findByTestId("table-root").should("be.visible");
 
           // Custom viz section should not appear in chart type selector
           cy.findByTestId("viz-type-button").click();
           cy.findByText("Custom visualizations").should("not.exist");
           H.expectNoBadSnowplowEvents();
+
+          cy.log("make sure fallback is used after reload");
+          cy.reload();
+          cy.findByText("Custom visualizations").should("not.exist");
         });
       });
     });
