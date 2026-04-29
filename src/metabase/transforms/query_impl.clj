@@ -31,16 +31,12 @@
 
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source owner_user_id creator_id] :as transform}
+  ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method start-promise user-id]}]
    (try
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
-           ;; Workspace target rewrite (resolve-transform-target) ran in
-           ;; `metabase.transforms.execute/execute!` before dispatch. The transform's
-           ;; `:target` already reflects the workspace schema when applicable.
-           target      (:target transform)
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
