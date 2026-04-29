@@ -7,5 +7,5 @@ import type {
 export type DatabaseRow = {
   id: DatabaseId;
   workspaceDatabase: WorkspaceDatabase;
-  database?: Database;
+  database: Database;
 };

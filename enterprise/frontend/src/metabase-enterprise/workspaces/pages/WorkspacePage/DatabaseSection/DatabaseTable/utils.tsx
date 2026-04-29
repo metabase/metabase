@@ -12,11 +12,19 @@ export function getRows(
   const databasesById = new Map(
     databases.map((database) => [database.id, database]),
   );
-  return workspaceDatabases.map((workspaceDatabase) => ({
-    id: workspaceDatabase.database_id,
-    workspaceDatabase,
-    database: databasesById.get(workspaceDatabase.database_id),
-  }));
+  return workspaceDatabases.flatMap((workspaceDatabase) => {
+    const database = databasesById.get(workspaceDatabase.database_id);
+    if (database == null) {
+      return [];
+    }
+    return [
+      {
+        id: workspaceDatabase.database_id,
+        workspaceDatabase,
+        database,
+      },
+    ];
+  });
 }
 
 export function getDatabaseColumn(): TreeTableColumnDef<DatabaseRow> {
@@ -25,8 +33,7 @@ export function getDatabaseColumn(): TreeTableColumnDef<DatabaseRow> {
     header: t`Database`,
     width: "auto",
     minWidth: 200,
-    accessorFn: (row) =>
-      row.database?.name ?? `#${row.workspaceDatabase.database_id}`,
+    accessorFn: (row) => row.database.name,
     cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
 }

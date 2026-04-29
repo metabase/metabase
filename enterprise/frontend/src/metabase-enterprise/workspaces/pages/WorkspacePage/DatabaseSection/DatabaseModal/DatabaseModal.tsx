@@ -185,9 +185,6 @@ function UpdateDatabaseForm({
     (db) => db.database_id === databaseId,
   );
   const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
-  const [deleteWorkspaceDatabase] = useDeleteWorkspaceDatabaseMutation();
-  const { modalContent: confirmationContent, show: showConfirmation } =
-    useConfirmation();
   const availableDatabases = useMemo(
     () => getAvailableDatabases(databases, workspace.databases, databaseId),
     [databases, workspace.databases, databaseId],
@@ -214,8 +211,65 @@ function UpdateDatabaseForm({
     onClose();
   };
 
-  const handleRemove = () => {
-    showConfirmation({
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      {({ values, dirty }) => (
+        <Form>
+          <Stack gap="lg">
+            <Text c="text-secondary">
+              {t`Recreate the writable schema and the database user with different permissions.`}
+            </Text>
+            <DatabaseSelect availableDatabases={availableDatabases} />
+            <DatabaseSchemaSelect
+              databaseId={
+                values.databaseId ? getDatabaseId(values.databaseId) : null
+              }
+              inputSchemas={values.inputSchemas}
+              databases={databases}
+            />
+            <FormErrorMessage />
+            <Group justify="space-between">
+              <DeleteDatabaseButton
+                workspace={workspace}
+                database={database}
+                onDelete={onClose}
+              />
+              <Group>
+                <Button onClick={onClose}>{t`Cancel`}</Button>
+                <FormSubmitButton
+                  label={t`Save`}
+                  variant="filled"
+                  disabled={!dirty}
+                />
+              </Group>
+            </Group>
+          </Stack>
+        </Form>
+      )}
+    </FormProvider>
+  );
+}
+
+type DeleteDatabaseButtonProps = {
+  workspace: Workspace;
+  database: Database;
+  onDelete: () => void;
+};
+
+function DeleteDatabaseButton({
+  workspace,
+  database,
+  onDelete,
+}: DeleteDatabaseButtonProps) {
+  const [deleteWorkspaceDatabase] = useDeleteWorkspaceDatabaseMutation();
+  const { modalContent, show } = useConfirmation();
+
+  const handleClick = () => {
+    show({
       title: t`Remove ${database.name} from this workspace?`,
       message: t`The writable schema and the database user in this database will be dropped. This cannot be undone.`,
       confirmButtonText: t`Remove`,
@@ -223,53 +277,19 @@ function UpdateDatabaseForm({
       onConfirm: async () => {
         await deleteWorkspaceDatabase({
           workspace_id: workspace.id,
-          database_id: databaseId,
+          database_id: database.id,
         }).unwrap();
-        onClose();
+        onDelete();
       },
     });
   };
 
   return (
     <>
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={VALIDATION_SCHEMA}
-        onSubmit={handleSubmit}
-      >
-        {({ values, dirty }) => (
-          <Form>
-            <Stack gap="lg">
-              <Text c="text-secondary">
-                {t`Saving will drop the existing writable schema and the database user, then create new ones.`}
-              </Text>
-              <DatabaseSelect availableDatabases={availableDatabases} />
-              <DatabaseSchemaSelect
-                databaseId={
-                  values.databaseId ? getDatabaseId(values.databaseId) : null
-                }
-                inputSchemas={values.inputSchemas}
-                databases={databases}
-              />
-              <FormErrorMessage />
-              <Group justify="space-between">
-                <Button variant="subtle" color="error" onClick={handleRemove}>
-                  {t`Remove`}
-                </Button>
-                <Group>
-                  <Button onClick={onClose}>{t`Cancel`}</Button>
-                  <FormSubmitButton
-                    label={t`Save`}
-                    variant="filled"
-                    disabled={!dirty}
-                  />
-                </Group>
-              </Group>
-            </Stack>
-          </Form>
-        )}
-      </FormProvider>
-      {confirmationContent}
+      <Button variant="subtle" color="error" px={0} onClick={handleClick}>
+        {t`Remove`}
+      </Button>
+      {modalContent}
     </>
   );
 }
