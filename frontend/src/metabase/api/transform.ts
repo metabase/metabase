@@ -12,6 +12,7 @@ import type {
   RunTransformResponse,
   Transform,
   TransformId,
+  TransformsSettings,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
@@ -206,6 +207,12 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
+    getTransformsSettings: builder.query<TransformsSettings, void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/transform/settings`,
+      }),
+    }),
     getInspectorDiscovery: builder.query<
       InspectorDiscoveryResponse,
       TransformId
@@ -239,6 +246,7 @@ export const {
   useListTransformRunsQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
+  useGetTransformsSettingsQuery,
   useGetInspectorDiscoveryQuery,
   useGetInspectorLensQuery,
   useLazyGetInspectorLensQuery,

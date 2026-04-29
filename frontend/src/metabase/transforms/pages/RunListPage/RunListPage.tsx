@@ -6,6 +6,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
+  useGetTransformsSettingsQuery,
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
@@ -15,6 +16,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -150,6 +152,8 @@ export function RunListPage({ location }: RunListPageProps) {
     setSelectedRunId(runId);
   }, []);
 
+  const { data: transformsSettings } = useGetTransformsSettingsQuery();
+
   return (
     <Flex
       className={cx({ [S.resizing]: isResizing })}
@@ -170,6 +174,7 @@ export function RunListPage({ location }: RunListPageProps) {
           </Center>
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="lg">
+            {transformsSettings?.is_locked && <LockedTransformsBanner />}
             <RunFilterBar
               filterOptions={getFilterOptions(params)}
               transforms={transforms}

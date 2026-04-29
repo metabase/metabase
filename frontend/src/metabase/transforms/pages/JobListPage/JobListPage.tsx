@@ -2,7 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListTransformJobsQuery } from "metabase/api";
+import {
+  useGetTransformsSettingsQuery,
+  useListTransformJobsQuery,
+} from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -11,6 +14,8 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/redux";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -40,6 +45,7 @@ export const JobListPage = () => {
     [dispatch],
   );
 
+  const { data: transformsSettings } = useGetTransformsSettingsQuery();
   const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
     () => [
       {
@@ -64,8 +70,21 @@ export const JobListPage = () => {
             </Ellipsified>
           ) : null,
       },
+      ...(transformsSettings?.is_locked
+        ? ([
+            {
+              id: "status",
+              maxWidth: 200,
+              cell: () => (
+                <TransformBadge bg="background-secondary">
+                  {t`Disabled`}
+                </TransformBadge>
+              ),
+            },
+          ] satisfies TreeTableColumnDef<TransformJob>[])
+        : []),
     ],
-    [],
+    [transformsSettings?.is_locked],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -96,6 +115,7 @@ export const JobListPage = () => {
         showMetabotButton
       />
       <Stack style={{ overflow: "hidden" }}>
+        {transformsSettings?.is_locked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}

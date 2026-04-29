@@ -7,6 +7,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useGetTransformsSettingsQuery } from "metabase/api";
 import { Button, type ButtonProps, Icon, Loader, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
@@ -14,6 +15,8 @@ import type {
   TransformJobId,
   TransformRun,
 } from "metabase-types/api";
+
+import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";
 
 const RECENT_TIMEOUT = 5000;
 
@@ -39,11 +42,12 @@ export const RunButton = forwardRef(function RunButton(
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
+  const { data: transformsSettings } = useGetTransformsSettingsQuery();
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
     isRecent,
-    isDisabled: isExternallyDisabled,
+    isDisabled: isExternallyDisabled || !!transformsSettings?.is_locked,
   });
 
   useLayoutEffect(() => {
@@ -56,7 +60,7 @@ export const RunButton = forwardRef(function RunButton(
     setIsRecent(false);
   }, [id]);
 
-  return (
+  const runButton = (
     <Button.Group>
       <Button
         ref={ref}
@@ -81,6 +85,11 @@ export const RunButton = forwardRef(function RunButton(
       )}
     </Button.Group>
   );
+
+  if (transformsSettings?.is_locked) {
+    return <LockedTransformsHoverCard>{runButton}</LockedTransformsHoverCard>;
+  }
+  return runButton;
 });
 
 type RunButtonOpts = {

@@ -13,6 +13,7 @@ import { t } from "ttag";
 import {
   skipToken,
   useGetCollectionQuery,
+  useGetTransformsSettingsQuery,
   useListCollectionsTreeQuery,
   useListTransformsQuery,
 } from "metabase/api";
@@ -28,6 +29,7 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
@@ -113,6 +115,7 @@ export const TransformListPage = ({
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const { data: transformsSettings } = useGetTransformsSettingsQuery();
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
@@ -341,6 +344,7 @@ export const TransformListPage = ({
         py={0}
       />
       <Stack className={CS.overflowHidden}>
+        {transformsSettings?.is_locked && <LockedTransformsBanner />}
         <Flex gap="md">
           <TextInput
             placeholder={t`Search...`}

@@ -176,6 +176,15 @@
   (-> (transforms.core/create-transform! body)
       transforms.u/add-source-readable))
 
+(api.macros/defendpoint :get "/settings" :- [:map {:closed true}
+                                             [:enabled :boolean]
+                                             [:is_locked [:maybe :boolean]]]
+  "Get transform feature settings."
+  []
+  ;; TODO (bpander 2026-05-01) UXW-3928 use the same mechanism to determine is_locked as UXW-3928
+  {:enabled true
+   :is_locked nil})
+
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
   [{:keys [id]} :- [:map
