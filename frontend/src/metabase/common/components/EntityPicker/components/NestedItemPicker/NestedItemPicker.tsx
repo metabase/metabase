@@ -81,8 +81,8 @@ export function NestedItemPicker<
           const { query, selectedItem, entity } = level;
           const isCurrentLevel = Boolean(
             selectedItem &&
-              lastSelectedItem &&
-              isSelectedItem(selectedItem, lastSelectedItem),
+            lastSelectedItem &&
+            isSelectedItem(selectedItem, lastSelectedItem),
           );
 
           return (

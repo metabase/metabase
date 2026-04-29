@@ -699,6 +699,29 @@
                     (is (= "An error occurred."
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
 
+(deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
+  (testing "GET prefill should validate that the dashcard belongs to the dashboard"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+        (mt/with-actions-test-data-tables #{"venues" "categories"}
+          (mt/with-actions-test-data-and-actions-enabled
+            (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+                              {:keys [action-id]} {:type :implicit
+                                                   :kind "row/update"}]
+              (let [public-uuid (str (random-uuid))]
+                (mt/with-temp [:model/Dashboard {public-dashboard-id :id} {:public_uuid public-uuid}
+                               :model/DashboardCard _public-dashcard {:dashboard_id public-dashboard-id}
+                               :model/Dashboard {other-dashboard-id :id} {}
+                               :model/DashboardCard other-dashcard {:dashboard_id other-dashboard-id
+                                                                    :action_id    action-id
+                                                                    :card_id      card-id}]
+                  (testing "dashcard from a different dashboard should 404"
+                    (is (= "Not found."
+                           (client/client :get 404
+                                          (format "public/dashboard/%s/dashcard/%s/execute"
+                                                  public-uuid (:id other-dashcard))
+                                          :parameters (json/encode {:id 1}))))))))))))))
+
 (deftest get-public-dashboard-actions-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-actions-test-data-and-actions-enabled

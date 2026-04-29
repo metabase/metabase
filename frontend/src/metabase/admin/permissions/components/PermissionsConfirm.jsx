@@ -75,7 +75,7 @@ const PermissionsConfirm = ({ diff }) => (
                 jt`${(
                   <GroupName key="group-name" group={group} />
                 )} will only be able to use the query
-                  builder for ${(<DatabaseName key="database-name" database={database} />)}.`}
+                  builder for ${<DatabaseName key="database-name" database={database} />}.`}
               {database.native ===
                 DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
                 jt`${(

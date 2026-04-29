@@ -33,13 +33,15 @@
         nil))))
 
 (defn- version-in-range?
-  "True if `version` is >= min and < fixed."
-  [^Semver version {:keys [min fixed]}]
-  (let [^Semver min-v   (parse-version min)
-        ^Semver fixed-v (parse-version fixed)]
-    (and min-v fixed-v
-         (.isGreaterThanOrEqualTo version min-v)
-         (.isLowerThan version fixed-v))))
+  "True if `version` is >= min and < fixed. A nil `version` (e.g. vLOCAL_DEV or
+   vUNKNOWN, which don't parse) is treated as not in any range."
+  [version {:keys [min fixed]}]
+  (when version
+    (let [^Semver min-v   (parse-version min)
+          ^Semver fixed-v (parse-version fixed)]
+      (and min-v fixed-v
+           (.isGreaterThanOrEqualTo ^Semver version min-v)
+           (.isLowerThan ^Semver version fixed-v)))))
 
 (defn- affected-by-version?
   "True if `version` falls in any of the affected version ranges."
@@ -98,12 +100,14 @@
 ;;; ------------------------------------------- Advisory Evaluation ------------------------------------------------
 
 (mu/defn evaluate-advisory :- ::schema/match-status
-  "Pure evaluation: given an advisory, instance version, and query result, return the resolved match status.
-   Does not perform I/O — call [[execute-matching-query!]] separately to obtain `query-result`.
-   `query-result` is true (matched), false (no match), or :error."
-  [advisory         :- [:map [:affected_versions ::schema/affected-versions]]
-   instance-version :- [:maybe [:fn #(instance? Semver %)]]
-   query-result     :- QueryResult]
+  "Resolve a match status from a version-range check and a matching-query result.
+
+     query-result = :error → :error
+     query-result = false  → :not_affected
+     in-range?    = true   → :active
+     otherwise             → :resolved"
+  [in-range?    :- boolean?
+   query-result :- QueryResult]
   (cond
     (= query-result :error)
     :error
@@ -111,24 +115,28 @@
     (not query-result)
     :not_affected
 
-    (or (nil? instance-version)
-        (affected-by-version? instance-version (:affected_versions advisory)))
+    in-range?
     :active
 
     :else
     :resolved))
 
 (defn evaluate-advisory!
-  "Evaluate a single advisory: run matching query, resolve status, update DB.
-   2-arity takes a pre-parsed instance version to avoid re-parsing in batch."
+  "Evaluate a single advisory: run the matching query, resolve the status, and
+   update the DB. 2-arity takes a pre-parsed instance version to avoid re-parsing
+   in batch.
+
+   Short-circuits entirely (no query, no DB update) when the version is outside
+   every affected range and the advisory is already in a terminal state."
   ([advisory]
    (evaluate-advisory! advisory (parse-version (:tag config/mb-version-info))))
   ([advisory instance-version]
-   (let [query-result (execute-matching-query! (:matching_query advisory))
-         match-status (evaluate-advisory advisory instance-version query-result)]
-     (t2/update! :model/SecurityAdvisory (:id advisory)
-                 {:match_status      match-status
-                  :last_evaluated_at (mi/now)}))))
+   (let [in-range? (affected-by-version? instance-version (:affected_versions advisory))]
+     (when-not (and (not in-range?) (#{:resolved :not_affected} (:match_status advisory)))
+       (let [match-status (evaluate-advisory in-range? (execute-matching-query! (:matching_query advisory)))]
+         (t2/update! :model/SecurityAdvisory (:id advisory)
+                     {:match_status      match-status
+                      :last_evaluated_at (mi/now)}))))))
 
 (defn evaluate-all-advisories!
   "Re-evaluate all non-acknowledged advisories, plus any acknowledged advisories

@@ -8,8 +8,7 @@ import { Flex, type FlexProps } from "metabase/ui";
 import S from "./ViewSection.module.css";
 
 export interface ViewSectionProps
-  extends HTMLAttributes<HTMLDivElement>,
-    FlexProps {
+  extends HTMLAttributes<HTMLDivElement>, FlexProps {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;

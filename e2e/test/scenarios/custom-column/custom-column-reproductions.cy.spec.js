@@ -96,7 +96,7 @@ describe("issue 13289", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is Sep 1–30, 2022");
+    cy.findByText("Created At is Sep 1–30, 2025");
   });
 });
 
@@ -378,7 +378,7 @@ describe("issue 18814", () => {
 
     H.visualize();
 
-    cy.findByTestId("query-visualization-root").should("contain", "2022");
+    cy.findByTestId("query-visualization-root").should("contain", "2025");
   });
 });
 

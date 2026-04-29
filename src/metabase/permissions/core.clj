@@ -50,9 +50,6 @@
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
-  set-external-group-permissions!
-  set-new-database-permissions!
-  set-new-table-permissions!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user
@@ -62,7 +59,12 @@
   user-has-permission-for-schema?
   user-has-permission-for-table?
   with-additional-table-permission
-  with-relevant-permissions-for-user]
+  with-relevant-permissions-for-user
+  set-default-group-permissions!
+  set-default-database-permissions!
+  set-default-table-permissions!
+  with-global-permissions-lock
+  with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping

@@ -12,6 +12,7 @@
   com.nimbusds/nimbus-jose-jwt      {:mvn/version "10.5"}
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
   org.apache.commons/commons-lang3  {:mvn/version "3.19.0"}
-  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.81"}
-  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.81"}
-  org.bouncycastle/bcutil-jdk18on   {:mvn/version "1.82"}}}
+  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
+  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.84"}
+  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.84"}
+  org.bouncycastle/bcutil-jdk18on   {:mvn/version "1.84"}}}

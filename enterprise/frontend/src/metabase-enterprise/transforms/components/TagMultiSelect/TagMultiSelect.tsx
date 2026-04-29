@@ -163,7 +163,7 @@ function NewTagSelectItem({
   return (
     <SelectItem selected={selected} mih="2.25rem" onClick={handleClick}>
       <Text c="inherit" lh="inherit">
-        {jt`Create ${(<strong key="value">{trimmedSearchValue}</strong>)}`}
+        {jt`Create ${<strong key="value">{trimmedSearchValue}</strong>}`}
       </Text>
     </SelectItem>
   );
