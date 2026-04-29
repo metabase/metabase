@@ -182,12 +182,22 @@ export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
-export function normalizedCollection(
-  collection: Collection | null | undefined,
-) {
+export function normalizedCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(collection: CollectionType | null | undefined) {
   return !collection || isRootCollection(collection)
     ? ROOT_COLLECTION
     : collection;
+}
+
+export type ItemWithCollection<CollectionType = Collection> = {
+  collection?: CollectionType;
+};
+
+export function getCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(item: ItemWithCollection<CollectionType> | null | undefined) {
+  return normalizedCollection(item?.collection);
 }
 
 export function isItemPinned(item: CollectionItem) {

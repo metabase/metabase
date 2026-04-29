@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { normalizedCollection } from "metabase/collections/utils";
+import { getCollection } from "metabase/collections/utils";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -12,9 +12,6 @@ import {
   dashboard as dashboardUrl,
 } from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
-
-const getCollection = (result: WrappedResult): Partial<Collection> | null =>
-  normalizedCollection(result.collection as Collection | null);
 
 export type InfoTextData = {
   link?: string | null;
@@ -66,11 +63,11 @@ const getDatabaseInfoText = (): InfoTextData => {
   };
 };
 const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
-  const collection: Partial<Collection> = getCollection(result) ?? {};
+  const collection = getCollection(result) ?? {};
 
   if (
     PLUGIN_COLLECTIONS.isRegularCollection(collection) ||
-    !collection.authority_level
+    !("authority_level" in collection && collection.authority_level)
   ) {
     return {
       label: t`Collection`,
@@ -84,21 +81,19 @@ const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
 
 const getCollectionResult = (result: WrappedResult): InfoTextData => {
   const collection = getCollection(result);
-  if (!collection) {
-    return {};
-  }
   const colUrl = collectionUrl(collection as Collection);
   const collectionName = collection.name;
   return collectionName
     ? {
-        icon: collection.authority_level ? (
-          <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
-            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-              size={12}
-              collection={collection}
-            />
-          </Box>
-        ) : null,
+        icon:
+          "authority_level" in collection && collection.authority_level ? (
+            <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
+              <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+                size={12}
+                collection={collection}
+              />
+            </Box>
+          ) : null,
         link: colUrl,
         label: collectionName,
       }
