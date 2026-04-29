@@ -12,6 +12,7 @@ import {
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { modelIconMap } from "metabase/common/utils/icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
@@ -20,7 +21,6 @@ import {
 } from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
-import { modelIconMap } from "metabase/utils/icon";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 

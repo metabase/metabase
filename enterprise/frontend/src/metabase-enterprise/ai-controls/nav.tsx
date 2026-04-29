@@ -25,12 +25,12 @@ function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`AI feature access`}
+          label={t`Access`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
           disabled={!isConfigured}
         />
         <AdminNavItem
-          label={t`AI usage limits`}
+          label={t`Limits`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-usage-limits`}
         />
       </AdminNavItem>
@@ -47,7 +47,7 @@ function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`Metabot chat`}
+          label={t`AI chat`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
           disabled={!isConfigured}
         />

@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
 
+import { getIcon } from "metabase/common/utils/icon";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
-import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { type UrlableModel, modelToUrl } from "metabase/utils/urls/modelToUrl";
 import type {
