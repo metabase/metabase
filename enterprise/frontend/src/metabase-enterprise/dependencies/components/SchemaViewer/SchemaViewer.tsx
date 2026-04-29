@@ -23,22 +23,22 @@ import {
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
-import { AutoLayoutButton } from "./AutoLayoutButton";
-import { SchemaViewerEdge } from "./Edge";
-import { FitToNewNodes } from "./FitToNewNodes";
-import { SchemaViewerNodeLayout } from "./NodeLayout";
-import { SchemaViewerNodeSearch } from "./NodeSearch";
-import { SchemaPickerInput } from "./SchemaPickerInput";
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
-import { SelectedNodeInfoPanel } from "./SelectedNodeInfoPanel";
-import { SchemaViewerTableNode } from "./TableNode";
+import { AutoLayoutButton } from "./components/AutoLayoutButton";
+import { SchemaViewerEdge } from "./components/Edge";
+import { FitToNewNodes } from "./components/FitToNewNodes";
+import { SchemaViewerNodeLayout } from "./components/NodeLayout";
+import { SchemaViewerNodeSearch } from "./components/NodeSearch";
+import { SchemaPickerInput } from "./components/SchemaPickerInput";
+import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
+import { SchemaViewerTableNode } from "./components/TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import { getErdQueryParams } from "./getErdQueryParams";
+import { useEdgeZoom } from "./hooks/useEdgeZoom";
+import { useExtraTableIds } from "./hooks/useExtraTableIds";
+import { useGraphSync } from "./hooks/useGraphSync";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
-import { useEdgeZoom } from "./useEdgeZoom";
-import { useExtraTableIds } from "./useExtraTableIds";
-import { useGraphSync } from "./useGraphSync";
 import { focusNodeLayout, toFlowGraph } from "./utils";
 
 const NODE_TYPES = {

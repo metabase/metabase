@@ -1,1 +1,0 @@
-export { SchemaPickerInput } from "./SchemaPickerInput";
