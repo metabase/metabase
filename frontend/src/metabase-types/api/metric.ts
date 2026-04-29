@@ -32,16 +32,25 @@ export type MetricBaseData = {
   collection: Collection | null;
 };
 
+export type ExplorationMetric = Omit<Metric, "dimensions"> & {
+  dimension_ids: DimensionId[];
+};
+
+// common shape across Metric, MetricBaseData, and ExplorationMetric
+export type MetricApiResponse = {
+  id: MetricId;
+  name: string;
+  description: string | null;
+  collection_id: CollectionId | null;
+  collection?: Collection | null;
+};
+
 export type GetMetricListResponse = {
   data: MetricBaseData[];
 } & PaginationResponse;
 
 export type GetExplorationDataRequest = {
   q?: string;
-};
-
-export type ExplorationMetric = Omit<Metric, "dimensions"> & {
-  dimension_ids: DimensionId[];
 };
 
 export type GetExplorationDataResponse = {
