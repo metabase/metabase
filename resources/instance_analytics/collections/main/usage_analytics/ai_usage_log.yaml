@@ -8,19 +8,13 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_position: 23
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_ai_usage_log
+table_id: [Internal Metabase Database, public, v_ai_usage_log]
 parameters: []
 parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   stages:
-  - source-table:
-    - Internal Metabase Database
-    - public
-    - v_ai_usage_log
+  - source-table: [Internal Metabase Database, public, v_ai_usage_log]
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
@@ -284,8 +278,5 @@ visualization_settings:
   column_settings: null
 card_schema: 23
 serdes/meta:
-- id: joMVMZY847nXW3WBi-zIn
-  label: ai_usage_log
-  model: Card
-metabase_version: v1.57.1-SNAPSHOT (9afffd8)
+- {id: joMVMZY847nXW3WBi-zIn, label: ai_usage_log, model: Card}
 type: model

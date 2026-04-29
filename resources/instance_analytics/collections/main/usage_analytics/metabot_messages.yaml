@@ -8,19 +8,13 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_position: 21
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_metabot_messages
+table_id: [Internal Metabase Database, public, v_metabot_messages]
 parameters: []
 parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   stages:
-  - source-table:
-    - Internal Metabase Database
-    - public
-    - v_metabot_messages
+  - source-table: [Internal Metabase Database, public, v_metabot_messages]
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
@@ -164,8 +158,5 @@ visualization_settings:
   column_settings: null
 card_schema: 23
 serdes/meta:
-- id: H20MNO_ZroDFEmgYzMLcZ
-  label: metabot_messages
-  model: Card
-metabase_version: v1.57.1-SNAPSHOT (9afffd8)
+- {id: H20MNO_ZroDFEmgYzMLcZ, label: metabot_messages, model: Card}
 type: model

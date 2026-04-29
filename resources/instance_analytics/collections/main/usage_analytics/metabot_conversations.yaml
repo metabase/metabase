@@ -8,19 +8,13 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_position: 22
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_metabot_conversations
+table_id: [Internal Metabase Database, public, v_metabot_conversations]
 parameters: []
 parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   stages:
-  - source-table:
-    - Internal Metabase Database
-    - public
-    - v_metabot_conversations
+  - source-table: [Internal Metabase Database, public, v_metabot_conversations]
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
@@ -345,8 +339,5 @@ visualization_settings:
   column_settings: null
 card_schema: 23
 serdes/meta:
-- id: tWs1LULVO8OZmog7zsif2
-  label: metabot_conversations
-  model: Card
-metabase_version: v1.57.1-SNAPSHOT (9afffd8)
+- {id: tWs1LULVO8OZmog7zsif2, label: metabot_conversations, model: Card}
 type: model

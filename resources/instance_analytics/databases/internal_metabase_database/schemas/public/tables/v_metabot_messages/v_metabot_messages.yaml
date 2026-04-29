@@ -7,12 +7,8 @@ active: true
 field_order: database
 initial_sync_status: complete
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_metabot_messages
-  model: Table
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_metabot_messages, model: Table}
 data_authority: unconfigured
 data_layer: internal
-is_writable: true
