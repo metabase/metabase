@@ -11,8 +11,12 @@ You can style your embedded [Metabase components](./components.md) with a **them
 
 ![Embed share button](./images/embed-share-button.png)
 
-Guest embeds on OSS and Starter plans come with two theme presets - light and dark. On Metabase Pro and Enterprise plans, you can also customize individual colors, backgrounds, fonts and more. See [Advanced theming](#advanced-theming).
+On OSS and Starter plans, embeds come with two theme presets: [light and dark](#dark-mode-and-light-mode).
 
+On Pro and Enterprise plans, you can:
+
+- [Save reusable themes](#saved-themes), then pick one in the embed wizard.
+- Customize individual colors, backgrounds, fonts, and more in your embedding code. See [Advanced theming](#advanced-theming).
 
 ## Dark mode and light mode
 
@@ -28,15 +32,84 @@ defineMetabaseConfig({
 });
 ```
 
+## Saved themes
+
+![Embedding themes](./images/themes.png)
+
+{% include plans-blockquote.html feature="Saved embedding themes" is_plural=true %}
+
+You can save a theme to reuse across embeds so you don't have to copy color values into each snippet by hand.
+
+### Manage themes
+
+Go to **Admin settings > Embedding > Themes**.
+
+Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well).
+
+From the Themes tab, you can:
+
+- **Create a theme.** Click **+ New theme**, then set a name, colors, and font.
+- **Edit a theme.** Click a theme card to open the editor. Changes show up in the live preview.
+- **Choose what the preview renders.** Pick the dashboard or question used to preview the theme.
+- **Duplicate a theme.** Handy if you want vary an existing theme.
+
+![Theme editor](./images/theme-editor.png)
+
+### Apply a saved theme to a new embed
+
+
+
+When you create a new embed using the [embed wizard](./modular-embedding.md#3-customize-your-embed), the last customization step lets you pick:
+
+- **A saved theme** from your list of themes.
+- **Instance theme** to use Metabase's instance defaults.
+- **Custom** to set colors directly on this embed without saving them as a theme.
+
+![Embed wizard appearance](./images/embed-wizard-appearance.png)
+
+The theme you pick is inlined into the generated `defineMetabaseConfig({ theme: ... })` snippet. Editing the saved theme later won't update embeds that have already been generated. To pick up theme changes in an existing embed, regenerate the snippet from the wizard, or edit the `theme` block in your code by hand.
+
+### Reuse a saved theme in the SDK
+
+If you're using the [SDK](./sdk/introduction.md), pass a theme to `MetabaseProvider` with `defineMetabaseTheme`, which accepts the same theme shape that you configure in the Themes admin UI. You can copy a saved theme's values into your code:
+
+```tsx
+import {
+  MetabaseProvider,
+  defineMetabaseTheme,
+} from "@metabase/embedding-sdk-react";
+
+const theme = defineMetabaseTheme({
+  fontFamily: "Lato",
+  colors: {
+    brand: "#50e397",
+    background: "#11123d",
+    "text-primary": "#f9f9fc",
+  },
+});
+
+export function App() {
+  return (
+    <MetabaseProvider authConfig={authConfig} theme={theme}>
+      {/* your app */}
+    </MetabaseProvider>
+  );
+}
+```
+
+For the full set of available colors and component overrides, see [Theme options](#theme-options).
+
 ## Advanced theming
 
 {% include plans-blockquote.html feature="Advanced theming modular embeds" is_plural=true %}
 
-On Pro/Enterprise plan, you can configure granular appearance options, like background colors, font sizes etc. See the [list of all theming options]().
+On Pro/Enterprise plan, you can configure granular appearance options, like background colors, font sizes etc. See the [list of all theming options](#theme-options).
 
 ### Add an advanced theme to your embed
 
 ![Behavior and appearance](./images/behavior-and-appearance.png)
+
+If you have a [saved theme](#saved-themes), you can pick it directly in the embed wizard. The rest of this section covers further customization on top of (or instead of) a saved theme.
 
 Some appearance options like brand, text, and background color are configurable in the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
