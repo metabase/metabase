@@ -5,6 +5,7 @@
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.settings :as settings]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -82,7 +83,9 @@
     (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
   (try
     (let [fingerprint (task.complexity-score/current-fingerprint)
-          result      (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
+          result      (complexity/complexity-scores
+                       (assoc (synonym-source/complexity-scores-opts)
+                              :metabot-scope (metabot-scope/internal-metabot-scope)))
           stored      (data-complexity-score/record-score! fingerprint result)]
       ;; Advance the last-published fingerprint iff Snowplow actually accepted the event — mirrors
       ;; the scheduled path's gate in `task.complexity-score/run-scoring!`. Without this, a

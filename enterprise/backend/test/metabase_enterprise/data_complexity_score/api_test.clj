@@ -3,9 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.api :as api]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.settings :as data-complexity-score.settings]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
@@ -19,6 +21,18 @@
 (comment api/keep-me)
 
 (def ^:private endpoint "ee/data-complexity-score/complexity")
+
+(defn- random-vec-for-name
+  "Deterministic 8-dim Gaussian vector seeded by the name's hash.
+   Same name always returns the same vector across catalogs, so library ⊆ universe synonym
+   pairs holds; different names produce visibly different vectors, so the synonym axis exercises
+   real cosine work instead of collapsing to zero."
+  ^floats [^String n]
+  (let [rng (java.util.Random. (long (hash n)))]
+    (float-array (repeatedly 8 #(.nextGaussian rng)))))
+
+(def ^:private random-synonym-embedder
+  (embedders/fn-embedder #(mapv random-vec-for-name %)))
 
 (defn- internal-metabot-id
   "Primary key of the internal Metabot row — used by the tests that temporarily tweak its
@@ -40,6 +54,50 @@
   (testing "non-superusers cannot trigger a forced recomputation"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 endpoint :force-recalculation true)))))
+
+(deftest complexity-endpoint-superuser-gets-consistent-totals-test
+  (testing "check invariants not covered by schema"
+    ;; Stub the synonym-source's opts to a deterministic hash-seeded random vector lookup. Returning
+    ;; {} would zero out the synonym axis and trivialize the invariants below; calling the real
+    ;; ai-service would make this test depend on environments where it's unreachable. Same name →
+    ;; same vector across catalogs preserves the library ⊆ universe pair invariant.
+    (mt/with-dynamic-fn-redefs [synonym-source/complexity-scores-opts
+                                (constantly {:embedder random-synonym-embedder})]
+      (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
+            measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
+            component-score  (fn [cat k] (get-in resp [cat :components k :score]))
+            ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
+            ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
+            ;; embedding the provider returns for that name, so adding universe-only entities that
+            ;; collide on normalized name with a library entity could in principle flip which vector
+            ;; wins and drop the pair count below library's. Reviewers (human or AI) sometimes want
+            ;; to carve it out on that basis — don't. In every realistic configuration (prod, dev,
+            ;; the fixture that backs this endpoint's hermetic path in complexity_test.clj) the
+            ;; invariant holds, and asserting it keeps us honest about regressions in the common
+            ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
+            ;; want to see and we'll deal with it then.
+            component-keys   [:entity-count :name-collisions :synonym-pairs
+                              :field-count :repeated-measures]]
+        (testing ":total equals the sum of its component :score values"
+          (doseq [catalog [:library :universe :metabot]
+                  :let [{:keys [total components]} (get resp catalog)
+                        scores (map :score (vals components))]]
+            (is (= total (reduce + scores))
+                (format "%s :total should equal sum of component :score values" catalog))))
+        (testing "universe is a superset of library: every measurement and score ≥ library's"
+          (doseq [k      component-keys
+                  getter [measurement component-score]
+                  :let   [lib (getter :library k)
+                          uni (getter :universe k)]]
+            (is (>= uni lib)
+                (format "universe %s (%s) should be ≥ library's (%s)" k uni lib))))
+        (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
+          (doseq [catalog [:library :universe :metabot]
+                  :let [n-entities (measurement catalog :entity-count)
+                        syn-pairs  (measurement catalog :synonym-pairs)
+                        max-pairs  (/ (* n-entities (dec n-entities)) 2)]]
+            (is (<= syn-pairs max-pairs)
+                (format "%s :synonym-pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities))))))))
 
 (def ^:private sample-score
   {:library  {:total 18
