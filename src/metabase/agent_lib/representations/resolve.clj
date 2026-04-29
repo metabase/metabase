@@ -56,14 +56,20 @@
   "Convert a parsed (string-keyed, portable) representations query into a canonical, numeric-ID,
   `:lib/uuid`-stamped MBQL 5 query attached to `metadata-provider`.
 
+  The optional `content-store` is used for Metabase-content lookups (source cards, metrics,
+  etc.). Agent-facing callers should pass a permission-aware store; the 2-arity form keeps the
+  default app-DB-backed resolver for non-HTTP/test callers.
+
   Throws with informative ex-info on missing / ambiguous FK lookups (via the resolver) or on
   lib.schema normalization failures."
-  [metadata-provider parsed-repr]
-  (let [kw-form  (keywordize-query parsed-repr)
-        resolver (resolve.mp/import-resolver metadata-provider)
-        resolved (resolve/import-mbql resolver kw-form)
-        with-mp  (assoc resolved :lib/metadata metadata-provider)]
-    (lib.normalize/normalize ::lib.schema/query with-mp)))
+  ([metadata-provider parsed-repr]
+   (resolve-query metadata-provider parsed-repr resolve.mp/app-db-content-store))
+  ([metadata-provider parsed-repr content-store]
+   (let [kw-form  (keywordize-query parsed-repr)
+         resolver (resolve.mp/import-resolver metadata-provider content-store)
+         resolved (resolve/import-mbql resolver kw-form)
+         with-mp  (assoc resolved :lib/metadata metadata-provider)]
+     (lib.normalize/normalize ::lib.schema/query with-mp))))
 
 (defn parse-validate-resolve
   "Convenience end-to-end: take a YAML string and a metadata-provider, return a fully-resolved

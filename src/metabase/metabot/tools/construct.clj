@@ -4,6 +4,7 @@
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
@@ -13,6 +14,9 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -107,6 +111,32 @@
   [parsed-query]
   (let [eid (get-in parsed-query ["stages" 0 "source-card"])]
     (when (string? eid) eid)))
+
+(def ^:private permission-aware-content-store
+  "ContentStore for agent query construction.
+
+  The generic serdes resolver can look up saved cards by portable id without checking the
+  current user. Agent-authored representations run inside an authenticated request/tool
+  context, so every card lookup (source-card, metric aggregation, etc.) goes through the
+  normal `api/read-check` path. Unknown ids still return nil so the resolver can produce its
+  existing `:unknown-card` agent error."
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id [_ entity-id]
+      (some-> (serdes/lookup-by-id 'Card entity-id)
+              api/read-check))))
+
+(defn- check-first-stage-source-table-query-permissions!
+  "Ensure the current user can query the table named by `stages[0].source-table`.
+
+  The metadata provider intentionally exposes database metadata without applying user data
+  permissions. Before any repair pass can inspect fields/FKs on the requested source table,
+  resolve the portable table FK and run the normal API query permission check."
+  [metadata-provider parsed-query]
+  (when-let [table-fk (first-stage-source-table-fk parsed-query)]
+    (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
+          table-id (serdes.resolve/import-table-fk resolver table-fk)]
+      (api/query-check :model/Table table-id)
+      nil)))
 
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
@@ -215,14 +245,17 @@
                                         e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)]
+    ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
+    ;; never inspects table/card metadata that the current user cannot use.
+    (check-first-stage-source-table-query-permissions! mp parsed)
     ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
     ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
     ;; them reach the tool wrapper with the flag set.
     (try
-      (let [repaired    (repr.repair/repair mp parsed)
+      (let [repaired    (repr.repair/repair mp parsed permission-aware-content-store)
             _validated  (repr/validate-query repaired)
-            pmbql-query (repr.resolve/resolve-query mp repaired)
+            pmbql-query (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             query-id    (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
@@ -230,9 +263,13 @@
                              :result-columns (result-columns-for-query pmbql-query mp)}
          :instructions      (instructions/query-created-instructions-for query-id)})
       (catch clojure.lang.ExceptionInfo e
-        (throw (ex-info (ex-message e)
-                        (assoc (ex-data e) :agent-error? true)
-                        e))))))
+        ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
+        ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
+        (if (= 403 (:status-code (ex-data e)))
+          (throw e)
+          (throw (ex-info (ex-message e)
+                          (assoc (ex-data e) :agent-error? true)
+                          e)))))))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 

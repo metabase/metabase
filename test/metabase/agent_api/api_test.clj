@@ -295,6 +295,12 @@
   [col-name]
   (format "[field, {}, ['%s', PUBLIC, ORDERS, %s]]" (db-name) col-name))
 
+(defn- source-card-yaml
+  "Build a minimal representations YAML query whose first stage uses `source-card:`."
+  [entity-id]
+  (format "lib/type: mbql/query\nstages:\n  - lib/type: mbql.stage/mbql\n    source-card: %s\n    limit: 5\n"
+          entity-id))
+
 ;;; ---------------------------------------- /v2/construct-query ----------------------------------------
 
 (deftest construct-query-test
@@ -323,6 +329,37 @@
                                                       "  - lib/type: mbql.stage/mbql\n"
                                                       (format "    source-table: ['%s', PUBLIC, NOT_A_TABLE]\n" (db-name)))})]
       (is (=? {:error "unknown-table"} response)))))
+
+(deftest construct-query-permission-checks-test
+  (testing "Rejects a first-stage source-table the current user cannot query"
+    (mt/with-no-data-perms-for-all-users!
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                   {:query (orders-yaml :aggregation ["[count, {}]"])})))))
+
+  (testing "Rejects a first-stage source-card the current user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection _collection {}
+                     :model/Card       card        {:name          "Protected Question"
+                                                    :collection_id (:id _collection)
+                                                    :database_id   (mt/id)
+                                                    :dataset_query (mt/mbql-query orders)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                     {:query (source-card-yaml (:entity_id card))}))))))
+
+  (testing "Rejects a metric aggregation the current user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection _collection {}
+                     :model/Card       metric      {:name          "Protected Metric"
+                                                    :type          :metric
+                                                    :collection_id (:id _collection)
+                                                    :database_id   (mt/id)
+                                                    :dataset_query (orders-count-query)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                     {:query (orders-yaml
+                                              :aggregation [(format "[metric, {}, %s]" (:entity_id metric))])})))))))
 
 (deftest construct-query-rejects-empty-query-test
   (testing "Empty / blank :query is rejected by the request schema"

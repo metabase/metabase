@@ -1714,10 +1714,10 @@
   and only the first stage of a query has a `source-table` of its own. Stages 1+ feed off the
   previous stage's output, where field references are by string name (handled by
   [[infer-cross-stage-field-types*]] further down)."
-  [query mp]
+  [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
     query
-    (let [import-resolver (resolve.mp/import-resolver mp)
+    (let [import-resolver (resolve.mp/import-resolver mp content-store)
           export-resolver (resolve.mp/export-resolver mp)]
       (update-in query ["stages" 0] resolve-implicit-joins-in-stage
                  mp import-resolver export-resolver))))
@@ -1781,11 +1781,11 @@
   Returns `nil` (logged at debug) if anything in the resolve / lib/query path throws. The
   enclosing pass treats `nil` as 'skip this stage's repairs and let downstream surface the real
   error'."
-  [mp query stage-idx]
+  [mp query stage-idx content-store]
   (try
     (let [prefix-stages (subvec (get query "stages") 0 stage-idx)
           prefix-query  (assoc query "stages" prefix-stages)
-          resolved      (repr.resolve/resolve-query mp prefix-query)
+          resolved      (repr.resolve/resolve-query mp prefix-query content-store)
           lib-q         (lib/query mp resolved)
           cols          (lib/returned-columns lib-q)]
       (into {}
@@ -1837,7 +1837,7 @@
 
   Returns `nil` if anything in the resolve path throws - the resolver will surface the real
   error on the main pipeline. Logged at debug."
-  [mp query stage-idx]
+  [mp query stage-idx content-store]
   (let [stage (get-in query ["stages" stage-idx])]
     (when-let [source-card (get stage "source-card")]
       (try
@@ -1846,7 +1846,7 @@
               bare-query {"lib/type" "mbql/query"
                           "database" (get query "database")
                           "stages"   [bare-stage]}
-              resolved   (repr.resolve/resolve-query mp bare-query)
+              resolved   (repr.resolve/resolve-query mp bare-query content-store)
               lib-q      (lib/query mp resolved)
               cols       (lib/returned-columns lib-q)]
           (into {}
@@ -1867,7 +1867,7 @@
   Idempotent and silently no-ops when `mp` is nil, the query shape is off, the card can't be
   resolved, or the column name isn't one the card produces (resolver will report the real
   error downstream)."
-  [query mp]
+  [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
     query
     (let [n (count (get query "stages"))]
@@ -1877,7 +1877,7 @@
           q
           (let [stage (get-in q ["stages" i])
                 q'    (if (and (map? stage) (get stage "source-card"))
-                        (if-let [name->types (mini-resolved-columns-for-source-card mp q i)]
+                        (if-let [name->types (mini-resolved-columns-for-source-card mp q i content-store)]
                           (update-in q ["stages" i] infer-cross-stage-field-types-in-stage name->types)
                           q)
                         q)]
@@ -1886,7 +1886,7 @@
 (defn- infer-cross-stage-field-types*
   "Top-level cross-stage field-type inference pass. No-op when the query has fewer than two
   stages or `mp` is nil."
-  [query mp]
+  [query mp content-store]
   (if-not (and mp
                (map? query)
                (vector? (get query "stages"))
@@ -1897,7 +1897,7 @@
              q query]
         (if (>= i n)
           q
-          (let [name->types (mini-resolved-columns-by-name mp q i)
+          (let [name->types (mini-resolved-columns-by-name mp q i content-store)
                 q'          (if name->types
                               (update-in q ["stages" i] infer-cross-stage-field-types-in-stage name->types)
                               q)]
@@ -2204,15 +2204,21 @@
   satisfies idempotency by stamping a deterministic-once UUID into the matching aggregation
   (subsequent runs reuse it) and by leaving existing `[\"aggregation\" {} \"<uuid>\"]` refs
   alone. Pass 5 is idempotent because it skips any cross-stage clause whose options already
-  contain `\"base-type\"`."
-  [mp parsed]
-  (-> parsed
-      normalize-shape*
-      (stamp-top-level-database* mp)
-      rewrite-order-by-inline-aggs*
-      resolve-aggregation-ref-indexes*
-      split-post-agg-filters*
-      (resolve-implicit-joins* mp)
-      (infer-cross-stage-field-types* mp)
-      (infer-source-card-field-types* mp)
-      friendly-errors*))
+  contain `\"base-type\"`.
+
+  The optional `content-store` is threaded into mini-resolve passes that touch saved cards;
+  agent callers pass a permission-aware store so source-card/metric metadata is not read via
+  the default app-DB resolver."
+  ([mp parsed]
+   (repair mp parsed resolve.mp/app-db-content-store))
+  ([mp parsed content-store]
+   (-> parsed
+       normalize-shape*
+       (stamp-top-level-database* mp)
+       rewrite-order-by-inline-aggs*
+       resolve-aggregation-ref-indexes*
+       split-post-agg-filters*
+       (resolve-implicit-joins* mp content-store)
+       (infer-cross-stage-field-types* mp content-store)
+       (infer-source-card-field-types* mp content-store)
+       friendly-errors*)))

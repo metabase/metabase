@@ -13,6 +13,7 @@
   YAML strings on purpose."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
@@ -68,14 +69,23 @@
 ;; fixture so tests don't need a live application DB. Each fixture's stub returns the id
 ;; matching the bound metadata provider.
 
+(defn- allow-read-check
+  ([obj] obj)
+  ([entity id] {:model entity :id id})
+  ([entity id & _conditions] {:model entity :id id}))
+
 (defn- with-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)]
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
     (f)))
 
 (defn- with-ambiguous-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)]
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
     (f)))
 
 (defn- query-yaml
@@ -687,7 +697,9 @@
 (defn- with-card-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-card)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-card-stub]
+                serdes/lookup-by-id                             lookup-card-stub
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
     (f)))
 
 (deftest source-card-end-to-end-test

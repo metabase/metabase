@@ -159,14 +159,17 @@
       api/read-check))
 
 (defn get-card-by-entity-id
-  "Retrieve a card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
+  "Retrieve a readable card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
   [[metabase.metabot.tools.construct/resolve-database-id-from-first-stage]] to look up the
   database-id of a `source-card:` stage before the metadata provider is built.
 
   Does NOT go through the serdes `lookup-by-id` machinery because we want `nil` on miss
-  (not a thrown exception) so the caller can surface a tool-specific agent error."
+  (not a thrown exception) so the caller can surface a tool-specific agent error. If the
+  card exists but the current user cannot read it, `api/read-check` raises a 403 instead of
+  silently letting the representations resolver use an inaccessible card."
   [entity-id]
-  (t2/select-one :model/Card :entity_id entity-id))
+  (some-> (t2/select-one :model/Card :entity_id entity-id)
+          api/read-check))
 
 (defn card-query
   "Return a query based on the card with ID `card-id`."
