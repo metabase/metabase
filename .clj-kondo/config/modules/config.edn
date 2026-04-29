@@ -3405,9 +3405,11 @@
    :api  #{}
    :uses #{driver
            lib
+           models
            premium-features
            query-processor
-           sql-tools}
+           sql-tools
+           util}
    :model-imports #{:model/Database
                     :model/Table
                     :model/TableRemapping}}
