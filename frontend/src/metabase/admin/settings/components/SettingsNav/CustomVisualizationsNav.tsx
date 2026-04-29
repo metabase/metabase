@@ -5,6 +5,7 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Flex } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { SettingsNavItem } from "./SettingsNavItem";
 
@@ -17,8 +18,8 @@ export const CustomVisualizationsNav = () => {
   const pathname = useSelector(getLocation).pathname;
   const isFull = hasCustomVizAvailable && customVizDevModeEnabled;
   const isManageVisualizationsActive =
-    pathname.startsWith("/admin/settings/custom-visualizations/new") ||
-    pathname.startsWith("/admin/settings/custom-visualizations/edit");
+    pathname.startsWith(Urls.customVizAdd()) ||
+    pathname.startsWith(Urls.customVizEdit(undefined));
 
   return (
     <SettingsNavItem
