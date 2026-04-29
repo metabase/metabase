@@ -54,6 +54,7 @@ const elements = [
   createElement({ type: "shared", name: "api" }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "visualizations" }),
   // feature
@@ -81,6 +82,7 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/App.tsx",
     "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/routes-public.tsx",

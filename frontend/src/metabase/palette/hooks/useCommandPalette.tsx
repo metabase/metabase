@@ -4,14 +4,11 @@ import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
-import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { getIcon } from "metabase/common/utils/icon";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
-import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -102,7 +99,6 @@ export const useCommandPalette = ({
     }
   }, [isVisible, refetchRecents, disabled]);
 
-  const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
 
   const docsAction = useMemo<PaletteAction[]>(() => {
@@ -271,30 +267,6 @@ export const useCommandPalette = ({
     hasQuery,
   ]);
 
-  const adminActions = useMemo<PaletteAction[]>(() => {
-    if (disabled) {
-      return [];
-    }
-
-    // Subpaths - i.e. paths to items within the main Admin tabs - are needed
-    // in the command palette but are not part of the main list of admin paths
-    const adminSubpaths = isAdmin
-      ? getPerformanceAdminPaths(PLUGIN_CACHING.getTabMetadata())
-      : [];
-
-    const paths = [...adminPaths, ...adminSubpaths];
-    return paths.map((adminPath) => ({
-      id: `admin-page-${adminPath.key}`,
-      name: `${adminPath.name}`,
-      icon: "gear",
-      perform: () => {},
-      section: "admin",
-      extra: {
-        href: adminPath.path,
-      },
-    }));
-  }, [disabled, isAdmin, adminPaths]);
-
   const settingsActions = useMemo<PaletteAction[]>(() => {
     if (disabled || !canUserAccessSettings) {
       return [];
@@ -324,8 +296,7 @@ export const useCommandPalette = ({
       }));
   }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
-  useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
-    adminActions,
+  useRegisterActions(hasQuery ? settingsActions : [], [
     settingsActions,
     hasQuery,
   ]);
