@@ -9,14 +9,14 @@
 .colorIndicator {
   display: block;
   margin: 0 auto;
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 100%;
 }
 
 .colorIndicatorLarge {
-  width: 12px;
-  height: 12px;
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .cell {
@@ -26,7 +26,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 220px;
+  max-width: 13.75rem;
 
   &:first-of-type,
   &:last-of-type {
@@ -64,6 +64,6 @@
 
 .totalRowRoot {
   width: 100%;
-  border-radius: 60px;
+  border-radius: 3.75rem;
   background-color: var(--mb-color-tooltip-background-focused);
 }

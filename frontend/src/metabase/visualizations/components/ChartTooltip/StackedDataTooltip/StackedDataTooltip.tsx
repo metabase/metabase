@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
+import { Stack, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
@@ -56,11 +57,18 @@ const StackedDataTooltip = ({
   );
 
   return (
-    <div className={S.dataPointRoot}>
+    <Stack gap={0} pt="md">
       {headerTitle && (
-        <header className={S.dataPointHeader} data-testid="tooltip-header">
+        <Text
+          component="header"
+          tt="uppercase"
+          fz="sm"
+          px="lg"
+          pb="xs"
+          data-testid="tooltip-header"
+        >
           {headerTitle}
-        </header>
+        </Text>
       )}
       <table className={S.dataPointTable}>
         <thead
@@ -108,7 +116,7 @@ const StackedDataTooltip = ({
           </tfoot>
         )}
       </table>
-    </div>
+    </Stack>
   );
 };
 

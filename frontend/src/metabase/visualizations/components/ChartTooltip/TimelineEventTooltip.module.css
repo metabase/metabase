@@ -1,5 +1,5 @@
 .timelineEventList {
-  max-width: 300px;
+  max-width: 18.75rem;
 
   li:not(:first-of-type) {
     margin-top: var(--mantine-spacing-sm);
@@ -8,5 +8,5 @@
 
 .timelineEventDate {
   font-size: var(--mantine-font-size-sm);
-  margin-top: 1px;
+  margin-top: 0.0625rem;
 }
