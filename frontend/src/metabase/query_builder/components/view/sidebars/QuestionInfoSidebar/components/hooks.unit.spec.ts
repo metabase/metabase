@@ -12,7 +12,7 @@ import {
 import { useGetJoinedTablesWithIcons } from "./hooks";
 
 jest.mock("metabase/hooks/use-icon", () => {
-  const { modelIconMap } = jest.requireActual("metabase/utils/icon");
+  const { modelIconMap } = jest.requireActual("metabase/common/utils/icon");
   return {
     useGetIcon: () =>
       jest.fn((item: { model: IconModel }) => ({
