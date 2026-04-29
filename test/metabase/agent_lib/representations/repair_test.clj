@@ -2207,3 +2207,30 @@
                           "order-by"     [["asc" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]]
                           "limit"        10}]}]
       (is (some? (repair/repair trivial-mp q))))))
+
+;;; ----- E4: sexp-legacy `measure` head ----------------------------------------------
+
+(deftest friendly-error-sexp-legacy-measure-test
+  (testing "`[measure, ...]` clause head raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["measure" {} "@card-1"]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :sexp-legacy-measure (:error data)))
+            (is (re-find #"metric" (ex-message e)))))))))
+
+(deftest friendly-error-canonical-metric-passes-test
+  (testing "canonical `[metric, {}, <portable_entity_id>]` does NOT trigger E4"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["metric" {} "@card-1"]]}]}]
+      (is (some? (repair/repair trivial-mp q))))))
