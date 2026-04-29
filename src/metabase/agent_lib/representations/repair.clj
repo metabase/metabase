@@ -1904,6 +1904,65 @@
             (recur (inc i) q')))))))
 
 ;;; ============================================================
+;;; Pass 6 -- friendly error messages for silently-accepted-but-wrong shapes.
+;;;
+;;; lib's schema is intentionally shape-only and does not catch a number of patterns where
+;;; the LLM clearly meant something else. Without a friendly diagnostic the broken query
+;;; goes through validate, resolve, and only fails at SQL-generation time (or, worse,
+;;; silently produces wrong results). Each detector below targets a *specific* pattern
+;;; observed in production / sexp-pipeline telemetry and throws an `:agent-error?` ex-info
+;;; with an LLM-actionable explanation.
+;;;
+;;; Carried over from the sexp pipeline's `validate/operators.clj` and
+;;; `validate/cross_checks.clj` (see `repr-deletion-followups.md` § 2.3) plus a few new
+;;; "silent failure" cases discovered while reviewing repr behaviour.
+;;;
+;;; This pass runs LAST in `repair`, after every shape pass and every mp-aware fill-in,
+;;; so that we don't false-positive on shapes that are about to be repaired by an earlier
+;;; pass.
+;;; ============================================================
+
+;;; ----- E1: `[field, …]` as an entry in a stage's `aggregation:` block ---------------
+
+(defn- aggregation-entry-not-aggregation-error!
+  "Detect a top-level `[field, …]` clause directly inside a stage's `aggregation:` vector.
+  An aggregation entry must be an actual aggregation function (`count`, `sum`, `avg`,
+  `metric`, …) or wrap a field in one (`[sum, opts, <field>]`). Lib accepts the
+  field-as-aggregation shape silently and the QP produces wrong-result SQL.
+
+  Throws `:agent-error?` ex-info on the *first* offending entry, naming the stage and
+  entry index so the LLM can fix it precisely. Does NOT recurse into nested clauses
+  (`[sum, {}, [field, …]]` is correct - the outer `sum` is the aggregation; the inner
+  `field` is its argument)."
+  [stage stage-idx]
+  (when-let [aggs (get stage "aggregation")]
+    (when (vector? aggs)
+      (doseq [[entry-idx entry] (map-indexed vector aggs)]
+        (when (and (vector? entry)
+                   (>= (count entry) 1)
+                   (= "field" (nth entry 0)))
+          (throw (ex-info
+                  (tru "Stage {0} aggregation entry {1} is a `field` clause, not an aggregation. The `aggregation:` block expects aggregation functions like `count`, `sum`, `avg`, `metric`, etc. - or wrap the field in one (e.g. `[sum, <opts>, <field>]`). If you wanted to group by this column, use `breakout:` instead."
+                       stage-idx entry-idx)
+                  {:agent-error? true
+                   :error        :aggregation-entry-not-aggregation
+                   :stage-index  stage-idx
+                   :entry-index  entry-idx
+                   :entry        entry})))))))
+
+;;; ----- friendly-errors pipeline driver -----------------------------------------------
+
+(defn- friendly-errors*
+  "Run every diagnostic detector in turn. Throws on the first match; otherwise returns
+  `query` unchanged."
+  [query]
+  (when (and (map? query) (vector? (get query "stages")))
+    (doseq [[idx stage] (map-indexed vector (get query "stages"))]
+      (when (map? stage)
+        (aggregation-entry-not-aggregation-error! stage idx))))
+  query)
+
+;;; ============================================================
 ;;; Top-level entry point
 ;;; ============================================================
 
@@ -1987,4 +2046,5 @@
       split-post-agg-filters*
       (resolve-implicit-joins* mp)
       (infer-cross-stage-field-types* mp)
-      (infer-source-card-field-types* mp)))
+      (infer-source-card-field-types* mp)
+      friendly-errors*))

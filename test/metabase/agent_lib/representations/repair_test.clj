@@ -2030,3 +2030,66 @@
                (get-in (repair/repair trivial-mp
                                       (build ["count-where" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]))
                        ["stages" 1 "filters"])))))))
+
+;;; ============================================================
+;;; Pass 6 - friendly error messages (E1..E6)
+;;; ============================================================
+
+;;; ----- E1: [field, ...] in aggregation block ---------------------------------------
+
+(deftest friendly-error-field-as-aggregation-entry-test
+  (testing "a `[field, ...]` directly inside `aggregation:` raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :aggregation-entry-not-aggregation (:error data)))
+            (is (= 0 (:stage-index data)))
+            (is (= 0 (:entry-index data)))
+            (is (re-find #"aggregation" (ex-message e)))
+            (is (re-find #"breakout" (ex-message e)))))))))
+
+(deftest friendly-error-canonical-aggregation-passes-test
+  (testing "canonical aggregation entries (count, sum, avg, metric) do NOT trigger"
+    (doseq [agg [["count" {}]
+                 ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                 ["avg" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                 ["metric" {} "@card-1"]]]
+      (let [q {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "aggregation"  [agg]}]}]
+        (is (some? (repair/repair trivial-mp q)) (str "should not throw on " agg))))))
+
+(deftest friendly-error-field-nested-inside-aggregation-passes-test
+  (testing "a `field` clause NESTED inside an aggregation (its argument) does NOT trigger"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]}]}]
+      (is (some? (repair/repair trivial-mp q))))))
+
+(deftest friendly-error-multi-stage-stage-index-test
+  (testing "multi-stage: error names the correct stage index"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                         {"lib/type"    "mbql.stage/mbql"
+                          "aggregation" [["field" {} "count"]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 1 (:stage-index (ex-data e)))))))))
