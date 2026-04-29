@@ -6,6 +6,8 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.actions.models :as action]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -1015,3 +1017,51 @@
                       "SET ROLE NONE; DROP TABLE table"
                       "SELECT set_config('role', 'none', false); DROP TABLE table"
                       "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;")))))))))))
+
+(deftest reject-multiple-impersonated-action-write-statements-test
+  (testing "Impersonated custom actions with multiple statements are rejected"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (let [granting-details (impersonation-granting-details driver/*driver* (mt/db))
+                  spec            (sql-jdbc.conn/connection-details->spec driver/*driver* granting-details)
+                  role-quoted     (sql.tx/qualify-and-quote driver/*driver* role-a)]
+              ;; Grant write permissions (INSERT, UPDATE, DELETE) to the impersonation role
+              (jdbc/execute! spec [(format "GRANT INSERT, UPDATE, DELETE ON %s TO %s" venues-table role-quoted)]
+                             {:transaction? false})
+              (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                       :details (impersonation-details driver/*driver* (mt/db))}]
+                (mt/with-db database
+                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                    (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                  (sync/sync-database! database {:scan :schema})
+                  (mt/with-actions-enabled
+                    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                   :attributes     {"impersonation_attr" role-a}}
+                      (let [execute-action-with-sql
+                            (fn [sql]
+                              (mt/with-actions [{_card-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                                                {action-id :action-id} {:type          :query
+                                                                        :name          "Test action"
+                                                                        :dataset_query (update (mt/native-query {:query sql})
+                                                                                               :type name)
+                                                                        :database_id   (mt/id)
+                                                                        :parameters    []}]
+                                (actions.execution/execute-action! (action/select-action :id action-id) {})))]
+                        (testing "A single write statement is allowed"
+                          (is (= {:rows-affected 0}
+                                 (execute-action-with-sql
+                                  (format "UPDATE %s SET name = 'test' WHERE id = -1" venues-table)))))
+                        (testing "Multiple statements are rejected"
+                          (are [sql] (thrown?
+                                      java.lang.Exception
+                                      (execute-action-with-sql sql))
+                            (format "UPDATE %s SET name = 'a' WHERE id = -1; UPDATE %s SET name = 'b' WHERE id = -1" venues-table venues-table)
+                            (format "INSERT INTO %s (name) VALUES ('x'); SELECT 1;" venues-table)
+                            (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table)))))))))))))))
