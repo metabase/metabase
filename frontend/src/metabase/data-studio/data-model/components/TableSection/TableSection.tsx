@@ -329,7 +329,10 @@ const TableSectionBase = ({
                 <Tooltip label={t`Schema viewer`}>
                   <Button
                     component={ForwardRefLink}
-                    to={Urls.dataStudioErdSchema(table.db_id, table.schema)}
+                    to={Urls.dataStudioErd({
+                      databaseId: table.db_id,
+                      tableIds: [table.id],
+                    })}
                     p="sm"
                     leftSection={<Icon name="network" />}
                     style={{

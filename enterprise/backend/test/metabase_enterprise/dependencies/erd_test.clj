@@ -215,24 +215,14 @@
 
 ;;; ---------------------------------------- Integration tests ----------------------------------------
 
-(deftest erd-endpoint-auto-discover-test
-  (mt/with-premium-features #{:dependencies}
-    (testing "auto-discovers focal tables when none specified"
-      (let [shape (graph-shape (erd-request! {}))]
-        ;; Auto-discovery should produce a non-empty graph with at least one FK edge
-        ;; (proving BFS expansion from the auto-selected focal set worked).
-        (is (seq shape))
-        (is (some seq (vals shape)))))))
-
 (deftest erd-endpoint-schema-filter-test
   (mt/with-premium-features #{:dependencies}
     (testing "schema param loads every readable table in that schema as focal"
       (let [response     (erd-request! {:schema "PUBLIC"})
             node-names   (set (map :name (:nodes response)))
-            ;; Sample dataset's PUBLIC schema contains these tables. If the
-            ;; schema param only auto-discovers the top 3 FK-heavy tables,
-            ;; this assertion fails — which is exactly what the new semantics
-            ;; must prevent.
+            ;; Sample dataset's PUBLIC schema contains these tables. The schema
+            ;; param must load every readable table in that schema as focal —
+            ;; not a subset.
             expected     #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE"
                            "PRODUCTS" "REVIEWS" "USERS" "VENUES"}]
         (doseq [node (:nodes response)]

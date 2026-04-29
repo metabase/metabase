@@ -1,0 +1,26 @@
+.card {
+  --node-border-color: rgba(7, 23, 34, 0.14);
+
+  position: relative;
+  min-width: 20rem;
+  max-width: 20rem;
+  border: 1px solid var(--node-border-color);
+  border-radius: 0.5rem;
+  background: var(--mb-color-white);
+  box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Highlight for nodes connected to a currently-selected edge.
+   Updates the existing 1px border color rather than adding an outline, so
+   no layout shift occurs. */
+.card.selected {
+  --node-border-color: var(--mb-color-brand);
+}
+
+.header {
+  border-bottom: 1px solid rgba(7, 23, 34, 0.14);
+}
+
+.fields {
+  overflow: visible;
+}

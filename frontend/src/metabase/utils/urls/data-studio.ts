@@ -3,6 +3,7 @@ import type {
   CollectionId,
   DatabaseId,
   FieldId,
+  GetErdRequest,
   MeasureId,
   NativeQuerySnippetId,
   SchemaName,
@@ -278,18 +279,50 @@ export function dataStudioErdBase() {
   return `${ROOT_URL}/schema-viewer`;
 }
 
-export function dataStudioErdDatabase(databaseId: DatabaseId) {
-  return `${ROOT_URL}/schema-viewer?database-id=${databaseId}`;
+type DataStudioErdParams = {
+  databaseId: DatabaseId;
+  schema?: SchemaName;
+  tableIds?: readonly TableId[];
+};
+
+/**
+ * Build the request body for `useGetErdQuery`.
+ *
+ * Backend semantics:
+ *  - With a schema, the backend returns all tables in that schema; we only
+ *    append `table-ids` for external tables the user has explicitly expanded
+ *    into.
+ *  - With no schema but explicit table-ids, those are the focal set.
+ *  - At least one of `schema` or `table-ids` must be provided.
+ */
+export function getErdQueryParams({
+  databaseId,
+  schema,
+  tableIds,
+}: DataStudioErdParams): GetErdRequest {
+  const params: GetErdRequest = { "database-id": databaseId };
+  if (schema != null) {
+    params.schema = schema;
+  }
+  if (tableIds != null && tableIds.length > 0) {
+    params["table-ids"] = [...tableIds];
+  }
+  return params;
 }
 
-export function dataStudioErdSchema(
-  databaseId: DatabaseId,
-  schema: SchemaName,
-) {
+export function dataStudioErd(args: DataStudioErdParams) {
+  const queryParams = getErdQueryParams(args);
   const params = new URLSearchParams();
-  params.set("database-id", String(databaseId));
-  params.set("schema", schema);
-  return `${ROOT_URL}/schema-viewer?${params.toString()}`;
+  params.set("database-id", String(queryParams["database-id"]));
+  if (queryParams.schema != null) {
+    params.set("schema", queryParams.schema);
+  }
+  if (queryParams["table-ids"] != null) {
+    for (const id of queryParams["table-ids"]) {
+      params.append("table-ids", String(id));
+    }
+  }
+  return `${dataStudioErdBase()}?${params.toString()}`;
 }
 
 export function dataStudioGlossary() {

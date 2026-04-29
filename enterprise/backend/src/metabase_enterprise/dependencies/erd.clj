@@ -53,10 +53,6 @@
 
 ;;; ---------------------------------------- Phase 1: Resolve focal tables ----------------------------------------
 
-(def ^:private auto-focal-table-count
-  "Number of tables to auto-select as focal when none are specified."
-  3)
-
 (def ^:private ^{:doc "Columns needed for mi/can-read? permission checks on Table."}
   table-perm-columns
   [:id :db_id :is_published :collection_id])
@@ -74,33 +70,6 @@
        (filter mi/can-read?)
        (map :id)
        set))
-
-(defn- auto-discover-focal-table-ids
-  "Find the top N tables by FK relationship count using a SQL aggregate query.
-   Only considers readable tables. Returns a set of table IDs."
-  [database-id schema]
-  (let [readable-ids (readable-table-ids-in-scope database-id schema)]
-    (when (empty? readable-ids)
-      (throw (ex-info (tru "No tables found in the specified database/schema")
-                      {:status-code 404
-                       :database-id database-id
-                       :schema      schema})))
-    (let [fk-counts (t2/query {:select   [[:f.table_id :tid]
-                                          [:%count.* :cnt]]
-                               :from     [[:metabase_field :f]]
-                               :where    [:and
-                                          [:in :f.table_id readable-ids]
-                                          [:not= :f.fk_target_field_id nil]
-                                          [:= :f.active true]
-                                          [:not= :f.visibility_type "retired"]]
-                               :group-by [:f.table_id]
-                               :order-by [[:cnt :desc]]
-                               :limit    auto-focal-table-count})
-          top-ids   (set (map :tid fk-counts))]
-      ;; If no tables have FKs, just pick the first N readable IDs
-      (if (empty? top-ids)
-        (set (take auto-focal-table-count readable-ids))
-        top-ids))))
 
 ;;; ---------------------------------------- Phase 2: Lazy BFS fetch ----------------------------------------
 
@@ -301,7 +270,6 @@
      `table-ids` (which are treated as additional focal tables, typically from
      other schemas the user has expanded into via FK click).
    - no `schema`, `table-ids` set: those are the focal tables.
-   - neither: auto-select the most FK-connected tables in the database.
 
    When `schema` is set, BFS propagation stops at that schema — cross-schema FK
    targets are surfaced on fields (so the UI can offer to expand them) but are
@@ -323,6 +291,8 @@
                           (set table-ids)
 
                           :else
-                          (auto-discover-focal-table-ids database-id nil))
+                          (throw (ex-info (tru "Either `schema` or `table-ids` must be provided")
+                                          {:status-code 400
+                                           :database-id database-id})))
         subgraph        (fetch-erd-subgraph focal-table-ids default-hops schema)]
     (build-erd-response subgraph)))

@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
@@ -20,6 +21,7 @@ import {
   Text,
   useColorScheme,
 } from "metabase/ui";
+import { getErdQueryParams } from "metabase/utils/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
@@ -34,9 +36,7 @@ import { SchemaPickerInput } from "./components/SchemaPickerInput";
 import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./components/TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
-import { getErdQueryParams } from "./getErdQueryParams";
 import { useEdgeZoom } from "./hooks/useEdgeZoom";
-import { useExtraTableIds } from "./hooks/useExtraTableIds";
 import { useGraphSync } from "./hooks/useGraphSync";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { focusNodeLayout, toFlowGraph } from "./utils";
@@ -56,16 +56,26 @@ const PRO_OPTIONS = {
 const DEFAULT_ZOOM = 0.3;
 const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
 
-interface SchemaViewerProps {
+type SchemaViewerProps = {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  initialTableIds: ConcreteTableId[] | undefined;
-}
+  /**
+   * External/extra focal table IDs (cross-schema tables expanded into via
+   * FK click). Owned by the page-level `useRestoreSchemaViewerState` hook.
+   */
+  extraTableIds: readonly ConcreteTableId[];
+  /** Add a table to the extra focal set. */
+  onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
+  /** Stable key for the current (databaseId, schema). */
+  contextKey: string | null;
+};
 
 export function SchemaViewer({
   databaseId,
   schema,
-  initialTableIds,
+  extraTableIds,
+  onExtraTableIdAdd,
+  contextKey,
 }: SchemaViewerProps) {
   // IDs of tables the camera should fit/zoom to next. Populated in two
   // places: (1) the graph-sync effect when FK expansion adds new tables,
@@ -78,14 +88,10 @@ export function SchemaViewer({
     [],
   );
 
-  const { extraTableIds, addExtraTableId, contextKey } = useExtraTableIds({
-    databaseId,
-    schema,
-    initialTableIds,
-  });
-
   const { data, isFetching, error } = useGetErdQuery(
-    getErdQueryParams({ databaseId, schema, extraTableIds }),
+    databaseId != null
+      ? getErdQueryParams({ databaseId, schema, tableIds: extraTableIds })
+      : skipToken,
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
@@ -139,7 +145,7 @@ export function SchemaViewer({
       if (databaseId == null) {
         return;
       }
-      addExtraTableId(tableId);
+      onExtraTableIdAdd(tableId);
       setExpandingTableIds((prev) => {
         if (prev.has(tableId)) {
           return prev;
@@ -157,7 +163,7 @@ export function SchemaViewer({
         registerPendingEdgeSelection(candidateEdgeIdsToSelect);
       }
     },
-    [databaseId, addExtraTableId, registerPendingEdgeSelection],
+    [databaseId, onExtraTableIdAdd, registerPendingEdgeSelection],
   );
 
   // Track the node id most recently focused via the Focus node button so the

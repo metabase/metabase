@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 import type { ConcreteTableId } from "metabase-types/api";
 
-interface SchemaViewerContextValue {
+type SchemaViewerContextValue = {
   visibleTableIds: Set<ConcreteTableId>;
   /**
    * IDs of tables whose fetch was triggered by an FK-field expansion and has
@@ -21,7 +21,7 @@ interface SchemaViewerContextValue {
   ) => void;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
-}
+};
 
 export const SchemaViewerContext = createContext<SchemaViewerContextValue>({
   visibleTableIds: new Set(),

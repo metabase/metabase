@@ -60,11 +60,11 @@ function getNodeHeight(node: ErdNode): number {
   return HEADER_HEIGHT + node.fields.length * ROW_HEIGHT;
 }
 
-interface TableEdgeRoles {
+type TableEdgeRoles = {
   sourceFieldIds: Set<number>;
   targetFieldIds: Set<number>;
   selfRefTargetFieldIds: Set<number>;
-}
+};
 
 const EMPTY_ROLES: TableEdgeRoles = {
   sourceFieldIds: new Set(),
