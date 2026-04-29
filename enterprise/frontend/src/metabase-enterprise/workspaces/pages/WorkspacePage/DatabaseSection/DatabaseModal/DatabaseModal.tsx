@@ -1,13 +1,10 @@
 import { useFormikContext } from "formik";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
-import {
-  skipToken,
-  useListDatabaseSchemasQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   Form,
@@ -25,6 +22,8 @@ import {
   useUpdateWorkspaceDatabaseMutation,
 } from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
+
+import { getAvailableDatabases } from "../../../../utils";
 
 type DatabaseValues = {
   databaseId: string | null;
@@ -46,12 +45,14 @@ const INITIAL_VALUES: DatabaseValues = {
 
 type CreateDatabaseModalProps = {
   workspace: Workspace;
+  databases: Database[];
   opened: boolean;
   onClose: () => void;
 };
 
 export function CreateDatabaseModal({
   workspace,
+  databases,
   opened,
   onClose,
 }: CreateDatabaseModalProps) {
@@ -63,7 +64,11 @@ export function CreateDatabaseModal({
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      <CreateDatabaseForm workspace={workspace} onClose={onClose} />
+      <CreateDatabaseForm
+        workspace={workspace}
+        databases={databases}
+        onClose={onClose}
+      />
     </Modal>
   );
 }
@@ -71,6 +76,7 @@ export function CreateDatabaseModal({
 type UpdateDatabaseModalProps = {
   workspace: Workspace;
   databaseId: DatabaseId;
+  databases: Database[];
   opened: boolean;
   onClose: () => void;
 };
@@ -78,6 +84,7 @@ type UpdateDatabaseModalProps = {
 export function UpdateDatabaseModal({
   workspace,
   databaseId,
+  databases,
   opened,
   onClose,
 }: UpdateDatabaseModalProps) {
@@ -92,6 +99,7 @@ export function UpdateDatabaseModal({
       <UpdateDatabaseForm
         workspace={workspace}
         databaseId={databaseId}
+        databases={databases}
         onClose={onClose}
       />
     </Modal>
@@ -100,13 +108,20 @@ export function UpdateDatabaseModal({
 
 type CreateDatabaseFormProps = {
   workspace: Workspace;
+  databases: Database[];
   onClose: () => void;
 };
 
-function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
-  const { data: databasesResponse } = useListDatabasesQuery();
-  const availableDatabases = databasesResponse?.data ?? [];
+function CreateDatabaseForm({
+  workspace,
+  databases,
+  onClose,
+}: CreateDatabaseFormProps) {
   const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
+  const availableDatabases = useMemo(
+    () => getAvailableDatabases(databases, workspace.databases),
+    [databases, workspace.databases],
+  );
 
   const handleSubmit = async (values: DatabaseValues) => {
     if (values.databaseId == null) {
@@ -138,7 +153,7 @@ function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
                 values.databaseId ? getDatabaseId(values.databaseId) : null
               }
               inputSchemas={values.inputSchemas}
-              availableDatabases={availableDatabases}
+              databases={databases}
             />
             <FormErrorMessage />
             <Group justify="flex-end">
@@ -155,25 +170,30 @@ function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
 type UpdateDatabaseFormProps = {
   workspace: Workspace;
   databaseId: DatabaseId;
+  databases: Database[];
   onClose: () => void;
 };
 
 function UpdateDatabaseForm({
   workspace,
   databaseId,
+  databases,
   onClose,
 }: UpdateDatabaseFormProps) {
+  const database = databases.find((db) => db.id === databaseId);
   const workspaceDatabase = workspace.databases.find(
     (db) => db.database_id === databaseId,
   );
-  const { data: databasesResponse } = useListDatabasesQuery();
-  const availableDatabases = databasesResponse?.data ?? [];
   const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
   const [deleteWorkspaceDatabase] = useDeleteWorkspaceDatabaseMutation();
   const { modalContent: confirmationContent, show: showConfirmation } =
     useConfirmation();
+  const availableDatabases = useMemo(
+    () => getAvailableDatabases(databases, workspace.databases, databaseId),
+    [databases, workspace.databases, databaseId],
+  );
 
-  if (workspaceDatabase == null) {
+  if (database == null || workspaceDatabase == null) {
     return null;
   }
 
@@ -194,13 +214,9 @@ function UpdateDatabaseForm({
     onClose();
   };
 
-  const databaseName =
-    availableDatabases.find((db) => db.id === databaseId)?.name ??
-    t`this database`;
-
   const handleRemove = () => {
     showConfirmation({
-      title: t`Remove ${databaseName} from this workspace?`,
+      title: t`Remove ${database.name} from this workspace?`,
       message: t`The writable schema and the database user in this database will be dropped. This cannot be undone.`,
       confirmButtonText: t`Remove`,
       confirmButtonProps: { variant: "filled", color: "error" },
@@ -233,7 +249,7 @@ function UpdateDatabaseForm({
                   values.databaseId ? getDatabaseId(values.databaseId) : null
                 }
                 inputSchemas={values.inputSchemas}
-                availableDatabases={availableDatabases}
+                databases={databases}
               />
               <FormErrorMessage />
               <Group justify="space-between">
@@ -284,15 +300,15 @@ function DatabaseSelect({ availableDatabases }: DatabaseSelectProps) {
 type DatabaseSchemaSelectProps = {
   databaseId: DatabaseId | null;
   inputSchemas: string[];
-  availableDatabases: Database[];
+  databases: Database[];
 };
 
 function DatabaseSchemaSelect({
   databaseId,
   inputSchemas,
-  availableDatabases,
+  databases,
 }: DatabaseSchemaSelectProps) {
-  const database = availableDatabases.find((db) => db.id === databaseId);
+  const database = databases.find((db) => db.id === databaseId);
   const hasSchemas = database != null && hasFeature(database, "schemas");
 
   const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(

@@ -7,10 +7,10 @@ import type { DatabaseRow } from "./types";
 
 export function getRows(
   workspaceDatabases: WorkspaceDatabase[],
-  availableDatabases: Database[],
+  databases: Database[],
 ): DatabaseRow[] {
   const databasesById = new Map(
-    availableDatabases.map((database) => [database.id, database]),
+    databases.map((database) => [database.id, database]),
   );
   return workspaceDatabases.map((workspaceDatabase) => ({
     id: workspaceDatabase.database_id,

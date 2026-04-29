@@ -2,27 +2,26 @@ import type { Row } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { Box, Text, TreeTable, useTreeTableInstance } from "metabase/ui";
-import type { WorkspaceDatabase } from "metabase-types/api";
+import type { Database, WorkspaceDatabase } from "metabase-types/api";
 
 import type { DatabaseRow } from "./types";
 import { getColumns, getRows } from "./utils";
 
 type DatabaseTableProps = {
   workspaceDatabases: WorkspaceDatabase[];
+  databases: Database[];
   onRowClick: (workspaceDatabase: WorkspaceDatabase) => void;
 };
 
 export function DatabaseTable({
   workspaceDatabases,
+  databases,
   onRowClick,
 }: DatabaseTableProps) {
-  const { data: databasesResponse } = useListDatabasesQuery();
-
   const rows = useMemo(
-    () => getRows(workspaceDatabases, databasesResponse?.data ?? []),
-    [workspaceDatabases, databasesResponse],
+    () => getRows(workspaceDatabases, databases),
+    [workspaceDatabases, databases],
   );
   const columns = useMemo(() => getColumns(), []);
 
