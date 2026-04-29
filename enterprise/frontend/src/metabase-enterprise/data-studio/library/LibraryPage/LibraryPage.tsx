@@ -349,9 +349,10 @@ function LibraryPageContent() {
     (row: { original: TreeItem }) => getItemHref(row.original),
     [getItemHref],
   );
+  const snippetRootId = snippetTree[0]?.id;
 
   // Controlled expansion: expand all during search, preserve user state when browsing.
-  // Default any IDs from the URL. If none are provided, default to Data and Metrics expanded
+  // Default any IDs from the URL. If none are provided, default to Data, Metrics and SQL Snippets expanded
   const defaultExpanded = useMemo<ExpandedState>(() => {
     if (expandedIdsFromUrl) {
       return expandedIdsFromUrl;
@@ -363,8 +364,13 @@ function LibraryPageContent() {
     if (metricCollection) {
       ids[`collection:${metricCollection.id}`] = true;
     }
+
+    if (snippetRootId) {
+      ids[snippetRootId] = true;
+    }
+
     return ids;
-  }, [tableCollection, metricCollection, expandedIdsFromUrl]);
+  }, [expandedIdsFromUrl, tableCollection, metricCollection, snippetRootId]);
 
   const [browseExpanded, setBrowseExpanded] = useState<ExpandedState | null>(
     null,

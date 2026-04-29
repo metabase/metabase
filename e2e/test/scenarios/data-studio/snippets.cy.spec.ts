@@ -305,10 +305,8 @@ describe("scenarios > data studio > snippets", () => {
       H.popover().findByText("Edit folder details").click();
 
       H.modal().within(() => {
-        cy.findByLabelText("Give your folder a name")
-          .clear()
-          .type("Updated Folder");
-        cy.button("Update").click();
+        cy.findByLabelText("Name").clear().type("Updated Folder");
+        cy.button("Save").click();
         cy.wait("@updateCollection");
       });
 

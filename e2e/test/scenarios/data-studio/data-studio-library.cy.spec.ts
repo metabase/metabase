@@ -250,7 +250,7 @@ describe("scenarios > data studio > library", () => {
         H.createLibrary();
       });
 
-      it("should hide +New button and empty state actions in read-only mode (UXW-3341)", () => {
+      it("should hide +New button and empty state actions in read-only mode", () => {
         H.DataStudio.Library.visit();
 
         cy.log("Verify +New button is not visible");

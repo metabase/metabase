@@ -102,12 +102,7 @@ function SnippetFormInner({
             <FormCollectionPicker
               name="collection_id"
               title={t`Folder this should be in`}
-              collectionPickerModalProps={{
-                namespaces: ["snippets"],
-                options: {
-                  canCreateCollections: false,
-                },
-              }}
+              collectionPickerModalProps={{ namespaces: ["snippets"] }}
             />
           )}
           <Flex align="center" justify="space-between">

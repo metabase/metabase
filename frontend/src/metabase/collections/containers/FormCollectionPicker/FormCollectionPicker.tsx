@@ -1,6 +1,7 @@
 import { useField } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   type EntityType,
@@ -195,7 +196,7 @@ function FormCollectionPicker({
           onClose={() => setIsPickerOpen(false)}
           options={collectionPickerModalProps?.options || defaultOptions}
           entityType={entityType}
-          {...collectionPickerModalProps}
+          {..._.omit(collectionPickerModalProps, ["options"])}
         />
       )}
     </>

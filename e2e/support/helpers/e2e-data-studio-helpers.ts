@@ -149,7 +149,7 @@ export const DataStudio = {
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
-    collectionItem: (name: string) =>
+    collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
 };

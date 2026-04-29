@@ -138,5 +138,5 @@ const pickerOptions: EntityPickerOptions = {
   hasRecents: false,
   hasSearch: false,
   hasConfirmButtons: true,
-  canCreateCollections: false,
+  canCreateCollections: true,
 };

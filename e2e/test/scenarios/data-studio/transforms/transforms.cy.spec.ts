@@ -2469,7 +2469,7 @@ LIMIT
       getTransformsList()
         .findByText("Original Name")
         .closest('[role="row"]')
-        .findByRole("button", { name: "Collection menu" })
+        .findByRole("button", { name: "Collection options" })
         .click();
 
       H.popover().findByText("Edit collection details").click();
@@ -2519,7 +2519,7 @@ LIMIT
       getTransformsList()
         .findByText("Archive Me")
         .closest('[role="row"]')
-        .findByRole("button", { name: "Collection menu" })
+        .findByRole("button", { name: "Collection options" })
         .click();
 
       H.popover().findByText("Archive").click();
@@ -2532,7 +2532,9 @@ LIMIT
         cy.button("Archive").click();
       });
 
-      H.undoToast().findByText("Collection archived").should("be.visible");
+      H.undoToast()
+        .findByText('"Archive Me" has been archived')
+        .should("be.visible");
 
       cy.log("verify collection and its children are no longer visible");
       getTransformsList().within(() => {
