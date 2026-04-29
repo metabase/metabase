@@ -94,6 +94,8 @@ function setup() {
   setupMetricsEndpoints([metricRevenue, metricChurn]);
 
   const setMetrics = jest.fn();
+  const setDimensions = jest.fn();
+  const setName = jest.fn();
 
   mockMetabotAgentState({
     messages: [userMessage],
@@ -101,7 +103,11 @@ function setup() {
   });
 
   const view = renderWithProviders(
-    <NewExplorationChat metrics={[]} setMetrics={setMetrics} />,
+    <NewExplorationChat
+      setMetrics={setMetrics}
+      setDimensions={setDimensions}
+      setName={setName}
+    />,
   );
 
   const rerender = ({
@@ -112,7 +118,13 @@ function setup() {
     isDoingScience: boolean;
   }) => {
     mockMetabotAgentState({ messages, isDoingScience });
-    view.rerender(<NewExplorationChat metrics={[]} setMetrics={setMetrics} />);
+    view.rerender(
+      <NewExplorationChat
+        setMetrics={setMetrics}
+        setDimensions={setDimensions}
+        setName={setName}
+      />,
+    );
   };
 
   return { setMetrics, rerender };

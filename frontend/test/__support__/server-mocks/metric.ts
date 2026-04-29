@@ -44,7 +44,7 @@ export function setupExplorationDataEndpoint(metrics: Metric[]) {
             (m) =>
               m.name.toLowerCase().includes(query) ||
               (m.dimensions ?? []).some((d) =>
-                d["display-name"].toLowerCase().includes(query),
+                d.display_name.toLowerCase().includes(query),
               ),
           );
       return {
