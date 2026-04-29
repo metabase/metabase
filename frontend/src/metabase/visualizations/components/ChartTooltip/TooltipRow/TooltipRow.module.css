@@ -63,7 +63,5 @@
 }
 
 .totalRowRoot {
-  width: 100%;
-  border-radius: 3.75rem;
   background-color: var(--mb-color-tooltip-background-focused);
 }
