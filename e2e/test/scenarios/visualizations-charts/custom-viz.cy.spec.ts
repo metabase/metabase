@@ -111,6 +111,7 @@ describe("admin > custom visualizations", () => {
         });
 
         H.activateToken("bleeding-edge");
+        H.setupCustomVizRepo();
         H.updateSetting("custom-viz-enabled", true);
         H.visitCustomVizSettings();
         H.getAddVisualizationLink().click();
