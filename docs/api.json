@@ -5170,6 +5170,31 @@
         "type" : "string",
         "enum" : [ "default", "write-data" ]
       },
+      "metabase.embedding-rest.api.theme.EmbeddingTheme" : {
+        "type" : "object",
+        "properties" : {
+          "created_at" : { },
+          "entity_id" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "settings" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "updated_at" : { }
+        },
+        "required" : [ "id", "entity_id", "name", "settings", "created_at", "updated_at" ]
+      },
       "metabase.frontend-errors.api.frontend-error-type" : {
         "type" : "string",
         "enum" : [ "component-crash", "chart-render-error" ]
@@ -30110,6 +30135,304 @@
           }
         },
         "tags" : [ "/api/email" ]
+      }
+    },
+    "/api/embed-theme" : {
+      "get" : {
+        "operationId" : "get-api-embed-theme",
+        "summary" : "GET /api/embed-theme",
+        "description" : "Fetch a list of all embedding themes.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.embedding-rest.api.theme.EmbeddingTheme"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
+      },
+      "post" : {
+        "operationId" : "post-api-embed-theme",
+        "summary" : "POST /api/embed-theme",
+        "description" : "Create a new embedding theme.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.embedding-rest.api.theme.EmbeddingTheme"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "settings" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "name", "settings" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
+      }
+    },
+    "/api/embed-theme/seed-defaults" : {
+      "post" : {
+        "operationId" : "post-api-embed-theme-seed-defaults",
+        "summary" : "POST /api/embed-theme/seed-defaults",
+        "description" : "Seed default embedding themes on first call, using the payloads built by the frontend from the\n  `METABASE_LIGHT_THEME` / `METABASE_DARK_THEME` constants.\n\n  Idempotent: guarded by the `default-embedding-themes-seeded` setting. Once flipped, subsequent calls\n  are no-ops even if the admin has since deleted the seeded themes, so deletions are preserved.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "themes" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "settings" : {
+                          "type" : "object",
+                          "properties" : { }
+                        }
+                      },
+                      "required" : [ "name", "settings" ]
+                    }
+                  }
+                },
+                "required" : [ "themes" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
+      }
+    },
+    "/api/embed-theme/{id}" : {
+      "get" : {
+        "operationId" : "get-api-embed-theme-id",
+        "summary" : "GET /api/embed-theme/{id}",
+        "description" : "Fetch a single embedding theme by ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.embedding-rest.api.theme.EmbeddingTheme"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
+      },
+      "put" : {
+        "operationId" : "put-api-embed-theme-id",
+        "summary" : "PUT /api/embed-theme/{id}",
+        "description" : "Update an embedding theme.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.embedding-rest.api.theme.EmbeddingTheme"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "settings" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-embed-theme-id",
+        "summary" : "DELETE /api/embed-theme/{id}",
+        "description" : "Delete an embedding theme.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
+      }
+    },
+    "/api/embed-theme/{id}/copy" : {
+      "post" : {
+        "operationId" : "post-api-embed-theme-id-copy",
+        "summary" : "POST /api/embed-theme/{id}/copy",
+        "description" : "Copy an embedding theme.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.embedding-rest.api.theme.EmbeddingTheme"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embed-theme" ]
       }
     },
     "/api/embed/card/{token}" : {
