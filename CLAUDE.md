@@ -52,11 +52,11 @@ For module-scoped runs — useful when validating a branch's blast radius — pa
 ```bash
 ./bin/test-agent :module enterprise/workspaces
 ./bin/test-agent :modules '[sql-parsing query-processor]'
-# Driver tests need DRIVERS env + driver aliases, so invoke clj directly:
-DRIVERS=mysql,h2,postgres clj -X:dev:test:ee:ee-dev:drivers:drivers-dev :module enterprise/workspaces
+# Driver tests: --drivers=LIST adds the driver aliases and sets DRIVERS=LIST in one step.
+./bin/test-agent --drivers=mysql,h2,postgres :module enterprise/workspaces
 ```
 
-Once again, do not use `clj -X:dev:test` directly for ordinary runs — its progress-bar output is hard to parse. The driver case above is the exception, since `test-agent` doesn't forward the `:drivers:drivers-dev` aliases.
+Once again, do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
 
 ## Tool Preferences
 
