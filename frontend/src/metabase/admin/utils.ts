@@ -3,10 +3,10 @@ import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { connect, metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { AdminPath } from "metabase/redux/store/admin";
 import { getSetting } from "metabase/selectors/settings";
-import { MetabaseReduxContext, connect } from "metabase/utils/redux";
 
 export const createAdminRouteGuard = (routeKey: string) => {
   const Wrapper = connectedReduxRedirect<any, State>({
@@ -16,7 +16,7 @@ export const createAdminRouteGuard = (routeKey: string) => {
     authenticatedSelector: (state) =>
       getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
     redirectAction: routerActions.replace,
-    context: MetabaseReduxContext,
+    context: metabaseReduxContext,
   });
 
   return Wrapper(({ children }) => children);
@@ -62,7 +62,7 @@ export const createTenantsRouteGuard = () => {
       getAdminPaths(state)?.find((path) => path.key === "people") != null &&
       getSetting(state, "use-tenants"),
     redirectAction: routerActions.replace,
-    context: MetabaseReduxContext,
+    context: metabaseReduxContext,
   });
 
   return Wrapper(({ children }) => children);

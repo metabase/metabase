@@ -1,11 +1,11 @@
 import { useAsyncFn } from "react-use";
 import type { AsyncFnReturn } from "react-use/lib/useAsyncFn";
 
+import { useDispatch } from "metabase/redux";
 import {
   type DownloadQueryResultsOpts,
   downloadQueryResults,
 } from "metabase/redux/downloads";
-import { useDispatch } from "metabase/utils/redux";
 
 export type UseDownloadDataParams = Pick<
   DownloadQueryResultsOpts,

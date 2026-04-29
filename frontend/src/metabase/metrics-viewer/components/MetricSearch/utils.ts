@@ -649,16 +649,6 @@ export function cleanupParens(
   return current;
 }
 
-export type ExcludeMetric = {
-  id: number;
-  sourceType: "metric" | "measure";
-};
-
-type SearchResultLike = {
-  id: number;
-  model: "metric" | "measure";
-};
-
 // ── Positioned token type (internal) ────────────────────────────────────────
 
 export type PositionedToken = (
@@ -1041,25 +1031,6 @@ export function findInvalidRanges(
   }
 
   return invalid;
-}
-
-export function filterSearchResults<T extends SearchResultLike>(
-  results: T[],
-  selectedMetricIds?: Set<number>,
-  selectedMeasureIds?: Set<number>,
-  excludeMetric?: ExcludeMetric,
-): T[] {
-  return results.filter((result) => {
-    const isAlreadySelected =
-      result.model === "metric"
-        ? selectedMetricIds?.has(result.id)
-        : selectedMeasureIds?.has(result.id);
-    const isExcluded =
-      excludeMetric &&
-      result.id === excludeMetric.id &&
-      result.model === excludeMetric.sourceType;
-    return !isAlreadySelected && !isExcluded;
-  });
 }
 
 export type MetricIdentityEntry = {

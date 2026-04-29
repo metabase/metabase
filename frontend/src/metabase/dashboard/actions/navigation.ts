@@ -1,9 +1,9 @@
+import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { createThunkAction } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
@@ -70,6 +72,7 @@ export const setup = (options?: {
   setupNotificationChannelsEndpoints(
     options?.hasEmailSetup ? { email: { configured: true } as any } : {},
   );
+  fetchMock.get("path:/api/embed-theme", []);
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

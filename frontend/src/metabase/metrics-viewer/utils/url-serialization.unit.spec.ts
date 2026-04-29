@@ -140,6 +140,136 @@ describe("url-serialization", () => {
       expect(decoded).toEqual(state);
     });
 
+    it("round-trips a metric with a single segment", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "metric",
+            id: 5,
+            segments: [42],
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips a metric with multiple segments preserving order", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "metric",
+            id: 5,
+            segments: [11, 7, 23],
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      const entity = decoded.formulaEntities[0];
+      if (entity.type === "expression") {
+        throw new Error("Expected metric entity");
+      }
+      expect(entity.segments).toEqual([11, 7, 23]);
+    });
+
+    it("round-trips a metric with both dimension filters and segments", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "metric",
+            id: 5,
+            filters: [
+              {
+                dimensionId: "category",
+                value: {
+                  type: "string",
+                  operator: "=",
+                  values: ["Gadget"],
+                  options: {},
+                },
+              },
+            ],
+            segments: [42],
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips expression tokens with segments", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "expression",
+            id: "expression:test",
+            name: "test",
+            tokens: [
+              {
+                type: "metric",
+                sourceId: "metric:1",
+                segments: [99],
+              },
+              { type: "operator", op: "+" },
+              { type: "metric", sourceId: "metric:2" },
+            ],
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("decodes a legacy URL without `segments` to undefined (backward compat)", () => {
+      // Encode an older-shape state (no segments field) and confirm
+      // round-trip still works and leaves segments undefined.
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [{ type: "metric", id: 1, breakout: "dim-1" }],
+        tabs: [],
+        selectedTabId: null,
+      };
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      const entity = decoded.formulaEntities[0];
+      if (entity.type === "expression") {
+        throw new Error("Expected metric entity");
+      }
+      expect(entity.segments).toBeUndefined();
+    });
+
+    it("propagates decoded segments into serializedDefinitionInfo on the entity", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [{ type: "metric", id: 5, segments: [42] }],
+        tabs: [],
+        selectedTabId: null,
+      };
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      const entities = deserializeFormulaEntities(decoded);
+      expect(entities).toHaveLength(1);
+      const entity = entities[0];
+      if (entity.type !== "metric") {
+        throw new Error("Expected metric entity");
+      }
+      expect(entity.serializedDefinitionInfo?.segments).toEqual([42]);
+    });
+
     it("round-trips expressions in formula entities", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [

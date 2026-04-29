@@ -189,6 +189,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ...attributesConverted,
       componentName: this._componentName,
       _isLocalhost: this._getIsLocalhost(),
+      _embedReferrer: window.location.href,
     } as SdkIframeEmbedElementSettings;
   }
 

@@ -10,9 +10,9 @@ import {
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
