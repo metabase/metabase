@@ -28,5 +28,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Lint
+      - name: Set up Babashka
+        uses: turtlequeue/setup-babashka@2d4df498c7a578b4f3e906283f9af913590bdec7 # v1.7.0
+        with:
+          babashka-version: 1.12.197
+      - name: Lint (igluctl)
         run: docker run -v $(pwd):/snowplow snowplow/igluctl:0.6.0 lint snowplow
+      - name: Lint (Metabase schema rules)
+        run: ./bin/lint-snowplow-schemas.bb
