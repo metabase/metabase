@@ -34,6 +34,7 @@
  [metabase.lib.stage.util
   append-stage
   drop-empty-stages
+  drop-stage
   has-clauses?])
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)

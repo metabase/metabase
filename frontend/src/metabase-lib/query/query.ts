@@ -63,6 +63,10 @@ export function appendStage(query: Query): Query {
   return ML.append_stage(query);
 }
 
+export function dropStage(query: Query): Query {
+  return ML.drop_stage(query);
+}
+
 export function dropEmptyStages(query: Query): Query {
   return ML.drop_empty_stages(query);
 }
