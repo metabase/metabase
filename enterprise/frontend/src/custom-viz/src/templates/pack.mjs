@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* global Buffer, console, process */
 // Packages metabase-plugin.json + dist/ into <name>-<version>.tgz at the
 // project root, ready to upload via Admin → Custom visualizations → Add.
 //
