@@ -5,7 +5,3 @@
 .sectionTitle {
   border-bottom: 1px solid var(--mb-color-border);
 }
-
-.pillList {
-  overflow-y: auto;
-}

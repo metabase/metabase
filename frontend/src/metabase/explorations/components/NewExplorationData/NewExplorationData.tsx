@@ -13,6 +13,7 @@ import {
   Group,
   Icon,
   Pill,
+  ScrollArea,
   Stack,
   Text,
 } from "metabase/ui";
@@ -193,24 +194,26 @@ function PillList({ items, onRemove }: PillListProps) {
   }
 
   return (
-    <Group mih="2rem" align="flex-start" gap="sm" className={S.pillList}>
-      {items.map((item) => (
-        <Pill
-          key={item.id}
-          withRemoveButton
-          onRemove={() => onRemove(item.id)}
-          bdrs="xl"
-          bg="background-secondary"
-          fw="normal"
-          px="sm"
-          py="xs"
-          removeButtonProps={{
-            mr: 0,
-          }}
-        >
-          {item.name}
-        </Pill>
-      ))}
-    </Group>
+    <ScrollArea mih="2rem" type="auto" offsetScrollbars="y">
+      <Group align="flex-start" gap="sm">
+        {items.map((item) => (
+          <Pill
+            key={item.id}
+            withRemoveButton
+            onRemove={() => onRemove(item.id)}
+            bdrs="xl"
+            bg="background-secondary"
+            fw="normal"
+            px="sm"
+            py="xs"
+            removeButtonProps={{
+              mr: 0,
+            }}
+          >
+            {item.name}
+          </Pill>
+        ))}
+      </Group>
+    </ScrollArea>
   );
 }

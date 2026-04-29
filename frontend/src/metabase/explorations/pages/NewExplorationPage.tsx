@@ -67,7 +67,7 @@ export function NewExplorationPage() {
 
   return (
     <Center p="3rem" h="100%" bg="background-secondary">
-      <Group h="100%" w="100%" maw="90rem" align="flex-start">
+      <Group h="100%" w="100%" maw="90rem" align="flex-start" wrap="nowrap">
         <Stack h="100%" w="100%" flex={1} gap="lg">
           <Text size="xl" fw="bold">{t`What are you looking to learn?`}</Text>
           <NewExplorationChat metrics={metrics} setMetrics={setMetrics} />
