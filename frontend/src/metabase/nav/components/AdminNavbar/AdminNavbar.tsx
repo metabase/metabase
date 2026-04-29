@@ -65,30 +65,29 @@ export const AdminNavbar = ({
       justify="space-between"
       h={ADMIN_NAVBAR_HEIGHT}
       bg="admin-navbar"
-      c="text-primary-inverse"
       fz="0.85rem"
       px="1rem"
       py="0.5rem"
       style={{ zIndex: 4, flexShrink: 0 }}
     >
-      <Link to="/admin">
-        <Flex
-          align="center"
-          justify="center"
-          miw={32}
-          maw="20rem"
-          h={32}
-          style={{ overflow: "hidden" }}
-        >
-          <LogoIcon dark />
-          <Box
-            visibleFrom="lg"
-            fw={700}
-            ml="1rem"
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-          >{t`Metabase Admin`}</Box>
-        </Flex>
-      </Link>
+      <Flex
+        component={Link}
+        to="/admin"
+        align="center"
+        justify="center"
+        miw={32}
+        maw="20rem"
+        h={32}
+        style={{ overflow: "hidden" }}
+      >
+        <LogoIcon dark />
+        <Box
+          visibleFrom="lg"
+          fw={700}
+          ml="1rem"
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+        >{t`Metabase Admin`}</Box>
+      </Flex>
 
       <Flex visibleFrom="md" align="center" miw={0} flex="1 1 auto" ps="2rem">
         <Flex
