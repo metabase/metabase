@@ -548,30 +548,85 @@
 
 ;;; ----------------------------------------- GET /api/database/metadata ------------------------------------------
 
+(defn- format-database-id
+  "Portable id for a database — its `name`. Wrapped so the export shape stays in one place."
+  [db-name]
+  db-name)
+
+(defn- format-table-id
+  "Portable id for a table — `[db-name schema table-name]`. `schema` may be nil for engines
+  that don't have schemas."
+  [db-name schema table-name]
+  [(format-database-id db-name) schema table-name])
+
+(defn- format-field-id
+  "Portable id for a field — `[db-name schema table-name & path]`. For a nested field,
+  `nfc_path` already contains the full chain (parents + the field's own name) so it
+  becomes the path verbatim; for a non-nested field the path is `[name]`."
+  [db-name schema table-name field-name nfc-path]
+  (into (format-table-id db-name schema table-name)
+        (or (not-empty nfc-path) [field-name])))
+
+(defn- format-parent-field-id
+  "Portable id of a field's parent, derived from `nfc_path`. Returns nil for a non-nested
+  field. The parent's path is `(butlast nfc-path)` — the parent row's own portable id is
+  the same vector, so this composes with [[format-field-id]] into a stable cross-reference.
+  By construction this matches what walking the integer `parent_id` chain would yield."
+  [db-name schema table-name nfc-path]
+  (when (next nfc-path)
+    (into (format-table-id db-name schema table-name) (butlast nfc-path))))
+
+(defn- parse-nfc-path
+  "`metabase_field.nfc_path` is stored as a JSON-encoded array of names. Field rows are
+  pulled with `t2/reducible-query` (no model transforms run), so decode the column to
+  a Clojure vector ourselves."
+  [s]
+  (some-> s json/decode))
+
 (defn- format-database-metadata
-  "Formats a Database record for the /metadata endpoint response."
-  [{:keys [id name engine]}]
-  {:id id :name name :engine engine})
+  "Formats a Database row for the /metadata endpoint response. The implicit id is `:name`
+  (see [[format-database-id]])."
+  [{:keys [name engine]}]
+  {:name name :engine engine})
 
 (defn- format-table-metadata
-  "Formats a Table record for the /metadata endpoint response, omitting nil optional fields."
-  [{:keys [id db_id name schema description]}]
-  (m/assoc-some {:id id :db_id db_id :name name}
+  "Formats a joined Table row for the /metadata endpoint response, omitting nil optional
+  fields. The implicit id is `[:db_id :schema :name]` — `:db_id` is the database name
+  produced by joining `metabase_database`."
+  [{:keys [db_name name schema description]}]
+  (m/assoc-some {:db_id (format-database-id db_name)
+                 :name  name}
                 :schema schema
                 :description description))
 
 (defn- format-field-metadata
-  "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
-  [{:keys [id table_id parent_id fk_target_field_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
-  (m/assoc-some {:id id :table_id table_id :name name}
-                :parent_id parent_id
-                :fk_target_field_id fk_target_field_id
-                :description description
-                :base_type base_type
-                :database_type database_type
-                :effective_type (when (and effective_type (not= base_type effective_type)) effective_type)
-                :semantic_type semantic_type
-                :coercion_strategy coercion_strategy))
+  "Formats a joined Field row for the /metadata endpoint response.
+
+  The row carries the field's own table+db (for `:table_id` and as the prefix of the
+  field's own portable id used in `:parent_id`) and, when `fk_target_field_id` is set,
+  the FK target field's table plus its `nfc_path` (for `:fk_target_field_id`). FKs
+  always live within the same database, so the source `db_name` is reused as the FK
+  target's database.
+
+  `:parent_id` is derived from `nfc_path` rather than walking the integer `parent_id`
+  chain — for a nested field these always describe the same hierarchy. `:effective_type`
+  is included only when it differs from `:base_type`."
+  [{:keys [name description base_type database_type effective_type semantic_type coercion_strategy
+           db_name table_schema table_name nfc_path
+           fk_table_schema fk_table_name fk_name fk_nfc_path]}]
+  (let [nfc-path    (parse-nfc-path nfc_path)
+        fk-nfc-path (parse-nfc-path fk_nfc_path)]
+    (m/assoc-some {:table_id (format-table-id db_name table_schema table_name)
+                   :name     name}
+                  :parent_id          (format-parent-field-id db_name table_schema table_name nfc-path)
+                  :fk_target_field_id (when fk_name
+                                        (format-field-id db_name fk_table_schema fk_table_name fk_name fk-nfc-path))
+                  :description        description
+                  :base_type          base_type
+                  :database_type      database_type
+                  :effective_type     (when (and effective_type (not= base_type effective_type)) effective_type)
+                  :semantic_type      semantic_type
+                  :coercion_strategy  coercion_strategy)))
 
 (defn- perm-user-info
   "User information used to check permissions."
@@ -645,51 +700,62 @@
         writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (.write writer "{\"databases\":")
     (write-json-array! writer
-                       (t2/reducible-select [:model/Database :d.id :d.name :d.engine]
-                                            {:from  [[:metabase_database :d]]
-                                             :where db-filter})
+                       (t2/reducible-query {:select [:d.name :d.engine]
+                                            :from   [[:metabase_database :d]]
+                                            :where  db-filter})
                        format-database-metadata)
     (.write writer ",\"tables\":")
     (write-json-array! writer
-                       (t2/reducible-select [:model/Table :t.id :t.db_id :t.name :t.schema :t.description]
-                                            {:from  [[:metabase_table :t]]
-                                             :join  [[:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and db-filter t-filter]})
+                       (t2/reducible-query {:select [[:d.name :db_name] :t.name :t.schema :t.description]
+                                            :from   [[:metabase_table :t]]
+                                            :join   [[:metabase_database :d] [:= :t.db_id :d.id]]
+                                            :where  [:and db-filter t-filter]})
                        format-table-metadata)
     (.write writer ",\"fields\":")
     (write-json-array! writer
-                       (t2/reducible-select [:model/Field :f.id :f.table_id :f.parent_id :f.fk_target_field_id
-                                             :f.name :f.description :f.base_type :f.database_type
-                                             :f.effective_type :f.semantic_type :f.coercion_strategy]
-                                            {:from  [[:metabase_field :f]]
-                                             :join  [[:metabase_table :t]    [:= :f.table_id :t.id]
-                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and db-filter t-filter f-filter]})
+                       (t2/reducible-query {:select    [:f.name :f.description :f.base_type :f.database_type
+                                                        :f.effective_type :f.semantic_type :f.coercion_strategy
+                                                        :f.nfc_path
+                                                        [:d.name :db_name] [:t.schema :table_schema] [:t.name :table_name]
+                                                        [:fkt.schema :fk_table_schema] [:fkt.name :fk_table_name]
+                                                        [:fkf.name :fk_name] [:fkf.nfc_path :fk_nfc_path]]
+                                            :from      [[:metabase_field :f]]
+                                            :join      [[:metabase_table :t]    [:= :f.table_id :t.id]
+                                                        [:metabase_database :d] [:= :t.db_id :d.id]]
+                                            :left-join [[:metabase_field :fkf] [:= :f.fk_target_field_id :fkf.id]
+                                                        [:metabase_table :fkt] [:= :fkf.table_id :fkt.id]]
+                                            :where     [:and db-filter t-filter f-filter]})
                        format-field-metadata)
     (.write writer "}")
     (.flush writer)))
 
+(mr/def ::portable-database-id :string)
+
+(mr/def ::portable-table-id
+  [:tuple :string [:maybe :string] :string])
+
+(mr/def ::portable-field-id
+  ;; [db-name schema table-name name-or-...nfc-path], min length 4. `schema` may be nil.
+  [:cat :string [:maybe :string] :string [:+ :string]])
+
 (mr/def ::database-info
   [:map
-   [:id ::lib.schema.id/database]
    [:name :string]
    [:engine :string]])
 
 (mr/def ::table-info
   [:map
-   [:id ::lib.schema.id/table]
-   [:db_id ::lib.schema.id/database]
+   [:db_id ::portable-database-id]
    [:name :string]
    [:schema {:optional true} :string]
    [:description {:optional true} :string]])
 
 (mr/def ::field-info
   [:map
-   [:id ::lib.schema.id/field]
-   [:table_id ::lib.schema.id/table]
+   [:table_id ::portable-table-id]
    [:name :string]
-   [:parent_id {:optional true} ::lib.schema.id/field]
-   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
+   [:parent_id {:optional true} ::portable-field-id]
+   [:fk_target_field_id {:optional true} ::portable-field-id]
    [:description {:optional true} :string]
    [:base_type :string]
    [:database_type {:optional true} :string]
@@ -718,10 +784,14 @@
 ;;; --------------------------------------- GET /api/database/field-values ---------------------------------------
 
 (defn- format-field-values-entry
-  "Formats a FieldValues row for the /field-values response. Omits `human_readable_values`
-  when empty to keep the common case compact."
-  [{:keys [field_id values human_readable_values has_more_values]}]
-  (m/assoc-some {:field_id        field_id
+  "Formats a joined FieldValues row for the /field-values response. `:field_id` is the
+  portable id `[db-name schema table-name & path]` — for a nested field, `nfc_path`
+  already contains the full chain. Omits `human_readable_values` when empty to keep the
+  common case compact."
+  [{:keys [values human_readable_values has_more_values
+           db_name table_schema table_name field_name nfc_path]}]
+  (m/assoc-some {:field_id        (format-field-id db_name table_schema table_name field_name
+                                                   (parse-nfc-path nfc_path))
                  :values          (or values [])
                  :has_more_values (boolean has_more_values)}
                 :human_readable_values (not-empty human_readable_values)))
@@ -742,7 +812,10 @@
     (.write writer "{\"field_values\":")
     (write-json-array! writer
                        (t2/reducible-select [:model/FieldValues
-                                             :fv.field_id :fv.values :fv.human_readable_values :fv.has_more_values]
+                                             :fv.values :fv.human_readable_values :fv.has_more_values
+                                             [:f.name :field_name] [:f.nfc_path :nfc_path]
+                                             [:t.schema :table_schema] [:t.name :table_name]
+                                             [:d.name :db_name]]
                                             {:from  [[:metabase_fieldvalues :fv]]
                                              :join  [[:metabase_field :f]    [:= :fv.field_id :f.id]
                                                      [:metabase_table :t]    [:= :f.table_id :t.id]
@@ -754,7 +827,7 @@
 
 (mr/def ::field-values-info
   [:map
-   [:field_id ::lib.schema.id/field]
+   [:field_id ::portable-field-id]
    [:values [:sequential [:sequential :any]]]
    [:has_more_values :boolean]
    [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
