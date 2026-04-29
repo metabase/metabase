@@ -1684,3 +1684,175 @@
       (is (= stage1-agg-uuid stage1-ref-uuid))
       (is (= "type/Float"
              (get-in repaired ["stages" 1 "order-by" 0 2 1 "base-type"]))))))
+
+;;; ============================================================
+;;; Pass 2.9 - auto-split post-aggregation filter into a second stage
+;;; ============================================================
+
+(deftest split-post-agg-filter-simple-count-test
+  (testing "filter [> count 10] on stage with aggregation [count] is split into two stages"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]}]}
+          repaired (repair/repair trivial-mp q)
+          stages   (get repaired "stages")]
+      (is (= 2 (count stages)) "must produce two stages")
+      (testing "stage 0 keeps source/aggregation/breakout, drops the offending filter"
+        (is (= ["Sample" "PUBLIC" "ORDERS"] (get-in stages [0 "source-table"])))
+        (is (= [["count" (get-in stages [0 "aggregation" 0 1])]]
+               (get-in stages [0 "aggregation"])))
+        (is (some? (get-in stages [0 "breakout"])))
+        (is (not (contains? (nth stages 0) "filters"))))
+      (testing "stage 1 has the rewritten filter as cross-stage field ref"
+        (is (= "mbql.stage/mbql" (get-in stages [1 "lib/type"])))
+        (is (not (contains? (nth stages 1) "source-table")))
+        (is (= [[">" {} ["field" {} "count"] 10]]
+               (get-in stages [1 "filters"])))))))
+
+(deftest split-post-agg-filter-keeps-pre-agg-filters-test
+  (testing "pre-agg filters stay in stage 0; only the post-agg filter moves"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "complete"]
+                                          [">" {} ["aggregation" {} 0] 10]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 2 (count stages)))
+      (testing "pre-agg filter stays in stage 0"
+        (is (= [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "complete"]]
+               (get-in stages [0 "filters"]))))
+      (testing "post-agg filter moves to stage 1 with cross-stage ref"
+        (is (= [[">" {} ["field" {} "count"] 10]]
+               (get-in stages [1 "filters"])))))))
+
+(deftest split-post-agg-moves-order-by-and-limit-test
+  (testing "when split happens, order-by and limit move to the new stage so semantics are preserved"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                          "order-by"     [["desc" {} ["aggregation" {} 0]]]
+                          "limit"        5}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 2 (count stages)))
+      (testing "order-by/limit removed from stage 0"
+        (is (not (contains? (nth stages 0) "order-by")))
+        (is (not (contains? (nth stages 0) "limit"))))
+      (testing "order-by moved to stage 1 with cross-stage rewrite"
+        (is (= [["desc" {} ["field" {} "count"]]]
+               (get-in stages [1 "order-by"]))))
+      (testing "limit moved to stage 1 unchanged"
+        (is (= 5 (get-in stages [1 "limit"])))))))
+
+(deftest split-post-agg-uses-name-override-when-present-test
+  (testing "an aggregation with `name` override produces a cross-stage ref by that name"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {"name" "Total Orders"}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 2 (count stages)))
+      (is (= [[">" {} ["field" {} "Total Orders"] 10]]
+             (get-in stages [1 "filters"]))))))
+
+(deftest split-post-agg-multiple-aggregations-test
+  (testing "with multiple aggregations, each gets its own column-name mapping"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]
+                                          ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]
+                                          [">" {} ["aggregation" {} 1] 100]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 2 (count stages)))
+      (is (= [[">" {} ["field" {} "count"] 10]
+              [">" {} ["field" {} "sum"]   100]]
+             (get-in stages [1 "filters"]))))))
+
+(deftest split-post-agg-metric-emits-diagnostic-test
+  (testing "metric aggregation we can't auto-resolve raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["metric" {"lib/uuid" "11111111-1111-1111-1111-111111111111"} "@card-1"]]
+                          "filters"      [[">" {} ["aggregation" {} "11111111-1111-1111-1111-111111111111"] 10]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :post-agg-filter-needs-multi-stage (:error (ex-data e)))))))))
+
+(deftest split-post-agg-no-trigger-when-no-agg-ref-test
+  (testing "stage with aggregation but no agg-ref-filter is left alone"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "filters"      [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 1 (count stages))))))
+
+(deftest split-post-agg-no-trigger-when-no-aggregations-test
+  (testing "stage with no aggregations is never split, even if filter has an aggregation-ref shape"
+    ;; The agg-ref points to nothing in this stage - resolve-aggregation-ref-indexes will
+    ;; have already raised. We just verify split doesn't add a phantom stage on its own.
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 1 (count stages))))))
+
+(deftest split-post-agg-idempotent-test
+  (testing "repair on an already-split query is a no-op"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]}]}
+          once  (repair/repair trivial-mp q)
+          twice (repair/repair trivial-mp once)]
+      (is (= 2 (count (get once "stages"))))
+      (is (= once twice)))))
+
+(deftest split-post-agg-handles-distinct-and-count-where-test
+  (testing "distinct and count-where get correct lib column names"
+    (let [build (fn [agg]
+                  {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [agg]
+                                "filters"      [[">" {} ["aggregation" {} 0] 1]]}]})]
+      (testing "distinct → count"
+        (is (= [[">" {} ["field" {} "count"] 1]]
+               (get-in (repair/repair trivial-mp
+                                      (build ["distinct" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]))
+                       ["stages" 1 "filters"]))))
+      (testing "count-where → count_where"
+        (is (= [[">" {} ["field" {} "count_where"] 1]]
+               (get-in (repair/repair trivial-mp
+                                      (build ["count-where" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]))
+                       ["stages" 1 "filters"])))))))

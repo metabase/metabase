@@ -525,6 +525,19 @@
 (defn- =->in-head [head]
   (case head "=" "in" "!=" "not-in"))
 
+(defn- comparison-lhs-clause?
+  "Heuristic for what counts as a real \"left-hand side\" of a comparison: a clause vector
+  with a string head and a map options at slot 1 (e.g. `field`, `expression`, `+`, etc.).
+  Crucially, this excludes a bare FK-path vector (`[DB SCHEMA TABLE COL]`) - which is a
+  vector of strings and would otherwise be mis-classified as an LHS by the value-list
+  splat pass, making repair non-idempotent on adversarial property-test inputs that look
+  like `[\"=\" {} [\"DB\" \"S\" \"T\"] [\"v1\" \"v2\"]]`."
+  [v]
+  (and (vector? v)
+       (>= (count v) 2)
+       (string? (nth v 0))
+       (map? (nth v 1))))
+
 (defn- list-value-comparison-clause
   "If `node` is a comparison clause whose last arg is a values-list, return
   `[head opts lhs values]` so the splat can be applied. Otherwise return `nil`.
@@ -533,7 +546,10 @@
 
     * `[head, opts-map, lhs, [v1 v2 …]]` (4 elements, options already in place); and
     * `[head, lhs, [v1 v2 …]]` (3 elements, options omitted - we splice an empty
-      options map for downstream uniformity)."
+      options map for downstream uniformity).
+
+  Additionally requires `lhs` to be clause-shaped (`comparison-lhs-clause?`), to avoid
+  mis-firing on adversarial inputs where every arg is a vector-of-strings."
   [heads node]
   (when (and (vector? node)
              (>= (count node) 3)
@@ -549,7 +565,8 @@
                                (when (= 4 (count node)) (nth node 3))]
                               [(when (= 3 (count node)) (nth node 1))
                                (when (= 3 (count node)) (nth node 2))])]
-      (when (and lhs (values-list? values-slot))
+      (when (and (comparison-lhs-clause? lhs)
+                 (values-list? values-slot))
         [head (if opts-at (nth node 1) {}) lhs values-slot]))))
 
 (defn- normalise-list-value-comparisons*
@@ -1325,6 +1342,208 @@
       (assoc query "stages" (mapv resolve-integer-agg-refs-in-stage stages)))))
 
 ;;; ============================================================
+;;; Pass 2.9 -- auto-split a stage that uses a same-stage aggregation reference inside a
+;;; `filters:` clause (post-aggregation / HAVING-style filter) into two stages.
+;;;
+;;; lib's canonical shape forbids `[aggregation, {}, <uuid>]` to appear inside a stage's
+;;; `filters:` (or `breakout:`, `expressions:`) - that's a HAVING-clause situation in SQL
+;;; terms, and in pMBQL it must be expressed as a *second stage* whose `filters:` reference
+;;; the aggregation's output column by name. lib's schema is shape-only and does not catch
+;;; this; the broken query goes through validate, resolve, and only fails at SQL-generation
+;;; time (or, worse, silently produces wrong results). LLMs habitually write the single-
+;;; stage shape because that's the SQL idiom (`HAVING count(*) > 10`).
+;;;
+;;; Carried over from the sexp pipeline's stage-boundary inference (see
+;;; `repr-deletion-followups.md` § 1.11).
+;;;
+;;; Detection
+;;; =========
+;;; For each stage S whose `aggregation:` is non-empty, build the set of `lib/uuid`s of S's
+;;; aggregations. Walk every entry of `S.filters` looking for any
+;;; `[aggregation, opts, <uuid>]` clause whose uuid is in that set. If found, the stage is
+;;; "post-agg-filter-broken".
+;;;
+;;; Auto-fix
+;;; ========
+;;; Derive the output column-name for each aggregation (static lib-mirroring table, plus
+;;; `"name"` opts override). If any aggregation's name can't be derived (custom heads,
+;;; `metric` ref needing the metadata-provider, etc.), throw `:agent-error?` with a clear
+;;; message - the LLM retry will then either avoid the pattern or refactor to multi-stage
+;;; explicitly.
+;;;
+;;; When all names are derivable, split S into [S0, S1]:
+;;;
+;;;   * S0 keeps: source-*, joins, aggregation, breakout, expressions, and any pre-agg
+;;;     filters (those that do NOT reference a same-stage agg-ref).
+;;;   * S1 (new, no source-table) takes:
+;;;       - the offending filters, with `[aggregation, {}, <uuid>]` rewritten to
+;;;         `[field, {}, "<column-name>"]` (cross-stage ref);
+;;;       - the original `order-by:` (if any), with the same rewrite applied;
+;;;       - the original `limit:`;
+;;;       - the original `fields:` (if any).
+;;;
+;;; Why move order-by + limit + fields? The user's intent is "of {rows matching the filter},
+;;; the top-N sorted by X, projecting columns Y". Leaving order-by/limit/fields in S0 would
+;;; sort/limit/project *before* the filter, producing a different (smaller) row set and the
+;;; wrong semantics. They semantically belong on the post-filter view.
+;;;
+;;; Pre-agg filters (those NOT referencing agg-ref) STAY in S0 so they can do row
+;;; filtering before aggregation as the LLM intended.
+;;;
+;;; Idempotency
+;;; ===========
+;;; After the split, S0 has no `[aggregation, {}, <uuid>]` ref in its filters and S1 has no
+;;; aggregation: vector at all. Re-running the pass finds no triggering shape and is a
+;;; no-op.
+;;;
+;;; This pass runs AFTER `resolve-aggregation-ref-indexes*` (so integer-index refs are
+;;; already in UUID form) and BEFORE `infer-cross-stage-field-types*` (so the new
+;;; cross-stage `field` refs we synthesise get their `base-type` / `effective-type` filled
+;;; in by Pass 5).
+;;; ============================================================
+
+(def ^:private aggregation-column-name-table
+  "Lib-mirroring static table: aggregation head → the output column name lib's
+  `column-name-method` produces. Covers all the heads we expect from LLM-authored queries
+  in the absence of an explicit `name` override. `metric` is intentionally NOT in this
+  table - resolving its column name needs the metadata-provider, and the auto-split caller
+  emits a clean diagnostic when it can't derive a name."
+  {"count"          "count"
+   "cum-count"      "count"
+   "distinct"       "count"
+   "count-where"    "count_where"
+   "distinct-where" "count_where"
+   "avg"            "avg"
+   "max"            "max"
+   "median"         "median"
+   "min"            "min"
+   "stddev"         "stddev"
+   "sum"            "sum"
+   "var"            "var"
+   "cum-sum"        "sum"
+   "percentile"     "percentile"})
+
+(defn- aggregation-clause-column-name
+  "Derive the output column-name an aggregation will produce, mirroring lib's
+  `column-name-method`. An explicit `\"name\"` in opts (lib's column-name override) takes
+  precedence. Returns `nil` when we can't determine the name (e.g. `metric` head, custom
+  head not in the table); the caller treats that as \"please diagnose, don't auto-fix\"."
+  [agg]
+  (when (and (vector? agg) (>= (count agg) 2))
+    (or (let [n (get (nth agg 1) "name")]
+          (when (and (string? n) (not= n "")) n))
+        (get aggregation-column-name-table (nth agg 0)))))
+
+(defn- collect-stage-agg-uuids
+  "Set of `lib/uuid` strings on the aggregation clauses of `stage`. Aggregations without a
+  uuid (shouldn't happen post-Pass-2.7/2.8 but guard anyway) contribute nothing."
+  [stage]
+  (into #{}
+        (keep (fn [agg]
+                (when (and (vector? agg) (>= (count agg) 2) (map? (nth agg 1)))
+                  (let [u (get (nth agg 1) "lib/uuid")]
+                    (when (string? u) u)))))
+        (get stage "aggregation")))
+
+(defn- form-references-stage-agg?
+  "True if `form` contains any `[aggregation, opts, <uuid>]` clause whose uuid is in
+  `same-stage-uuids`."
+  [form same-stage-uuids]
+  (let [found? (atom false)]
+    (walk/postwalk
+     (fn [n]
+       (when (and (vector? n)
+                  (>= (count n) 3)
+                  (= "aggregation" (nth n 0))
+                  (string? (nth n 2))
+                  (contains? same-stage-uuids (nth n 2)))
+         (reset! found? true))
+       n)
+     form)
+    @found?))
+
+(defn- aggregation-uuid->column-name
+  "Build a `{uuid → column-name}` map for the stage's aggregation vector. Returns `nil` if
+  any aggregation fails to produce a column name - signal to the caller that auto-split
+  isn't safe and a diagnostic should be emitted instead."
+  [aggs]
+  (reduce
+   (fn [acc agg]
+     (let [uuid (get-in agg [1 "lib/uuid"])]
+       (if (and (string? uuid) (not= uuid ""))
+         (if-let [col-name (aggregation-clause-column-name agg)]
+           (assoc acc uuid col-name)
+           (reduced nil))
+         acc)))
+   {}
+   aggs))
+
+(defn- rewrite-agg-refs-to-cross-stage-fields
+  "Postwalk: replace every `[aggregation, opts, <uuid>]` clause whose uuid is in
+  `uuid->col-name` with the canonical cross-stage `[field, {}, <col-name>]` shape.
+  Aggregation-specific opts (`base-type`, `effective-type`, `lib/uuid`) are intentionally
+  dropped - downstream Pass 5 (`infer-cross-stage-field-types*`) will re-stamp the field's
+  types based on metadata."
+  [form uuid->col-name]
+  (walk/postwalk
+   (fn [n]
+     (if (and (vector? n)
+              (= 3 (count n))
+              (= "aggregation" (nth n 0))
+              (map? (nth n 1))
+              (string? (nth n 2))
+              (contains? uuid->col-name (nth n 2)))
+       ["field" {} (get uuid->col-name (nth n 2))]
+       n))
+   form))
+
+(defn- split-post-agg-filter-stage
+  "Detect post-agg-filter shape in `stage`. Return a vector of stages: `[stage]` if no
+  split is needed, or `[stage' new-stage]` if the stage was split. Throws `:agent-error?`
+  ex-info when split is required but column-names can't be derived."
+  [stage]
+  (let [aggs              (get stage "aggregation")
+        same-stage-uuids  (collect-stage-agg-uuids stage)]
+    (if-not (and (vector? aggs) (seq aggs) (seq same-stage-uuids))
+      [stage]
+      (let [filters             (get stage "filters")
+            offending-filter?   (fn [f] (form-references-stage-agg? f same-stage-uuids))
+            offending-filters   (when (vector? filters) (filterv offending-filter? filters))]
+        (if (empty? offending-filters)
+          [stage]
+          (if-let [uuid->col (aggregation-uuid->column-name aggs)]
+            (let [keep-filters    (vec (remove offending-filter? filters))
+                  rewrite         #(rewrite-agg-refs-to-cross-stage-fields % uuid->col)
+                  moved-filters   (mapv rewrite offending-filters)
+                  moved-order-by  (some->> (get stage "order-by") (mapv rewrite))
+                  moved-limit     (get stage "limit")
+                  moved-fields    (some->> (get stage "fields") (mapv rewrite))
+                  s0              (cond-> stage
+                                    true                  (assoc "filters" keep-filters)
+                                    (empty? keep-filters) (dissoc "filters")
+                                    true                  (dissoc "order-by" "limit" "fields"))
+                  s1              (cond-> {"lib/type" "mbql.stage/mbql"
+                                           "filters"  moved-filters}
+                                    (seq moved-order-by) (assoc "order-by" moved-order-by)
+                                    (some? moved-limit)  (assoc "limit" moved-limit)
+                                    (seq moved-fields)   (assoc "fields" moved-fields))]
+              [s0 s1])
+            (throw (ex-info
+                    (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). pMBQL requires this in a separate stage. Auto-fix could not derive the aggregation''s output column name (likely a `metric` reference or unknown head); please refactor to multi-stage manually and reference the column via a cross-stage `field` clause whose third slot is the column''s output name.")
+                    {:agent-error? true
+                     :error        :post-agg-filter-needs-multi-stage
+                     :stage        stage}))))))))
+
+(defn- split-post-agg-filters*
+  "Top-level pass: walk every stage in the query, expanding any post-agg-filter stage
+  in-place to `[stage0 stage1]`. Re-runs are no-ops (idempotent: split stages no longer
+  match the trigger)."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))))
+
+;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins
 ;;;
 ;;; When a field clause references a field on a table *other* than the stage's
@@ -1765,6 +1984,7 @@
       (stamp-top-level-database* mp)
       rewrite-order-by-inline-aggs*
       resolve-aggregation-ref-indexes*
+      split-post-agg-filters*
       (resolve-implicit-joins* mp)
       (infer-cross-stage-field-types* mp)
       (infer-source-card-field-types* mp)))
