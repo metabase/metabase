@@ -15,7 +15,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -328,7 +328,7 @@
   [user-id]
   (let [group-id (e2e-usage-auditing-group-id!)]
     (when-not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
-      (perms-group-membership/add-user-to-group! user-id group-id))))
+      (perms/add-user-to-group! user-id group-id))))
 
 (defn- delete-seeded-usage-auditing-data!
   []

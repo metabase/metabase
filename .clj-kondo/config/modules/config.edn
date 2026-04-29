@@ -2203,13 +2203,19 @@
            config
            lib
            lib-be
+           permissions
            premium-features
            search
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
-                    :model/SecurityAdvisory}}
+                    :model/MetabotConversation
+                    :model/MetabotMessage
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/SecurityAdvisory
+                    :model/User}}
 
   tiles
   {:team "UX West"
