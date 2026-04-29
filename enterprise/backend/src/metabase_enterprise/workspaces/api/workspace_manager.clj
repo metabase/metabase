@@ -3,11 +3,11 @@
    Validation, auth, and presentation only — all logic lives in
    [[metabase-enterprise.workspaces.core]]."
   (:require
+   [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
@@ -153,12 +153,12 @@
       [:status  [:= 200]]
       [:headers [:map-of :string :string]]
       [:body    :string]]
-  "Download the workspace's developer-instance config as a YAML file."
+  "Download the workspace's developer-instance config as a YAML file. 409 if any
+  of the workspace's databases is not `:provisioned`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [workspace (api/check-404 (ws/get-workspace id))]
+  (let [config (api/check-404 (ws.config/build-workspace-config id))]
     {:status  200
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
-     :body    (yaml/generate-string
-               {:name (:name workspace)})}))
+     :body    (ws.config/config->yaml config)}))
