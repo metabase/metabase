@@ -240,6 +240,8 @@
     4. Structurally validate against the repr schema.
     5. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
+    6. Export that final numeric pMBQL back to portable representations YAML for the LLM-facing
+       `:query-yaml` / `query-content` output.
 
   Returns a map with `:structured-output` and `:instructions` keys. Throws with an
   `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
@@ -265,13 +267,15 @@
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
     ;; them reach the tool wrapper with the flag set.
     (try
-      (let [repaired    (repr.repair/repair mp parsed permission-aware-content-store)
-            _validated  (repr/validate-query repaired)
-            pmbql-query (repr.resolve/resolve-query mp repaired permission-aware-content-store)
-            query-id    (u/generate-nano-id)]
+      (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
+            _validated    (repr/validate-query repaired)
+            pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            exported-repr (repr.resolve/export-query mp pmbql-query)
+            _validated'   (repr/validate-query exported-repr)
+            query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
-                             :query-yaml     (yaml/generate-string repaired :dumper-options {:flow-style :block})
+                             :query-yaml     (yaml/generate-string exported-repr :dumper-options {:flow-style :block})
                              :result-columns (result-columns-for-query pmbql-query mp)}
          :instructions      (instructions/query-created-instructions-for query-id)})
       (catch clojure.lang.ExceptionInfo e
@@ -293,12 +297,11 @@
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-shape/query->xml]].
 
-  `:query-content` is the **canonical post-repair representations YAML** the LLM
-  authored - i.e. the same shape it sent us in, but with `{}` options filled in,
-  `lib/type` markers stamped, implicit-join `source-field` wired up, placeholder
-  `@agg-N` references resolved to UUIDs, etc. By feeding the LLM back its own
-  normalized form (rather than legacy-MBQL JSON) on the next turn it can reference
-  exactly the field paths and aggregation refs it just wrote.
+  `:query-content` is the **canonical normalized representations YAML** for the final
+  pMBQL query we actually constructed: repaired and resolved to numeric IDs, normalized by
+  lib, then exported back to portable FK paths/entity_ids. By feeding the LLM this final
+  portable form (rather than legacy-MBQL JSON or a pre-resolve approximation) on the next
+  turn it can reference exactly the field paths and aggregation UUIDs that will execute.
 
   See repr-plan.md step 18."
   [{:keys [query-id query query-yaml result-columns]}]

@@ -15,6 +15,7 @@
   covered by `metabase.agent-lib.representations-test`; this suite focuses on resolution."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
@@ -71,6 +72,27 @@
         (is (= :month (:temporal-unit opts)))))
     (testing "query passes lib.schema/query"
       (is (schema-valid? q)))))
+
+(deftest export-query-round-trip-shape-test
+  (testing "resolved numeric pMBQL exports back to the portable string-keyed representations form"
+    (let [parsed  {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [["count" {}]]
+                                "breakout"     [["field" {"temporal-unit" "month"}
+                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}]}
+          q       (repr.resolve/resolve-query mp parsed)
+          exported (repr.resolve/export-query mp q)]
+      (is (= "mbql/query" (get exported "lib/type")))
+      (is (= "Sample" (get exported "database")))
+      (is (nil? (get exported "lib/metadata")))
+      (is (= ["Sample" "PUBLIC" "ORDERS"]
+             (get-in exported ["stages" 0 "source-table"])))
+      (is (= ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]
+             (get-in exported ["stages" 0 "breakout" 0 2])))
+      (is (string? (get-in exported ["stages" 0 "aggregation" 0 1 "lib/uuid"])))
+      (is (= exported (repr/validate-query exported))))))
 
 ;;; ============================================================
 ;;; filters / limit / order-by

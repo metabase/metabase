@@ -113,15 +113,18 @@
           (is (= 1 (:database q)))
           (is (= 10 (get-in q [:stages 0 :source-table])))
           (is (= :count (first (get-in q [:stages 0 :aggregation 0])))))
-        (testing "query-yaml is the post-repair canonical representations YAML"
+        (testing "query-yaml is the final normalized portable representations YAML"
           (is (string? (:query-yaml structured)))
           ;; parse with `:keywords false` to mirror what `repr/parse-yaml` does, so we can
           ;; assert on the *portable* string-keyed shape the YAML actually carries.
           (let [round-tripped (yaml/parse-string (:query-yaml structured) :keywords false)]
-            (testing "YAML is the still-portable string-keyed shape, not the resolved numeric-id pMBQL"
+            (testing "YAML is exported from final pMBQL: portable/string-keyed, not numeric IDs"
               (is (= "mbql/query" (get round-tripped "lib/type")))
+              (is (nil? (get round-tripped "lib/metadata")))
               (is (= ["Sample" "PUBLIC" "ORDERS"]
                      (get-in round-tripped ["stages" 0 "source-table"]))))
+            (testing "YAML includes lib-normalized UUIDs that were not present in the LLM input"
+              (is (string? (get-in round-tripped ["stages" 0 "aggregation" 0 1 "lib/uuid"]))))
             (testing "YAML idempotency: feeding it back to the tool yields a result whose query-yaml is byte-equal"
               (let [redo (construct/execute-representations-query (:query-yaml structured))]
                 (is (= (:query-yaml structured)
@@ -724,7 +727,11 @@
           (testing "field reference kept the string name and got types from the card"
             (is (= :field (first field-ref)))
             (is (= "TOTAL" (nth field-ref 2)))
-            (is (= :type/Float (get-in field-ref [1 :base-type])))))))))
+            (is (= :type/Float (get-in field-ref [1 :base-type]))))
+          (testing "query-yaml exports the final numeric source-card back to its portable entity_id"
+            (let [round-tripped (yaml/parse-string (get-in result [:structured-output :query-yaml]) :keywords false)]
+              (is (= card-entity-id
+                     (get-in round-tripped ["stages" 0 "source-card"]))))))))))
 
 (deftest source-card-unknown-entity-id-surfaces-agent-error-test
   (testing "a valid-shaped entity_id that does not resolve to any card returns :unknown-card with :agent-error? true"

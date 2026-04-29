@@ -70,6 +70,26 @@
     :fields   [{:id 400 :name "META"   :table-id 40 :base-type :type/JSON}
                {:id 401 :name "vendor" :table-id 40 :parent-id 400 :base-type :type/Text}]}))
 
+(def ^:private card-entity-id "cardEntityId123456789")
+(def ^:private metric-entity-id "metricEntityId1234567")
+
+(def ^:private mp-with-cards
+  "Database with regular Card and metric Card metadata for source-card / metric export."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 101 :name "TOTAL" :table-id 10 :base-type :type/Float}]
+    :cards    [{:id          500
+                :name        "Saved Orders"
+                :database-id 1
+                :type        :question
+                :entity-id   card-entity-id}
+               {:id          501
+                :name        "Revenue Metric"
+                :database-id 1
+                :type        :metric
+                :entity-id   metric-entity-id}]}))
+
 ;;; ============================================================
 ;;; import-table-fk
 ;;; ============================================================
@@ -286,15 +306,59 @@
           path ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
       (is (= path (resolve/export-field-fk er (resolve/import-field-fk ir path)))))))
 
+(deftest export-database-and-card-fks-test
+  (let [r (resolve.mp/export-resolver mp-with-cards)]
+    (testing "database id exports to the provider's database name"
+      (is (= "Sample" (resolve/export-fk-keyed r 1 :model/Database :name)))
+      (is (= "Sample" (resolve/export-fk-keyed r 1 'Database :name))))
+    (testing "Card ids export to entity_ids for both source-card and metric refs"
+      (is (= card-entity-id (resolve/export-fk r 500 :model/Card)))
+      (is (= card-entity-id (resolve/export-fk r 500 'Card)))
+      (is (= metric-entity-id (resolve/export-fk r 501 'Card))))
+    (testing "nil inputs return nil"
+      (is (nil? (resolve/export-fk r nil 'Card)))
+      (is (nil? (resolve/export-fk-keyed r nil :model/Database :name))))))
+
+(deftest export-mbql-with-mp-resolver-round-trip-shape-test
+  (testing "final numeric pMBQL exports back to portable DB/table/field/card references"
+    (let [r        (resolve.mp/export-resolver mp-with-cards)
+          exported (resolve/export-mbql
+                    r
+                    {:lib/type :mbql/query
+                     :database 1
+                     :stages   [{:lib/type     :mbql.stage/mbql
+                                 :source-table 10
+                                 :fields       [[:field {} 101]]
+                                 :aggregation  [[:metric {} 501]]}]})]
+      (is (= "Sample" (:database exported)))
+      (is (= ["Sample" "PUBLIC" "ORDERS"]
+             (get-in exported [:stages 0 :source-table])))
+      (is (= ["Sample" "PUBLIC" "ORDERS" "TOTAL"]
+             (get-in exported [:stages 0 :fields 0 2])))
+      (is (= metric-entity-id
+             (get-in exported [:stages 0 :aggregation 0 2])))
+      (is (string? (get-in exported [:stages 0 :fields 0 1 :lib/uuid])))
+      (is (string? (get-in exported [:stages 0 :aggregation 0 1 :lib/uuid])))))
+  (testing "source-card map keys export through the Card entity_id path"
+    (let [r (resolve.mp/export-resolver mp-with-cards)]
+      (is (= {:source-card card-entity-id}
+             (resolve/export-mbql r {:source-card 500}))))))
+
 ;;; ============================================================
 ;;; Not-yet-implemented methods
 ;;; ============================================================
 
 (deftest not-implemented-phase1-test
   (let [er (resolve.mp/export-resolver mp-simple)]
-    (testing "export-fk throws :not-implemented-yet"
+    (testing "export-fk for non-Card models still throws :not-implemented-yet"
       (try
-        (resolve/export-fk er 1 'Card)
+        (resolve/export-fk er 1 'Segment)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :not-implemented-yet (:error (ex-data e)))))))
+    (testing "export-fk-keyed for non-database keys still throws :not-implemented-yet"
+      (try
+        (resolve/export-fk-keyed er 1 :model/Card :name)
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
           (is (= :not-implemented-yet (:error (ex-data e)))))))))

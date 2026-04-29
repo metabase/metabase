@@ -71,6 +71,51 @@
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (lib.normalize/normalize ::lib.schema/query with-mp))))
 
+;;; ============================================================
+;;; Export final pMBQL back to portable representations
+;;; ============================================================
+
+(defn- keyword->repr-string
+  "String form used by the YAML representations format for keywords."
+  [k]
+  (if-let [ns (namespace k)]
+    (str ns "/" (name k))
+    (name k)))
+
+(defn- portable-repr-form
+  "Convert the keyworded portable form returned by serdes export into the LLM-facing
+  representations form: string keys, string clause heads / enum values, no internal metadata
+  provider handle."
+  [x]
+  (cond
+    (map? x)
+    (reduce-kv
+     (fn [m k v]
+       (if (= k :lib/metadata)
+         m
+         (assoc m
+                (cond-> k (keyword? k) keyword->repr-string)
+                (portable-repr-form v))))
+     (empty x)
+     x)
+
+    (vector? x)     (mapv portable-repr-form x)
+    (sequential? x) (mapv portable-repr-form x)
+    (keyword? x)    (keyword->repr-string x)
+    :else           x))
+
+(defn export-query
+  "Convert a final normalized numeric-ID pMBQL query back to portable representations data.
+
+  This is the inverse of [[resolve-query]] for the agent/tool output path: table/field/card IDs
+  are exported to portable FK paths / entity_ids, lib's normalized keyworded form is converted
+  back to the string-keyed YAML representation, and internal `:lib/metadata` is dropped."
+  [metadata-provider pmbql-query]
+  (let [resolver (resolve.mp/export-resolver metadata-provider)]
+    (->> pmbql-query
+         (resolve/export-mbql resolver)
+         portable-repr-form)))
+
 (defn parse-validate-resolve
   "Convenience end-to-end: take a YAML string and a metadata-provider, return a fully-resolved
   MBQL 5 query.

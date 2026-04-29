@@ -15,22 +15,27 @@
   portable MBQL queries (with FK paths like `[DB, SCHEMA, TABLE, FIELD]`) into numeric-ID
   MBQL suitable for `lib.query/query` / the QP.
 
-  Phase 1 scope (per `repr-plan.md`):
-    * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` are real.
-    * Everything else throws `:not-implemented-yet` for now.
+  Implemented scope for the representations pipeline:
+    * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
+      warehouse metadata.
+    * `import-fk-keyed` / `export-fk-keyed` for `:model/Database` by `:name`.
+    * `import-fk` for `Card` / `:model/Card` by `entity_id` (source-card and metric refs).
+    * `export-fk` for `Card` / `:model/Card` by `entity_id` (exporting final pMBQL back to
+      portable representations YAML).
 
-  Phase 2 additions (per `repr-plan.md`):
-    * `import-fk` for `Card` / `:model/Card` by `entity_id` (step 11).
+  Everything else throws `:not-implemented-yet` for now.
 
   Asset vs metadata split:
     The resolver has two orthogonal lookup responsibilities:
       * **Warehouse metadata** (databases, tables, fields) is resolved through a
         `lib.metadata/MetadataProvider`.
       * **Metabase content / assets** (cards, snippets, segments, …) is resolved through a
-        [[ContentStore]]. The default app-DB-backed store goes through `serdes/lookup-by-id`,
-        but a different store (e.g. backed by the checker's YAML index, an in-memory test
-        fixture, or a snapshot) can be supplied to make the resolver usable without an
-        application database."
+        [[ContentStore]] on import, where callers may need permission-aware lookups. Exporting
+        card ids uses the same database-scoped metadata provider, which already contains card
+        metadata in app-backed and mock-provider contexts. The default app-DB-backed store goes
+        through `serdes/lookup-by-id`, but a different store (e.g. backed by the checker's YAML
+        index, an in-memory test fixture, or a snapshot) can be supplied to make import usable
+        without an application database."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -378,8 +383,59 @@
                        :database    db-name-value
                        :expected-db current-name})))))
 
+(defn- export-database-name
+  "Resolve the current database's numeric id back to its portable name."
+  [metadata-provider database-id]
+  (when database-id
+    (let [current-db (lib.metadata/database metadata-provider)]
+      (if (= database-id (:id current-db))
+        (:name current-db)
+        (throw (ex-info (tru "Cannot export database id {0}: metadata provider is for database id {1}."
+                             database-id (:id current-db))
+                        {:status-code 400
+                         :error       :unknown-database-id
+                         :database-id database-id
+                         :expected-id (:id current-db)}))))))
+
 (defn- card-model? [model]
   (or (= model 'Card) (= model :model/Card)))
+
+(defn- export-card-by-id
+  "Resolve a saved question / model / metric by numeric id to its portable `entity_id`.
+
+  Uses the metadata provider rather than the generic app-DB serdes resolver so exporting a
+  final pMBQL query can stay paired with the same database-scoped provider used for table and
+  field FK export. Guards against accidental cross-database card refs."
+  [metadata-provider card-id]
+  (when card-id
+    (let [current-db-id (:id (lib.metadata/database metadata-provider))
+          card          (lib.metadata.protocols/card metadata-provider card-id)
+          card-db-id    (or (:database-id card) (:database_id card))
+          entity-id     (or (:entity-id card) (:entity_id card))]
+      (cond
+        (nil? card)
+        (throw (ex-info (tru "No saved question, model, or metric found with id {0} in metadata provider." card-id)
+                        {:status-code 400
+                         :error       :unknown-card-id
+                         :card-id     card-id}))
+
+        (not= card-db-id current-db-id)
+        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
+                             card-id card-db-id current-db-id)
+                        {:status-code      400
+                         :error            :cross-database-card
+                         :card-id          card-id
+                         :card-database-id card-db-id
+                         :expected-database current-db-id}))
+
+        (not (and (string? entity-id) (seq entity-id)))
+        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation." card-id)
+                        {:status-code 400
+                         :error       :missing-card-entity-id
+                         :card-id     card-id}))
+
+        :else
+        entity-id))))
 
 (defn- import-card-by-entity-id
   "Resolve a saved question / model by its portable `entity_id` to its numeric id.
@@ -457,12 +513,29 @@
 (defn export-resolver
   "Build a `SerdesExportResolver` backed by `metadata-provider`.
 
-  Only `export-table-fk` and `export-field-fk` are implemented in Phase 1. Other methods throw
-  `:not-implemented-yet`."
+  Implemented methods:
+    * `export-table-fk`, `export-field-fk` for warehouse metadata.
+    * `export-fk-keyed` for `:model/Database` by `:name`.
+    * `export-fk` for `Card` / `:model/Card` by `entity_id` (source-card and metric refs).
+
+  Other methods throw `:not-implemented-yet`."
   [metadata-provider]
   (reify resolve/SerdesExportResolver
-    (export-fk       [_ _id _model]        (not-implemented! :export-fk))
-    (export-fk-keyed [_ _id _model _field] (not-implemented! :export-fk-keyed))
+    (export-fk       [_ id model]
+      (cond
+        (nil? id)          nil
+        (card-model? model) (export-card-by-id metadata-provider id)
+        :else              (not-implemented! :export-fk)))
+    (export-fk-keyed [_ id model field]
+      (cond
+        (nil? id) nil
+
+        (and (or (= model :model/Database) (= model 'Database))
+             (= field :name))
+        (export-database-name metadata-provider id)
+
+        :else
+        (not-implemented! :export-fk-keyed)))
     (export-user     [_ _id]               (not-implemented! :export-user))
     (export-table-fk [_ table-id]
       (when table-id
