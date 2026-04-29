@@ -67,9 +67,22 @@ export function useGraphSync({
 }: UseGraphSyncArgs) {
   // When the user expands a new table via FK click, these candidate IDs
   // hold the edge that should be auto-selected once the new graph arrives.
-  // Stored as a ref (not state) so setting it doesn't trigger an extra
-  // render — the sync effect just reads it on the next ERD response.
   const pendingEdgeIdsToSelectRef = useRef<readonly string[] | null>(null);
+
+  /**
+   * Register the candidate edge IDs that should be auto-selected once they
+   * show up in the next ERD response. Both source-first and target-first
+   * orderings should be passed since the backend's source/target convention
+   * for edge IDs isn't fixed.
+   */
+  const registerPendingEdgeSelection = useCallback(
+    (candidateEdgeIds: readonly string[]) => {
+      if (candidateEdgeIds.length > 0) {
+        pendingEdgeIdsToSelectRef.current = candidateEdgeIds;
+      }
+    },
+    [],
+  );
 
   // Latest nodes held in a ref so the sync effect below can read current
   // state without adding `nodes` to its dependency array (which would cause
@@ -188,21 +201,6 @@ export function useGraphSync({
     setPendingFitNodeIds,
     setPendingFreshFit,
   ]);
-
-  /**
-   * Register the candidate edge IDs that should be auto-selected once they
-   * show up in the next ERD response. Both source-first and target-first
-   * orderings should be passed since the backend's source/target convention
-   * for edge IDs isn't fixed.
-   */
-  const registerPendingEdgeSelection = useCallback(
-    (candidateEdgeIds: readonly string[]) => {
-      if (candidateEdgeIds.length > 0) {
-        pendingEdgeIdsToSelectRef.current = candidateEdgeIds;
-      }
-    },
-    [],
-  );
 
   return { registerPendingEdgeSelection };
 }

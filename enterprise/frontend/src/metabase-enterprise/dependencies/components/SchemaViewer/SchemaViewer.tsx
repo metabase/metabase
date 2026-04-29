@@ -36,12 +36,14 @@ import { SchemaViewerNodeSearch } from "./components/NodeSearch";
 import { SchemaPickerInput } from "./components/SchemaPickerInput";
 import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./components/TableNode";
-import { MAX_ZOOM, MIN_ZOOM } from "./constants";
+import { FIT_VIEW_OPTIONS, MAX_ZOOM, MIN_ZOOM } from "./constants";
 import { useCanvasLayout } from "./hooks/useCanvasLayout";
 import { useEdgeZoom } from "./hooks/useEdgeZoom";
 import { useGraphSync } from "./hooks/useGraphSync";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
+
+// --- ReactFlow configuration ------------------------------------------------
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -55,8 +57,7 @@ const PRO_OPTIONS = {
   hideAttribution: true,
 };
 
-const DEFAULT_ZOOM = 0.3;
-const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
+// --- Props ------------------------------------------------------------------
 
 type SchemaViewerProps = {
   databaseId: DatabaseId | undefined;
@@ -82,9 +83,19 @@ export function SchemaViewer({
   isFetching,
   error,
 }: SchemaViewerProps) {
-  // IDs of tables the camera should fit/zoom to next. Populated in two
-  // places: (1) the graph-sync effect when FK expansion adds new tables,
-  // (2) the onEdgeClick handler to zoom to an edge's source/target.
+  // --- State ----------------------------------------------------------------
+
+  // ReactFlow's node/edge stores. All canvas state derives from these.
+  const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
+    [],
+  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState<SchemaViewerFlowEdge>(
+    [],
+  );
+
+  // Camera-fit channels — set by the sync/layout layer, drained by
+  // render-null components (`<FitToNewNodes>`, `<FitToCanvas>`) inside
+  // `<ReactFlow>` (the only place `useReactFlow` is available).
   const [pendingFitNodeIds, setPendingFitNodeIds] = useState<
     readonly string[] | null
   >(null);
@@ -92,30 +103,10 @@ export function SchemaViewer({
     () => setPendingFitNodeIds(null),
     [],
   );
-
-  // Bumped with a fresh trigger object whenever a full-canvas layout is
-  // applied (fresh data via `useGraphSync`, or manual relayout via
-  // `useCanvasLayout`). Consumed by `<FitToCanvas>` to call ReactFlow's
-  // `fitView()` so the camera reframes to the new bounds.
   const [pendingFreshFit, setPendingFreshFit] = useState<{
     duration?: number;
   } | null>(null);
   const clearPendingFreshFit = useCallback(() => setPendingFreshFit(null), []);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
-    [],
-  );
-  const [edges, setEdges, onEdgesChange] = useEdgesState<SchemaViewerFlowEdge>(
-    [],
-  );
-  const { colorScheme } = useColorScheme();
-  const hasEntry = databaseId != null;
-
-  // Set of currently visible table IDs on the canvas
-  const visibleTableIds = useMemo(
-    () => new Set(nodes.map((n) => n.data.table_id as ConcreteTableId)),
-    [nodes],
-  );
 
   // Target table IDs whose FK-expansion fetch is still in flight. Field rows
   // use this to swap the database-type text for a loader until the new table
@@ -124,65 +115,13 @@ export function SchemaViewer({
     Set<ConcreteTableId>
   >(() => new Set());
 
-  const graph = useMemo(() => {
-    if (data == null) {
-      return null;
-    }
-    return toFlowGraph(data);
-  }, [data]);
-
-  const { registerPendingEdgeSelection } = useGraphSync({
-    hasEntry,
-    error,
-    isFetching,
-    graph,
-    nodes,
-    contextKey,
-    setNodes,
-    setEdges,
-    setExpandingTableIds,
-    setPendingFitNodeIds,
-    setPendingFreshFit,
-  });
-
-  // Handler for expanding to a related table via FK click
-  const handleExpandToTable = useCallback(
-    (
-      tableId: ConcreteTableId,
-      candidateEdgeIdsToSelect?: readonly string[],
-    ) => {
-      if (databaseId == null) {
-        return;
-      }
-      onExtraTableIdAdd(tableId);
-      setExpandingTableIds((prev) => {
-        if (prev.has(tableId)) {
-          return prev;
-        }
-        const next = new Set(prev);
-        next.add(tableId);
-        return next;
-      });
-      // Stash the candidate edge IDs so the next graph-sync run can find
-      // the FK edge that triggered this expansion and auto-select it.
-      if (
-        candidateEdgeIdsToSelect != null &&
-        candidateEdgeIdsToSelect.length > 0
-      ) {
-        registerPendingEdgeSelection(candidateEdgeIdsToSelect);
-      }
-    },
-    [databaseId, onExtraTableIdAdd, registerPendingEdgeSelection],
+  // Selection intent: the user picks a table and we remember that pick. The
+  // visible `selectedNodeId` is derived below — when the picked node
+  // temporarily disappears (schema change, table removed) the info panel
+  // renders nothing without us having to clear the intent in an effect.
+  const [selectedNodeIdIntent, setSelectedNodeId] = useState<string | null>(
+    null,
   );
-
-  const { relayout, focusOnNode } = useCanvasLayout({
-    nodes,
-    edges,
-    setNodes,
-    setEdges,
-    setPendingFitNodeIds,
-    setPendingFreshFit,
-  });
 
   // Track the node id most recently focused via the Focus node button so the
   // button can disable itself until the user selects a different node.
@@ -190,25 +129,16 @@ export function SchemaViewer({
     null,
   );
 
-  const handleFocusNode = useCallback(
-    (nodeId: string) => {
-      focusOnNode(nodeId);
-      setLastFocusedNodeId(nodeId);
-    },
-    [focusOnNode],
+  // --- Derived values -------------------------------------------------------
+
+  const { colorScheme } = useColorScheme();
+  const hasEntry = databaseId != null;
+
+  const visibleTableIds = useMemo(
+    () => new Set(nodes.map((n) => n.data.table_id as ConcreteTableId)),
+    [nodes],
   );
 
-  const { handleEdgeClick } = useEdgeZoom({ setPendingFitNodeIds });
-
-  // Selection is intent: the user picks a table and we remember that pick.
-  // The visible selection (`selectedNodeId`) is derived during render, so
-  // when the picked node temporarily disappears from the graph (schema
-  // change, table removed, etc.) the info panel renders nothing — and if
-  // the node returns later, selection lights up again without a follow-up
-  // commit.
-  const [selectedNodeIdIntent, setSelectedNodeId] = useState<string | null>(
-    null,
-  );
   const selectedNodeId = useMemo(
     () =>
       selectedNodeIdIntent != null &&
@@ -218,46 +148,13 @@ export function SchemaViewer({
     [nodes, selectedNodeIdIntent],
   );
 
-  const handleClearSelection = useCallback(() => {
-    setSelectedNodeId(null);
-  }, []);
-
-  const handleSelectNode = useCallback(
-    (nodeId: string | null) => {
-      setSelectedNodeId(nodeId);
-      if (nodeId != null) {
-        // Node selection and edge selection are conceptually exclusive in
-        // this UI — the right-side info panel is about the node, not about
-        // whichever edge happened to be highlighted before.
-        setEdges((currentEdges) =>
-          currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
-        );
-      }
-    },
-    [setEdges],
-  );
-
-  const schemaViewerContextValue = useMemo(
-    () => ({
-      visibleTableIds,
-      expandingTableIds,
-      onExpandToTable: handleExpandToTable,
-      selectedNodeId,
-      onSelectNode: handleSelectNode,
-    }),
-    [
-      visibleTableIds,
-      expandingTableIds,
-      handleExpandToTable,
-      selectedNodeId,
-      handleSelectNode,
-    ],
-  );
-
-  const handleSchemaChange = useCallback(() => {
-    setSelectedNodeId(null);
-    setPendingFreshFit(null);
-  }, []);
+  // ERD response → ReactFlow node/edge shape.
+  const graph = useMemo(() => {
+    if (data == null) {
+      return null;
+    }
+    return toFlowGraph(data);
+  }, [data]);
 
   // Lift selected edges above unselected ones so the highlighted edge
   // always renders on top of any edges that cross through it. We do this
@@ -283,6 +180,122 @@ export function SchemaViewer({
     return [...unselected, ...selected];
   }, [edges]);
 
+  // --- Hooks (sync, layout actions, edge zoom) ------------------------------
+
+  const { registerPendingEdgeSelection } = useGraphSync({
+    hasEntry,
+    error,
+    isFetching,
+    graph,
+    nodes,
+    contextKey,
+    setNodes,
+    setEdges,
+    setExpandingTableIds,
+    setPendingFitNodeIds,
+    setPendingFreshFit,
+  });
+
+  const { relayout, focusOnNode } = useCanvasLayout({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    setPendingFitNodeIds,
+    setPendingFreshFit,
+  });
+
+  const { handleEdgeClick } = useEdgeZoom({ setPendingFitNodeIds });
+
+  // --- Handlers -------------------------------------------------------------
+
+  // FK click: persist the new focal table, mark its fetch as in-flight, and
+  // queue the FK edge that triggered the expansion for auto-selection on
+  // the next graph-sync run.
+  const handleExpandToTable = useCallback(
+    (
+      tableId: ConcreteTableId,
+      candidateEdgeIdsToSelect?: readonly string[],
+    ) => {
+      if (databaseId == null) {
+        return;
+      }
+      onExtraTableIdAdd(tableId);
+      setExpandingTableIds((prev) => {
+        if (prev.has(tableId)) {
+          return prev;
+        }
+        const next = new Set(prev);
+        next.add(tableId);
+        return next;
+      });
+      if (
+        candidateEdgeIdsToSelect != null &&
+        candidateEdgeIdsToSelect.length > 0
+      ) {
+        registerPendingEdgeSelection(candidateEdgeIdsToSelect);
+      }
+    },
+    [databaseId, onExtraTableIdAdd, registerPendingEdgeSelection],
+  );
+
+  // Focus button: apply focal layout + remember last-focused so the button
+  // can disable itself until the user picks a different node.
+  const handleFocusNode = useCallback(
+    (nodeId: string) => {
+      focusOnNode(nodeId);
+      setLastFocusedNodeId(nodeId);
+    },
+    [focusOnNode],
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
+
+  const handleSelectNode = useCallback(
+    (nodeId: string | null) => {
+      setSelectedNodeId(nodeId);
+      if (nodeId != null) {
+        // Node selection and edge selection are conceptually exclusive in
+        // this UI — the right-side info panel is about the node, not about
+        // whichever edge happened to be highlighted before.
+        setEdges((currentEdges) =>
+          currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+        );
+      }
+    },
+    [setEdges],
+  );
+
+  // Schema picker is about to push a new URL — drop selection-intent and
+  // any pending camera fit so the new context starts clean.
+  const handleSchemaChange = useCallback(() => {
+    setSelectedNodeId(null);
+    setPendingFreshFit(null);
+  }, []);
+
+  // --- Context value (consumed by TableNode, FieldRow, …) -------------------
+
+  const schemaViewerContextValue = useMemo(
+    () => ({
+      visibleTableIds,
+      expandingTableIds,
+      onExpandToTable: handleExpandToTable,
+      selectedNodeId,
+      onSelectNode: handleSelectNode,
+    }),
+    [
+      visibleTableIds,
+      expandingTableIds,
+      handleExpandToTable,
+      selectedNodeId,
+      handleSelectNode,
+    ],
+  );
+
+  // --- Render ---------------------------------------------------------------
+
   return (
     <SchemaViewerContext.Provider value={schemaViewerContextValue}>
       <ReactFlow
@@ -301,16 +314,35 @@ export function SchemaViewer({
         onEdgesChange={onEdgesChange}
         onEdgeClick={handleEdgeClick}
       >
+        {/* Canvas chrome */}
         <Background />
         <MiniMap position="bottom-right" pannable zoomable />
+
+        {/* Camera-op pumps (render-null) */}
         <FitToNewNodes
           nodeIds={pendingFitNodeIds}
           onDone={clearPendingFitNodeIds}
         />
         <FitToCanvas trigger={pendingFreshFit} onDone={clearPendingFreshFit} />
+
+        {/* Top-left: context picker + search */}
+        <Panel className={S.entryInput} position="top-left">
+          <Group gap="sm">
+            <SchemaPickerInput
+              databaseId={databaseId}
+              schema={schema}
+              onSchemaChange={handleSchemaChange}
+            />
+            <SchemaViewerNodeSearch key={contextKey ?? ""} nodes={nodes} />
+          </Group>
+        </Panel>
+
+        {/* Top-right: app switcher */}
         <Panel position="top-right">
           <AppSwitcher className={S.appSwitcher} />
         </Panel>
+
+        {/* Bottom-left: layout controls (only when canvas has content) */}
         {nodes.length > 0 && (
           <Panel position="bottom-left">
             <Group gap="sm">
@@ -328,21 +360,15 @@ export function SchemaViewer({
             </Group>
           </Panel>
         )}
+
+        {/* Right side: selected-node info panel (renders its own <Panel>) */}
         <SelectedNodeInfoPanel
           nodes={nodes}
           selectedNodeId={selectedNodeId}
           onClose={handleClearSelection}
         />
-        <Panel className={S.entryInput} position="top-left">
-          <Group gap="sm">
-            <SchemaPickerInput
-              databaseId={databaseId}
-              schema={schema}
-              onSchemaChange={handleSchemaChange}
-            />
-            <SchemaViewerNodeSearch key={contextKey ?? ""} nodes={nodes} />
-          </Group>
-        </Panel>
+
+        {/* Status overlays */}
         {isFetching && (
           <Box className={S.centerLoader}>
             <Loader />
