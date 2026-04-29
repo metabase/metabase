@@ -4,6 +4,8 @@
    request/response shape through the HTTP layer."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -72,3 +74,23 @@
   (testing "GET /ee/workspace-instance/current requires superuser"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/workspace-instance/current")))))
+
+;;; ------------------------------------------- Sync endpoint -------------------------------------------------------
+
+(deftest sync-requires-superuser-test
+  (testing "POST /ee/workspace-instance/sync requires superuser"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "ee/workspace-instance/sync")))))
+
+(deftest sync-requires-workspace-mode-test
+  (testing "POST /ee/workspace-instance/sync fails when not in workspace mode"
+    (with-redefs [ws/instance-workspace (constantly nil)]
+      (is (= "This instance is not running in workspace mode."
+             (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/sync"))))))
+
+(deftest sync-requires-git-configured-test
+  (testing "POST /ee/workspace-instance/sync fails when no git repo configured"
+    (with-redefs [ws/instance-workspace          (constantly {:name "test-ws" :databases {}})
+                  remote-sync.settings/remote-sync-enabled (constantly false)]
+      (is (= "No git repository configured. Set remote-sync-url to enable."
+             (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/sync"))))))
