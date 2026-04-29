@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.lib-be.json-schema :as js]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.util.json :as json-util])
   (:import (com.github.erosb.jsonsKema FormatValidationPolicy
                                        JsonParser
@@ -30,14 +32,12 @@
   node)
 
 (def simple-query
-  {:lib/type :mbql/query
-   :database "hello"
-   :stages   [{:lib/type :mbql.stage/mbql
-               :source-table ["hello" "schema" "tbl"]
-               :order-by
-               [[:asc {}
-                 [:field {:base-type :type/BigInteger}
-                  "hello" "schema" "tbl" "f"]]]}]})
+  (-> (lib/query meta/metadata-provider
+                 (meta/table-metadata :orders))
+      (lib/aggregate (lib/count))
+      ;; lib generates "internal MBQL"; can't have integer :table/:database
+      (assoc-in [:stages 0 :source-table] ["hello" "schema" "tbl"])
+      (assoc :database "my-db")))
 
 (deftest fix-json-schema-test
   (let [schema-map (js/make-schema)

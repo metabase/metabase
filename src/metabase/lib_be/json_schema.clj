@@ -11,9 +11,7 @@
   Our malli schema for what constitutes a valid JSON schema is a little stricter
   about what the keys have to look like; for instance types must always be
   keywords despite the fact that we're emitting them as JSON in the end so
-  it doesn't really matter.
-
-  This code was originally based on metabase.api.macros.defendpoint.open-api."
+  it doesn't really matter."
   (:require
    [malli.json-schema :as mjs]
    [medley.core :as m]
@@ -24,30 +22,28 @@
 
 (defn- collapse-branches [schema k]
   ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema
-  ;; gets converted into an empty object in :allOf
+  ;; gets converted into an empty object in :allOf; for example ::literal/integer
+  ;; in Malli is [:or :int [:fn u.number/bigint?]] which Malli compiles to
+  ;; {:anyOf [{:type "integer"}]} but it should just become {:type "integer"}
   (let [schema (update schema k (partial remove mp/empty?))]
     (case (count (k schema))
       1 (merge (dissoc schema k) (first (k schema)))
       0 (dissoc schema k)
       schema)))
 
-(defn- update-properties [properties]
-  (zipmap (map u/qualified-name (keys properties))
-          (vals properties)))
-
-(defn- update-required [required]
+(defn- stringify [required]
   (if (sequential? required)
     (map u/qualified-name required)
     required))
 
-(defn- walk [node]
+(defn- update-schema-fields [node]
   (if (map? node)
     (-> node
-        (m/update-existing :required update-required)
+        (m/update-existing :required stringify)
         (collapse-branches :allOf)
         (collapse-branches :anyOf)
         (collapse-branches :oneOf)
-        (m/update-existing :properties update-properties))
+        (m/update-existing :properties #(mp/update-keys % u/qualified-name)))
     node))
 
 ;; due to a bug in malli, :cat schemas get compiled to an empty schema. this
@@ -82,7 +78,7 @@
                    (update :definitions assoc
                            "metabase.lib.schema.template-tag.id"
                            {"$ref" "#/definitions/metabase.lib.schema.common.non-blank-string"}))]
-    (mp/postwalk walk schema)))
+    (mp/postwalk update-schema-fields schema)))
 
 (defn write-schema
   "Print JSON Schema for MBQL5 queries, or write to a file if given."
