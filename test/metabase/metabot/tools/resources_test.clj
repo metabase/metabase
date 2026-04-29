@@ -773,8 +773,7 @@
               output (:output read-result)
               structured (get-in read-result [:resources 0 :content :structured-output])]
           (testing "Output references expected fields"
-            (is (re-find #"display_name\S+Count" output))
-            (is (re-find #"display_name\S+Category" output)))
+            (is (re-find #"<name>\S*My fav card" output)))
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
