@@ -2870,14 +2870,6 @@
                     :model/ModerationReview
                     :model/Table}}
 
-  enterprise/embeddings
-  {:team "Metabot"
-   :api  #{metabase-enterprise.embeddings.client}
-   ;; Temporary: the impl currently delegates back into semantic-search until
-   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
-   ;; make token tracking a hook). Drop this dep once the relocation lands.
-   :uses #{enterprise/semantic-search}}
-
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
@@ -2996,6 +2988,14 @@
                     :model/Sandbox
                     :model/Table
                     :model/Tenant}}
+
+  enterprise/embeddings
+  {:team "Metabot"
+   :api  #{metabase-enterprise.embeddings.client}
+   ;; Temporary: the impl currently delegates back into semantic-search until
+   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
+   ;; make token tracking a hook). Drop this dep once the relocation lands.
+   :uses #{enterprise/semantic-search}}
 
   enterprise/gsheets
   {:team "Cloud"
