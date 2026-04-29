@@ -206,7 +206,7 @@
     (with-list-conversations-fixture!
       (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
         (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "%s&sort-by=message_count&sort-dir=desc" response-path))]
+                                             (format "%s&sort_by=message_count&sort_dir=desc" response-path))]
           (is (= [convo-2 convo-1 convo-3]
                  (map :conversation_id (:data response)))))))))
 
@@ -221,7 +221,7 @@
     (with-list-conversations-fixture!
       (fn [{:keys [response-path]}]
         (is (some? (:errors (mt/user-http-request :crowberto :get 400
-                                                  (format "%s&sort-dir=sideways" response-path)))))))))
+                                                  (format "%s&sort_dir=sideways" response-path)))))))))
 
 (deftest list-conversations-user-with-no-conversations-test
   (testing "filtering by a user-id that has no conversations returns an empty data set, not an error"
