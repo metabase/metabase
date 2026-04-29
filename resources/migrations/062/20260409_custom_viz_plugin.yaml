@@ -97,8 +97,9 @@ databaseChangeLog:
                   name: dev_bundle_url
                   type: varchar(1024)
                   remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)
+
   - changeSet:
-      id: v61.2026-04-24T10:00:01
+      id: v62.2026-04-24T10:00:01
       author: bronsa
       comment: Use longblob for custom_viz_plugin.bundle on MySQL/MariaDB so it can hold multi-MB zip uploads
       changes:
