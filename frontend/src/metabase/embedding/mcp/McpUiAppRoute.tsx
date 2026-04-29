@@ -66,13 +66,6 @@ export function McpUiAppRoute() {
     [hostCssVariables, scheme],
   );
 
-  const isReady = !!(
-    instanceUrl &&
-    hostContext &&
-    isSettingsReady &&
-    deserializedCard
-  );
-
   // The OSS no-op initAuth never loads user or settings. Do it ourselves so
   // selectors like getTokenFeature has populated settings.
   // We also no-op the EE auth flow (auth.ts) when in MCP Apps route.
@@ -83,6 +76,13 @@ export function McpUiAppRoute() {
     ]).then(() => setIsSettingsReady(true));
   }, []);
 
+  const isReady = !!(
+    instanceUrl &&
+    hostContext &&
+    isSettingsReady &&
+    deserializedCard
+  );
+
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready
     if (isReady) {
@@ -90,17 +90,14 @@ export function McpUiAppRoute() {
     }
   }, [isReady]);
 
+  const height = "500px";
+  const visualizationHeight = `calc(${height} - 7.5rem)`;
+  const safeAreaMargins = `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`;
+
   const containerStyle: CSSProperties = {
-    boxSizing: "border-box",
-    backgroundColor: theme.colors?.background,
-    height: "500px",
-    display: "flex",
-    flexDirection: "column",
-
-    padding: "12px 0px 0px 10px",
-
-    // Apply safe area insets from the host environment, with extra top padding.
-    margin: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
+    height,
+    margin: safeAreaMargins,
+    background: theme.colors?.background,
   };
 
   if (!isReady) {
@@ -123,18 +120,25 @@ export function McpUiAppRoute() {
           withChartTypeSelector={false}
           onDrillThrough={handleDrillThrough}
         >
-          <Box mb="xs">
-            <McpQuestionTitle />
-          </Box>
+          <Flex
+            direction="column"
+            justify="space-between"
+            h="100%"
+            py="lg"
+            gap="sm"
+          >
+            <Box px="lg" style={{ flexShrink: 0 }}>
+              <McpQuestionTitle />
+            </Box>
 
-          {/* Visualization fills the remaining space */}
-          <Flex flex={1} mih={0} style={{ overflow: "hidden" }}>
-            <SdkQuestion.QuestionVisualization height="calc(500px - 8rem)" />
-          </Flex>
+            <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
+              <SdkQuestion.QuestionVisualization height={visualizationHeight} />
+            </Flex>
 
-          {/* Query bar placeholder — implemented in McpQueryBar (next PR) */}
-          <Flex justify="center" py="xs" style={{ flexShrink: 0 }}>
-            <Box h="3.3rem" />
+            {/* TODO(EMB-1620): add query explorer bar */}
+            <Flex px="lg">
+              <Box h="3.3rem" />
+            </Flex>
           </Flex>
         </SdkQuestion>
       </div>
