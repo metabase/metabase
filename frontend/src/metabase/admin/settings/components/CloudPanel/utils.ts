@@ -15,7 +15,6 @@ export type InProgressCloudMigration = Omit<CloudMigration, "state"> & {
 export const getStartedVisibleStates = new Set<InternalCloudMigrationState>([
   "uninitialized",
   "cancelled",
-  "error",
 ]);
 
 export const progressStates = new Set<InternalCloudMigrationState>([

@@ -1,4 +1,10 @@
-export { rem, useCombobox, useMantineTheme, useMatches } from "@mantine/core";
+export {
+  rem,
+  useCombobox,
+  useComputedColorScheme,
+  useMantineTheme,
+  useMatches,
+} from "@mantine/core";
 export type {
   MenuDropdownProps,
   ComboboxStore,
