@@ -1129,9 +1129,41 @@
 (def ^:private gen-scalar
   (gen/one-of [gen/string gen/small-integer gen/boolean (gen/return nil)]))
 
+;;; Op-name generator covers every head with a repair pass attached, so adversarial
+;;; combinations (e.g. `eq` mixed with `between`, `if` with stray `else` branches, etc.)
+;;; have a chance to be sampled.
 (def ^:private gen-op-name
-  (gen/elements ["count" "sum" "avg" "field" "=" "!=" "<" ">" "and" "or" "not"
-                 "expression" "aggregation" ">=" "<=" "asc" "desc"]))
+  (gen/elements
+   [;; structural
+    "field" "expression" "aggregation" "and" "or" "not"
+    ;; comparison + aliases (1.1)
+    "=" "!=" "<" ">" "<=" ">=" "eq" "ne" "lt" "gt" "le" "ge" "lte" "gte"
+    "equals" "not-equals"
+    ;; list-membership (1.10)
+    "in" "not-in"
+    ;; boolean wrappers (1.4)
+    "true" "false"
+    ;; null checks + alias (1.1)
+    "is-null" "not-null" "is-not-null"
+    ;; temporal range / literals (1.5/1.6/1.7)
+    "between" "now" "relative-datetime" "absolute-datetime" "relative-date"
+    ;; temporal-bucket extraction + aliases (1.2)
+    "get-day-of-week" "get-hour" "get-month" "get-quarter"
+    "dayofweek" "day-of-week" "hour-of-day" "month-of-year" "quarter-of-year"
+    ;; direction (1.3)
+    "asc" "desc" "ascending" "descending" "ASC" "DESC"
+    ;; conditional (1.8) — `case`/`if`/`else` deliberately omitted from the chaos
+    ;; generator because Pass 1.84 wraps pairs as `[[pred then]]`, and Pass 1 then
+    ;; mis-classifies a bare 2-element string-pair `[s1 s2]` as a clause and inserts `{}`
+    ;; between them. In real LLM output `pred` is always a clause (e.g. `[\"=\" {} field
+    ;; val]`), so this collision doesn't fire; the realistic-query generator below
+    ;; exercises canonical case shapes with proper clause preds.
+    ;; aggregations + lib renames (1.1)
+    "count" "sum" "avg" "min" "max" "distinct" "stddev" "var"
+    "count-where" "count-if" "variance" "stddev-pop" "count-distinct" "distinct-count"
+    "datetime-diff" "temporal-diff"
+    ;; metric (resists auto-split column-name extraction; § 1.11 diagnostic path)
+    "metric"]))
 
 (def ^:private gen-fk-segment (gen/elements ["DB" "PUBLIC" "ORDERS" "PRODUCTS" "ID" "TOTAL" nil]))
 
@@ -1162,10 +1194,152 @@
                             (gen-map-of gen/string-alphanumeric inner)]))
    (gen/one-of [gen-scalar (gen-clause 0) gen-fk-vector])))
 
-(defspec idempotency-property-test 100
+(defspec idempotency-property-test 200
   (prop/for-all [tree gen-tree]
     (= (repair/repair trivial-mp tree)
        (repair/repair trivial-mp (repair/repair trivial-mp tree)))))
+
+;;; ----------------------------------------------------------------
+;;; Realistic-shape fuzz: generate query-shaped maps (top-level `stages` vector with
+;;; aggregation / breakout / filter / order-by / joins / multi-stage) so we stress the
+;;; structural passes (Pass 2 lib-types, Pass 2.7 inline-aggs, Pass 2.8 int-ref resolution,
+;;; Pass 2.9 post-agg split, Pass 5 cross-stage type inference, etc.) on inputs that look
+;;; like what an LLM might emit, not pure tree chaos.
+;;; ----------------------------------------------------------------
+
+(def ^:private gen-fk-target
+  (gen/elements [["Sample" "PUBLIC" "ORDERS" "ID"]
+                 ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]
+                 ["Sample" "PUBLIC" "ORDERS" "TOTAL"]
+                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]
+                 ["Sample" "PUBLIC" "ORDERS" "STATUS"]
+                 ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]))
+
+(def ^:private gen-source-table
+  (gen/elements [["Sample" "PUBLIC" "ORDERS"]
+                 ["Sample" "PUBLIC" "PRODUCTS"]]))
+
+(def ^:private gen-field-clause
+  (gen/fmap (fn [target] ["field" {} target]) gen-fk-target))
+
+(def ^:private gen-field-clause-with-temporal
+  (gen/fmap (fn [[target unit]] ["field" {"temporal-unit" unit} target])
+            (gen/tuple gen-fk-target
+                       (gen/elements ["day" "week" "month" "quarter" "year"]))))
+
+(def ^:private gen-aggregation-clause
+  ;; Mix simple and arg-taking aggs. Some LLM-flavoured aliases (count-distinct, count-if,
+  ;; variance) ride along to exercise Pass 1.81's rewrite.
+  (gen/one-of
+   [(gen/return ["count" {}])
+    (gen/return ["cum-count" {}])
+    (gen/fmap (fn [f] ["sum" {} f]) gen-field-clause)
+    (gen/fmap (fn [f] ["avg" {} f]) gen-field-clause)
+    (gen/fmap (fn [f] ["max" {} f]) gen-field-clause)
+    (gen/fmap (fn [f] ["distinct" {} f]) gen-field-clause)
+    (gen/fmap (fn [f] ["count-distinct" {} f]) gen-field-clause)
+    (gen/fmap (fn [f] ["variance" {} f]) gen-field-clause)]))
+
+(def ^:private gen-filter-clause
+  ;; A filter that touches one of the heads with a repair pass attached.
+  (gen/one-of
+   [(gen/fmap (fn [[f v]] ["="  {} f v]) (gen/tuple gen-field-clause gen-scalar))
+    (gen/fmap (fn [[f v]] ["!=" {} f v]) (gen/tuple gen-field-clause gen-scalar))
+    (gen/fmap (fn [[f v]] ["eq" {} f v]) (gen/tuple gen-field-clause gen-scalar))
+    (gen/fmap (fn [[f v]] ["gt" {} f v]) (gen/tuple gen-field-clause gen/small-integer))
+    (gen/fmap (fn [[f v]] [">=" {} f v]) (gen/tuple gen-field-clause gen/small-integer))
+    (gen/fmap (fn [[f vs]] (into ["in" {} f] vs))
+              (gen/tuple gen-field-clause (gen/vector gen/string-alphanumeric 1 4)))
+    ;; deliberately wrap values in a vector to trigger Pass 1.82
+    (gen/fmap (fn [[f vs]] ["in" {} f vs])
+              (gen/tuple gen-field-clause (gen/vector gen/string-alphanumeric 1 4)))
+    ;; between with maybe-out-of-order ISO date strings (Pass 1.86 + 1.87)
+    (gen/fmap (fn [[f a b]] ["between" {} f a b])
+              (gen/tuple gen-field-clause-with-temporal
+                         (gen/elements ["2024-01-01" "2024-06-30" "2024-12-31"])
+                         (gen/elements ["2023-01-01" "2024-12-31" "now"])))
+    ;; post-aggregation filter that triggers Pass 2.9 split
+    (gen/fmap (fn [n] [">" {} ["aggregation" {} 0] n])
+              gen/small-integer)]))
+
+(def ^:private gen-direction-head
+  (gen/elements ["asc" "desc" "ascending" "descending" "ASC" "DESC"]))
+
+(def ^:private gen-order-by-clause
+  (gen/fmap (fn [[dir f]] [dir {} f])
+            (gen/tuple gen-direction-head gen-field-clause)))
+
+(def ^:private gen-case-clause
+  ;; Build canonical and not-yet-canonical case shapes. preds are always clause-shaped
+  ;; (an `=` filter), thens are scalars - this matches real LLM output. Exercises Pass 1.84
+  ;; (`normalise-case-clauses*`) on the alternative argument shapes it's designed to
+  ;; recognise.
+  (gen/let [pred-clause gen-filter-clause
+            then-val    gen-scalar
+            shape       (gen/elements [:canonical :three-bare :pairs-as-args])]
+    (case shape
+      :canonical     ["case" {} [[pred-clause then-val]] then-val]
+      :three-bare    ["case" {} pred-clause then-val then-val]
+      :pairs-as-args ["case" {} [pred-clause then-val] [pred-clause then-val] then-val])))
+
+(def ^:private gen-expression-clause
+  (gen/one-of
+   [gen-case-clause
+    (gen/fmap (fn [[a b]] ["+" {} a b])
+              (gen/tuple gen-field-clause gen/small-integer))
+    (gen/fmap (fn [[a b]] ["datetime-diff" {} a b "day"])
+              (gen/tuple gen-field-clause gen-field-clause))]))
+
+(def ^:private gen-stage
+  (gen/let [src       gen-source-table
+            aggs      (gen/vector gen-aggregation-clause 0 2)
+            breakouts (gen/vector gen-field-clause 0 2)
+            filters   (gen/vector gen-filter-clause 0 3)
+            order-bys (gen/vector gen-order-by-clause 0 2)
+            exprs     (gen/vector gen-expression-clause 0 2)
+            limit     (gen/one-of [(gen/return nil) (gen/elements [5 10 50])])]
+    (cond-> {"lib/type"     "mbql.stage/mbql"
+             "source-table" src}
+      (seq aggs)      (assoc "aggregation" (vec aggs))
+      (seq breakouts) (assoc "breakout"    (vec breakouts))
+      (seq filters)   (assoc "filters"     (vec filters))
+      (seq order-bys) (assoc "order-by"    (vec order-bys))
+      (seq exprs)     (assoc "expressions" (vec exprs))
+      (some? limit)   (assoc "limit"       limit))))
+
+(def ^:private gen-realistic-query
+  (gen/let [stage gen-stage]
+    {"lib/type" "mbql/query"
+     "database" "Sample"
+     "stages"   [stage]}))
+
+(defn- repair-or-agent-error
+  "Returns `[:ok result]` on success, `[:agent-error data]` on agent-flagged ex-info,
+  or `[:bug ex]` on anything else (test should fail). Keeps the exception escape-channel
+  narrow: only `:agent-error? true` ex-info is acceptable."
+  [tree]
+  (try
+    [:ok (repair/repair trivial-mp tree)]
+    (catch clojure.lang.ExceptionInfo e
+      (if (true? (:agent-error? (ex-data e)))
+        [:agent-error (ex-data e)]
+        [:bug e]))
+    (catch Throwable e
+      [:bug e])))
+
+(defspec realistic-query-idempotency-property-test 200
+  (prop/for-all [q gen-realistic-query]
+    (let [[outcome r1] (repair-or-agent-error q)]
+      (case outcome
+        :ok          (let [[outcome2 r2] (repair-or-agent-error r1)]
+                       (and (= :ok outcome2) (= r1 r2)))
+        :agent-error true                  ; clean diagnostic - acceptable
+        :bug         false))))
+
+(defspec realistic-query-no-bug-exceptions-test 200
+  (prop/for-all [q gen-realistic-query]
+    (let [[outcome _] (repair-or-agent-error q)]
+      (not= outcome :bug))))
 
 ;;; ============================================================
 ;;; Pass 3 - implicit-join `source-field` auto-wiring
