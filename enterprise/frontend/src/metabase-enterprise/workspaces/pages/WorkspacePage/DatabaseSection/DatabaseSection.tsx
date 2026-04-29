@@ -1,7 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Button, Tooltip } from "metabase/ui";
+import { useDeleteWorkspaceDatabaseMutation } from "metabase-enterprise/api";
 import type {
   Database,
   DatabaseId,
@@ -15,8 +18,6 @@ import { getAvailableDatabases } from "../../../utils";
 import { CreateDatabaseModal, UpdateDatabaseModal } from "./DatabaseModal";
 import { DatabaseTable } from "./DatabaseTable";
 
-type ModalType = "create" | "update";
-
 type DatabaseSectionProps = {
   workspace: Workspace;
   databases: Database[];
@@ -26,23 +27,43 @@ export function DatabaseSection({
   workspace,
   databases,
 }: DatabaseSectionProps) {
-  const workspaceDatabases = workspace.databases;
-  const [modalType, setModalType] = useState<ModalType | null>(null);
+  const [isCreateOpen, { open: openCreate, close: closeCreate }] =
+    useDisclosure(false);
+  const [isUpdateOpen, { open: openUpdate, close: closeUpdate }] =
+    useDisclosure(false);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
+  const [deleteWorkspaceDatabase] = useDeleteWorkspaceDatabaseMutation();
+  const { modalContent: deleteModalContent, show: showDeleteConfirmation } =
+    useConfirmation();
 
-  const handleOpenCreate = () => {
-    setSelectedDatabaseId(undefined);
-    setModalType("create");
-  };
-
-  const handleOpenEdit = (workspaceDatabase: WorkspaceDatabase) => {
+  const handleUpdateOpen = (workspaceDatabase: WorkspaceDatabase) => {
     setSelectedDatabaseId(workspaceDatabase.database_id);
-    setModalType("update");
+    openUpdate();
   };
 
-  const handleClose = () => {
-    setModalType(null);
+  const handleUpdateClose = () => {
+    closeUpdate();
     setSelectedDatabaseId(undefined);
+  };
+
+  const handleDelete = (workspaceDatabase: WorkspaceDatabase) => {
+    const database = databases.find(
+      (db) => db.id === workspaceDatabase.database_id,
+    );
+    showDeleteConfirmation({
+      title: database
+        ? t`Remove ${database.name} from this workspace?`
+        : t`Remove the database from this workspace?`,
+      message: t`The isolation schema and the database user in this database will be dropped. This cannot be undone.`,
+      confirmButtonText: t`Remove`,
+      confirmButtonProps: { variant: "filled", color: "error" },
+      onConfirm: async () => {
+        await deleteWorkspaceDatabase({
+          workspace_id: workspace.id,
+          database_id: workspaceDatabase.database_id,
+        }).unwrap();
+      },
+    });
   };
 
   return (
@@ -54,33 +75,35 @@ export function DatabaseSection({
           <AddDatabaseButton
             workspace={workspace}
             databases={databases}
-            onClick={handleOpenCreate}
+            onClick={openCreate}
           />
         }
       >
         <DatabaseTable
-          workspaceDatabases={workspaceDatabases}
+          workspaceDatabases={workspace.databases}
           databases={databases}
-          onRowClick={handleOpenEdit}
+          onEdit={handleUpdateOpen}
+          onDelete={handleDelete}
         />
       </TitleSection>
-      {modalType === "create" && (
+      {isCreateOpen && (
         <CreateDatabaseModal
           workspace={workspace}
           databases={databases}
           opened
-          onClose={handleClose}
+          onClose={closeCreate}
         />
       )}
-      {modalType === "update" && selectedDatabaseId != null && (
+      {isUpdateOpen && selectedDatabaseId != null && (
         <UpdateDatabaseModal
           workspace={workspace}
           databaseId={selectedDatabaseId}
           databases={databases}
           opened
-          onClose={handleClose}
+          onClose={handleUpdateClose}
         />
       )}
+      {deleteModalContent}
     </>
   );
 }

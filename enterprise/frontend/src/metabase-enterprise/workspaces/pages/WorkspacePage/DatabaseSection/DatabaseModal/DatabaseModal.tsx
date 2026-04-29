@@ -5,7 +5,6 @@ import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   Form,
   FormErrorMessage,
@@ -18,7 +17,6 @@ import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceDatabaseMutation,
-  useDeleteWorkspaceDatabaseMutation,
   useUpdateWorkspaceDatabaseMutation,
 } from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
@@ -145,7 +143,7 @@ function CreateDatabaseForm({
         <Form>
           <Stack gap="lg">
             <Text c="text-secondary">
-              {t`Creates a temporary writable schema and a database user, then grants the user write access to that schema and read access to the selected schemas.`}
+              {t`Creates a temporary isolation schema and a database user, then grants the user write access to that schema and read access to the selected schemas.`}
             </Text>
             <DatabaseSelect availableDatabases={availableDatabases} />
             <DatabaseSchemaSelect
@@ -221,7 +219,7 @@ function UpdateDatabaseForm({
         <Form>
           <Stack gap="lg">
             <Text c="text-secondary">
-              {t`Recreate the writable schema and the database user with different permissions.`}
+              {t`Recreate the isolation schema and the database user with different permissions.`}
             </Text>
             <DatabaseSelect availableDatabases={availableDatabases} />
             <DatabaseSchemaSelect
@@ -232,65 +230,18 @@ function UpdateDatabaseForm({
               databases={databases}
             />
             <FormErrorMessage />
-            <Group justify="space-between">
-              <DeleteDatabaseButton
-                workspace={workspace}
-                database={database}
-                onDelete={onClose}
+            <Group justify="flex-end">
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Save`}
+                variant="filled"
+                disabled={!dirty}
               />
-              <Group>
-                <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={t`Save`}
-                  variant="filled"
-                  disabled={!dirty}
-                />
-              </Group>
             </Group>
           </Stack>
         </Form>
       )}
     </FormProvider>
-  );
-}
-
-type DeleteDatabaseButtonProps = {
-  workspace: Workspace;
-  database: Database;
-  onDelete: () => void;
-};
-
-function DeleteDatabaseButton({
-  workspace,
-  database,
-  onDelete,
-}: DeleteDatabaseButtonProps) {
-  const [deleteWorkspaceDatabase] = useDeleteWorkspaceDatabaseMutation();
-  const { modalContent, show } = useConfirmation();
-
-  const handleClick = () => {
-    show({
-      title: t`Remove ${database.name} from this workspace?`,
-      message: t`The writable schema and the database user in this database will be dropped. This cannot be undone.`,
-      confirmButtonText: t`Remove`,
-      confirmButtonProps: { variant: "filled", color: "error" },
-      onConfirm: async () => {
-        await deleteWorkspaceDatabase({
-          workspace_id: workspace.id,
-          database_id: database.id,
-        }).unwrap();
-        onDelete();
-      },
-    });
-  };
-
-  return (
-    <>
-      <Button variant="subtle" color="error" px={0} onClick={handleClick}>
-        {t`Remove`}
-      </Button>
-      {modalContent}
-    </>
   );
 }
 

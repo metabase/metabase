@@ -9,8 +9,9 @@ import {
 } from "./routes";
 
 function useCurrentWorkspace() {
-  const { data, isLoading } = useGetCurrentWorkspaceQuery();
-  return { currentWorkspace: data ?? null, isLoading };
+  // TODO remove this function, add a setting to indicate if there is a current workspace
+  const { data: _data, isLoading } = useGetCurrentWorkspaceQuery();
+  return { currentWorkspace: null, isLoading };
 }
 
 export function initializePlugin() {
