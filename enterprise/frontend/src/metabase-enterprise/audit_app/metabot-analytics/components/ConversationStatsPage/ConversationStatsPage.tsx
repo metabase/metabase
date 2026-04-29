@@ -226,6 +226,16 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     [navigateToConversations, userOptions],
   );
 
+  const handleGroupClick = useCallback(
+    (groupName: string) => {
+      const match = groupOptions.find((opt) => opt.label === groupName);
+      if (match) {
+        navigateToConversations({ group: match.value });
+      }
+    },
+    [groupOptions, navigateToConversations],
+  );
+
   const handleTenantClick = useCallback(
     (tenantName: string) => {
       const match = tenantOptions.find((opt) => opt.label === tenantName);
@@ -323,6 +333,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             buildQuery={(opts) =>
               buildGroupBreakoutQuery({ ...opts, excludeAllUsers: !hasTenants })
             }
+            onDimensionClick={handleGroupClick}
             h={500}
           />
           <BreakoutChart

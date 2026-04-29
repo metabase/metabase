@@ -1,6 +1,7 @@
 const { H } = cy;
 
 import {
+  ADMINISTRATORS_GROUP_ID,
   ADMIN_USER_ID,
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -874,6 +875,38 @@ describe("scenarios > metabot > usage auditing", () => {
         "10.0.0.5",
       ]);
     });
+  });
+
+  it("drills through from the groups chart to the conversations list", () => {
+    visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
+    interceptConversationsApi();
+
+    clickRowChartBarForLabel(
+      "Groups with most conversations",
+      "Administrators",
+    );
+
+    waitForConversations();
+    cy.location("pathname").should(
+      "eq",
+      "/admin/metabot/usage-auditing/conversations",
+    );
+    cy.location("search").should("include", `group=${ADMINISTRATORS_GROUP_ID}`);
+    H.main().findByDisplayValue("Administrators").should("be.visible");
+    assertConversationTableContains([
+      "Bobby Tables",
+      "Internal",
+      "NLQ",
+      "10.0.0.1",
+      "10.0.0.2",
+    ]);
+    assertConversationTableDoesNotContain([
+      "Robert Tableton",
+      "10.0.0.3",
+      "10.0.0.4",
+      "10.0.0.5",
+      "10.0.0.99",
+    ]);
   });
 
   it("drills through from conversation charts to the conversations list and updates list filters", () => {
