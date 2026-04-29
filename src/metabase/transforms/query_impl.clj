@@ -32,6 +32,7 @@
                    (when (driver.conn/write-connection-requested?) " using write connection"))
          (tracing/with-span :tasks "task.transform.query" {:transform/id          id
                                                            :transform/target-type (name (keyword (:type target)))
+                                                           :transform/incremental (= :table-incremental (keyword (:type target)))
                                                            :db/id                 (:id db)
                                                            :db/engine             (name driver)}
            (let [conn-spec         (driver/connection-spec driver db)

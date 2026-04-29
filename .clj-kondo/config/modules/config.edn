@@ -2305,7 +2305,8 @@
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
-   :uses #{database-routing
+   :uses #{analytics-interface
+           database-routing
            driver
            events
            lib
@@ -3439,6 +3440,7 @@
            permissions
            query-processor
            settings
+           tracing
            transforms
            transforms-base
            util}

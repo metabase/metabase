@@ -1,8 +1,10 @@
 (ns metabase.transforms-base.util-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.test :as mt]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
@@ -24,3 +26,61 @@
                (transforms-base.u/throw-if-db-routing-enabled!
                 {:name "Routing transform"}
                 (mt/db)))))))))
+
+(deftest checkpoint-span-attrs-test
+  (testing "nil source-range-params yields an empty attrs map"
+    (is (= {} (transforms-base.u/checkpoint-span-attrs nil))))
+  (testing "field-id only (no lo/hi) yields just :transform/checkpoint-field-id"
+    (is (= {:transform/checkpoint-field-id 42}
+           (transforms-base.u/checkpoint-span-attrs {:checkpoint-filter-field-id 42}))))
+  (testing "numeric lo/hi are encoded as strings"
+    (is (= {:transform/checkpoint-field-id 7
+            :transform/checkpoint-lo       "10"
+            :transform/checkpoint-hi       "100"}
+           (transforms-base.u/checkpoint-span-attrs
+            {:checkpoint-filter-field-id 7
+             :lo {:value 10}
+             :hi {:value 100}}))))
+  (testing "temporal hi is formatted as an ISO string"
+    (let [attrs (transforms-base.u/checkpoint-span-attrs
+                 {:checkpoint-filter-field-id 9
+                  :hi {:value (t/local-date-time 2024 1 16 10 0 0)}})]
+      (is (= 9 (:transform/checkpoint-field-id attrs)))
+      (is (string? (:transform/checkpoint-hi attrs)))
+      (is (re-find #"2024-01-16" (:transform/checkpoint-hi attrs))))))
+
+(deftest add-span-attrs!-no-op-when-disabled-test
+  (testing "add-span-attrs! is a no-op when the trace group is disabled"
+    (tracing/shutdown-groups!)
+    (is (nil? (tracing/add-span-attrs! :tasks {:transform/incremental true})))))
+
+(deftest save-watermark!-emits-checkpoint-gauge-test
+  (mt/with-prometheus-system! [_ system]
+    (mt/with-temp [:model/Transform {transform-id :id} {}]
+      (testing "numeric hi value emits the gauge keyed on transform-id and field-id"
+        (transforms-base.u/save-watermark! transform-id
+                                           {:checkpoint-filter-field-id 7
+                                            :hi {:value 42}})
+        (is (== 42.0
+                (mt/metric-value system :metabase-transforms/checkpoint-value
+                                 {:transform-id (str transform-id) :field-id "7"}))))
+      (testing "temporal hi value emits epoch millis on the gauge"
+        (let [t (t/instant "2024-01-16T10:00:00Z")]
+          (transforms-base.u/save-watermark! transform-id
+                                             {:checkpoint-filter-field-id 8
+                                              :hi {:value t}})
+          (is (== (double (.toEpochMilli t))
+                  (mt/metric-value system :metabase-transforms/checkpoint-value
+                                   {:transform-id (str transform-id) :field-id "8"})))))
+      (testing "nil hi value does not emit the gauge"
+        (transforms-base.u/save-watermark! transform-id
+                                           {:checkpoint-filter-field-id 9
+                                            :hi nil})
+        (is (== 0
+                (mt/metric-value system :metabase-transforms/checkpoint-value
+                                 {:transform-id (str transform-id) :field-id "9"}))))
+      (testing "nil source-range-params does not emit the gauge"
+        (transforms-base.u/save-watermark! transform-id nil)
+        (is (== 0
+                (mt/metric-value system :metabase-transforms/checkpoint-value
+                                 {:transform-id (str transform-id) :field-id "missing"})))))))

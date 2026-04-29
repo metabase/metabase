@@ -243,6 +243,15 @@
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
+(defn add-span-attrs!
+  "Add attributes to the currently active OTel span. No-op when tracing is disabled
+   for `group` or when no span is active. Use this from inside a `with-span` body
+   to enrich the surrounding span with values that are only known mid-execution."
+  [group attrs]
+  (when (group-enabled? group)
+    (when (seq attrs)
+      (span/add-span-data! {:attributes attrs}))))
+
 (defmacro with-span
   "Create an OTel span if tracing is enabled for `group`.
 
