@@ -130,7 +130,7 @@ describe("scenarios > question > nested", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
-    cy.findAllByText("June 2022");
+    cy.findAllByText("June 2025");
     cy.findAllByText("13");
   });
 
@@ -319,8 +319,8 @@ describe("scenarios > question > nested", () => {
         filter: [
           "between",
           ["field-id", ORDERS.CREATED_AT],
-          "2026-02-01",
-          "2026-02-29",
+          "2029-02-01",
+          "2029-02-29",
         ],
         value: "543",
       });
@@ -331,8 +331,8 @@ describe("scenarios > question > nested", () => {
         name: "15352-2",
         filter: [
           "and",
-          [">", ["field-id", ORDERS.CREATED_AT], "2026-01-31"],
-          ["<", ["field-id", ORDERS.CREATED_AT], "2026-03-01"],
+          [">", ["field-id", ORDERS.CREATED_AT], "2029-01-31"],
+          ["<", ["field-id", ORDERS.CREATED_AT], "2029-03-01"],
         ],
         value: "543",
       });
@@ -341,7 +341,7 @@ describe("scenarios > question > nested", () => {
     it("should work with 'on' date filter (metabase#15352-3)", () => {
       assertOnFilter({
         name: "15352-3",
-        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2026-02-01"],
+        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2029-02-01"],
         value: "17",
       });
     });

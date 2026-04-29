@@ -79,7 +79,7 @@ describe("SecurityCenterBanner", () => {
     setup();
 
     expect(
-      await screen.findByText(/No notification channels are configured/),
+      await screen.findByText(/Please configure notification channels/),
     ).toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe("SecurityCenterBanner", () => {
     });
 
     expect(
-      await screen.findByText(/Active security advisories require attention/),
+      await screen.findByText(/Please configure notification channels/),
     ).toBeInTheDocument();
   });
 
@@ -127,7 +127,7 @@ describe("SecurityCenterBanner", () => {
     });
 
     // Wait for the error banner text to confirm advisory data has loaded
-    await screen.findByText(/Active security advisories require attention/);
+    await screen.findByText(/Please configure notification channels/);
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
@@ -148,14 +148,17 @@ describe("SecurityCenterBanner", () => {
     });
 
     expect(
-      await screen.findByText(/Active security advisories require attention/),
+      await screen.findByText(/Please configure notification channels/),
     ).toBeInTheDocument();
   });
 
-  it("includes a link to security center settings", async () => {
+  it("includes a link to security center notification settings", async () => {
     setup();
 
-    const link = await screen.findByText("Set up notifications");
-    expect(link).toHaveAttribute("href", "/admin/security-center");
+    const link = await screen.findByText("Security center");
+    expect(link).toHaveAttribute(
+      "href",
+      "/admin/security-center?open=notifications",
+    );
   });
 });

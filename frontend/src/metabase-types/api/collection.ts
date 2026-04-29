@@ -261,8 +261,7 @@ export interface DashboardQuestionCandidate {
   };
 }
 
-export interface GetCollectionDashboardQuestionCandidatesRequest
-  extends PaginationRequest {
+export interface GetCollectionDashboardQuestionCandidatesRequest extends PaginationRequest {
   collectionId: CollectionId;
 }
 

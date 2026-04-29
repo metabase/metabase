@@ -59,18 +59,21 @@ export function SecurityCenterBanner() {
     return null;
   }
 
-  const settingsLink = (
+  const securityCenterLink = (
     <Anchor
       key="link"
       component={Link}
       fw="bold"
-      to="/admin/security-center"
+      to="/admin/security-center?open=notifications"
       c="inherit"
       td="underline"
     >
-      {t`Set up notifications`}
+      {t`Security center`}
     </Anchor>
   );
+
+  // eslint-disable-next-line no-literal-metabase-strings -- only visible to admins on self-hosted instances
+  const body = jt`Please configure notification channels in the ${securityCenterLink} so that you get notified about security vulnerabilities in your Metabase instance`;
 
   if (hasActiveAdvisory) {
     return (
@@ -78,11 +81,7 @@ export function SecurityCenterBanner() {
         contentGroupProps={{ wrap: "nowrap" }}
         icon="warning_round_filled"
         bg="error"
-        body={
-          <Text lh="inherit">
-            {jt`Active security advisories require attention, but no notification channels are configured. ${settingsLink}`}
-          </Text>
-        }
+        body={<Text lh="inherit">{body}</Text>}
         py="md"
       />
     );
@@ -95,7 +94,7 @@ export function SecurityCenterBanner() {
       bg="warning"
       body={
         <Text lh="inherit" c="text-primary">
-          {jt`No notification channels are configured for security alerts. ${settingsLink}`}
+          {body}
         </Text>
       }
       closable

@@ -11,31 +11,26 @@ interface BaseSmartScalarComparison {
   type: SmartScalarComparisonType;
 }
 
-export interface SmartScalarComparisonAnotherColumn
-  extends BaseSmartScalarComparison {
+export interface SmartScalarComparisonAnotherColumn extends BaseSmartScalarComparison {
   type: "anotherColumn";
   column: string;
   label: string;
 }
 
-export interface SmartScalarComparisonPeriodsAgo
-  extends BaseSmartScalarComparison {
+export interface SmartScalarComparisonPeriodsAgo extends BaseSmartScalarComparison {
   type: "periodsAgo";
   value: number;
 }
 
-export interface SmartScalarComparisonPreviousPeriod
-  extends BaseSmartScalarComparison {
+export interface SmartScalarComparisonPreviousPeriod extends BaseSmartScalarComparison {
   type: "previousPeriod";
 }
 
-export interface SmartScalarComparisonPreviousValue
-  extends BaseSmartScalarComparison {
+export interface SmartScalarComparisonPreviousValue extends BaseSmartScalarComparison {
   type: "previousValue";
 }
 
-export interface SmartScalarComparisonStaticNumber
-  extends BaseSmartScalarComparison {
+export interface SmartScalarComparisonStaticNumber extends BaseSmartScalarComparison {
   type: "staticNumber";
   value: number;
   label: string;

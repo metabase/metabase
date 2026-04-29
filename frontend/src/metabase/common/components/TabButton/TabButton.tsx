@@ -184,8 +184,10 @@ const _TabButton = forwardRef(function TabButton(
   );
 });
 
-export interface RenameableTabButtonProps
-  extends Omit<TabButtonProps, "onRename" | "onFinishRenaming" | "isRenaming"> {
+export interface RenameableTabButtonProps extends Omit<
+  TabButtonProps,
+  "onRename" | "onFinishRenaming" | "isRenaming"
+> {
   onRename: (newLabel: string) => void;
   renameMenuLabel?: string;
   renameMenuIndex?: number;
