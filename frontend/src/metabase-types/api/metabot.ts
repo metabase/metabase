@@ -330,6 +330,7 @@ export type MetabotGroupPermission = {
 
 export type MetabotPermissionsResponse = {
   permissions: MetabotGroupPermission[];
+  advanced: boolean;
 };
 
 export type UpdateMetabotPermissionsRequest = {
