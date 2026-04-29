@@ -160,15 +160,21 @@
    :uses    #{agent-lib
               api
               auth-identity
+              dashboards
+              events
               lib
               llm
               metabot
+              queries
               query-processor
               request
               server
               settings
               util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/User}}
 
   agent-lib
   {:team "Metabot"
@@ -1020,6 +1026,11 @@
    :api  #{metabase.initialization-status.core}
    :uses #{}}
 
+  interestingness
+  {:team "UX West"
+   :api  #{metabase.interestingness.core}
+   :uses #{util}}
+
   internal-stats
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
@@ -1223,6 +1234,7 @@
               config
               documents
               driver
+              interestingness
               legacy-mbql
               lib
               lib-be
@@ -2119,6 +2131,7 @@
            database-routing
            driver
            events
+           interestingness
            lib
            models
            premium-features
@@ -3348,7 +3361,8 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api}
-   :uses #{api
+   :uses #{analytics-interface
+           api
            driver
            events
            lib
@@ -3356,6 +3370,7 @@
            query-processor
            server
            sql-tools
+           tracing
            transforms
            transforms-base
            util}

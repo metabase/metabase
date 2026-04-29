@@ -1,8 +1,8 @@
 (ns metabase.lib.util.match.impl
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
-  (:refer-clojure :exclude [mapv get-in])
+  (:refer-clojure :exclude [mapv get-in empty?])
   (:require
-   [metabase.util.performance :refer [mapv get-in]]))
+   [metabase.util.performance :refer [mapv get-in empty?]]))
 
 ;; have to do this at runtime because we don't know if a symbol is a class or pred or whatever when we compile the macro
 (defn match-with-pred-or-class
@@ -66,7 +66,7 @@
 (defn update-in-unless-empty
   "Like `update-in`, but only updates in the existing value is non-empty."
   [m ks f]
-  (if-not (seq (get-in m ks))
+  (if (empty? (get-in m ks))
     m
     (update-in m ks f)))
 
