@@ -1,0 +1,36 @@
+## Stores pending drill-through query payloads for MCP UI sessions.
+## Replaces the in-memory atom that broke under load-balanced deployments.
+## One row per session (upserted), so the last drill always wins.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-04-24T00:00:00
+      author: phoomparin
+      comment: Create mcp_ui_query_handle table for drill-through payload for MCP Apps
+      changes:
+        - createTable:
+            tableName: mcp_ui_query_handle
+            remarks: Stores the pending drill-through query payload for an MCP session; one row per session
+            columns:
+              - column:
+                  name: id
+                  type: varchar(255)
+                  remarks: MCP session ID; primary key since there is at most one pending drill per session
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: encoded_query
+                  type: ${text.type}
+                  remarks: Base64-encoded MBQL query payload for the pending drill-through
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this handle was stored; useful for debugging and future TTL cleanup
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: mcp_ui_query_handle

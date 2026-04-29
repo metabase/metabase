@@ -4,6 +4,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -44,7 +45,11 @@
   [& body]
   `(do-with-fallback-template (fn [] ~@body)))
 
-(defn- render-embed-mcp [vars]
+(defn render-embed-mcp-template
+  "Render the embed-mcp.html Mustache template with the given vars map.
+   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
+   :mcpSessionId (JSON-encoded or nil)."
+  [vars]
   (cond
     (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
@@ -60,7 +65,7 @@
 (defonce ^:private registry
   (atom {:key->uri      {}
          :uri->resource (sorted-map)
-         :uri->tool     (sorted-map)}))
+         :uri->tools    (sorted-map)}))
 
 (mu/defn- register-ui-resource!
   [key      :- :keyword
@@ -86,7 +91,7 @@
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
           tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
-      (swap! registry assoc-in [:uri->tool uri] tool))
+      (swap! registry update-in [:uri->tools uri] (fnil conj []) tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
 (defn resource-scopes
@@ -97,7 +102,7 @@
 (defn list-ui-tools
   "Return the list of MCP tools corresponding to UI components"
   []
-  (vals (:uri->tool @registry)))
+  (mapcat identity (vals (:uri->tools @registry))))
 
 (defn list-resources
   "Return the list of available MCP resources.
@@ -143,11 +148,13 @@
   :description "Interactive Metabase SDK visualization for a query"
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
-                       session-key (:session-key opts)]
-                   (render-embed-mcp
+                       session-key (:session-key opts)
+                       session-id  (:session-id opts)]
+                   (render-embed-mcp-template
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
-                     :sessionToken   (when session-key (json/encode session-key))})))})
+                     :sessionToken   (when session-key (json/encode session-key))
+                     :mcpSessionId   (when session-id (json/encode session-id))})))})
 
 (register-ui-tool!
  :visualize-query
@@ -157,5 +164,23 @@
                 :properties {:query {:type "string" :minLength 1}}
                 :required   ["query"]}
   :response-fn (fn [arguments]
-                 {:content          [{:type "text" :text "Visualizing query..."}]
-                  :structuredContent {:query (:query arguments)}})})
+                 (if-let [encoded (:query arguments)]
+                   {:content          [{:type "text" :text "Visualizing query..."}]
+                    :structuredContent {:query encoded}}
+                   {:content [{:type "text" :text "Missing query argument."}]
+                    :isError true}))})
+
+(register-ui-tool!
+ :visualize-query
+ {:name        "render_drill_through"
+  :description (str "Render the drill-through visualization the user just navigated into. "
+                    "Call this immediately when asked to show a drill-through result — "
+                    "no arguments needed. The query is pre-loaded from session context.")
+  :inputSchema {:type "object" :properties {} :required []}
+  :response-fn (fn [_arguments]
+                 (let [encoded-query (mcp.session/consume-drill-handle! mcp.session/*current-session-id*)]
+                   (if encoded-query
+                     {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
+                      :structuredContent {:query encoded-query}}
+                     {:content [{:type "text" :text "No pending drill-through found. Try drilling into a chart first."}]
+                      :isError true})))})

@@ -75,6 +75,12 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
+(def ^:dynamic *current-session-id*
+  "The MCP session ID for the current request. Bound by the tools/call handler so that
+   tool response-fns can look up session-scoped state (e.g. query handles) without the
+   session ID needing to flow through every layer of the call stack."
+  nil)
+
 (defn create!
   "Create a new MCP session. Returns a UUID string.
    No database row is written — the session is just an opaque correlator until
@@ -126,12 +132,42 @@
         owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
     (or (nil? owner) (= owner user-id))))
 
+;;; -------------------------------------------- Query Handle Store -----------------------------------------------
+;; DB-backed store for base64-encoded drill-through query payloads.
+;; The table is keyed by session_id — at most one pending drill per session.
+;; Upserted (last write wins) so a second drill overwrites the first.
+
+(defn store-drill-handle!
+  "Upsert the drill-through query payload for `session-id`. Last write wins."
+  [session-id encoded-query]
+  (t2/query {:insert-into   :mcp_ui_query_handle
+             :values        [{:id            session-id
+                              :encoded_query encoded-query
+                              :created_at    :%now}]
+             :on-conflict   [:id]
+             :do-update-set [:encoded_query :created_at]}))
+
+(defn consume-drill-handle!
+  "Retrieve and delete the drill-through query payload for `session-id`.
+   Returns nil if no pending drill exists."
+  [session-id]
+  (when-let [row (t2/select-one :mcp_ui_query_handle :id session-id)]
+    (t2/delete! :mcp_ui_query_handle :id session-id)
+    (:encoded_query row)))
+
+(defn- delete-session-handles!
+  "Delete the drill-through query handle for `session-id`. Called on session teardown."
+  [session-id]
+  (t2/delete! :mcp_ui_query_handle :id session-id))
+
 (defn delete!
-  "Delete the `core_session` backing this MCP session, if one was ever created.
-   Scoped to `user-id` so that one user cannot delete another user's session."
+  "Delete the `core_session` backing this MCP session (if one was ever created)
+   and any associated query handles. Scoped to `user-id` so that one user cannot
+   delete another user's session."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session
                :where       [:and
                              [:= :key_hashed key-hashed]
-                             [:= :user_id user-id]]})))
+                             [:= :user_id user-id]]})
+    (delete-session-handles! session-id)))

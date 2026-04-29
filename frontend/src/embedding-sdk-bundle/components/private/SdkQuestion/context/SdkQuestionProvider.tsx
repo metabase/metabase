@@ -23,6 +23,7 @@ import {
   getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
+import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
@@ -78,6 +79,7 @@ export const SdkQuestionProvider = ({
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
+  onDrillThrough,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
@@ -202,11 +204,29 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
+  // Wrap navigateToNewCard to intercept navigation to new card
+  const navigateToNewCardWithDrillThrough = useCallback(
+    async (params: NavigateToNewCardParams) => {
+      if (onDrillThrough) {
+        await onDrillThrough(
+          {
+            drillName: params.drillName,
+            nextCard: params.nextCard,
+          },
+          () => navigateToNewCard?.(params) ?? Promise.resolve(),
+        );
+      } else {
+        await navigateToNewCard?.(params);
+      }
+    },
+    [navigateToNewCard, onDrillThrough],
+  );
+
   // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
   const navigateToNewCardWithSdkInternalNavigation = useCallback(
-    async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
+    async (params: NavigateToNewCardParams) => {
       // This actually changes what gets rendered
-      await navigateToNewCard?.(params);
+      await navigateToNewCardWithDrillThrough(params);
 
       // Push virtual entry if last entry is NOT already a question drill
       const currentEntry = navigation?.stack.at(-1);
@@ -219,7 +239,12 @@ export const SdkQuestionProvider = ({
         });
       }
     },
-    [navigateToNewCard, navigation, question, loadAndQueryQuestion],
+    [
+      navigateToNewCardWithDrillThrough,
+      navigation,
+      question,
+      loadAndQueryQuestion,
+    ],
   );
 
   const query = question?.query();
@@ -253,7 +278,7 @@ export const SdkQuestionProvider = ({
     updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
-        ? navigateToNewCard
+        ? navigateToNewCardWithDrillThrough
         : navigateToNewCardWithSdkInternalNavigation,
     plugins,
     question,

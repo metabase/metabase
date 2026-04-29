@@ -117,6 +117,7 @@ export interface NavigateToNewCardParams {
   previousCard: Card;
   objectId: ObjectId;
   cancelDeferred?: Deferred;
+  drillName?: string;
 }
 
 export interface QuestionStateParams {

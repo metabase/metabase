@@ -1,4 +1,5 @@
 import {
+  type App,
   type McpUiHostContext,
   applyDocumentTheme,
   applyHostFonts,
@@ -10,6 +11,7 @@ import { useEffect, useState } from "react";
 interface McpAppState {
   query: string | null;
   hostContext: McpUiHostContext | null;
+  app: App | null;
 }
 
 type ToolArgument = { query?: string } | undefined;
@@ -75,5 +77,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, hostContext };
+  return { query, hostContext, app };
 }
