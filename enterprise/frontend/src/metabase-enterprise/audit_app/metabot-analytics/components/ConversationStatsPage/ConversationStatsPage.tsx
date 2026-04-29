@@ -35,6 +35,7 @@ import {
   buildGroupBreakoutQuery,
   buildSourceBreakoutQuery,
   buildTenantBreakoutQuery,
+  tableForMetric,
 } from "./query-utils";
 import type { ChartDataSources, ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
@@ -149,7 +150,11 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   const sharedChartProps: ChartProps = {
     provider: conversationsAudit.provider,
-    table: metric === "tokens" ? usageLogAudit.table : conversationsAudit.table,
+    table: tableForMetric(
+      metric,
+      conversationsAudit.table,
+      usageLogAudit.table,
+    ),
     groupMembersTable: groupMembersAudit.table,
     dateFilter,
     userId,

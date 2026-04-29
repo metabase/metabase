@@ -26,6 +26,12 @@ export type StatsFilters = {
   metric: UsageStatsMetric;
 };
 
+export const tableForMetric = <T extends TableMetadata | CardMetadata | null>(
+  metric: UsageStatsMetric,
+  conversationsTable: T,
+  usageLogTable: T,
+): T => (metric === "tokens" ? usageLogTable : conversationsTable);
+
 const METRIC_ACCENT: Record<UsageStatsMetric, ColorName> = {
   conversations: "accent0",
   tokens: "accent2",

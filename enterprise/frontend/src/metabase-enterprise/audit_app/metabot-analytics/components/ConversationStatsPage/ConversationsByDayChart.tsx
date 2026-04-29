@@ -156,7 +156,7 @@ function ConversationsByDayChartInner({
 type BuildQueryOpts = StatsFilters &
   ChartDataSources & { bucketName: BucketName };
 
-function buildTimeseriesBreakoutQuery({
+export function buildTimeseriesBreakoutQuery({
   provider,
   table,
   groupMembersTable,
