@@ -285,9 +285,13 @@
   "Format model for LLM consumption.
    Matches Python Model.get_llm_representation exactly, except we additionally surface
    `database_name` as a tag attribute (see [[table->xml]] for the rationale).
+
+   When the caller supplies `:query_yaml` (the model's `dataset_query` exported through the
+   representations resolver), it is rendered inside the `<metabase-model>` element as a
+   `<query>` block - same canonical MBQL 5 representations YAML form used elsewhere.
    Note: Python uses <metabase-model> tag but closes with </model>."
   [{:keys [id name description verified fields database_id database_name database_engine
-           related_tables measures segments portable_entity_id]}]
+           related_tables measures segments portable_entity_id query_yaml]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -300,6 +304,8 @@
       :model_fqn                fqn
       :model_description        description
       :model_portable_entity_id portable_entity_id
+      :model_query_yaml         (when (and (string? query_yaml) (not (str/blank? query_yaml)))
+                                  query_yaml)
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (when (seq related_tables)
@@ -385,8 +391,14 @@
     :chart_type (if chart-type (clojure.core/name chart-type) "table")}))
 
 (defn question->xml
-  "Format question for LLM consumption."
-  [{:keys [id name description verified collection visualization display fields portable_entity_id]}]
+  "Format question for LLM consumption.
+
+  When the caller supplies `:query_yaml` (the saved card's `dataset_query` exported through
+  the representations resolver), it is rendered inside the `<metabase_question>` element as
+  a `<query>` block. The format is the same canonical MBQL 5 representations YAML the LLM
+  writes into `construct_notebook_query` and gets back in that tool's result - so existing
+  cards and freshly-built queries share one form."
+  [{:keys [id name description verified collection visualization display fields portable_entity_id query_yaml]}]
   (render-llm-template
    :question
    {:question_id (str id)
@@ -397,6 +409,8 @@
     :question_portable_entity_id portable_entity_id
     :question_collection_xml (when collection (collection->xml collection))
     :question_visualization_xml (when visualization (visualization->xml visualization))
+    :question_query_yaml (when (and (string? query_yaml) (not (str/blank? query_yaml)))
+                           query_yaml)
     :question_fields_xml (when (seq fields)
                            (str/join "\n" (map field->xml fields)))}))
 

@@ -5,6 +5,7 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
@@ -237,22 +238,39 @@
                                                te/lines)))))
 
 (defn- transform-query-source-text
+  "Format a transform's `:query` source for the LLM.
+
+  When the source carries a query map with a `:database` key, we normalise it and export to
+  the same canonical representations YAML form the `construct_notebook_query` tool
+  consumes. Both structured (`mbql.stage/mbql`) and native (`mbql.stage/native`) stages go
+  through this path - the latter is intentional: the repr export preserves portable
+  `card-id` / `snippet-id` references inside `template-tags`, and stays in lockstep with
+  the freshly-built-query payloads `construct_notebook_query` returns to the LLM.
+
+  Pre-resolved string sources (`:query` is itself a string, or carries `:query-content` -
+  the SQL-tool's already-rendered shape) pass through unchanged: there's no map to
+  normalise.
+
+  Falls back to a `pprint`'d query map only as a last resort, when repr export is
+  unavailable (e.g. a partially-broken `dataset_query`)."
   [source]
   (let [query (:query source)]
     (cond
       (string? query) query
       (string? (:query-content query)) (:query-content query)
-      (string? (get-in query [:native :query])) (get-in query [:native :query])
       (and (map? query) (:database query))
       (try
-        (let [normalized (lib-be/normalize-query query)]
-          (if (lib/native-only-query? normalized)
-            (or (lib/raw-native-query normalized)
-                (some :native (:stages normalized))
-                (get-in normalized [:native :query]))
-            (u/pprint-to-str normalized)))
+        (let [normalized (lib-be/normalize-query query)
+              database-id (:database normalized)
+              mp (when database-id
+                   (lib-be/application-database-metadata-provider database-id))]
+          (or (some->> mp (#(repr.resolve/export-query-yaml % normalized)))
+              (u/pprint-to-str normalized)))
         (catch Exception _
           (u/pprint-to-str query)))
+      ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
+      ;; least sees the query body; if there's no :database we can't normalise / build a MP.
+      (string? (get-in query [:native :query])) (get-in query [:native :query])
       (map? query) (u/pprint-to-str query)
       :else (some-> query str))))
 
