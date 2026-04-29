@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -30,10 +31,9 @@
    workspaces k
    (fn []
      (when-let [ids (seq (distinct (keep :creator_id workspaces)))]
-       (into {}
-             (map (juxt :id identity))
-             (t2/select [:model/User :id :first_name :last_name :email :common_name]
-                        :id [:in ids]))))
+       (u/index-by :id
+                   (t2/select [:model/User :id :first_name :last_name :email :common_name]
+                              :id [:in ids]))))
    :creator_id))
 
 (defn list-workspaces
