@@ -8,6 +8,7 @@ export * from "./collections";
 export * from "./dashboards";
 export * from "./dependencies";
 export * from "./documents";
+export * from "./explorations";
 export * from "./indexed-entities";
 export * from "./metrics";
 export * from "./metabot";
