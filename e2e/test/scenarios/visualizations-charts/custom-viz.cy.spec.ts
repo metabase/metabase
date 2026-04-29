@@ -144,6 +144,7 @@ describe("admin > custom visualizations", () => {
         cy.findByRole("heading", {
           name: /Build your own visualizations/,
         }).should("be.visible");
+        cy.findByRole("link", { name: "Try for free" }).should("be.visible");
         H.getAddVisualizationLink().should("not.exist");
       });
     });
