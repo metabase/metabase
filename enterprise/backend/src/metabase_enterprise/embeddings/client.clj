@@ -38,8 +38,7 @@
                       [[metabase-enterprise.semantic-search.embedding/get-embeddings-batch]] (`ai-service`, `openai`,
                       `ollama`).
   `texts`           — sequential collection of input strings.
-  `opts`            — keyword/value pairs forwarded to the underlying multimethod (e.g. `:type :doc`).
-                      The underlying defmethods destructure with `& {:as opts}` so this must be passed as alternating
-                      kwargs, not a single trailing map."
+  `opts`            — optional keyword opts (e.g. `:type :doc`). Accepts alternating kwargs or a single trailing map;
+                      forwarded as kwargs into the multimethod, which destructures with `& {:as opts}`."
   [embedding-model texts & {:as opts}]
   (apply semantic-search/get-embeddings-batch embedding-model texts (mapcat identity opts)))
