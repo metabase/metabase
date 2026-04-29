@@ -1,5 +1,6 @@
 *.class
 *.*.rej
+*.d.css
 *.iml
 *.jar
 *.log
@@ -16,14 +17,17 @@
 .nrepl-port
 .portal
 .vscode
+/.zed
 /*.h2.db
 /*.lock.db
 /*.mv.db
+/*.sql
 /*.trace.db
 /.babel_cache
 /.env*
 !/.env.example
 /.envrc
+/.workmux.yaml
 /.lein-env
 /.lein-failures
 /.lein-plugins
@@ -53,6 +57,8 @@ cypress.env.json
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
+# Pseudo-locale generated at build time
+/locales/en-ZZ.po
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
@@ -75,6 +81,7 @@ cypress.env.json
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
 /resources/license-frontend-third-party.txt
+/resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
 /resources/version.properties
@@ -92,7 +99,7 @@ coverage-summary.json
 junit.xml
 pom.xml
 pom.xml.asc
-profiles.clj
+/profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
@@ -116,20 +123,18 @@ dev/serialization_deltas/
 mise.local.toml
 
 # lsp: ignore all but the config file
-.lsp/*
-!.lsp/config.edn
-modules/drivers/*/.lsp/*
-!modules/drivers/*/.lsp/config.edn
+**/.lsp/*
+!**/.lsp/config.edn
 **/.clj-kondo/.cache
 
 # clj-kondo: ignore all except our defined config
-.clj-kondo/*
-!.clj-kondo/README.md
-!.clj-kondo/config.edn
-!.clj-kondo/config/
-!.clj-kondo/src/
-!.clj-kondo/test/
-!.clj-kondo/macros/
+**/.clj-kondo/*
+!**/.clj-kondo/README.md
+!**/.clj-kondo/config.edn
+!**/.clj-kondo/config/
+!**/.clj-kondo/src/
+!**/.clj-kondo/test/
+!**/.clj-kondo/macros/
 
 # Editor- or environment-specific local files
 *.code-workspace
@@ -165,3 +170,11 @@ CLAUDE.local.md
 /logs
 /.clojure-mcp
 
+# Python dependencies (pip-installed, not committed)
+/resources/python-sources/sqlglot/
+/resources/python-sources/sqlglot-*.dist-info/
+/resources/python-sources/.lock
+__pycache__/
+.mcp.json
+.claude/worktrees
+.claude/scheduled_tasks.lock

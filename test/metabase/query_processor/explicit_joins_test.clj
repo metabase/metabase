@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
@@ -1623,6 +1624,78 @@
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
                    (mt/rows (qp/process-query q2))))))))))
+
+(deftest ^:parallel join-model-with-model-joining-jsonb-table-test
+  (testing (str "Joining a plain model with a model that itself joins another table containing a JSON column "
+                "should compile correctly when the plain model is the LHS of the join (#73198)")
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns :left-join)
+      (mt/dataset (mt/dataset-definition "issue-73198"
+                                         [["test01"
+                                           [{:field-name "name", :base-type :type/Text}]
+                                           [["t01_A"]
+                                            ["t01_B"]]]
+                                          ["test02"
+                                           [{:field-name "name",      :base-type :type/Text}
+                                            {:field-name "test01_id", :base-type :type/Integer, :fk :test01}]
+                                           [["t02_A1" 1]
+                                            ["t02_A2" 1]
+                                            ["t02_B1" 2]]]
+                                          ["test03"
+                                           [{:field-name "name",      :base-type :type/Text}
+                                            {:field-name "test02_id", :base-type :type/Integer, :fk :test02}
+                                            {:field-name "data",      :base-type :type/JSON,
+                                             :semantic-type :type/SerializedJSON}]
+                                           [["t03_1" 1 "{\"key1\":\"value1\",\"key2\":\"value2\"}"]
+                                            ["t03_2" 1 "{\"items\":[1,2,3]}"]
+                                            ["t03_3" 2 "{\"items\":[{\"a\":10},{\"a\":20}]}"]
+                                            ["t03_4" 3 "{\"flag\":true,\"count\":5}"]]]])
+        ;; The bug requires a JSON nfc child to be referenced through a join, so this test
+        ;; only makes sense on drivers that reify nested JSON fields as their own columns
+        ;; at sync time. MariaDB shares the :mysql driver but stores JSON as text and
+        ;; doesn't unfold it, so the `data → key1` field this test references won't exist.
+        (when-not (mysql/mariadb? (mt/db))
+          (let [mp (mt/metadata-provider)
+                ;; Model A: just test01.
+                q1 (lib/query mp (lib.metadata/table mp (mt/id :test01)))
+                ;; Model B: test02 joined with test03 on test02.id = test03.test02_id.
+                q2 (-> (lib/query mp (lib.metadata/table mp (mt/id :test02)))
+                       (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :test03)))
+                                     (lib/with-join-conditions
+                                      [(lib/= (lib.metadata/field mp (mt/id :test02 :id))
+                                              (lib.metadata/field mp (mt/id :test03 :test02_id)))])
+                                     (lib/with-join-fields :all))))
+                mp (lib.tu/mock-metadata-provider
+                    mp
+                    {:cards [{:id            1
+                              :type          :model
+                              :name          "Test01"
+                              :dataset-query q1}
+                             {:id            2
+                              :type          :model
+                              :name          "Test02 + Test03"
+                              :dataset-query q2}]})
+                ;; Question: Model A (Test01) joined with Model B (Test02 + Test03)
+                ;; The join projects an explicit list of fields including one JSON nfc child
+                ;; (`data → key1`), which is what triggers the buggy SQL compilation.
+                query (-> (lib/query mp (lib.metadata/card mp 1))
+                          (lib/join (-> (lib/join-clause (lib.metadata/card mp 2))
+                                        (lib/with-join-conditions
+                                         [(lib/= (lib.metadata/field mp (mt/id :test01 :id))
+                                                 (lib.metadata/field mp (mt/id :test02 :test01_id)))])
+                                        (lib/with-join-fields
+                                          [(lib.metadata/field mp (mt/id :test02 :id))
+                                           (lib.metadata/field mp (mt/id :test02 :name))
+                                           (lib.metadata/field mp (mt/id :test03 :id))
+                                           (lib.metadata/field mp (mt/id :test03 :name))
+                                           (lib.metadata/field mp (mt/id :test03 "data → key1"))])))
+                          (lib/order-by (lib.metadata/field mp (mt/id :test01 :id)) :asc)
+                          (lib/order-by (lib.metadata/field mp (mt/id :test03 :id)) :asc))]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 "t01_A" 1 "t02_A1" 1 "t03_1" "value1"]
+                      [1 "t01_A" 1 "t02_A1" 2 "t03_2" nil]
+                      [1 "t01_A" 2 "t02_A2" 3 "t03_3" nil]
+                      [2 "t01_B" 3 "t02_B1" 4 "t03_4" nil]]
+                     (-> query qp/process-query mt/rows))))))))))
 
 (deftest ^:parallel self-join-with-capitalized-table-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:left-join]})
