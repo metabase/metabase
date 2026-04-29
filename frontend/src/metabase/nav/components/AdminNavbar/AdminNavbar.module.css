@@ -1,3 +1,21 @@
-.MobileHamburgerIcon {
-  color: var(--mb-color-text-primary-inverse);
+.AdminNavbarRoot {
+  --mb-color-text-primary-inverse: var(--mantine-color-white);
+}
+
+.AdminNavLink {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0.5rem 1rem;
+  transition: all 200ms;
+  border-radius: 4px;
+  color: var(--mb-color-text-secondary-inverse);
+
+  @media screen and (--breakpoint-max-lg) {
+    padding-inline: 0.85rem;
+  }
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-admin-navbar-inverse);
+  }
 }
