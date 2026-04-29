@@ -487,6 +487,15 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
+(deftest ^:parallel recursive-cte-native-query-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a native query with a recursive CTE (#73161)"
+      (is (= [[1] [2] [3]]
+             (->> "WITH RECURSIVE t AS ( SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 3 ) SELECT * FROM t;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))
+
 (defn- check-legacy-dbname [dbname exp-name]
   (let [details (assoc (:details (mt/db)) :dbname dbname)
         spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
