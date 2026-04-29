@@ -549,41 +549,50 @@ describe("scenarios > admin > people", () => {
       beforeEach(() => {
         generateUsers(NEW_USERS);
 
-        cy.intercept("GET", "/api/user*").as("users");
+        cy.intercept("GET", "/api/user?query*").as("users");
         cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 
       it("should allow paginating people forward and backward", () => {
         const PAGE_SIZE = 25;
 
+        const footer = () =>
+          cy
+            .findByTestId("people-list-footer")
+            .scrollIntoView()
+            .should("be.visible");
+
         cy.visit("/admin/people");
-
-        // Total
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`${NEW_TOTAL_USERS} people found`);
-
-        // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
-        assertTableRowsCount(PAGE_SIZE);
-        cy.findByLabelText("Previous page").should("be.disabled");
-
-        cy.findByTestId("next-page-btn").click();
+        cy.findByTestId("admin-panel")
+          .findByText("Loading...")
+          .should("not.exist");
         cy.wait("@users");
 
-        // Page 2
-        cy.findByTestId("people-list-footer")
-          .findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`)
-          .should("be.visible");
-        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
-        cy.findByLabelText("Next page").should("be.disabled");
-
-        cy.findByLabelText("Previous page").click();
-
-        // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
+        cy.log("Page 1");
         assertTableRowsCount(PAGE_SIZE);
+        footer()
+          .should("contain", `${NEW_TOTAL_USERS} people found`)
+          .and("contain", `1 - ${PAGE_SIZE}`);
+
+        footer().within(() => {
+          cy.findByLabelText("Previous page").should("be.disabled");
+
+          cy.findByLabelText("Next page").click();
+          cy.wait("@users");
+        });
+
+        cy.log("Page 2");
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
+        footer().should("contain", `${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+
+        cy.log("Back to the Page 1");
+        footer().within(() => {
+          cy.findByLabelText("Next page").should("be.disabled");
+          cy.findByLabelText("Previous page").click();
+        });
+
+        assertTableRowsCount(PAGE_SIZE);
+        footer().should("contain", `1 - ${PAGE_SIZE}`);
       });
 
       it("should allow paginating group members forward and backward", () => {
