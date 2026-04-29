@@ -41,10 +41,10 @@ export function useChartTypes(
   const rowCount = queryResults?.[0]?.data?.rows?.length ?? 0;
 
   const sensibleChartTypes = [
-    ...CHART_TYPES.filter(({ type }) => sensibleVisualizations.includes(type)),
-
     // Does not make sense to show table viz if there is just one row.
     ...(rowCount >= 2 ? [TABLE_CHART_TYPE] : []),
+
+    ...CHART_TYPES.filter(({ type }) => sensibleVisualizations.includes(type)),
   ];
 
   const hasOnlyTable =
