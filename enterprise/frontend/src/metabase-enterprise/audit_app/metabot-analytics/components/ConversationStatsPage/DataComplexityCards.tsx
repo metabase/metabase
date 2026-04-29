@@ -19,6 +19,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetDataComplexityScoresQuery } from "../../api";
 import type {
@@ -297,11 +298,18 @@ function DataComplexityComponentItem({
 }
 
 export function DataComplexityCards() {
+  const hasDataComplexityFeature = hasPremiumFeature("data-complexity-score");
   const {
     data,
     isLoading,
     error: queryError,
-  } = useGetDataComplexityScoresQuery();
+  } = useGetDataComplexityScoresQuery(undefined, {
+    skip: !hasDataComplexityFeature,
+  });
+
+  if (!hasDataComplexityFeature) {
+    return null;
+  }
 
   return (
     <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">

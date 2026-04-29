@@ -11,6 +11,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useRefreshDataComplexityScoresMutation } from "../../api";
 import {
@@ -216,8 +217,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   return (
     <MetabotAdminLayout fullWidth>
       <SettingsPageWrapper mt="sm" title={t`Usage stats`}>
-        <DataComplexityHeader />
-        <DataComplexityCards />
+        <DataComplexitySection />
         <Flex align="center" justify="space-between">
           <Title order={3} display="flex" style={{ alignItems: "center" }}>
             {t`Usage metrics`}
@@ -320,6 +320,21 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         </SimpleGrid>
       </SettingsPageWrapper>
     </MetabotAdminLayout>
+  );
+}
+
+export function DataComplexitySection() {
+  const hasDataComplexityFeature = hasPremiumFeature("data-complexity-score");
+
+  if (!hasDataComplexityFeature) {
+    return null;
+  }
+
+  return (
+    <>
+      <DataComplexityHeader />
+      <DataComplexityCards />
+    </>
   );
 }
 

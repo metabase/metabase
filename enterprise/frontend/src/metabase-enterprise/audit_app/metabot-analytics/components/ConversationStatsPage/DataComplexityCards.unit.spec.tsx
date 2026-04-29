@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import type { DataComplexityScoresResponse } from "../../types";
 
@@ -75,11 +78,36 @@ const mockScoresWithError: DataComplexityScoresResponse = {
   },
 };
 
+function renderDataComplexityCards(
+  tokenFeatures: Partial<TokenFeatures> = { "data-complexity-score": true },
+) {
+  return renderWithProviders(<DataComplexityCards />, {
+    storeInitialState: {
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures(tokenFeatures),
+      }),
+    },
+  });
+}
+
 describe("DataComplexityCards", () => {
+  it("does not fetch scores without a Data Complexity Score entitlement", () => {
+    renderDataComplexityCards({});
+
+    expect(
+      screen.queryByText("Curated semantic layer"),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/ee/data-complexity-score/complexity",
+      ),
+    ).toBe(false);
+  });
+
   it("renders the data complexity cards", async () => {
     fetchMock.get("path:/api/ee/data-complexity-score/complexity", mockScores);
 
-    const { container } = renderWithProviders(<DataComplexityCards />);
+    const { container } = renderDataComplexityCards();
 
     expect(
       await screen.findByText("Curated semantic layer"),
@@ -95,7 +123,7 @@ describe("DataComplexityCards", () => {
   it("shows a fallback message when the complexity endpoint fails", async () => {
     fetchMock.get("path:/api/ee/data-complexity-score/complexity", 500);
 
-    renderWithProviders(<DataComplexityCards />);
+    renderDataComplexityCards();
 
     expect(
       await screen.findByText("Data complexity scores"),
@@ -111,7 +139,7 @@ describe("DataComplexityCards", () => {
       mockScoresWithError,
     );
 
-    renderWithProviders(<DataComplexityCards />);
+    renderDataComplexityCards();
 
     expect(
       await screen.findByText("Metabot-visible layer"),
