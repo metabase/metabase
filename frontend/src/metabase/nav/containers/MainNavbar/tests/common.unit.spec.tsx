@@ -12,6 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  NESTED_COLLECTION,
   PERSONAL_COLLECTION_BASE,
   TEST_COLLECTION,
   setup,
@@ -375,6 +376,74 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.queryByRole("button", { name: "Create a new collection" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should toggle active collection on click", async () => {
+      const { regularCollectionElements } = await setupCollectionPage({
+        pathname: Urls.collection(TEST_COLLECTION),
+        route: "/collection/:slug",
+      });
+
+      expect(regularCollectionElements.listItem).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(regularCollectionElements.listItem);
+      expect(
+        screen.queryByRole("treeitem", { name: /Nested collection/i }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(regularCollectionElements.listItem);
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not toggle inactive collection on click", async () => {
+      const { regularCollectionElements } = await setupCollectionPage({
+        pathname: Urls.collection(NESTED_COLLECTION),
+        route: "/collection/:slug",
+      });
+
+      expect(regularCollectionElements.listItem).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(regularCollectionElements.listItem);
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should toggle inactive collection via the chevron button", async () => {
+      const { regularCollectionElements } = await setupCollectionPage({
+        pathname: Urls.collection(PERSONAL_COLLECTION_BASE),
+        route: "/collection/:slug",
+      });
+
+      expect(regularCollectionElements.listItem).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        screen.queryByRole("treeitem", { name: /Nested collection/i }),
+      ).not.toBeInTheDocument();
+
+      const chevron = within(regularCollectionElements.listItem).getByRole(
+        "button",
+      );
+      await userEvent.click(chevron);
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
     });
   });
 

@@ -8,7 +8,7 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, Series } from "metabase-types/api";
+import type { Card, Field, NormalizedField, Series } from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -188,7 +188,10 @@ const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
   ...WRITABLE_MBQL_COLUMN_PROPERTIES,
 ];
 
-export function getWritableColumnProperties(column: Field, isNative: boolean) {
+export function getWritableColumnProperties(
+  column: NormalizedField | Field,
+  isNative: boolean,
+) {
   return _.pick(
     column,
     isNative

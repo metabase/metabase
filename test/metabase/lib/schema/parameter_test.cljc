@@ -90,6 +90,22 @@
   (is (= {:id "x", :type :text}
          (lib/normalize ::lib.schema.parameter/parameter {:id "x"}))))
 
+(deftest ^:parallel normalize-number-between-test
+  (testing "number/between normalization (#70311)"
+    (are [value expected-type expected-value]
+         (= {:type expected-type, :value expected-value}
+            (select-keys
+             (lib/normalize ::lib.schema.parameter/parameter {:type "number/between", :value value})
+             [:type :value]))
+      ;; both nil — should stay as number/between
+      [nil nil] :number/between [nil nil]
+      nil       :number/between nil
+      ;; one side set — should simplify
+      [5 nil]   :number/>=      [5]
+      [nil 10]  :number/<=      [10]
+      ;; both set — should stay as number/between
+      [5 10]    :number/between [5 10])))
+
 (deftest ^:parallel normalize-invalid-widget-type-test
   (testing "Decode an invalid namespaced widget type like `:category/=` to the matching unnamespaced type (`:category`)"
     (is (= :category

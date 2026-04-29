@@ -811,14 +811,12 @@ export function getSelectedMetricsInfo(
 
     const measureId = LibMetric.sourceMeasureId(definition);
     if (measureId != null) {
-      const tableId = LibMetric.sourceMeasureTableId(definition);
       return [
         {
           id: measureId,
           sourceType: "measure",
           name,
           isLoading,
-          tableId: tableId ?? undefined,
         },
       ];
     }

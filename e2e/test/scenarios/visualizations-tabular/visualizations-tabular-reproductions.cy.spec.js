@@ -1575,3 +1575,29 @@ describe("issue 56094", () => {
     H.queryBuilderFooterDisplayToggle().should("exist");
   });
 });
+
+describe("issue 57685", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        display: "table",
+        native: {
+          query: 'SELECT id as "" FROM PRODUCTS',
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should handle empty column names without error (metabase#57685)", () => {
+    cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+
+    H.tableInteractive().should("be.visible");
+  });
+});

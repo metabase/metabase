@@ -19,7 +19,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 
 import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
@@ -161,7 +160,6 @@ export const Questions = createEntity({
 
   objectSelectors: {
     getName: (card) => card && card.name,
-    getColor: () => color("text-secondary"),
     getCollection: (card) => card && normalizedCollection(card.collection),
   },
 
