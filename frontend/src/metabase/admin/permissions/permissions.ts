@@ -25,13 +25,13 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { CollectionsApi, PermissionsApi } from "metabase/services";
 import {
   combineReducers,
   createAction,
   createThunkAction,
-} from "metabase/utils/redux";
+} from "metabase/redux";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { CollectionsApi, PermissionsApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,

@@ -6,8 +6,8 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { createThunkAction } from "metabase/utils/redux";
 
 // just using the entity action doesn't cause the dashboard to live update
 // calling fetchDashboard ensures that the view updates with the last values

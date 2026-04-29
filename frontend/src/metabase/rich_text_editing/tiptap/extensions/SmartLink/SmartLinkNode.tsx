@@ -21,19 +21,19 @@ import {
   useListMentionsQuery,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import {
+  type IconModel,
+  type ObjectWithModel,
+  getIcon,
+} from "metabase/common/utils/icon";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Icon } from "metabase/ui";
-import {
-  type IconModel,
-  type ObjectWithModel,
-  getIcon,
-} from "metabase/utils/icon";
-import { useDispatch } from "metabase/utils/redux";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import { extractEntityId } from "metabase/utils/urls/utils";
 import type {

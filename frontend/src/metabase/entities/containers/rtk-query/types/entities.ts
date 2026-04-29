@@ -115,6 +115,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
       >
     >;
   };
+
   selectors: {
     getError: Selector<unknown | null | undefined>;
     getFetched: Selector<boolean | undefined>;

@@ -180,7 +180,7 @@
           (let [sync-future (@#'advanced-config.file.databases/init-from-config-file! {:name    test-db-name
                                                                                        :engine  "h2"
                                                                                        :details (:details (mt/db))})]
-            (is nil? sync-future)
+            (is (nil? sync-future))
             (let [db (t2/select-one :model/Database :name test-db-name)]
               (is (partial= {:engine :h2}
                             db))

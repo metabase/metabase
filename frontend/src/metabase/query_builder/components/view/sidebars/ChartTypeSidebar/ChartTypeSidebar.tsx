@@ -12,12 +12,12 @@ import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
+import { useDispatch } from "metabase/redux";
 import {
   onCloseChartType,
   onOpenChartSettings,
   setUIControls,
 } from "metabase/redux/query-builder";
-import { useDispatch } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";

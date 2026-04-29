@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { useListPopularItemsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getIcon } from "metabase/utils/icon";
+import { getIcon } from "metabase/common/utils/icon";
 import { getName } from "metabase/utils/name";
 import * as Urls from "metabase/utils/urls";
 import type { PopularItem } from "metabase-types/api";

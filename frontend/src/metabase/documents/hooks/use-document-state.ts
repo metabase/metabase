@@ -1,8 +1,8 @@
 import type { JSONContent } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useDispatch } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
-import { useDispatch } from "metabase/utils/redux";
 import type { DocumentContent } from "metabase-types/api";
 
 import { setCardEmbeds, setIsCommentSidebarOpen } from "../documents.slice";

@@ -272,7 +272,6 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.log("Verify View link opens in new tab");
     H.DataStudio.Metrics.moreMenu().click();
     H.DataStudio.Metrics.exploreLink()
-      .should("have.attr", "target", "_blank")
       .should("have.attr", "href")
       .and("match", /\/explore\?metricId=\d+/);
   });

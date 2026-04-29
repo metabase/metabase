@@ -10,6 +10,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useMetabotSetupContext } from "metabase/metabot/components/MetabotAdmin/MetabotSetup";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Anchor,
@@ -26,7 +27,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { useSelector } from "metabase/utils/redux";
 import {
   type MetabotUsageResponse,
   useGetMetabotUsageQuery,

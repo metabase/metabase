@@ -15,7 +15,6 @@ import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
@@ -39,7 +38,7 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
 
 type ExpressionClauseItem = {
   type: "expression-clause";
-  clause: DefinedClauseName;
+  clause: Lib.DefinedClauseName;
   displayName: string;
 };
 
@@ -64,7 +63,7 @@ export interface QueryColumnPickerProps {
   /**
    * Set onSelectExpression to allow custom expressions to be selected
    */
-  onSelectExpression?: (clause?: DefinedClauseName) => void;
+  onSelectExpression?: (clause?: Lib.DefinedClauseName) => void;
   expressionSectionIcon?: IconName;
   onClose?: () => void;
   "data-testid"?: string;
