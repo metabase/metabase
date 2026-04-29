@@ -61,8 +61,6 @@ export function QueryExplorerBar({
       justify={{ base: "flex-start", xs: "space-between" }}
       gap="xs"
       data-testid="query-explorer-bar"
-      px="lg"
-      py={{ base: "xs", xs: 0 }}
     >
       {/* Left: viz type selectors */}
       <Flex align="center" gap="xs">
@@ -86,7 +84,7 @@ export function QueryExplorerBar({
           h={32}
           align="stretch"
           bd="1px solid var(--mb-color-border)"
-          bdrs="xl"
+          bdrs="md"
           style={{ overflow: "hidden" }}
         >
           {filterControl}

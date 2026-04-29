@@ -66,6 +66,7 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
           px="md"
           variant="subtle"
           color="text-primary"
+          lh="1"
           styles={{
             root: {
               "&:hover": {
@@ -126,6 +127,7 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
             px="md"
             variant="subtle"
             color="text-primary"
+            lh="1"
             styles={{
               root: {
                 "&:hover": {

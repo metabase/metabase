@@ -1,11 +1,11 @@
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
@@ -91,22 +91,13 @@ export function McpUiAppRoute() {
     }
   }, [isReady]);
 
-  const containerStyle: CSSProperties = {
-    boxSizing: "border-box",
-    backgroundColor: theme.colors?.background,
-    height: "500px",
-    display: "flex",
-    flexDirection: "column",
-
-    padding: "12px 0px 0px 10px",
-
-    // Apply safe area insets from the host environment, with extra top padding.
-    margin: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
-  };
-
   if (!isReady) {
     return null;
   }
+
+  const height = "500px";
+  const visualizationHeight = `calc(${height} - 7.5rem)`;
+  const safeAreaMargins = `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`;
 
   return (
     <ComponentProvider
@@ -115,7 +106,13 @@ export function McpUiAppRoute() {
       reduxStore={store}
       loaderComponent={SimpleLoader}
     >
-      <div style={containerStyle}>
+      <div
+        style={{
+          height,
+          margin: safeAreaMargins,
+          background: theme.colors?.background,
+        }}
+      >
         <SdkQuestion
           deserializedCard={deserializedCard}
           isSaveEnabled={false}
@@ -124,18 +121,24 @@ export function McpUiAppRoute() {
           withChartTypeSelector={false}
           onDrillThrough={handleDrillThrough}
         >
-          <div style={{ flexShrink: 0 }}>
-            <McpQuestionTitle />
-          </div>
+          <Flex
+            direction="column"
+            justify="space-between"
+            h="100%"
+            py="lg"
+            gap="sm"
+          >
+            <Box px="lg" style={{ flexShrink: 0 }}>
+              <McpQuestionTitle />
+            </Box>
 
-          {/* Visualization fills the remaining space */}
-          <Flex flex={1} mih={0} style={{ overflow: "hidden" }}>
-            <SdkQuestion.QuestionVisualization height="calc(500px - 7.5rem)" />
-          </Flex>
+            <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
+              <SdkQuestion.QuestionVisualization height={visualizationHeight} />
+            </Flex>
 
-          {/* Query bar: viz selectors (left), time controls (center), explore (right) */}
-          <Flex py="xs" px="sm" pt="md" style={{ flexShrink: 0 }}>
-            <McpQueryBar app={app} instanceUrl={instanceUrl} />
+            <Flex px="lg">
+              <McpQueryBar app={app} instanceUrl={instanceUrl} />
+            </Flex>
           </Flex>
         </SdkQuestion>
       </div>
