@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useCreateExplorationMutation } from "metabase/api";
 import type {
   ExplorationMetric,
   MetricDimension,
   Timeline,
 } from "metabase/explorations/types";
+import { useMetabotAgent } from "metabase/metabot/hooks";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -17,6 +21,9 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import type { CreateExplorationRequest } from "metabase-types/api";
+
+import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat";
 
 import { AddMetricsModal } from "./AddMetricsModal";
 import { AddTimelinesModal } from "./AddTimelinesModal";
@@ -29,9 +36,30 @@ export interface NewExplorationDataProps {
   setDimensions: (dimensions: MetricDimension[]) => void;
   timelines: Timeline[];
   setTimelines: (timelines: Timeline[]) => void;
-  onStart: () => void;
-  isStarting: boolean;
-  canStart: boolean;
+}
+
+function buildCreateExplorationRequest(
+  prompt: string,
+  metrics: ExplorationMetric[],
+  dimensions: MetricDimension[],
+  timelines: Timeline[],
+): CreateExplorationRequest {
+  const trimmedPrompt = prompt.trim();
+  return {
+    name: trimmedPrompt.length > 0 ? trimmedPrompt : t`New exploration`,
+    prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
+    metrics: metrics.map((m) => ({
+      card_id: m.id,
+      dimension_mappings: m.dimension_mappings,
+    })),
+    dimensions: dimensions.map((d) => ({
+      dimension_id: d.id,
+      display_name: d["display-name"],
+      effective_type: d["effective-type"],
+      semantic_type: d["semantic-type"],
+    })),
+    timeline_ids: timelines.map((tl) => tl.id),
+  };
 }
 
 export function NewExplorationData({
@@ -41,12 +69,33 @@ export function NewExplorationData({
   setDimensions,
   timelines,
   setTimelines,
-  onStart,
-  isStarting,
-  canStart,
 }: NewExplorationDataProps) {
+  const dispatch = useDispatch();
+
   const [isAddMetricsModalOpen, setIsAddMetricsModalOpen] = useState(false);
   const [isAddTimelinesModalOpen, setIsAddTimelinesModalOpen] = useState(false);
+
+  const [createExploration, { isLoading: isStarting }] =
+    useCreateExplorationMutation();
+
+  const { messages } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
+
+  const handleStart = useCallback(async () => {
+    const prompt = messages
+      .filter((message) => message.role === "user")
+      .map((message) => message.message)
+      .join("\n---\n");
+    const request = buildCreateExplorationRequest(
+      prompt,
+      metrics,
+      dimensions,
+      timelines,
+    );
+    const exploration = await createExploration(request).unwrap();
+    dispatch(push(`/explorations/${exploration.id}`));
+  }, [createExploration, dispatch, messages, metrics, dimensions, timelines]);
+
+  const canStart = metrics.length > 0;
 
   return (
     <>
@@ -120,7 +169,7 @@ export function NewExplorationData({
           variant="filled"
           loading={isStarting}
           disabled={!canStart || isStarting}
-          onClick={onStart}
+          onClick={handleStart}
         >{t`Start exploration`}</Button>
       </Stack>
       <AddMetricsModal

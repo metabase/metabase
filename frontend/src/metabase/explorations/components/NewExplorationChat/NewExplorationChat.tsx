@@ -24,6 +24,8 @@ import type { MetricId } from "metabase-types/api/metric";
 
 import S from "./NewExplorationChat.module.css";
 
+export const EXPLORATIONS_AGENT_ID = "explorations";
+
 const SELECT_EXPLORATION_METRICS_TOOL = "select_exploration_metrics";
 
 export interface NewExplorationChatProps {
@@ -44,7 +46,7 @@ export function NewExplorationChat({ setMetrics }: NewExplorationChatProps) {
     isDoingScience,
     activeToolCalls,
     submitInput,
-  } = useMetabotAgent();
+  } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
 
   const handleSubmit = useCallback(() => {
     submitInput(prompt, {
