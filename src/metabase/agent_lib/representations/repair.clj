@@ -1968,6 +1968,7 @@
   (walk/postwalk
    (fn [node]
      (when (and (vector? node)
+                (not (map-entry? node))
                 (>= (count node) 2)
                 (string? (nth node 0))
                 (contains? #{"case" "if"} (nth node 0))
@@ -1981,6 +1982,52 @@
      node)
    form))
 
+;;; ----- E3: sexp-legacy top-level operations used as clause heads ---------------------
+
+(def ^:private sexp-legacy-top-level-ops
+  "Heads from the deleted sexp pipeline that used to be top-level *operations* (“verbs” at
+  the program level), not nestable clauses. LLMs trained on the sexp era still occasionally
+  emit these as clause heads. They have no equivalent in repr (which uses stage-level
+  blocks: `aggregation:`, `filters:`, `breakout:`, `order-by:`, `expressions:`, `limit:`,
+  `joins:`).
+
+  Map from offending head to a one-liner suggesting the canonical replacement."
+  {"aggregate" "In repr, aggregations live directly inside a stage's `aggregation:` block (no `aggregate` wrapper). Move the inner clauses into the stage's `aggregation: […]` vector."
+   "filter"    "In repr, filters live directly inside a stage's `filters:` block. Move the inner clauses into the stage's `filters: […]` vector."
+   "order-by"  "In repr, ordering lives directly inside a stage's `order-by:` block as `[asc|desc, <opts>, <ref>]` clauses. Move the inner clauses into the stage's `order-by: […]` vector."
+   "breakout"  "In repr, breakouts (group-by) live directly inside a stage's `breakout:` block. Move the inner clauses into the stage's `breakout: […]` vector."
+   "limit"     "In repr, the row limit is a scalar at the stage level: `limit: <n>`, not a clause."})
+
+(defn- sexp-legacy-op-as-clause-error!
+  "Detect any sexp-era top-level operation used as a clause head (`[aggregate, …]`,
+  `[filter, …]`, etc.). lib accepts these silently because they look like generic
+  unknown-but-shape-valid clauses; the resulting query produces wrong results or fails
+  at SQL-generation time. Carried over from the sexp pipeline's
+  `validate/operators.clj` `top-level-operation` branch.
+
+  Excludes `map-entry?` nodes - postwalk descends into map entries, and a stage's
+  `{\"breakout\" […]}` entry would otherwise look exactly like a `[\"breakout\", …]`
+  clause to this detector."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (when (and (vector? node)
+                (not (map-entry? node))
+                (>= (count node) 1)
+                (string? (nth node 0))
+                (contains? sexp-legacy-top-level-ops (nth node 0)))
+       (let [head (nth node 0)
+             hint (get sexp-legacy-top-level-ops head)]
+         (throw (ex-info
+                 (tru "`{0}` is not a clause in repr; it was a top-level operation in the older sexp pipeline. {1}"
+                      head hint)
+                 {:agent-error? true
+                  :error        :sexp-legacy-op-as-clause
+                  :head         head
+                  :clause       node}))))
+     node)
+   form))
+
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
 (defn- friendly-errors*
@@ -1991,7 +2038,8 @@
     (doseq [[idx stage] (map-indexed vector (get query "stages"))]
       (when (map? stage)
         (aggregation-entry-not-aggregation-error! stage idx)))
-    (case-default-in-opts-error! query))
+    (case-default-in-opts-error! query)
+    (sexp-legacy-op-as-clause-error! query))
   query)
 
 ;;; ============================================================

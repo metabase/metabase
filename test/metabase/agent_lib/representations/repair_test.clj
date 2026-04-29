@@ -2143,3 +2143,67 @@
                           "expressions"  [["case" {"lib/expression-name" "Bucket"}
                                            [[["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 0] "zero"]]]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
+
+;;; ----- E3: sexp-legacy top-level ops used as clause heads --------------------------
+
+(deftest friendly-error-sexp-legacy-aggregate-test
+  (testing "`[aggregate, ...]` as a clause head raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["aggregate" {} ["count" {}]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :sexp-legacy-op-as-clause (:error data)))
+            (is (= "aggregate" (:head data)))
+            (is (re-find #"top-level operation" (ex-message e)))))))))
+
+(deftest friendly-error-sexp-legacy-filter-test
+  (testing "`[filter, ...]` as a clause head triggers"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["filter" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= "filter" (:head (ex-data e)))))))))
+
+(deftest friendly-error-sexp-legacy-each-op-mentioned-test
+  (testing "every legacy op (aggregate/filter/order-by/breakout/limit) is recognised"
+    (doseq [head ["aggregate" "filter" "order-by" "breakout" "limit"]]
+      (let [q {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            ;; Stuff a sexp-legacy op clause into expressions to ensure the
+                            ;; tree walk reaches it regardless of which stage block we're
+                            ;; defending against.
+                            "expressions"  [[head {"lib/expression-name" "X"} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]}]}]
+        (try
+          (repair/repair trivial-mp q)
+          (is false (str "should have thrown for " head))
+          (catch clojure.lang.ExceptionInfo e
+            (is (= head (:head (ex-data e))) (str "head mismatch for " head))))))))
+
+(deftest friendly-error-canonical-stage-keys-pass-test
+  (testing "canonical stage-level keys (aggregation:, filters:, etc.) do NOT trigger"
+    ;; The sexp-legacy detector targets clause heads (vector slot-0 strings), not stage
+    ;; map keys. A perfectly valid stage with `aggregation:` / `filters:` keys passes.
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "filters"      [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "order-by"     [["asc" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]]
+                          "limit"        10}]}]
+      (is (some? (repair/repair trivial-mp q))))))
