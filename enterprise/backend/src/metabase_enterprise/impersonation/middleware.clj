@@ -15,20 +15,18 @@
   ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
   [query]
-  (if qp.i/*skip-middleware-because-app-db-access*
-    query
-    (let [database              (lib.metadata/database (qp.store/metadata-provider))
-          impersonation-enabled? (impersonation.driver/impersonation-enabled-for-db? database)
-          role                  (impersonation.driver/connection-impersonation-role database)]
-      (cond-> query
-        ;; Validate for ALL users if impersonation is configured on this DB
-        impersonation-enabled?
-        (as-> q
-              (do (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-                  (driver/validate-impersonated-query driver/*driver* q)))
-        ;; Only assign the role for non-admin impersonated users
-        role
-        (assoc :impersonation/role role)))))
+  (let [database              (lib.metadata/database (qp.store/metadata-provider))
+        impersonation-enabled? (impersonation.driver/impersonation-enabled-for-db? database)
+        role                  (impersonation.driver/connection-impersonation-role database)]
+    (cond-> query
+      ;; Validate for ALL users if impersonation is configured on this DB
+      impersonation-enabled?
+      (as-> q
+            (do (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
+                (driver/validate-impersonated-query driver/*driver* q)))
+      ;; Only assign the role for non-admin impersonated users
+      role
+      (assoc :impersonation/role role))))
 
 (defenterprise apply-impersonation-postprocessing
   "Post-processing middleware. Binds the dynamic var"
