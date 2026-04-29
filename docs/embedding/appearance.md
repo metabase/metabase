@@ -2,7 +2,7 @@
 title: "Customizing the appearance of modular embeds"
 summary: "Style your embedded Metabase components using themes to customize colors, backgrounds, and more."
 redirect_from:
-  - /docs/latest/embedding/sdk/appearance
+- /docs/latest/embedding/sdk/appearance
 ---
 
 # Customizing the appearance of modular embeds
@@ -56,8 +56,6 @@ From the Themes tab, you can:
 ![Theme editor](./images/theme-editor.png)
 
 ### Apply a saved theme to a new embed
-
-
 
 When you create a new embed using the [embed wizard](./modular-embedding.md#3-customize-your-embed), the last customization step lets you pick:
 
