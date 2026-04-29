@@ -56,13 +56,13 @@ export function QueryExplorerBar({
   return (
     <Flex
       w="100%"
-      align="center"
-      direction="row"
-      wrap={{ base: "nowrap", xs: "wrap" }}
-      justify="space-between"
+      direction={{ base: "column", xs: "row" }}
+      align={{ base: "flex-start", xs: "center" }}
+      justify={{ base: "flex-start", xs: "space-between" }}
       gap="xs"
       data-testid="query-explorer-bar"
       px="lg"
+      py={{ base: "xs", xs: 0 }}
     >
       {/* Left: viz type selectors */}
       <Flex align="center" gap="xs">
