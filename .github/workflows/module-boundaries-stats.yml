@@ -19,19 +19,19 @@ jobs:
         id: get-stats
         run: |
           NAMED_MODULES=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
+            import { elements } from './frontend/lint/module-boundaries.js';
             const named = elements.filter(e => !['shared/other', 'app/misc', 'other'].includes(e.type));
             console.log(named.length);
           ")
 
           ENFORCED_MODULES=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
+            import { elements } from './frontend/lint/module-boundaries.js';
             const enforced = new Set(elements.filter(e => e.enforceOutgoing).map(e => e.type));
             console.log(enforced.size);
           ")
 
           NAMED_DIRS=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
+            import { elements } from './frontend/lint/module-boundaries.js';
             const dirs = new Set();
             for (const el of elements) {
               const m = el.pattern.match(/^frontend\/src\/metabase\/(\w[\w-]*)\//)

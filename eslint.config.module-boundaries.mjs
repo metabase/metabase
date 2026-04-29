@@ -11,7 +11,7 @@ import { globalIgnores, defineConfig } from "eslint/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import { elements as boundaryElements, rules as boundaryRules } from "./frontend/lint/module-boundaries.mjs";
+import { elements as boundaryElements, rules as boundaryRules } from "./frontend/lint/module-boundaries.js";
 
 // dummy plugins to keep eslint from complaining about missing plugins and settings
 const alwaysPassingRule = {

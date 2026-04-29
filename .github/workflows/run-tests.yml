@@ -49,6 +49,80 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
+  # PR-only: needs base/head SHAs from the pull_request event.
+  compute-affected-tests:
+    needs: files-changed
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.files-changed.result == 'success' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      stats: ${{ steps.compute.outputs.stats }}
+      affected_modules: ${{ steps.compute.outputs.affected_modules }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so the base..head diff resolves.
+          fetch-depth: 0
+      - name: Compute affected-tests stats
+        id: compute
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          STATS=$(node .github/scripts/affected-tests-stats.js)
+          echo "$STATS"
+          echo "stats=$STATS" >> $GITHUB_OUTPUT
+          echo "affected_modules=$(echo "$STATS" | jq -c '.affected_modules')" >> $GITHUB_OUTPUT
+
+  upload-affected-tests-stats:
+    needs: compute-affected-tests
+    # Only land rows for the upstream repo so forks don't pollute the table.
+    if: ${{ !cancelled() && needs.compute-affected-tests.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          STATS_JSON: ${{ needs.compute-affected-tests.outputs.stats }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          API_KEY: ${{ secrets.STATS_API_KEY }}
+        with:
+          script: | # js
+            const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
+
+            const stats = JSON.parse(process.env.STATS_JSON);
+            console.log('stats', stats);
+
+            const row = {
+              'Date': new Date().toISOString(),
+              'PR': Number(process.env.PR_NUMBER),
+              'Head SHA': process.env.HEAD_SHA,
+              'Base SHA': process.env.BASE_SHA,
+              'Modules directly touched': stats.modules_directly_touched,
+              'Modules affected': stats.modules_affected,
+              'Unit tests total': stats.unit_tests_total,
+              'Unit tests to run': stats.unit_tests_to_run,
+              'Unit tests to skip': stats.unit_tests_to_skip,
+              'Loki stories total': stats.loki_stories_total,
+              'Loki stories to run': stats.loki_stories_to_run,
+              'Loki stories to skip': stats.loki_stories_to_skip,
+            };
+
+            uploadCsvToMb({
+              baseUrl: 'https://stats.metabase.com',
+              tableId: 0, // TODO: replace with the real table id once provisioned in stats.metabase.com
+              jsonData: [row],
+              mode: 'append',
+            }).then(() => {
+              console.log('Data uploaded successfully');
+            }).catch((error) => {
+              console.error('Error uploading data:', error);
+              process.exit(1);
+            });
+
   uberjar:
     needs: [files-changed]
     if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
@@ -85,13 +159,15 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   frontend-tests:
-    needs: files-changed
+    needs: [files-changed, compute-affected-tests]
+    if: ${{ !cancelled() && needs.files-changed.result == 'success' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_all != 'true' }}
       skip-custom-viz: ${{ needs.files-changed.outputs.custom_viz_all != 'true' }}
+      affected-modules: ${{ needs.compute-affected-tests.outputs.affected_modules || '' }}
 
   e2e-tests:
     needs: [files-changed, uberjar]

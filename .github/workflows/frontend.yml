@@ -12,6 +12,12 @@ on:
       skip-custom-viz:
         type: boolean
         default: false
+      # JSON array of affected module types from compute-affected-tests in
+      # run-tests.yml. Currently unused — will gate per-module test selection
+      # once module-boundary violations reach zero.
+      affected-modules:
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       skip:
