@@ -14,6 +14,7 @@ import {
 } from "../../utils/definition-sources";
 
 import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
+import { MetricsSegmentFilterPillPopover } from "./MetricsSegmentFilterPillPopover";
 
 interface MetricsFilterPillsProps {
   definitionSources: DefinitionSource[];
@@ -32,6 +33,8 @@ type FlattenedFilter = {
   key: string;
   metricName?: string;
   metricCount?: number;
+  isSegment: boolean;
+  segmentName?: string;
 };
 
 export function MetricsFilterPills({
@@ -74,21 +77,36 @@ export function MetricsFilterPills({
 
   return (
     <Group gap="sm">
-      {flatFilters.map((item) => (
-        <MetricsFilterPillPopover
-          key={item.key}
-          definition={item.source.definition}
-          filter={item.filter}
-          colors={item.colors}
-          icon={item.icon}
-          metricName={item.metricName}
-          metricCount={item.metricCount}
-          onUpdate={(newFilter) =>
-            handleUpdate(item.source, item.filter, newFilter)
-          }
-          onRemove={() => handleRemove(item.source, item.filter)}
-        />
-      ))}
+      {flatFilters.map((item) =>
+        item.isSegment ? (
+          <MetricsSegmentFilterPillPopover
+            key={item.key}
+            definitionSource={item.source}
+            oldFilter={item.filter}
+            colors={item.colors}
+            metricColors={sourceColors}
+            metricName={item.metricName}
+            metricCount={item.metricCount}
+            segmentName={item.segmentName}
+            onSourceDefinitionChange={onSourceDefinitionChange}
+            onRemove={() => handleRemove(item.source, item.filter)}
+          />
+        ) : (
+          <MetricsFilterPillPopover
+            key={item.key}
+            definition={item.source.definition}
+            filter={item.filter}
+            colors={item.colors}
+            icon={item.icon}
+            metricName={item.metricName}
+            metricCount={item.metricCount}
+            onUpdate={(newFilter) =>
+              handleUpdate(item.source, item.filter, newFilter)
+            }
+            onRemove={() => handleRemove(item.source, item.filter)}
+          />
+        ),
+      )}
     </Group>
   );
 }
@@ -106,16 +124,34 @@ function getFlatFilters(
       isExpressionEntry(source.entity) &&
       source.entity.tokens.filter((token) => token.type === "metric").length >
         1;
-    return LibMetric.filters(source.definition).map((filter, filterIndex) => ({
-      source,
-      filter,
-      colors,
-      icon,
-      key: `${source.index}-${filterIndex}`,
-      metricName: shouldDisplayMetricName
-        ? getDefinitionSourceName(source)
-        : undefined,
-      metricCount: source.token?.count,
-    }));
+    return LibMetric.filters(source.definition).map((filter, filterIndex) => {
+      const isSegment = LibMetric.isSegmentFilter(filter);
+      let segmentName: string | undefined;
+      if (isSegment) {
+        const segmentMetadata = LibMetric.segmentMetadataForFilter(
+          source.definition,
+          filter,
+        );
+        if (segmentMetadata) {
+          segmentName = LibMetric.displayInfo(
+            source.definition,
+            segmentMetadata,
+          ).displayName;
+        }
+      }
+      return {
+        source,
+        filter,
+        colors,
+        icon,
+        key: `${source.index}-${filterIndex}`,
+        metricName: shouldDisplayMetricName
+          ? getDefinitionSourceName(source)
+          : undefined,
+        metricCount: source.token?.count,
+        isSegment,
+        segmentName,
+      };
+    });
   });
 }

@@ -18,6 +18,7 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { getIcon } from "metabase/common/utils/icon";
 import { useDispatch } from "metabase/redux";
 import {
   Ellipsified,
@@ -27,7 +28,6 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import type { SortingOptions } from "metabase-types/api";
 
