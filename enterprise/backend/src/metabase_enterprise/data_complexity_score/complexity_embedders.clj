@@ -20,7 +20,6 @@
 
   `_`, `-`, `.`, and camelCase boundaries become spaces; adjacent whitespace is collapsed and
   the result is lowercased.
-  Splitting happens *before* lowercasing so the camelCase boundary stays visible.
 
   Embedding models are trained on English: `\"monthly_active_users\"` is an out-of-distribution
   token while `\"monthly active users\"` hits three well-understood ones.
@@ -66,13 +65,12 @@
   `:names-split` rewrites snake/kebab/dotted/camelCase names into space-separated English
   tokens before sending them to the provider — see [[split-for-embedding]].
 
-  Alternatives worth considering (not implemented): `:names` (raw lowercased name),
-  `:search-text` (type + name + description + schema, as the semantic-search indexer does),
-  or `:typed-split` ([source|value] prefix + split name).
-  The 2026-04-21 analysis shows names-split as the best default for both Arctic and MiniLM.
+  Alternatives worth considering (not implemented):
+  - `:names` (raw lowercased name)
+  - `:search-text` (type + name + description + schema, as the semantic-search indexer does)
+  - `:typed-split` ([source|value] prefix + split name).
 
-  The value rides the fingerprint so a future swap to another variant forces a re-score
-  without a `formula-version` bump."
+  The 2026-04-21 analysis suggested names-split as the best default for both Arctic and MiniLM."
   :names-split)
 
 (def ^:private ^Class floats-class
