@@ -4,7 +4,7 @@ import {
   dashboardUsesRoutingEnabledDatabases,
   hasDbRoutingEnabled,
   questionUsesRoutingEnabledDatabase,
-} from "./utils";
+} from "./database";
 
 describe("database routing utility functions", () => {
   const mockDatabases: Pick<Database, "id" | "router_user_attribute">[] = [
