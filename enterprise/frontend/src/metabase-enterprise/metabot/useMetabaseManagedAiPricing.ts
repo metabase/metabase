@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import {
   type FormatNumberOptions,
   formatNumber,
-} from "metabase/lib/formatting";
+} from "metabase/utils/formatting";
 import { useListAddOnsQuery } from "metabase-enterprise/api";
 import type { GetCloudAddOnsResponse } from "metabase-types/api";
 
@@ -18,6 +18,7 @@ export type MetabaseManagedAiPricing = {
   unit: string;
   pricePerUnit: number;
   unitCount: number;
+  freeUnits: string | null;
 };
 
 type UseMetabaseManagedAiPricingResult = {
@@ -63,11 +64,16 @@ function getMetabaseManagedAiPricing(
     addOn.default_total_units * METABASE_MANAGED_AI_UNIT_MULTIPLIER;
   const pricePerUnit =
     addOn.default_price_per_unit * METABASE_MANAGED_AI_UNIT_MULTIPLIER;
+  const freeUnits =
+    addOn.free_units && addOn.free_units > 0
+      ? formatNumber(addOn.free_units, COMPACT_NUMBER_FORMAT_OPTIONS)
+      : null;
 
   return {
     price: formatMetabaseCost(pricePerUnit),
     unit: formatNumber(unitCount, COMPACT_NUMBER_FORMAT_OPTIONS),
     pricePerUnit,
     unitCount,
+    freeUnits,
   };
 }

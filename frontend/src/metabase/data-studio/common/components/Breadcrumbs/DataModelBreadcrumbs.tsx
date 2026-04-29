@@ -2,8 +2,8 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { Link } from "react-router";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Ellipsified } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 import { DataStudioBreadcrumbs } from "../DataStudioBreadcrumbs";

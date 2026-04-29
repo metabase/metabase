@@ -18,16 +18,16 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getGroupNameLocalized } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
+import { getGroupNameLocalized } from "metabase/utils/groups";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

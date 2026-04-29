@@ -5,13 +5,8 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
+import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
-import { color } from "metabase/ui/utils/colors";
 import type {
   Collection,
   CopyDocumentRequest,
@@ -21,8 +16,8 @@ import type {
   GetDocumentRequest,
   UpdateDocumentRequest,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -37,11 +32,11 @@ export const Documents = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`documents`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDocumentQuery,
     }),
-  },
+  }),
 
   api: {
     get: (
@@ -115,6 +110,5 @@ export const Documents = createEntity({
 
   objectSelectors: {
     getName: (document: Document) => document && document.name,
-    getColor: () => color("brand"),
   },
 });

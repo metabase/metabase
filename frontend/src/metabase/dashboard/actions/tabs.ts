@@ -5,16 +5,7 @@ import { t } from "ttag";
 
 import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
 import { Dashboards } from "metabase/entities/dashboards";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-import { checkNotNull } from "metabase/lib/types";
 import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
-import { addUndo } from "metabase/redux/undo";
-import type {
-  DashCardId,
-  DashboardId,
-  DashboardTabId,
-} from "metabase-types/api";
 import type {
   DashboardState,
   Dispatch,
@@ -23,7 +14,16 @@ import type {
   StoreDashboard,
   StoreDashcard,
   TabDeletionId,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  DashCardId,
+  DashboardId,
+  DashboardTabId,
+} from "metabase-types/api";
 
 import { trackCardMoved } from "../analytics";
 import { INITIAL_DASHBOARD_STATE } from "../constants";

@@ -9,8 +9,7 @@ import {
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -25,6 +24,7 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
 import { DocumentPublicLinkPopover } from "../../embedding/components/PublicLinkPopover";

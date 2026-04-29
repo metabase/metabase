@@ -4,21 +4,21 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { useSelector } from "metabase/redux";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { ExploreResultsLink } from "../ExploreResultsLink";

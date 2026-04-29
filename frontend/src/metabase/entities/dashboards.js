@@ -13,14 +13,15 @@ import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections/utils";
+import { compose, withAction } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { compose, withAction, withRequestState } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
-import { color } from "metabase/ui/colors";
+  withRequestState,
+} from "./utils";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
@@ -37,12 +38,12 @@ export const Dashboards = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`dashboards`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDashboardQuery,
     }),
     useListQuery: useListDashboardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -176,7 +177,6 @@ export const Dashboards = createEntity({
     getName: (dashboard) => dashboard && dashboard.name,
     getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
-    getColor: () => color("dashboard"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

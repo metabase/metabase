@@ -2,8 +2,8 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Snippets } from "metabase/entities/snippets";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Flex, Modal } from "metabase/ui";
 import type {
   CreateSnippetRequest,

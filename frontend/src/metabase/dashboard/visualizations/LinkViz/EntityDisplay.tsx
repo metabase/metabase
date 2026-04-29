@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { Markdown } from "metabase/common/components/Markdown";
-import { getIcon } from "metabase/lib/icon";
-import { isEmpty } from "metabase/lib/validate";
+import { getIcon } from "metabase/common/utils/icon";
 import { Icon } from "metabase/ui";
+import { isEmpty } from "metabase/utils/validate";
 import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
 import {

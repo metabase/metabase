@@ -2,9 +2,9 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/collections/types";
+import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
+import { getIconBase } from "metabase/common/utils/icon";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
-import type { IconData, ObjectWithModel } from "metabase/lib/icon";
-import { getIconBase } from "metabase/lib/icon";
 import type { ItemWithCollection } from "metabase/plugins";
 import type {
   Bookmark,
@@ -93,6 +93,7 @@ export const getIcon = (
       return {
         name: OFFICIAL_COLLECTION.icon,
         color: OFFICIAL_COLLECTION.color,
+        tooltip: OFFICIAL_COLLECTION.tooltips?.default,
       };
     }
   }

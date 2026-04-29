@@ -25,10 +25,8 @@ import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -47,6 +45,8 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import * as Urls from "metabase/utils/urls";
+import { type NamedUser, getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -156,11 +156,10 @@ export const TransformListPage = ({
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
-    // Only show Python library item if there's at least one item in the table
+
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
-      data.length > 0 &&
-      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
+      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
     if (shouldShowPythonLibraryRow) {
       data.push({

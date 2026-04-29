@@ -17,6 +17,10 @@ import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -36,10 +40,6 @@ import {
   createMockTable,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";

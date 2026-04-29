@@ -17,8 +17,8 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,

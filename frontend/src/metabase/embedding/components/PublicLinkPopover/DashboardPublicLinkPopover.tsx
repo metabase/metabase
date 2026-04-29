@@ -2,11 +2,11 @@ import {
   useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
 } from "metabase/api";
-import { publicDashboard as getPublicDashboardUrl } from "metabase/lib/urls";
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
+import { publicDashboard as getPublicDashboardUrl } from "metabase/utils/urls";
 import type { Dashboard } from "metabase-types/api";
 
 import { PublicLinkPopover } from "./PublicLinkPopover";

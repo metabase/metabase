@@ -20,13 +20,13 @@ import {
   createPauses,
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import {
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
@@ -141,6 +141,12 @@ export const whoIsYourFavoriteResponse = [
 
 export const erroredResponse = [
   `3:"Anthropic API key expired or invalid"`,
+  `d:{"finishReason":"error","usage":{}}`,
+];
+
+// Admin-configured quota exceeded — carries ai_usage_limit_reached error-code
+export const adminQuotaLimitErroredResponse = [
+  `3:{"message":"You have reached your AI usage limit for the current period. Please contact your administrator.","error-code":"ai_usage_limit_reached"}`,
   `d:{"finishReason":"error","usage":{}}`,
 ];
 

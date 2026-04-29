@@ -34,13 +34,13 @@ import {
   Prec,
   type Transaction,
 } from "@uiw/react-codemirror";
-import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
-import { isMac } from "metabase/lib/browser";
-import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
+import { isMac } from "metabase/utils/browser";
+import { getCspNonce } from "metabase/utils/csp";
+import { isNotNull } from "metabase/utils/types";
 
 import { highlightRanges } from "./highlights";
 
@@ -116,7 +116,7 @@ function useBaseExtensions({
 // CodeMirror injects css into the DOM,
 // to make this work, it needs the have the correct CSP nonce.
 function nonce() {
-  const nonce = getNonce();
+  const nonce = getCspNonce();
   if (!nonce) {
     return null;
   }

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useAsync } from "react-use";
 
-import { useSelector } from "metabase/lib/redux";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PublicApi } from "metabase/services";
 import Question from "metabase-lib/v1/Question";

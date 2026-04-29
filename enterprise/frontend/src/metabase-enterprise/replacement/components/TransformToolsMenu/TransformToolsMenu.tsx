@@ -1,11 +1,11 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Menu, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 export function TransformToolsMenu() {
   const isAdmin = useSelector(getUserIsAdmin);

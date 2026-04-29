@@ -1094,6 +1094,43 @@
              (is (re-find #"CAST" sql))
              (is (some? (mt/rows (qp/process-query query)))))))))))
 
+(deftest create-schema-if-needed-nil-guard-test
+  (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
+    (let [executed-queries (atom [])]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
+                                                  (swap! executed-queries conj queries))]
+        (driver/create-schema-if-needed! :postgres ::fake-conn nil)
+        (driver/create-schema-if-needed! :postgres ::fake-conn "")
+        (driver/create-schema-if-needed! :postgres ::fake-conn "   ")
+        (is (empty? @executed-queries)
+            "nil/blank schema should not issue any SQL")))))
+
+(deftest ^:parallel describe-fields-sql-nil-schema-test
+  (testing "describe-fields-sql for Postgres handles nil schema-names correctly (GDGT-2144)"
+    (let [[nil-schema-sql]   (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [mixed-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil "public"]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [normal-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                               :postgres
+                               {:schema-names ["public"]
+                                :table-names  ["my_table"]
+                                :details      {}})]
+      (is (not (re-find #"(?i)IN \(NULL\)" nil-schema-sql))
+          "rendered SQL must not contain `IN (NULL)` which never matches anything")
+      (is (re-find #"\"table_schema\" IS NULL" nil-schema-sql)
+          "passing [nil] schemas should produce an IS NULL check on table_schema")
+      (is (re-find #"\"table_schema\" IN .+OR .+\"table_schema\" IS NULL" mixed-schema-sql)
+          "mixed nil + non-nil schemas should include both IN and IS NULL")
+      (is (not (re-find #"\"table_schema\" IS NULL" normal-schema-sql))
+          "non-nil-only schemas should not have IS NULL on table_schema"))))
+
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
@@ -1272,23 +1309,34 @@
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
-          (is (= {"start_time" {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "22:00:00"
-                                                         :latest   "22:00:00"}}}
-                  "end_time"   {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "09:00:00"
-                                                         :latest   "09:00:00"}}}
-                  "reason"     {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/Text {:percent-json   0.0
-                                                     :percent-url    0.0
-                                                     :percent-email  0.0
-                                                     :percent-state  0.0
-                                                     :average-length 12.0}}}}
-                 (t2/select-fn->fn :name :fingerprint :model/Field
-                                   :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database))))))))))
+          (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
+                                                :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
+                ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
+                ;; shape (#5911), not the interestingness metrics.
+                extended-keys [:hour-distribution :weekday-distribution :skewness
+                               :mode-fraction :top-3-fraction
+                               :mode-fraction-by-weekday :mode-fraction-by-hour
+                               :min-length :max-length :percent-blank]
+                trim-type     (fn [fp]
+                                (update fp :type
+                                        (fn [types]
+                                          (update-vals types #(apply dissoc % extended-keys)))))]
+            (is (= {"start_time" {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "22:00:00"
+                                                           :latest   "22:00:00"}}}
+                    "end_time"   {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "09:00:00"
+                                                           :latest   "09:00:00"}}}
+                    "reason"     {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/Text {:percent-json   0.0
+                                                       :percent-url    0.0
+                                                       :percent-email  0.0
+                                                       :percent-state  0.0
+                                                       :average-length 12.0}}}}
+                   (update-vals fingerprints trim-type)))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 

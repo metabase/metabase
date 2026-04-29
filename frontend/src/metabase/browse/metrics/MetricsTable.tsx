@@ -25,8 +25,7 @@ import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import {
   Button,
   FixedSizeIcon,
@@ -37,6 +36,7 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";

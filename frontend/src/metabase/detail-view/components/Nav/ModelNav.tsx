@@ -5,8 +5,8 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Group, type GroupProps } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Table } from "metabase-types/api";
 

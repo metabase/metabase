@@ -1,4 +1,4 @@
-import { asNotNull } from "metabase/lib/types";
+import { asNotNull } from "metabase/utils/types";
 import type { FieldId } from "metabase-types/api";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 

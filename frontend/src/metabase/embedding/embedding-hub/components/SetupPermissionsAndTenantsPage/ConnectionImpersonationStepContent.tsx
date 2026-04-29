@@ -26,7 +26,8 @@ export const ConnectionImpersonationStepContent = ({
   const [isUpdatingPermissions, setUpdatingPermissions] = useState(false);
 
   const { data: databasesResponse } = useListDatabasesQuery();
-  const { updateDataAccess } = useUpdateAllTenantUsersGroupPermissions();
+  const { updateDataAccess, isReady } =
+    useUpdateAllTenantUsersGroupPermissions();
 
   const databases = useMemo(
     () => databasesResponse?.data ?? [],
@@ -65,7 +66,7 @@ export const ConnectionImpersonationStepContent = ({
     }
   }, [selectedDatabaseIds, updateDataAccess, onNext, sendToast]);
 
-  const isNextDisabled = selectedDatabaseIds.length === 0;
+  const isNextDisabled = !isReady || selectedDatabaseIds.length === 0;
 
   if (!hasCompatibleDatabases) {
     return (

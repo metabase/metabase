@@ -13,7 +13,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import * as Urls from "metabase/lib/urls";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   ActionIcon,
@@ -26,6 +25,7 @@ import {
   Skeleton,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { MetabotInfo, SuggestedMetabotPrompt } from "metabase-types/api";
 
 export const PAGE_SIZE = 10;

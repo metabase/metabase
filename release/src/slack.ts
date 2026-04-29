@@ -279,6 +279,46 @@ export function githubRunLink(
   );
 }
 
+export type AutoPatchSkipReason =
+  | "no-next-patch"
+  | "no-green-commit"
+  | "already-released";
+
+type AutoPatchSkipArgs = {
+  majorVersion: number;
+  reason: AutoPatchSkipReason;
+  runId: string;
+  owner: string;
+  repo: string;
+};
+
+export function buildAutoPatchSkipMessage({
+  majorVersion,
+  reason,
+  runId,
+  owner,
+  repo,
+}: AutoPatchSkipArgs): string {
+  const runLink = githubRunLink("workflow run", runId, owner, repo);
+
+  const messageByReason: Record<AutoPatchSkipReason, string> = {
+    "no-green-commit": `:x: Auto-patch for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
+    "no-next-patch": `:x: Auto-patch for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`,
+    "already-released": `:information_source: Auto-patch for *v${majorVersion}* skipped: latest green commit has already been released — nothing new to patch. ${runLink}`,
+  };
+
+  return messageByReason[reason];
+}
+
+export async function sendAutoPatchFailureMessage(
+  args: AutoPatchSkipArgs & { channelName: string },
+) {
+  return sendSlackMessage({
+    channelName: args.channelName,
+    message: buildAutoPatchSkipMessage(args),
+  });
+}
+
 export async function sendPreReleaseMessage({
   github,
   owner,

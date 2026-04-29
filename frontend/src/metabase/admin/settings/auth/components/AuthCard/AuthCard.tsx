@@ -6,8 +6,8 @@ import { c, t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {
@@ -64,7 +64,7 @@ export const AuthCard = ({
   const footer = isEnvSetting ? (
     <Text>
       {c("{0} is the name of a variable")
-        .jt`Set with env var ${(<Anchor key="anchor" href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>)}`}
+        .jt`Set with env var ${<Anchor key="anchor" href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>}`}
     </Text>
   ) : null;
 

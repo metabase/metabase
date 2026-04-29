@@ -101,6 +101,7 @@ export const COLLECTION_ITEM_MODELS = [
   "document",
   "table",
   "transform",
+  "measure",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -142,7 +143,7 @@ export interface CollectionItem {
     isArchived: boolean,
     opts?: Record<string, unknown>,
   ) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: number | boolean) => void;
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
@@ -244,8 +245,7 @@ export interface DashboardQuestionCandidate {
   };
 }
 
-export interface GetCollectionDashboardQuestionCandidatesRequest
-  extends PaginationRequest {
+export interface GetCollectionDashboardQuestionCandidatesRequest extends PaginationRequest {
   collectionId: CollectionId;
 }
 

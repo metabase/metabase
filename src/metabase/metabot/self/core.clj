@@ -240,9 +240,18 @@
                             :value   value}))))
 
 (defn format-error-line
-  "Format error part as AI SDK line: 3:\"error message\""
+  "Format error part as AI SDK line.
+  Emits a JSON object when the error carries an :error-code, so clients can
+  distinguish typed errors from generic ones:
+    3:{\"message\":\"...\",\"error-code\":\"...\"}
+  Otherwise emits a plain string for backwards compatibility:
+    3:\"error message\""
   [{:keys [error]}]
-  (str "3:" (json/encode (or (:message error) (str error)))))
+  (let [msg        (or (:message error) (str error))
+        error-code (some-> (:error-code error) name)]
+    (str "3:" (json/encode (if error-code
+                             {"message" msg "error-code" error-code}
+                             msg)))))
 
 (defn format-tool-call-line
   "Format tool-input part as AI SDK line: 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}"
@@ -505,7 +514,11 @@
                                                  :provider   provider
                                                  :error-code :provider-api-error)
                                           e)))
-      :else             (throw e))))
+      :else             (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
+                                        {:api-error  true
+                                         :provider   provider
+                                         :error-code :provider-request-failed}
+                                        e)))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

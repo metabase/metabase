@@ -21,7 +21,11 @@ import {
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
@@ -50,10 +54,6 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import ModelActions from "./ModelActions";
 

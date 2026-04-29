@@ -18,9 +18,8 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { getIcon } from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { getIcon } from "metabase/common/utils/icon";
+import { useDispatch } from "metabase/redux";
 import {
   Ellipsified,
   FixedSizeIcon,
@@ -29,6 +28,7 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";

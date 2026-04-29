@@ -7,7 +7,6 @@ import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,
 } from "metabase/data-studio/analytics";
-import { useSelector } from "metabase/lib/redux";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -16,6 +15,7 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import type {
   TableDataLayer,

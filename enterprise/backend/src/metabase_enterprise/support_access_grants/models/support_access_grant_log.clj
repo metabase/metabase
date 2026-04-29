@@ -4,6 +4,7 @@
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,18 +21,19 @@
 
 (defn fetch-or-create-support-user!
   "Fetch or Create the support user account from settings.
-  If the user exists but is deactivated, reactivate them."
+  If the user exists but is deactivated, reactivate them.
+  Always ensures the support user has superuser access."
   []
   (if-let [user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
     (do
-      (when-not (:is_active user)
-        (t2/update! :model/User (:id user) {:is_active true}))
-      (assoc user :is_active true))
+      (t2/update! :model/User (:id user) {:is_active true :is_superuser true})
+      (assoc user :is_active true :is_superuser true))
     (t2/insert-returning-instance! :model/User
                                    {:email (sag.settings/support-access-grant-email)
                                     :first_name (sag.settings/support-access-grant-first-name)
                                     :last_name (sag.settings/support-access-grant-last-name)
-                                    :password (str (random-uuid))})))
+                                    :password (str (random-uuid))
+                                    :is_superuser true})))
 
 (methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]
@@ -50,7 +52,14 @@
   [{revoked-at :revoked_at :as grant}]
   (u/prog1 grant
     (when revoked-at
-      (let [support-user-id (:id (fetch-or-create-support-user!))
-            auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
-        (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at revoked-at})
-        (t2/delete! :model/Session :user_id support-user-id)))))
+      (when-let [support-user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
+        (let [support-user-id (:id support-user)
+              auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
+          (try
+            (t2/update! :model/User support-user-id {:is_superuser false})
+            (catch Exception e
+              ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
+              ;; Sessions and auth identities are still cleaned up below, preventing further access.
+              (log/warnf e "Could not remove superuser from support user %d" support-user-id)))
+          (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at revoked-at})
+          (t2/delete! :model/Session :user_id support-user-id))))))

@@ -8,8 +8,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";

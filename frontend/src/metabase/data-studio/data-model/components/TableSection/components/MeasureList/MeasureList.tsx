@@ -4,9 +4,9 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";

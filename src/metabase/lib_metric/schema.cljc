@@ -2,6 +2,7 @@
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
   (:refer-clojure :exclude [some])
   (:require
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -227,13 +228,16 @@
 
 (mr/def ::arithmetic-operator
   "Arithmetic operators for metric math."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :+ :- :* :/])
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}]
+        (operators/arithmetic-operator-keywords)))
 
 (defn normalize-math-expression
   "Recursively normalize a metric math expression from API format.
-   Handles string keys, string operators, and nested expressions."
+   Handles string keys, string operators, nested expressions, and bare numeric constants."
   [x]
-  (when (sequential? x)
+  (cond
+    (number? x) x
+    (sequential? x)
     (let [[first-el] x]
       (if (and (>= (count x) 3)
                (let [tag (lib.schema.common/normalize-keyword first-el)]
@@ -245,7 +249,8 @@
           (let [[op opts & exprs] x]
             (into [(lib.schema.common/normalize-keyword op)
                    (lib.schema.common/normalize-options-map (or opts {}))]
-                  (map normalize-math-expression exprs))))))))
+                  (map normalize-math-expression exprs))))))
+    :else nil))
 
 (mr/def ::metric-math-expression
   "A recursive metric math expression tree.
@@ -256,12 +261,13 @@
    {:decode/normalize normalize-math-expression}
    [:or
     ::expression-leaf
+    number?
     [:and
      vector?
      [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}
       (fn [x]
         (and (>= (count x) 4)
-             (#{:+ :- :* :/} (first x))
+             (operators/arithmetic? (first x))
              (map? (second x))))]]]])
 
 ;;; ------------------------------------------------- Per-Instance Filters -------------------------------------------------

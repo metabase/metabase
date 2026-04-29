@@ -104,7 +104,7 @@ describe("GeneralLimitsSettingsSection", () => {
     await screen.findByText("How do you want to limit AI usage?");
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("500")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("500 million")).toBeInTheDocument();
     });
   });
 

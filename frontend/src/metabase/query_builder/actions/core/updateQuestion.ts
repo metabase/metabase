@@ -1,20 +1,20 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/redux";
 import {
   onCloseQuestionInfo,
   setUIControls,
 } from "metabase/redux/query-builder";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { Series } from "metabase-types/api";
 
 import {
   getIsShowingTemplateTagsEditor,

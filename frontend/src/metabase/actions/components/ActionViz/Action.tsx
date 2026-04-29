@@ -11,7 +11,8 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/redux";
+import type { Dispatch, State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -23,7 +24,6 @@ import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { FullContainer } from "./ActionButton.styled";
 import ActionButtonView from "./ActionButtonView";

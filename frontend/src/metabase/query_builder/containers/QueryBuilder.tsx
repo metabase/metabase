@@ -18,12 +18,12 @@ import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { connect, useSelector } from "metabase/lib/redux";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
   getDatabasesList,
   getSampleDatabaseId,
 } from "metabase/querying/selectors";
+import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   closeQB,
@@ -47,6 +47,7 @@ import {
   setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
+import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -61,7 +62,6 @@ import type {
   Series,
   Timeline,
 } from "metabase-types/api";
-import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import {
   cancelQuery,

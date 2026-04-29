@@ -1,5 +1,5 @@
 import { isTest } from "metabase/env";
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import type { TokenFeature } from "metabase-types/api";
 
 export function hasPremiumFeature(feature: TokenFeature) {

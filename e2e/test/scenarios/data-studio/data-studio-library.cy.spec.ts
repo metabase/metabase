@@ -11,7 +11,7 @@ describe("scenarios > data studio > library", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should create library via UI and verify collections", () => {
@@ -130,6 +130,8 @@ describe("scenarios > data studio > library", () => {
         select: true,
       });
 
+      H.modal().button("Publish this table").click();
+
       cy.log("Verify the table is published");
       H.DataStudio.Tables.overviewPage().should("exist");
       H.DataStudio.Tables.header().findByDisplayValue("Orders").should("exist");
@@ -217,6 +219,7 @@ describe("scenarios > data studio > library", () => {
       H.entityPickerModalItem(1, "Sample Database").click();
       H.entityPickerModalItem(2, "Orders").click();
       H.entityPickerModal().button("Publish").click();
+      H.modal().button("Publish this table").click();
 
       cy.log("Navigate back to Library via breadcrumbs");
       H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();

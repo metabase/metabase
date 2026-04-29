@@ -1,4 +1,4 @@
-import { DELETE, GET } from "metabase/lib/api";
+import { DELETE, GET } from "metabase/utils/api";
 
 export const AuditApi = {
   unsubscribe_user: DELETE("/api/ee/audit-app/user/:id/subscriptions"),

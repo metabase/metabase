@@ -3,17 +3,17 @@ import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { entityCompatibleQuery } from "metabase/lib/entities";
+import { entityCompatibleQuery } from "metabase/entities/utils";
+import type { Dispatch, State } from "metabase/redux/store";
+import type { FileUploadState } from "metabase/redux/store/upload";
+import { UploadMode } from "metabase/redux/store/upload";
 import {
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
+} from "metabase/redux/utils";
 import { MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
-import type { FileUploadState } from "metabase-types/store/upload";
-import { UploadMode } from "metabase-types/store/upload";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
 

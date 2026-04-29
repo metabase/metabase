@@ -9,10 +9,10 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { Markdown } from "metabase/common/components/Markdown";
-import { getUserName } from "metabase/lib/user";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../../types";

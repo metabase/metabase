@@ -62,7 +62,7 @@
           chart-id      "chart-123"
           query         (lib.tu/venues-query)
           queries-state {query-id query}
-          charts-state  {chart-id {:query-id query-id :chart-type :bar}}
+          charts-state  {chart-id {:chart_id chart-id :queries [query] :visualization_settings {:chart_type :bar}}}
           result (links/resolve-metabase-uri "metabase://chart/chart-123" queries-state charts-state)]
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
@@ -257,7 +257,7 @@
           chart-id      "chart-xyz-789"
           query         (lib.tu/venues-query)
           queries-state {query-id query}
-          charts-state  {chart-id {:query-id query-id :chart-type :bar}}
+          charts-state  {chart-id {:chart_id chart-id :queries [query] :visualization_settings {:chart-type :bar}}}
           result        (links/resolve-metabase-uri (str "metabase://chart/" chart-id) queries-state charts-state)]
       (is (string? result))
       (is (str/starts-with? result "/question#")))))

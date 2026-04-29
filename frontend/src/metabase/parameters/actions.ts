@@ -1,5 +1,6 @@
-import { stableStringify } from "metabase/lib/objects";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
+import { stableStringify } from "metabase/utils/objects";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -11,7 +12,6 @@ import type {
   ParameterValues,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getParameterValuesCache } from "./selectors";
 import { getFilteringParameterValuesMap } from "./utils/dashboards";

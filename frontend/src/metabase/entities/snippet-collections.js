@@ -9,8 +9,9 @@ import {
   getExpandedCollectionsById,
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
-import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
+
+import { createEntity, undo } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -24,12 +25,12 @@ export const SnippetCollections = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`snippet collections`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: _.mapObject(
     Collections.api,

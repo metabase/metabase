@@ -4,7 +4,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/common/utils/icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
@@ -16,7 +16,12 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
+import type {
+  OmniPickerItem,
+  OmniPickerMeasureItem,
+  OmniPickerTableItem,
+  SearchScope,
+} from "../..";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
@@ -134,6 +139,10 @@ const isTableInDb = (item: OmniPickerItem): item is OmniPickerTableItem => {
   );
 };
 
+const isMeasure = (item: OmniPickerItem): item is OmniPickerMeasureItem => {
+  return item.model === "measure";
+};
+
 const getItemText = (item: OmniPickerItem) => {
   const isTable = isTableInDb(item);
 
@@ -143,6 +152,10 @@ const getItemText = (item: OmniPickerItem) => {
 
   if (item.model === "database") {
     return "";
+  }
+
+  if (isMeasure(item)) {
+    return item.table_display_name ?? item.table_name;
   }
 
   return isTable
@@ -157,6 +170,10 @@ const getLocationIcon = (item: OmniPickerItem) => {
     item.model === "database"
   ) {
     return null;
+  }
+
+  if (isMeasure(item)) {
+    return { name: "table" as const };
   }
 
   return getIcon({
@@ -196,7 +213,7 @@ const LocationInfo = ({
 };
 
 export function SearchScopeSelector() {
-  const { setSearchScope } = useOmniPickerContext();
+  const { setSearchScope, options: pickerOptions } = useOmniPickerContext();
   const searchScope = useCurrentSearchScope();
 
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
@@ -215,6 +232,10 @@ export function SearchScopeSelector() {
         }
       : null,
   ].filter((i) => i !== null);
+
+  if (pickerOptions.disableSearchScope) {
+    return null;
+  }
 
   return (
     <Flex

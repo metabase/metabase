@@ -1,8 +1,8 @@
 import { ColorPill } from "metabase/common/components/ColorPill";
-import { formatValue } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import { formatValue } from "metabase/utils/formatting";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type { RowValue, ScalarSegment } from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;

@@ -236,6 +236,25 @@
                     (map (comp set :recipients))
                     set))))})))
 
+(deftest deactivated-user-recipients-are-not-emailed-test
+  (testing "card alert emails are not sent to deactivated user recipients (GDGT-1927)"
+    (mt/with-temp [:model/User {deactivated-id :id} {:email "deactivated@metabase.com" :is_active false}
+                   :model/User {active-id :id}      {:email "active@metabase.com"      :is_active true}]
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type :channel/email
+                                   :recipients   [{:type :notification-recipient/user :user_id deactivated-id}
+                                                  {:type :notification-recipient/user :user_id active-id}
+                                                  {:type :notification-recipient/raw-value :details {:value "external@metabase.com"}}]}]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (let [all-recipients (into #{} (mapcat :recipients) emails)]
+              (is (contains? all-recipients "active@metabase.com"))
+              (is (contains? all-recipients "external@metabase.com"))
+              (is (not (contains? all-recipients "deactivated@metabase.com"))
+                  "deactivated user must not receive the alert")))})))))
+
 (deftest send-condition-has-result-test
   (testing "no result should skip sending"
     (doseq [has-result [true false]]

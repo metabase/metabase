@@ -23,7 +23,7 @@ import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {

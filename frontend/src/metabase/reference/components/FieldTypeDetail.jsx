@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
-import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
 import {
   CurrencyPicker,
   SemanticTypePicker,

@@ -13,10 +13,8 @@ import {
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
@@ -24,6 +22,7 @@ import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
@@ -39,7 +38,7 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
 
 type ExpressionClauseItem = {
   type: "expression-clause";
-  clause: DefinedClauseName;
+  clause: Lib.DefinedClauseName;
   displayName: string;
 };
 
@@ -64,7 +63,7 @@ export interface QueryColumnPickerProps {
   /**
    * Set onSelectExpression to allow custom expressions to be selected
    */
-  onSelectExpression?: (clause?: DefinedClauseName) => void;
+  onSelectExpression?: (clause?: Lib.DefinedClauseName) => void;
   expressionSectionIcon?: IconName;
   onClose?: () => void;
   "data-testid"?: string;

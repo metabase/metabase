@@ -17,6 +17,7 @@ export const TAG_TYPES = [
   "database",
   "dataset",
   "document",
+  "embed-theme",
   "external-transform",
   "public-document",
   "comment",
@@ -67,6 +68,7 @@ export const TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "metabot-permissions",
+  "security-advisory",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

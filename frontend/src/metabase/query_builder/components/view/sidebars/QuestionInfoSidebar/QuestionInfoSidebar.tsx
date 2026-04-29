@@ -15,13 +15,13 @@ import {
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { InsightsUpsellTab } from "metabase/dashboard/components/DashboardInfoSidebar/components/InsightsUpsellTab";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
+import { useDispatch } from "metabase/redux";
 import { onCloseQuestionInfo } from "metabase/redux/query-builder";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";

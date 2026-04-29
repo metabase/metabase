@@ -5,6 +5,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -20,9 +21,20 @@
 
 ;;; ---------------------------------------- sync-data-analyst-group-for-oss! tests ----------------------------------------
 
+(defmacro with-reset-data-analyst-group! [& body]
+  `(let [original-group# (t2/select-one :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
+     (try
+       (mt/with-model-cleanup [:model/PermissionsGroup]
+         (do ~@body))
+       (finally
+         (with-bindings {(var perms-group/*allow-modifying-magic-groups*) true}
+           (t2/update! :model/PermissionsGroup :id (:id original-group#)
+                       {:magic_group_type perms-group/data-analyst-magic-group-type
+                        :name             (:name original-group#)}))))))
+
 (deftest sync-data-analyst-group-for-oss!-ee-noop-test
-  (testing "When we have the feature, sync-data-analyst-group-for-oss! does nothing"
-    (mt/with-premium-features #{:advanced-permissions}
+  (testing "When we canonically have the feature, sync-data-analyst-group-for-oss! does nothing"
+    (with-redefs [token-check/canonically-has-feature? (constantly true)]
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {user-id :id} {}]
           (perms/add-user-to-group! user-id data-analyst-group-id)
@@ -35,20 +47,9 @@
             (is (= perms-group/data-analyst-magic-group-type
                    (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id data-analyst-group-id)))))))))
 
-(defmacro with-reset-data-analyst-group! [& body]
-  `(let [original-group# (t2/select-one :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
-     (try
-       (mt/with-model-cleanup [:model/PermissionsGroup]
-         (do ~@body))
-       (finally
-         (with-bindings {(var perms-group/*allow-modifying-magic-groups*) true}
-           (t2/update! :model/PermissionsGroup :id (:id original-group#)
-                       {:magic_group_type perms-group/data-analyst-magic-group-type
-                        :name             (:name original-group#)}))))))
-
 (deftest sync-data-analyst-group-for-oss!-converts-with-members-test
-  (testing "Without the premium feature, sync-data-analyst-group-for-oss! converts the Data Analysts group when it has members"
-    (mt/with-premium-features #{}
+  (testing "When canonically lacking the feature, sync-data-analyst-group-for-oss! converts the Data Analysts group when it has members"
+    (with-redefs [token-check/canonically-has-feature? (constantly false)]
       (with-reset-data-analyst-group!
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           (mt/with-temp [:model/User {user-id :id} {}]
@@ -71,7 +72,7 @@
 
 (deftest sync-data-analyst-group-for-oss!-preserves-name-test
   (testing "When the magic group has a non-default name (e.g. from a migration conflict), the new magic group keeps that name"
-    (mt/with-premium-features #{}
+    (with-redefs [token-check/canonically-has-feature? (constantly false)]
       (with-reset-data-analyst-group!
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           ;; Simulate the migration conflict scenario: rename the magic group to the fallback name
@@ -90,8 +91,8 @@
                 (is (= "Metabase Data Analysts" (:name new-magic-group)))))))))))
 
 (deftest sync-data-analyst-group-for-oss!-idempotent-empty-test
-  (testing "In OSS, sync-data-analyst-group-for-oss! is idempotent when magic group is empty"
-    (mt/with-premium-features #{}
+  (testing "Sync is idempotent when magic group is empty (no members to convert)"
+    (with-redefs [token-check/canonically-has-feature? (constantly false)]
       (with-reset-data-analyst-group!
         (let [group-count-before (t2/count :model/PermissionsGroup)
               data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
@@ -104,3 +105,27 @@
           (testing "Magic group should still exist unchanged"
             (is (= perms-group/data-analyst-magic-group-type
                    (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id data-analyst-group-id)))))))))
+
+(deftest sync-data-analyst-group-for-oss!-indeterminate-retries-test
+  (testing "When token check is indeterminate, sync retries in background until canonical response"
+    (let [call-count (atom 0)
+          check-results (atom [nil nil false])] ;; indeterminate, indeterminate, then definitively no feature
+      (with-redefs [token-check/canonically-has-feature? (fn [_feature]
+                                                           (let [idx (swap! call-count inc)]
+                                                             (nth @check-results (min (dec idx) (dec (count @check-results))))))
+                    perms-group/seconds-to-sleep-per-attempt 0]
+        (with-reset-data-analyst-group!
+          (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
+            (mt/with-temp [:model/User {user-id :id} {}]
+              (perms/add-user-to-group! user-id original-group-id)
+              ;; sync-data-analyst-group-for-oss! will spawn a future since first call returns nil
+              (let [result (perms-group/sync-data-analyst-group-for-oss!)]
+                ;; Wait for the future to complete
+                (when (future? result)
+                  (deref result 500 :timeout))
+                (testing "Should have retried until canonical response"
+                  (is (>= @call-count 3)))
+                (testing "Original group should be converted after retries"
+                  (let [original-group (t2/select-one :model/PermissionsGroup :id original-group-id)]
+                    (is (str/starts-with? (:name original-group) "Data Analysts (converted)"))
+                    (is (nil? (:magic_group_type original-group)))))))))))))

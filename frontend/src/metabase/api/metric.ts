@@ -1,4 +1,4 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import { MetricSchema } from "metabase/schema";
 import type {
   Dataset,

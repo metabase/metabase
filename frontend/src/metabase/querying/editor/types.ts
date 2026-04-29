@@ -68,6 +68,9 @@ export type QueryEditorUiOptions = {
   convertToNativeButtonLabel?: string;
   disableDefaultLimit?: boolean;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;
+  getDataPickerItemTooltip?: (
+    item: QueryEditorDataPickerItem,
+  ) => string | undefined;
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
   ) => boolean;

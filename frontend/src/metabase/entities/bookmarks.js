@@ -8,9 +8,10 @@ import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Documents } from "metabase/entities/documents";
 import { Questions } from "metabase/entities/questions";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { addUndo } from "metabase/redux/undo";
 import { BookmarkSchema } from "metabase/schema";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 
@@ -22,9 +23,9 @@ export const Bookmarks = createEntity({
   nameOne: "bookmark",
   path: "/api/bookmark",
   schema: BookmarkSchema,
-  rtk: {
+  rtk: () => ({
     useListQuery: useListBookmarksQuery,
-  },
+  }),
   api: {
     list: (_, dispatch) => {
       return entityCompatibleQuery(

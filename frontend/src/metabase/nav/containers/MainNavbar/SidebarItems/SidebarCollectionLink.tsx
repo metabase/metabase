@@ -9,10 +9,10 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";
+import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -103,11 +103,11 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         aria-selected={isSelected}
         isSelected={isSelected}
         hovered={isHovered}
-        onClick={onToggleExpand}
+        onClick={isSelected ? onToggleExpand : undefined}
         hasDefaultIconStyle={isRegularCollection}
         ref={ref}
       >
-        <ExpandToggleButton hidden={!hasChildren}>
+        <ExpandToggleButton hidden={!hasChildren} onClick={onToggleExpand}>
           <TreeNode.ExpandToggleIcon
             isExpanded={isExpanded}
             name="chevronright"
