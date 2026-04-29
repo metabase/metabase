@@ -23,8 +23,8 @@ export interface CreateExplorationRequest {
   name: string;
   description?: string | null;
   prompt?: string | null;
-  metrics?: ExplorationMetricSelection[];
-  dimensions?: ExplorationDimensionSelection[];
+  metrics: ExplorationMetricSelection[];
+  dimensions: ExplorationDimensionSelection[];
   timeline_ids?: TimelineId[];
 }
 

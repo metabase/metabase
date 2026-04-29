@@ -95,7 +95,7 @@ export function NewExplorationData({
     dispatch(push(`/explorations/${exploration.id}`));
   }, [createExploration, dispatch, messages, metrics, dimensions, timelines]);
 
-  const canStart = metrics.length > 0;
+  const canStart = metrics.length > 0 && dimensions.length > 0;
 
   return (
     <>
