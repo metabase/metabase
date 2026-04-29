@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks/use-toast";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import * as Urls from "metabase/utils/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
@@ -19,7 +19,7 @@ type WorkspaceHeaderProps = {
 
 export function WorkspaceHeader({ workspace, menu }: WorkspaceHeaderProps) {
   const [updateWorkspace] = useUpdateWorkspaceMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const [sendToast] = useToast();
 
   const handleNameChange = async (name: string) => {
     if (name === workspace.name) {
@@ -27,7 +27,11 @@ export function WorkspaceHeader({ workspace, menu }: WorkspaceHeaderProps) {
     }
     const { error } = await updateWorkspace({ id: workspace.id, name });
     if (error) {
-      sendErrorToast(t`Failed to update workspace name`);
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Failed to update workspace name`,
+      });
     }
   };
 

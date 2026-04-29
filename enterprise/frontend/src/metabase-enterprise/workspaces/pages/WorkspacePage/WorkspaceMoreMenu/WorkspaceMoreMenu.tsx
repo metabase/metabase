@@ -22,7 +22,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const handleDelete = () => {
     show({
       title: t`Delete this workspace?`,
-      message: t`This cannot be undone.`,
+      message: t`The writable schema and the database user will be dropped from each of the configured databases. This cannot be undone.`,
       confirmButtonText: t`Delete workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {

@@ -17,8 +17,7 @@ import {
   FormSelect,
   FormSubmitButton,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceDatabaseMutation,
@@ -34,7 +33,10 @@ type DatabaseValues = {
 
 const VALIDATION_SCHEMA = Yup.object({
   databaseId: Yup.string().nullable().required(Errors.required),
-  inputSchemas: Yup.array().of(Yup.string().required()),
+  inputSchemas: Yup.array()
+    .of(Yup.string().required())
+    .min(1, Errors.required)
+    .required(Errors.required),
 });
 
 const INITIAL_VALUES: DatabaseValues = {
@@ -105,21 +107,16 @@ function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
   const { data: databasesResponse } = useListDatabasesQuery();
   const availableDatabases = databasesResponse?.data ?? [];
   const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
-  const { sendErrorToast } = useMetadataToasts();
 
   const handleSubmit = async (values: DatabaseValues) => {
     if (values.databaseId == null) {
       return;
     }
-    const { error } = await createWorkspaceDatabase({
+    await createWorkspaceDatabase({
       workspace_id: workspace.id,
       database_id: getDatabaseId(values.databaseId),
       input_schemas: values.inputSchemas,
-    });
-    if (error) {
-      sendErrorToast(t`Failed to add database`);
-      return;
-    }
+    }).unwrap();
     onClose();
   };
 
@@ -132,6 +129,9 @@ function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
       {({ values }) => (
         <Form>
           <Stack gap="lg">
+            <Text c="text-secondary">
+              {t`Creates a temporary writable schema and a database user, then grants the user write access to that schema and read access to the selected schemas.`}
+            </Text>
             <DatabaseSelect availableDatabases={availableDatabases} />
             <DatabaseSchemaSelect
               databaseId={
@@ -140,10 +140,8 @@ function CreateDatabaseForm({ workspace, onClose }: CreateDatabaseFormProps) {
               inputSchemas={values.inputSchemas}
               availableDatabases={availableDatabases}
             />
-            <Group>
-              <Box flex={1}>
-                <FormErrorMessage />
-              </Box>
+            <FormErrorMessage />
+            <Group justify="flex-end">
               <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton label={t`Add database`} variant="filled" />
             </Group>
@@ -172,7 +170,6 @@ function UpdateDatabaseForm({
   const availableDatabases = databasesResponse?.data ?? [];
   const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
   const [deleteWorkspaceDatabase] = useDeleteWorkspaceDatabaseMutation();
-  const { sendErrorToast } = useMetadataToasts();
   const { modalContent: confirmationContent, show: showConfirmation } =
     useConfirmation();
 
@@ -189,15 +186,11 @@ function UpdateDatabaseForm({
     if (values.databaseId == null) {
       return;
     }
-    const { error } = await updateWorkspaceDatabase({
+    await updateWorkspaceDatabase({
       workspace_id: workspace.id,
       database_id: getDatabaseId(values.databaseId),
       input_schemas: values.inputSchemas,
-    });
-    if (error) {
-      sendErrorToast(t`Failed to update database`);
-      return;
-    }
+    }).unwrap();
     onClose();
   };
 
@@ -208,7 +201,7 @@ function UpdateDatabaseForm({
   const handleRemove = () => {
     showConfirmation({
       title: t`Remove ${databaseName} from this workspace?`,
-      message: t`This cannot be undone.`,
+      message: t`The writable schema and the database user in this database will be dropped. This cannot be undone.`,
       confirmButtonText: t`Remove`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
@@ -231,6 +224,9 @@ function UpdateDatabaseForm({
         {({ values, dirty }) => (
           <Form>
             <Stack gap="lg">
+              <Text c="text-secondary">
+                {t`Saving will drop the existing writable schema and the database user, then create new ones.`}
+              </Text>
               <DatabaseSelect availableDatabases={availableDatabases} />
               <DatabaseSchemaSelect
                 databaseId={
@@ -239,19 +235,19 @@ function UpdateDatabaseForm({
                 inputSchemas={values.inputSchemas}
                 availableDatabases={availableDatabases}
               />
-              <Group>
+              <FormErrorMessage />
+              <Group justify="space-between">
                 <Button variant="subtle" color="error" onClick={handleRemove}>
                   {t`Remove`}
                 </Button>
-                <Box flex={1}>
-                  <FormErrorMessage />
-                </Box>
-                <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={t`Save`}
-                  variant="filled"
-                  disabled={!dirty}
-                />
+                <Group>
+                  <Button onClick={onClose}>{t`Cancel`}</Button>
+                  <FormSubmitButton
+                    label={t`Save`}
+                    variant="filled"
+                    disabled={!dirty}
+                  />
+                </Group>
               </Group>
             </Stack>
           </Form>
@@ -317,7 +313,6 @@ function DatabaseSchemaSelect({
     <FormMultiSelect
       name="inputSchemas"
       label={t`Readable schemas`}
-      description={t`Tables in these schemas are readable in this workspace.`}
       placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
       data={availableSchemas}
       searchable

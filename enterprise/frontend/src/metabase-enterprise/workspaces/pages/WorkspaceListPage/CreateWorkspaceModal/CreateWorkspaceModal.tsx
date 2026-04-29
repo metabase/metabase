@@ -9,9 +9,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
@@ -55,16 +54,9 @@ type CreateWorkspaceFormProps = {
 function CreateWorkspaceForm({ onClose }: CreateWorkspaceFormProps) {
   const dispatch = useDispatch();
   const [createWorkspace] = useCreateWorkspaceMutation();
-  const { sendErrorToast } = useMetadataToasts();
 
   const handleSubmit = async ({ name }: CreateWorkspaceValues) => {
-    const { data: workspace, error } = await createWorkspace({
-      name: name.trim(),
-    });
-    if (error || workspace == null) {
-      sendErrorToast(t`Failed to create workspace`);
-      return;
-    }
+    const workspace = await createWorkspace({ name: name.trim() }).unwrap();
     onClose();
     dispatch(push(Urls.workspace(workspace.id)));
   };
@@ -83,10 +75,8 @@ function CreateWorkspaceForm({ onClose }: CreateWorkspaceFormProps) {
             placeholder={t`My workspace`}
             data-autofocus
           />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
+          <FormErrorMessage />
+          <Group justify="flex-end">
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton label={t`Create`} variant="filled" />
           </Group>

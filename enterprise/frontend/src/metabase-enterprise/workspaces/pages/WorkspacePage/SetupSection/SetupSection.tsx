@@ -17,6 +17,7 @@ type SetupSectionProps = {
 
 export function SetupSection({ workspace }: SetupSectionProps) {
   const configUrl = `/api/ee/workspace/${workspace.id}/config/yaml`;
+  const hasDatabases = workspace.databases.length > 0;
 
   return (
     <TitleSection
@@ -27,14 +28,20 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <Stack p="md" gap="sm">
         <Text>{t`Download the config file with isolated database credentials:`}</Text>
         <Box>
-          <Button
-            variant="filled"
-            component="a"
-            href={configUrl}
-            download="config.yml"
-          >
-            {t`Download config file`}
-          </Button>
+          {hasDatabases ? (
+            <Button
+              variant="filled"
+              component="a"
+              href={configUrl}
+              download="config.yml"
+            >
+              {t`Download config file`}
+            </Button>
+          ) : (
+            <Button variant="filled" disabled>
+              {t`Download config file`}
+            </Button>
+          )}
         </Box>
       </Stack>
       <Divider />
