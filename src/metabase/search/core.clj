@@ -72,17 +72,11 @@
 
 (defmethod analytics.core/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
-  (log/infof "[prom-init] entering engine-default initial-value for %s" engine)
-  (let [r (if (= engine (name (search.engine/default-engine))) 1 0)]
-    (log/infof "[prom-init] engine-default initial-value for %s -> %s" engine r)
-    r))
+  (if (= engine (name (search.engine/default-engine))) 1 0))
 
 (defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (log/infof "[prom-init] entering engine-active initial-value for %s" engine)
-  (let [r (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0)]
-    (log/infof "[prom-init] engine-active initial-value for %s -> %s" engine r)
-    r))
+  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"

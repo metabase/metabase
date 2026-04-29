@@ -59,11 +59,8 @@
   (try
     (let [registry   (setup-metrics! registry-name)
           web-server (when port (start-web-server! port registry))]
-      (log/info "[prom-init] make-prometheus-system: PrometheusSystem ready")
       (->PrometheusSystem registry web-server))
     (catch Exception e
-      (log/errorf "[prom-init] make-prometheus-system FAILED with %s (message and stack omitted to avoid leaking)"
-                  (.getName (class e)))
       (throw (ex-info (trs "Failed to initialize Prometheus on port {0}" port)
                       {:port port}
                       e)))))
@@ -703,10 +700,8 @@
                                 [@c3p0-collector]
                                 (product-collectors)
                                 (quartz-collectors)))]
-    (log/info "[prom-init] collectors registered, populating initial labelled values")
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric (qualified-vals labels) value))
-    (log/info "[prom-init] initial labelled values populated")
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
@@ -715,7 +710,6 @@
     (reset! jvm-alloc-rate-thread
             (alloc-rate-meter/start-alloc-rate-meter
              #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_allocation_rate %))))
-    (log/info "[prom-init] setup-metrics! complete")
     registry))
 
 (defn- start-web-server!
@@ -744,25 +738,15 @@
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
-  (log/infof "[prom-init] setup! entered on thread %s; system=%s *setting-up*=%s"
-             (.getName (Thread/currentThread))
-             (some? system)
-             *setting-up*)
   (when (and (not system) (not *setting-up*))
     (binding [*setting-up* true]
       (let [port (prometheus-server-port)]
         (when-not port
           (log/info "Running prometheus metrics without a webserver"))
-        (log/infof "[prom-init] setup! requesting #'system lock on thread %s"
-                   (.getName (Thread/currentThread)))
         (locking #'system
-          (log/infof "[prom-init] setup! acquired #'system lock on thread %s; system=%s"
-                     (.getName (Thread/currentThread))
-                     (some? system))
           (when-not system
             (let [sys (make-prometheus-system port "metabase-registry")]
-              (alter-var-root #'system (constantly sys))
-              (log/info "[prom-init] setup! complete; #'system installed"))))))))
+              (alter-var-root #'system (constantly sys)))))))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
@@ -780,8 +764,8 @@
                (log/warn e "Error stopping prometheus web-server")))))))
 
 (defn observe!
-  "Call iapetos.core/observe on the metric in the global registry.
-   Inits registry if it's not been initialized yet.
+  "Call iapetos.core/observe on the metric in the global registry. No-op if the registry has not been
+  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete).
 
   Should be used with histograms and summaries."
   ([metric] (observe! metric nil 1))
@@ -790,28 +774,24 @@
      (observe! metric nil labels-or-amount)
      (observe! metric labels-or-amount 1)))
   ([metric labels amount]
-   (when-not system
-     (setup!))
    (when system
      (prometheus/observe (:registry system) metric (qualified-vals labels) amount))))
 
 (defn inc!
-  "Call iapetos.core/inc on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+  "Call iapetos.core/inc on the metric in the global registry. No-op if the registry has not been
+  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete)."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
    (if (number? labels-or-amount)
      (inc! metric nil labels-or-amount)
      (inc! metric labels-or-amount 1)))
   ([metric labels amount]
-   (when-not system
-     (setup!))
    (when system
      (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
 (defn dec!
-  "Call iapetos.core/dec on the metric in the global registry.
-   Inits registry if it's not been initialized yet.
+  "Call iapetos.core/dec on the metric in the global registry. No-op if the registry has not been
+  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete).
 
   Should be used for gauge metrics."
   ([metric] (dec! metric nil 1))
@@ -820,29 +800,23 @@
      (dec! metric nil labels-or-amount)
      (dec! metric labels-or-amount 1)))
   ([metric labels amount]
-   (when-not system
-     (setup!))
    (when system
      (prometheus/dec (:registry system) metric (qualified-vals labels) amount))))
 
 (defn set!
-  "Call iapetos.core/set on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+  "Call iapetos.core/set on the metric in the global registry. No-op if the registry has not been
+  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete)."
   ([metric amount]
    (assert (not (seq? amount)) "Cannot only provide labels")
    ;; Escape var to avoid confusing it with the special form of the same name.
    (#'set! metric nil amount))
   ([metric labels amount]
-   (when-not system
-     (setup!))
    (when system
      (prometheus/set (:registry system) metric (qualified-vals labels) amount))))
 
 (defn clear!
   "Call Collector.clear() on given metric."
   [metric]
-  (when-not system
-    (setup!))
   (when system
     (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
 
