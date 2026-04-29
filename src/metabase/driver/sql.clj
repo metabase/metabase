@@ -7,6 +7,7 @@
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
@@ -238,32 +239,38 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (sql-tools/validate-query driver native-query))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Convenience Imports                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn validate-impersonated-query*
-  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  "Validates a native query by parsing it and ensuring that it is a single statement.
+   Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
+   For regular impersonated queries, ensure that it is a single select statement.
+   For custom actions, ensure that it is a single write statement (insert, update, delete)."
   [driver query]
   (update query :stages
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [{:keys [is-single-select? sql error]}
-                            (sql-tools/is-single-select-stmt? driver (:native stage))]
+                      (let [[stmt-type allowed-stmts] (if (= driver.conn/*connection-type* :write-data)
+                                                        ["write" (tru "insert, update, or delete")]
+                                                        ["read" (tru "select")])
+                            {:keys [is-single-stmt? sql error]}
+                            (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
                         (cond error
                               (do
                                 (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
                                 (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
                                                 {:type qp.error-type/invalid-query
                                                  :sql  (:native stage)})))
-                              (not is-single-select?)
-                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                              (not is-single-stmt?)
+                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
                                               {:type qp.error-type/invalid-query
                                                :sql  (:native stage)}))
                               :else (assoc stage :native sql)))
                       stage))
                   stages))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Convenience Imports                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars
  [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
