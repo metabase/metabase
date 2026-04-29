@@ -177,7 +177,7 @@ export const SdkQuestionDefaultView = ({
     }
   }
 
-  const showSaveButton =
+  const showSaveButtonTriggerCI =
     shouldShowSaveButton({
       question,
       originalQuestion,
@@ -210,7 +210,7 @@ export const SdkQuestionDefaultView = ({
               <DefaultViewTitle title={title} />
             </Stack>
           </RenderIfHasContent>
-          {showSaveButton && <SaveButton onClick={openSaveModal} />}
+          {showSaveButtonTriggerCI && <SaveButton onClick={openSaveModal} />}
         </RenderIfHasContent>
         {queryResults && (
           <RenderIfHasContent

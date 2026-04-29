@@ -29,6 +29,7 @@
     StandardExports
     ThreadExports)
    (java.util ArrayList List)
+   (java.util.concurrent.atomic AtomicBoolean)
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
 
@@ -700,8 +701,6 @@
                                 [@c3p0-collector]
                                 (product-collectors)
                                 (quartz-collectors)))]
-    (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
-      (prometheus/inc registry metric (qualified-vals labels) value))
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
@@ -711,6 +710,17 @@
             (alloc-rate-meter/start-alloc-rate-meter
              #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_allocation_rate %))))
     registry))
+
+(defn- populate-initial-labelled-metric-values!
+  "Walks all `defmethod known-labels` impls and seeds the registry with `(initial-value …)`
+  for each labelled combination. This is run *outside* the `#'system` lock because some impls
+  (e.g. `:metabase-search/engine-active` for the `:semantic` engine) reach into
+  `defenterprise` → `check-token`, which has its own internal lock and an HTTP call to
+  MetaStore. Holding `#'system` here would pile up other threads — including the boot-time
+  main-thread `setup!` call — for the duration of that HTTP call."
+  [registry]
+  (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
+    (prometheus/inc registry metric (qualified-vals labels) value)))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -728,25 +738,40 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
-(def ^:private ^:dynamic *setting-up*
-  "True while [[setup!]] is initializing the registry. Guards against reentrant metric
-  emission during init — e.g. token-check error logging that fires while drivers are
-  registering can call [[inc!]], which would otherwise loop back into [[setup!]] before
-  the first call has finished. While `*setting-up*` is true the metric fns silently drop."
-  false)
+(def ^:private ^AtomicBoolean setting-up?
+  "Process-wide flag set while any thread is initializing the registry. Guards against
+  both same-thread reentrancy (e.g. token-check error logging that fires while drivers
+  are registering can call [[inc!]], which would otherwise loop back into [[setup!]]
+  before [[alter-var-root]] completes) and cross-thread races (e.g. a Jetty handler
+  thread can hit [[inc!]] from [[metabase.server.statistics-handler]] while the main
+  thread is still in [[init!*]] — without this guard, both would enter [[setup!]] and
+  one would block on the other inside [[populate-initial-labelled-metric-values!]] for
+  the duration of a token-check HTTP round-trip).
+
+  When this flag is `true`, [[setup!]] returns immediately and the metric fns silently
+  drop the call (since `system` is still nil)."
+  (AtomicBoolean. false))
 
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
-  (when (and (not system) (not *setting-up*))
-    (binding [*setting-up* true]
-      (let [port (prometheus-server-port)]
-        (when-not port
-          (log/info "Running prometheus metrics without a webserver"))
-        (locking #'system
-          (when-not system
-            (let [sys (make-prometheus-system port "metabase-registry")]
-              (alter-var-root #'system (constantly sys)))))))))
+  (when-not system
+    (when (.compareAndSet setting-up? false true)
+      (try
+        (let [port (prometheus-server-port)]
+          (when-not port
+            (log/info "Running prometheus metrics without a webserver"))
+          (locking #'system
+            (when-not system
+              (let [sys (make-prometheus-system port "metabase-registry")]
+                (alter-var-root #'system (constantly sys)))))
+          ;; Run outside the lock; some impls (notably search engine support checks)
+          ;; can block on token-check, and we don't want to hold #'system for the
+          ;; duration of an HTTP round-trip.
+          (when system
+            (populate-initial-labelled-metric-values! (:registry system))))
+        (finally
+          (.set setting-up? false))))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
@@ -764,8 +789,8 @@
                (log/warn e "Error stopping prometheus web-server")))))))
 
 (defn observe!
-  "Call iapetos.core/observe on the metric in the global registry. No-op if the registry has not been
-  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete).
+  "Call iapetos.core/observe on the metric in the global registry.
+   Inits registry if it's not been initialized yet.
 
   Should be used with histograms and summaries."
   ([metric] (observe! metric nil 1))
@@ -774,24 +799,28 @@
      (observe! metric nil labels-or-amount)
      (observe! metric labels-or-amount 1)))
   ([metric labels amount]
+   (when-not system
+     (setup!))
    (when system
      (prometheus/observe (:registry system) metric (qualified-vals labels) amount))))
 
 (defn inc!
-  "Call iapetos.core/inc on the metric in the global registry. No-op if the registry has not been
-  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete)."
+  "Call iapetos.core/inc on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
    (if (number? labels-or-amount)
      (inc! metric nil labels-or-amount)
      (inc! metric labels-or-amount 1)))
   ([metric labels amount]
+   (when-not system
+     (setup!))
    (when system
      (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
 (defn dec!
-  "Call iapetos.core/dec on the metric in the global registry. No-op if the registry has not been
-  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete).
+  "Call iapetos.core/dec on the metric in the global registry.
+   Inits registry if it's not been initialized yet.
 
   Should be used for gauge metrics."
   ([metric] (dec! metric nil 1))
@@ -800,23 +829,29 @@
      (dec! metric nil labels-or-amount)
      (dec! metric labels-or-amount 1)))
   ([metric labels amount]
+   (when-not system
+     (setup!))
    (when system
      (prometheus/dec (:registry system) metric (qualified-vals labels) amount))))
 
 (defn set!
-  "Call iapetos.core/set on the metric in the global registry. No-op if the registry has not been
-  initialized yet (callers from outside the main init thread must wait for [[setup!]] to complete)."
+  "Call iapetos.core/set on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
   ([metric amount]
    (assert (not (seq? amount)) "Cannot only provide labels")
    ;; Escape var to avoid confusing it with the special form of the same name.
    (#'set! metric nil amount))
   ([metric labels amount]
+   (when-not system
+     (setup!))
    (when system
      (prometheus/set (:registry system) metric (qualified-vals labels) amount))))
 
 (defn clear!
   "Call Collector.clear() on given metric."
   [metric]
+  (when-not system
+    (setup!))
   (when system
     (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
 

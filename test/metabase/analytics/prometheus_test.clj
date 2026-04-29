@@ -164,10 +164,11 @@
    (< (abs (- actual expected)) epsilon)))
 
 (deftest inc!-test
-  (testing "inc no-ops and does not initialise the system when called before setup!"
+  (testing "inc starts a system if it wasn't started"
     (with-redefs [prometheus/system nil]
-      (prometheus/inc! :metabase-email/messages) ; << Does not throw.
-      (is (nil? @#'prometheus/system))))
+      (mt/with-temporary-setting-values [prometheus-server-port 0]
+        (prometheus/inc! :metabase-email/messages) ; << Does not throw.
+        (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
 
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
@@ -185,10 +186,11 @@
       (is (approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/card}))))))
 
 (deftest dec!-test
-  (testing "dec no-ops and does not initialise the system when called before setup!"
-    (with-redefs [prometheus/system nil]
-      (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
-      (is (nil? @#'prometheus/system))))
+  (testing "dec starts a system if it wasn't started"
+    (mt/with-temporary-setting-values [prometheus-server-port 0]
+      (with-redefs [prometheus/system nil]
+        (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
+        (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
 
   (testing "dec throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
@@ -207,10 +209,11 @@
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
 (deftest observe!-test
-  (testing "observe! no-ops and does not initialise the system when called before setup!"
+  (testing "observe! starts a system if it wasn't started"
     (with-redefs [prometheus/system nil]
-      (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
-      (is (nil? @#'prometheus/system))))
+      (mt/with-temporary-setting-values [prometheus-server-port 0]
+        (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
+        (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
 
   (testing "observe! with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
@@ -289,19 +292,21 @@
   (testing "metric fns no-op when called reentrantly during setup! (prevents init loop)
     Background: a known-labels impl that emits a metric (e.g. via the token-check error
     handler that fires during driver init) used to loop back into setup! before alter-var-root
-    completed, because the metric fns auto-init when system is nil. Guarded now by *setting-up*."
-    (let [original-system @#'prometheus/system]
+    completed, because the metric fns auto-init when system is nil. Guarded now by setting-up?."
+    (let [original-system @#'prometheus/system
+          setting-up?     ^java.util.concurrent.atomic.AtomicBoolean @#'prometheus/setting-up?]
       (try
         (alter-var-root #'prometheus/system (constantly nil))
-        (with-bindings {#'prometheus/*setting-up* true}
-          (testing "setup! no-ops while *setting-up* is bound true"
-            (is (nil? (prometheus/setup!)))
-            (is (nil? @#'prometheus/system)))
-          (testing "metric fns no-op rather than re-entering setup!"
-            (is (nil? (prometheus/inc! :metabase-token-check/attempt {:status "failure"})))
-            (is (nil? (prometheus/observe! :metabase-search/index-update-duration-ms 1)))
-            (is (nil? (prometheus/dec! :metabase-search/queue-size)))
-            (is (nil? (prometheus/set! :metabase-search/queue-size 0)))
-            (is (nil? (prometheus/clear! :metabase-token-check/attempt)))))
+        (.set setting-up? true)
+        (testing "setup! no-ops while setting-up? is true"
+          (is (nil? (prometheus/setup!)))
+          (is (nil? @#'prometheus/system)))
+        (testing "metric fns no-op rather than re-entering setup!"
+          (is (nil? (prometheus/inc! :metabase-token-check/attempt {:status "failure"})))
+          (is (nil? (prometheus/observe! :metabase-search/index-update-duration-ms 1)))
+          (is (nil? (prometheus/dec! :metabase-search/queue-size)))
+          (is (nil? (prometheus/set! :metabase-search/queue-size 0)))
+          (is (nil? (prometheus/clear! :metabase-token-check/attempt))))
         (finally
+          (.set setting-up? false)
           (alter-var-root #'prometheus/system (constantly original-system)))))))
