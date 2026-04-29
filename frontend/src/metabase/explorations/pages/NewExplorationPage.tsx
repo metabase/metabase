@@ -10,21 +10,20 @@ import type { CreateExplorationRequest } from "metabase-types/api";
 
 import { NewExplorationChat } from "../components/NewExplorationChat";
 import { NewExplorationData } from "../components/NewExplorationData";
-import type { MetricDimension, MetricOrMeasure, Timeline } from "../types";
+import type { ExplorationMetric, MetricDimension, Timeline } from "../types";
 
 function buildRequest(
   prompt: string,
-  metrics: MetricOrMeasure[],
+  metrics: ExplorationMetric[],
   dimensions: MetricDimension[],
   timelines: Timeline[],
 ): CreateExplorationRequest {
-  const metricCards = metrics.filter((m) => m.type === "metric");
   const trimmedPrompt = prompt.trim();
   return {
     name: trimmedPrompt.length > 0 ? trimmedPrompt : t`New exploration`,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
-    metrics: metricCards.map((m) => ({
-      card_id: m.id as number,
+    metrics: metrics.map((m) => ({
+      card_id: m.id,
       dimension_mappings: m.dimension_mappings,
     })),
     dimensions: dimensions.map((d) => ({
@@ -40,7 +39,7 @@ function buildRequest(
 export function NewExplorationPage() {
   const metabot = useMetabotAgent();
   const dispatch = useDispatch();
-  const [metrics, setMetrics] = useState<MetricOrMeasure[]>([]);
+  const [metrics, setMetrics] = useState<ExplorationMetric[]>([]);
   const [dimensions, setDimensions] = useState<MetricDimension[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
   const [createExploration, { isLoading: isStarting }] =

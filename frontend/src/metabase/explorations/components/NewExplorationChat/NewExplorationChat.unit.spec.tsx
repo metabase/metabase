@@ -1,6 +1,6 @@
 import { setupMetricsEndpoints } from "__support__/server-mocks/metric";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import type { MetricOrMeasure } from "metabase/explorations/types";
+import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
   MetabotChatMessage,
@@ -80,6 +80,7 @@ function mockMetabotAgentState({
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt: "",
     setPrompt: jest.fn(),
+    conversation: { messages },
     messages,
     errorMessages: [],
     retryMessage: jest.fn(),
@@ -151,17 +152,15 @@ describe("NewExplorationChat", () => {
     });
 
     const updateMetrics = setMetrics.mock.calls[0][0] as (
-      metrics: MetricOrMeasure[],
-    ) => MetricOrMeasure[];
+      metrics: ExplorationMetric[],
+    ) => ExplorationMetric[];
 
     expect(updateMetrics([])).toEqual([
       expect.objectContaining({
-        type: "metric",
         id: metricRevenue.id,
         name: metricRevenue.name,
       }),
       expect.objectContaining({
-        type: "metric",
         id: metricChurn.id,
         name: metricChurn.name,
       }),

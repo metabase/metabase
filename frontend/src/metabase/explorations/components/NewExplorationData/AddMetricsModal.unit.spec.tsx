@@ -9,8 +9,8 @@ import {
   within,
 } from "__support__/ui";
 import type {
+  ExplorationMetric,
   MetricDimension,
-  MetricOrMeasure,
 } from "metabase/explorations/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import {
@@ -57,23 +57,11 @@ const metricLibrary = createMockMetric({
   collection: createMockCollection({ type: "library-metrics" }),
 });
 
-const revenueAsMetric: MetricOrMeasure = {
-  type: "metric",
-  id: metricRevenue.id,
-  name: metricRevenue.name,
-  description: metricRevenue.description,
-  dimensions: metricRevenue.dimensions,
-};
-const churnAsMetric: MetricOrMeasure = {
-  type: "metric",
-  id: metricChurn.id,
-  name: metricChurn.name,
-  description: metricChurn.description,
-  dimensions: metricChurn.dimensions,
-};
+const revenueAsMetric: ExplorationMetric = metricRevenue;
+const churnAsMetric: ExplorationMetric = metricChurn;
 
 interface SetupOpts {
-  initialMetrics?: MetricOrMeasure[];
+  initialMetrics?: ExplorationMetric[];
   initialDimensions?: MetricDimension[];
 }
 
@@ -171,7 +159,7 @@ describe("AddMetricsModal", () => {
     expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
     const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
     expect(nextMetrics).toEqual([
-      expect.objectContaining({ id: metricRevenue.id, type: "metric" }),
+      expect.objectContaining({ id: metricRevenue.id }),
     ]);
     expect(nextDimensions).toEqual(
       expect.arrayContaining([
@@ -196,7 +184,7 @@ describe("AddMetricsModal", () => {
 
     expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
     const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock
-      .calls[0] as [MetricOrMeasure[], MetricDimension[]];
+      .calls[0] as [ExplorationMetric[], MetricDimension[]];
     expect(nextMetrics).toEqual([
       expect.objectContaining({ id: metricChurn.id }),
     ]);
@@ -214,7 +202,7 @@ describe("AddMetricsModal", () => {
 
     expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
     const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock
-      .calls[0] as [MetricOrMeasure[], MetricDimension[]];
+      .calls[0] as [ExplorationMetric[], MetricDimension[]];
     expect(nextDimensions).toEqual([
       expect.objectContaining({ id: dimShared.id }),
     ]);

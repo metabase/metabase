@@ -150,6 +150,14 @@
         (is (contains? response :dimensions))
         (is (contains? response :dimension_mappings))))))
 
+(deftest fetch-metric-normalizes-nil-dimensions-test
+  (testing "GET /api/metric/:id returns empty lists when dimensions cannot be hydrated"
+    (mt/with-temp [:model/Card metric {:name "Metric without a query"
+                                       :type :metric}]
+      (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))]
+        (is (= [] (:dimensions response)))
+        (is (= [] (:dimension_mappings response)))))))
+
 (deftest fetch-metric-permissions-test
   (testing "GET /api/metric/:id respects collection permissions"
     (mt/with-non-admin-groups-no-root-collection-perms

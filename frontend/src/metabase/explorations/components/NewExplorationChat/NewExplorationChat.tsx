@@ -9,8 +9,7 @@ import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import type { MetricOrMeasure } from "metabase/explorations/types";
-import { toMetricOrMeasure } from "metabase/explorations/utils";
+import type { ExplorationMetric } from "metabase/explorations/types";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
@@ -28,8 +27,8 @@ import S from "./NewExplorationChat.module.css";
 const SELECT_EXPLORATION_METRICS_TOOL = "select_exploration_metrics";
 
 export interface NewExplorationChatProps {
-  metrics: MetricOrMeasure[];
-  setMetrics: Dispatch<SetStateAction<MetricOrMeasure[]>>;
+  metrics: ExplorationMetric[];
+  setMetrics: Dispatch<SetStateAction<ExplorationMetric[]>>;
 }
 
 export function NewExplorationChat({ setMetrics }: NewExplorationChatProps) {
@@ -94,9 +93,9 @@ export function NewExplorationChat({ setMetrics }: NewExplorationChatProps) {
       )
         .then((metrics) => {
           setMetrics((prev) => {
-            const metricsToAdd = metrics
-              .filter((metric) => !prev.some((m) => m.id === metric.id))
-              .map(toMetricOrMeasure);
+            const metricsToAdd = metrics.filter(
+              (metric) => !prev.some((m) => m.id === metric.id),
+            );
             return [...prev, ...metricsToAdd];
           });
         })

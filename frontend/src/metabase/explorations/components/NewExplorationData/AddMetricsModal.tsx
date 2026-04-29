@@ -6,13 +6,10 @@ import { t } from "ttag";
 import { metricApi, useListMetricsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type {
+  ExplorationMetric,
   MetricDimension,
-  MetricOrMeasure,
 } from "metabase/explorations/types";
-import {
-  isLibraryMetric,
-  toMetricOrMeasure,
-} from "metabase/explorations/utils";
+import { isLibraryMetric } from "metabase/explorations/utils";
 import { useDispatch } from "metabase/redux";
 import {
   Box,
@@ -26,9 +23,13 @@ import {
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
-import type { DimensionId, Metric } from "metabase-types/api";
+import type { DimensionId, MetricBaseData } from "metabase-types/api";
 
 import S from "./AddMetricsModal.module.css";
+
+type MetricWithCollection = ExplorationMetric & {
+  collection?: MetricBaseData["collection"];
+};
 
 const METRIC_ITEM_HEIGHT = 72;
 const METRIC_ITEM_GAP = 8;
@@ -37,15 +38,15 @@ const DIMENSION_ITEM_HEIGHT = 36;
 export interface AddMetricsModalProps {
   opened: boolean;
   onClose: () => void;
-  selectedMetrics: MetricOrMeasure[];
+  selectedMetrics: ExplorationMetric[];
   selectedDimensions: MetricDimension[];
   onSelectedItemsChange: (
-    newMetrics: MetricOrMeasure[],
+    newMetrics: ExplorationMetric[],
     newDimensions: MetricDimension[],
   ) => void;
 }
 
-function dedupeDimensions(metrics: MetricOrMeasure[]): MetricDimension[] {
+function dedupeDimensions(metrics: ExplorationMetric[]): MetricDimension[] {
   const map = new Map<DimensionId, MetricDimension>();
   for (const metric of metrics) {
     for (const dimension of metric.dimensions ?? []) {
@@ -64,7 +65,7 @@ function useFullMetrics(opened: boolean) {
     error: listError,
   } = useListMetricsQuery(undefined, { skip: !opened });
   const dispatch = useDispatch();
-  const [items, setItems] = useState<Metric[]>([]);
+  const [items, setItems] = useState<MetricWithCollection[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState<unknown>(null);
 
@@ -133,7 +134,7 @@ export function AddMetricsModal({
 
   // Draft selection — committed to the parent only on Done.
   const [draftMetrics, setDraftMetrics] =
-    useState<MetricOrMeasure[]>(selectedMetrics);
+    useState<ExplorationMetric[]>(selectedMetrics);
   const [draftDimensions, setDraftDimensions] =
     useState<MetricDimension[]>(selectedDimensions);
 
@@ -156,16 +157,14 @@ export function AddMetricsModal({
 
   const allMetrics = useMemo(
     () =>
-      [...rawMetrics]
-        .sort((a, b) => {
-          const aLib = isLibraryMetric(a);
-          const bLib = isLibraryMetric(b);
-          if (aLib === bLib) {
-            return 0;
-          }
-          return aLib ? -1 : 1;
-        })
-        .map(toMetricOrMeasure),
+      [...rawMetrics].sort((a, b) => {
+        const aLib = isLibraryMetric(a);
+        const bLib = isLibraryMetric(b);
+        if (aLib === bLib) {
+          return 0;
+        }
+        return aLib ? -1 : 1;
+      }),
     [rawMetrics],
   );
 
@@ -199,7 +198,7 @@ export function AddMetricsModal({
   );
 
   const metricsByDimension = useMemo(() => {
-    const map = new Map<DimensionId, MetricOrMeasure[]>();
+    const map = new Map<DimensionId, ExplorationMetric[]>();
     for (const metric of allMetrics) {
       for (const dimension of metric.dimensions) {
         const list = map.get(dimension.id);
@@ -214,7 +213,7 @@ export function AddMetricsModal({
   }, [allMetrics]);
 
   const toggleMetric = useCallback(
-    (metric: MetricOrMeasure) => {
+    (metric: ExplorationMetric) => {
       if (selectedMetricIds.has(metric.id)) {
         const nextMetrics = draftMetrics.filter((m) => m.id !== metric.id);
         setDraftMetrics(nextMetrics);
@@ -336,9 +335,9 @@ export function AddMetricsModal({
 }
 
 interface MetricListProps {
-  metrics: MetricOrMeasure[];
-  selectedIds: Set<MetricOrMeasure["id"]>;
-  onToggle: (metric: MetricOrMeasure) => void;
+  metrics: ExplorationMetric[];
+  selectedIds: Set<ExplorationMetric["id"]>;
+  onToggle: (metric: ExplorationMetric) => void;
 }
 
 function MetricList({ metrics, selectedIds, onToggle }: MetricListProps) {

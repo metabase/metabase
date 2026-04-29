@@ -19,6 +19,7 @@ export const createMockMetric = (opts?: Partial<Metric>): Metric => ({
   name: "Metric",
   description: null,
   dimensions: [createMockMetricDimension()],
+  dimension_mappings: [],
   collection_id: null,
   collection: null,
   ...opts,
@@ -31,6 +32,7 @@ export const createMockNormalizedMetric = (
   name: "Metric",
   description: null,
   dimensions: [createMockMetricDimension()],
+  dimension_mappings: [],
   collection_id: null,
   ...opts,
 });

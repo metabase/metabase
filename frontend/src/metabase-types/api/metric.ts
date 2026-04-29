@@ -19,7 +19,7 @@ export type Metric = {
   name: string;
   description: string | null;
   dimensions: MetricDimension[];
-  dimension_mappings?: DimensionMapping[];
+  dimension_mappings: DimensionMapping[];
   collection_id: CollectionId | null;
   result_column_name?: string;
 };

@@ -36,8 +36,8 @@
   [:merge
    ::Metric
    [:map
-    [:dimensions           {:optional true} [:maybe [:sequential :map]]]
-    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
+    [:dimensions           [:sequential :map]]
+    [:dimension_mappings   [:sequential :map]]
     [:dataset_query        {:optional true} :map]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
@@ -89,7 +89,9 @@
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
   (-> (t2/select-one :model/Card :id id :type "metric")
-      metrics.perms/filter-dimensions-for-user))
+      metrics.perms/filter-dimensions-for-user
+      (update :dimensions #(or % []))
+      (update :dimension_mappings #(or % []))))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.

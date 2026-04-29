@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type {
+  ExplorationMetric,
   MetricDimension,
-  MetricOrMeasure,
   Timeline,
 } from "metabase/explorations/types";
 import {
@@ -22,8 +22,8 @@ import { AddTimelinesModal } from "./AddTimelinesModal";
 import S from "./NewExplorationData.module.css";
 
 export interface NewExplorationDataProps {
-  metrics: MetricOrMeasure[];
-  setMetrics: (metrics: MetricOrMeasure[]) => void;
+  metrics: ExplorationMetric[];
+  setMetrics: (metrics: ExplorationMetric[]) => void;
   dimensions: MetricDimension[];
   setDimensions: (dimensions: MetricDimension[]) => void;
   timelines: Timeline[];
