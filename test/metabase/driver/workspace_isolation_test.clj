@@ -41,6 +41,8 @@
     BigQueryOptions
     DatasetId
     DatasetInfo
+    FieldValueList
+    TableResult
     QueryJobConfiguration)
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (java.io ByteArrayInputStream)))
@@ -109,9 +111,10 @@
     :clickhouse false
     true))
 
-(defn- expect-write-denied!
+(defn- expect-sql-denied!
+  "Assert that executing `sql` against `user-spec` raises a `SQLException`."
   [user-spec sql label]
-  (testing (format "%s on input schema is denied" label)
+  (testing (format "%s is denied" label)
     (try
       (jdbc/execute! user-spec [sql])
       (is false (format "%s unexpectedly succeeded" label))
@@ -183,7 +186,22 @@
                                (into [[:update (str "UPDATE " src " SET v = 'x'")]
                                       [:delete (str "DELETE FROM " src)]]))]
                 (doseq [[label sql] ops]
-                  (expect-write-denied! user-spec sql label))))
+                  (expect-sql-denied! user-spec sql label))))
+            (testing "workspace user cannot read from an ungranted namespace"
+              (let [ungranted-ns   (str "mb_iso_nogrant_" run-id)
+                    ungranted-tbl  (str "ws_iso_secret_" run-id)
+                    ungranted-fq   (qualify driver ungranted-ns ungranted-tbl)]
+                (try
+                  (jdbc/execute! admin-spec [(create-input-namespace-sql driver ungranted-ns)])
+                  (jdbc/execute! admin-spec [(str "CREATE TABLE " ungranted-fq " (id INT, secret VARCHAR(8))"
+                                                  (create-table-tail driver))])
+                  (jdbc/execute! admin-spec [(str "INSERT INTO " ungranted-fq " VALUES (1, 'hidden')")])
+                  (expect-sql-denied! user-spec
+                                      (str "SELECT * FROM " ungranted-fq)
+                                      :select-ungranted-namespace)
+                  (finally
+                    (doseq [sql (drop-input-namespace-sqls driver ungranted-ns ungranted-tbl)]
+                      (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))
             (testing "workspace user has full read+write access to its own output schema"
               (jdbc/execute! user-spec [(str "CREATE TABLE " out " (id INT, v VARCHAR(8))" (create-table-tail driver))])
               (jdbc/execute! user-spec [(str "INSERT INTO " out " VALUES (1, 'a')")])
@@ -252,10 +270,10 @@
   (let [creds (.createScoped (bq-admin-credentials details)
                              (doto (java.util.ArrayList.)
                                (.add "https://www.googleapis.com/auth/bigquery")))]
-    (-> (BigQueryOptions/newBuilder)
-        (.setCredentials creds)
-        (.setProjectId (or (:project-id details)
-                           (.getProjectId (bq-admin-credentials details))))
+    (-> (doto (BigQueryOptions/newBuilder)
+          (.setCredentials creds)
+          (.setProjectId (or (:project-id details)
+                             (.getProjectId (bq-admin-credentials details)))))
         .build
         .getService)))
 
@@ -265,9 +283,9 @@
                              (doto (java.util.ArrayList.)
                                (.add "https://www.googleapis.com/auth/cloud-platform")))]
     (IAMClient/create
-     (-> (IAMSettings/newBuilder)
-         (.setCredentialsProvider (reify CredentialsProvider
-                                    (getCredentials [_] creds)))
+     (-> (doto (IAMSettings/newBuilder)
+           (.setCredentialsProvider (reify CredentialsProvider
+                                      (getCredentials [_] creds))))
          .build))))
 
 (defn- bq-impersonated-client
@@ -283,9 +301,9 @@
                    (doto (java.util.ArrayList.)
                      (.add "https://www.googleapis.com/auth/bigquery"))
                    3600)]
-    (-> (BigQueryOptions/newBuilder)
-        (.setCredentials imp-creds)
-        (.setProjectId project-id)
+    (-> (doto (BigQueryOptions/newBuilder)
+          (.setCredentials imp-creds)
+          (.setProjectId project-id))
         .build
         .getService)))
 
@@ -316,13 +334,13 @@
 (defn- bq-create-dataset! [^BigQuery client project-id dataset-name]
   (.create client
            (.build (DatasetInfo/newBuilder (DatasetId/of project-id dataset-name)))
-           (into-array BigQuery$DatasetOption [])))
+           (u/varargs BigQuery$DatasetOption [])))
 
 (defn- bq-drop-dataset! [^BigQuery client project-id dataset-name]
   (let [ds-id (DatasetId/of project-id dataset-name)]
-    (when (.getDataset client ds-id (into-array BigQuery$DatasetOption []))
-      (.delete client ds-id (into-array BigQuery$DatasetDeleteOption
-                                        [(BigQuery$DatasetDeleteOption/deleteContents)])))))
+    (when (.getDataset client ds-id (u/varargs BigQuery$DatasetOption []))
+      (.delete client ds-id
+               (u/varargs BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)])))))
 
 (defn- bq-delete-sa-direct!
   "Belt-and-suspenders SA deletion that bypasses `destroy-workspace-isolation!` —
@@ -336,7 +354,7 @@
          (catch Throwable _ nil))))
 
 (deftest ^:synchronized workspace-isolation-perms-bigquery-test
-  (mt/test-drivers (remove #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "workspace SA gets read-only access to input dataset, full access to output dataset"
       (let [database     (mt/db)
             details      (:details database)
@@ -373,10 +391,10 @@
             (testing "workspace SA can SELECT from a granted input table"
               (let [result (run-sql user-client
                                     (format "SELECT id, v FROM %s ORDER BY id" (qual in-dataset src-name)))
-                    rows   (mapv (fn [row]
+                    rows   (mapv (fn [^FieldValueList row]
                                    {:id (.getLongValue (.get row "id"))
                                     :v  (.getStringValue (.get row "v"))})
-                                 (.iterateAll result))]
+                                 (.iterateAll ^TableResult result))]
                 (is (= [{:id 1 :v "a"}] rows))))
             (testing "workspace SA cannot write to or DDL against the input dataset"
               (doseq [[label sql] [[:insert       (format "INSERT INTO %s (id, v) VALUES (2, 'b')" (qual in-dataset src-name))]
