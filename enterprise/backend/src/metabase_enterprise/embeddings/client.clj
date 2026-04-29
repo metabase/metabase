@@ -34,11 +34,12 @@
 (defn get-embeddings-batch
   "Return a sequential collection of embedding vectors, in the same order as the input texts.
 
-  `embedding-model` — `{:provider :model-name :model-dimensions}` map; provider must be one
-                      of the providers registered on
-                      [[metabase-enterprise.semantic-search.embedding/get-embeddings-batch]]
-                      (currently `ai-service`, `openai`, `ollama`).
+  `embedding-model` — `{:provider :model-name :model-dimensions}` map; provider must be one of those registered on
+                      [[metabase-enterprise.semantic-search.embedding/get-embeddings-batch]] (`ai-service`, `openai`,
+                      `ollama`).
   `texts`           — sequential collection of input strings.
-  `opts`            — keyword opts forwarded to the underlying multimethod (e.g. `:type`)."
-  [embedding-model texts & opts]
-  (apply semantic-search/get-embeddings-batch embedding-model texts opts))
+  `opts`            — keyword/value pairs forwarded to the underlying multimethod (e.g. `:type :doc`).
+                      The underlying defmethods destructure with `& {:as opts}` so this must be passed as alternating
+                      kwargs, not a single trailing map."
+  [embedding-model texts & {:as opts}]
+  (apply semantic-search/get-embeddings-batch embedding-model texts (mapcat identity opts)))

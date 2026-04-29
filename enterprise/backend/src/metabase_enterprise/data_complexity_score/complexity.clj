@@ -455,7 +455,7 @@
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
   ;;; by many sub-score functions that each walk the collection, so making this reducible would
   ;;; re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
-  ;;; currently will currently consume.
+  ;;; currently consume.
   (let [total-timer (u/start-timer)]
     (try
       (let [{:keys [library universe metabot]}

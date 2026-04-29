@@ -8,9 +8,10 @@
    ;; `scoring-task-registered-test` verifies init.clj's actual wiring path.
    [metabase-enterprise.data-complexity-score.init]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
-   [metabase-enterprise.data-complexity-score.settings :as data-complexity-score.settings]
+   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
+   [metabase-enterprise.data-complexity-score.test-util :as test-util]
    [metabase-enterprise.embeddings.client :as embeddings]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
@@ -551,14 +552,15 @@
 
 (deftest ^:sequential synonym-source-default-opts-pin-minilm-via-ai-service-test
   (testing "at default settings, synonym-source produces the MiniLM-L6-v2 ai-service descriptor + names-split text variant"
-    (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)]
-      (is (= {:provider         "ai-service"
-              :model-name       "sentence-transformers/all-MiniLM-L6-v2"
-              :model-dimensions 384}
-             embedding-model-meta))
-      (is (= :names-split text-variant))
-      (is (fn? embedder)
-          "synonym-source returns a fresh provider-embedder for the descriptor"))))
+    (test-util/with-synonym-source []
+      (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)]
+        (is (= {:provider         "ai-service"
+                :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+                :model-dimensions 384}
+               embedding-model-meta))
+        (is (= :names-split text-variant))
+        (is (fn? embedder)
+            "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
@@ -600,12 +602,12 @@
 
 (deftest ^:sequential active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
-    (let [active-model {:provider "openai" :model-name "text-embedding-ada-002"}]
+    (let [active-model {:provider "openai" :model-name "text-embedding-ada-002" :vector-dimensions 1536}]
       (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
                                   (constantly {:pgvector   :mock
                                                :table-name "mock_table"
                                                :model      active-model})]
-        (is (= {:provider "openai" :model-name "text-embedding-ada-002"}
+        (is (= {:provider "openai" :model-name "text-embedding-ada-002" :model-dimensions 1536}
                (semantic-search/active-embedding-model))))))
   (testing "active-embedding-model returns nil when the index state has no model"
     (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
@@ -934,14 +936,14 @@
                                            data-complexity-scoring-last-fingerprint "stale"]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
             (#'task.complexity-score/run-scoring! "fresh-fp")
-            (is (= "fresh-fp" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "fresh-fp" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint stamped from the claim fingerprint, not re-sampled at commit time"))))
       (testing "failed publish → fingerprint stays at the stale value for the next retry"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
                                            data-complexity-scoring-last-fingerprint "stale"]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
             (#'task.complexity-score/run-scoring! "fresh-fp")
-            (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
@@ -955,9 +957,9 @@
                                            data-complexity-scoring-claim          ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
             (task.complexity-score/maybe-emit-boot-score!)
-            (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint unchanged — next boot/cron will retry the emission")
-            (is (= "" (data-complexity-score.settings/data-complexity-scoring-claim))
+            (is (= "" (settings/data-complexity-scoring-claim))
                 "scoring claim released so other paths can proceed without waiting for TTL"))))
       (testing "publish success → fingerprint advances to the new value (and claim is cleared)"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
@@ -965,9 +967,9 @@
                                            data-complexity-scoring-claim          ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
             (task.complexity-score/maybe-emit-boot-score!)
-            (is (not= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            (is (not= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint advanced to reflect the confirmed publish")
-            (is (= "" (data-complexity-score.settings/data-complexity-scoring-claim))
+            (is (= "" (settings/data-complexity-scoring-claim))
                 "scoring claim released after successful run")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-skips-when-another-path-holds-active-claim-test
@@ -988,9 +990,9 @@
             (task.complexity-score/maybe-emit-boot-score!)
             (is (false? @scoring-ran?)
                 "scoring skipped because another path already claimed the current fingerprint")
-            (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint untouched when the claim is skipped")
-            (is (= active-claim (data-complexity-score.settings/data-complexity-scoring-claim))
+            (is (= active-claim (settings/data-complexity-scoring-claim))
                 "other path's claim is preserved (we never took it, so we don't clear it)")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-reclaims-when-prior-claim-has-expired-test
@@ -1011,7 +1013,7 @@
             (task.complexity-score/maybe-emit-boot-score!)
             (is (true? @scoring-ran?)
                 "scoring ran because the prior claim had aged past the TTL")
-            (is (not= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            (is (not= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint advanced on successful publish after re-claim")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-does-not-clear-sibling-claim-after-ttl-takeover-test
@@ -1030,10 +1032,10 @@
                                            data-complexity-scoring-claim            ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores
                                       (fn [& _]
-                                        (data-complexity-score.settings/data-complexity-scoring-claim! sibling-claim)
+                                        (settings/data-complexity-scoring-claim! sibling-claim)
                                         (stub-result true))]
             (task.complexity-score/maybe-emit-boot-score!)
-            (is (= sibling-claim (data-complexity-score.settings/data-complexity-scoring-claim))
+            (is (= sibling-claim (settings/data-complexity-scoring-claim))
                 "replacement claim preserved — our release was a compare-and-clear and the owners didn't match")))))))
 
 (deftest ^:sequential cron-skips-when-boot-run-holds-active-claim-test
@@ -1057,7 +1059,7 @@
             (#'task.complexity-score/with-scoring-claim! {} #'task.complexity-score/run-scoring!)
             (is (false? @scoring-ran?)
                 "cron tick skipped because the boot run holds the scoring claim")
-            (is (= boot-claim (data-complexity-score.settings/data-complexity-scoring-claim))
+            (is (= boot-claim (settings/data-complexity-scoring-claim))
                 "boot's claim preserved — cron never took it, so it doesn't clear it")))))))
 
 (deftest ^:sequential complexity-scores-tags-publish-success-on-result-test

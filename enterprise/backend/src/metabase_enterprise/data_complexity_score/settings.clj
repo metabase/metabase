@@ -38,7 +38,7 @@
         "the better-calibrated signal — see "
         "https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb "
         "— but the search-index path does not require ai-service to be reachable, which is "
-        "useful for instances where it has not been deployed."))
+        "useful for instances where it is not deployed."))
   :encryption :no
   :visibility :admin
   :default    false
