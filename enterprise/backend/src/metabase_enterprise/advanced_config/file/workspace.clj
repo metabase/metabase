@@ -1,22 +1,23 @@
 (ns metabase-enterprise.advanced-config.file.workspace
-  "Child-instance loader for the `:workspace` section of `config.yml`.
+  "Loader for the `:workspace` section of `config.yml`.
 
-   On boot, materializes the workspace as `:model/Workspace` + `:model/WorkspaceDatabase`
-   rows in `:provisioned` state. The parent has already created the warehouse-side
-   schema/user/grants; the child's job is to record that fact so existing read paths
-   (`db-workspace-schema`, the QP middleware, the transform write-redirection hook)
-   resolve workspace-mode correctly.
+   On boot, parses the section and stores it in the in-process atom
+   `metabase-enterprise.workspaces.core/workspace-instance-config`. That atom is the
+   instance-side source of truth for `db-workspace-schema` and the
+   `/api/workspace-instance/current` endpoint.
 
-   Idempotent on first match: re-applying the same config is a no-op. But re-applying
-   a *different* config — different workspace name, or a different set of databases —
-   throws. There is no rename, no in-place workspace removal: the only legitimate way
-   to mutate a workspace is to deprovision on the parent and re-emit `config.yml` to a
-   fresh child. Silent reconciliation would mask operator errors and leave stale rows
-   pointing at warehouse schemas the parent no longer owns."
+   The atom is fresh per process — every boot re-reads `config.yml` and replaces the
+   prior value. There is no durable storage of instance-side workspace state, by
+   design: the file IS the source of truth, and a different file at boot means a
+   different workspace, no questions asked. (This deliberately differs from the
+   manager-side `:model/Workspace` rows, which are durable because they're written
+   by CRUD endpoints, not by config.)"
   (:require
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.workspaces.core :as ws]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,8 +38,8 @@
   (s/keys :req-un [::input_schemas ::output_schema]))
 
 (s/def ::databases
-  ;; map of database-name -> per-database workspace config. Keys may be
-  ;; keywords or strings depending on YAML parser flags; both are accepted.
+  ;; map of database-name -> per-database workspace config. Keys may be keywords or
+  ;; strings depending on YAML parser flags; both are accepted.
   (s/and (s/map-of (s/or :kw keyword? :str string?) ::workspace-database-config)
          seq))
 
@@ -49,8 +50,8 @@
   (s/keys :req-un [::name ::databases]))
 
 (defn valid-workspace-section?
-  "Predicate used by the file-level loader to decide whether `(:workspace m)` is
-  a structurally-valid bring-up manifest. Only a valid section opens the
+  "Predicate used by the file-level loader to decide whether `(:workspace m)` is a
+  structurally-valid bring-up manifest. Only a valid section opens the
   config-text-file gate for OSS instances — a typo or empty section must not."
   [section-config]
   (s/valid? ::config-file-spec section-config))
@@ -58,6 +59,8 @@
 (defmethod advanced-config.file.i/section-spec :workspace
   [_section-name]
   (s/spec ::config-file-spec))
+
+;;; -------------------------------- Loader ---------------------------------
 
 (defn- ordered->plain
   "snakeyaml's parsed maps are ordered/lazy; re-walk into plain Clojure maps."
@@ -74,90 +77,6 @@
       (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
                       {:database-name db-name}))))
 
-(defn- resolve-creator-id
-  "Pick a superuser to attribute the workspace to. Prefers the bundled
-   `workspace@workspace.local` admin (created by the `:users` section in the
-   same config.yml). Falls back to any superuser. Throws if none exists —
-   a workspace can't be ownerless."
-  []
-  (or (t2/select-one-pk :model/User :email "workspace@workspace.local")
-      (t2/select-one-pk :model/User :is_superuser true)
-      (throw (ex-info "Cannot bootstrap workspace from config.yml: no superuser exists. Ensure the :users section runs before :workspace."
-                      {}))))
-
-(defn- existing-workspace-database
-  "Return the existing WorkspaceDatabase row for (workspace-id, db-id), or nil."
-  [workspace-id db-id]
-  (t2/select-one :model/WorkspaceDatabase
-                 :workspace_id workspace-id
-                 :database_id  db-id))
-
-(defn- upsert-workspace-database!
-  "Insert a `:provisioned` WorkspaceDatabase row, or no-op if one already exists.
-   `output-schema` comes from config.yml — the parent already created the warehouse
-   schema/user/grants under that name, so we record the fact rather than running
-   `provision!`."
-  [workspace-id db-id {:keys [input_schemas output_schema]}]
-  (when-not (existing-workspace-database workspace-id db-id)
-    (t2/insert! :model/WorkspaceDatabase
-                {:workspace_id     workspace-id
-                 :database_id      db-id
-                 :database_details {}
-                 :input_schemas    (vec input_schemas)
-                 :output_schema    output_schema
-                 :status           :provisioned})))
-
-(defn- find-or-create-workspace!
-  "Idempotent on `:name`: returns the existing workspace's id when one with the
-   given name already exists, otherwise inserts a fresh row."
-  [workspace-name creator-id]
-  (or (t2/select-one-pk :model/Workspace :name workspace-name)
-      (t2/insert-returning-pk! :model/Workspace
-                               {:name       workspace-name
-                                :creator_id creator-id})))
-
-(defn- assert-no-stale-workspaces!
-  "Refuse to load if any existing `:model/Workspace` row has a name different from
-  the one in the new `config.yml`. There is no rename in this workflow — a
-  divergent name means the operator either pointed the child at a different
-  workspace's config (operator error) or a previous workspace wasn't cleaned up
-  (also operator error, requires fresh child)."
-  [new-name]
-  (let [existing-names (t2/select-fn-set :name :model/Workspace)]
-    (when (seq (disj existing-names new-name))
-      (throw (ex-info (str "config.yml does not match app-DB: workspace(s) "
-                           (pr-str (vec (disj existing-names new-name)))
-                           " exist locally but the new config declares "
-                           (pr-str new-name)
-                           ". Deprovision the workspace on the parent and "
-                           "re-bootstrap the child instance.")
-                      {:existing-workspace-names (vec existing-names)
-                       :new-workspace-name       new-name})))))
-
-(defn- assert-database-set-matches!
-  "If a workspace with `workspace-name` already exists, refuse to load when the
-  set of `database_id`s on its existing `WorkspaceDatabase` rows differs from
-  the new config. First load (no rows yet) passes through.
-
-  `new-db-ids` is the set of resolved DB ids declared in the new config."
-  [workspace-name new-db-ids]
-  (when-let [workspace-id (t2/select-one-pk :model/Workspace :name workspace-name)]
-    (let [existing-db-ids (t2/select-fn-set :database_id :model/WorkspaceDatabase
-                                            :workspace_id workspace-id)]
-      (when (and (seq existing-db-ids)
-                 (not= existing-db-ids new-db-ids))
-        (throw (ex-info (str "config.yml does not match app-DB: workspace "
-                             (pr-str workspace-name)
-                             " exists with database ids "
-                             (pr-str (sort existing-db-ids))
-                             " but the new config declares "
-                             (pr-str (sort new-db-ids))
-                             ". Deprovision the workspace on the parent and "
-                             "re-bootstrap the child instance.")
-                        {:workspace-name  workspace-name
-                         :existing-db-ids existing-db-ids
-                         :new-db-ids      new-db-ids}))))))
-
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
@@ -168,29 +87,25 @@
                                   :output_schema \"<schema>\"}
                   ...}}
 
-   For each database entry, resolves the db-name to a `:model/Database` id and
-   inserts (idempotently) a `:provisioned` WorkspaceDatabase row.
-
-   Refuses (throws `ex-info`) when the new config diverges from existing app-DB
-   rows: a different workspace name, or a different set of databases for the
-   matching workspace. Idempotent identity-match still passes through unchanged."
+   Resolves each database name to a `:model/Database` id (the canonical Database
+   rows are populated by the `:databases` section, which runs earlier — see
+   `advanced-config.file/initialize!`) and stores the result in
+   `workspaces.core/workspace-instance-config` keyed by db-id."
   [section-config]
   (let [{:keys [name databases]} (ordered->plain section-config)
-        ;; Resolve all referenced databases up-front so unknown-name errors fire
-        ;; before any other validation work.
-        resolved (mapv (fn [[db-name-kw wsd-config]]
-                         {:db-id      (resolve-db-id (clojure.core/name db-name-kw))
-                          :wsd-config wsd-config})
-                       databases)
-        new-db-ids (set (map :db-id resolved))]
-    (assert-no-stale-workspaces! name)
-    (assert-database-set-matches! name new-db-ids)
-    (let [creator-id   (resolve-creator-id)
-          workspace-id (find-or-create-workspace! name creator-id)]
-      (doseq [{:keys [db-id wsd-config]} resolved]
-        (upsert-workspace-database! workspace-id db-id wsd-config))
-      {:workspace-id   workspace-id
-       :database-count (count databases)})))
+        resolved-databases (into {}
+                                 (map (fn [[db-name-kw wsd-config]]
+                                        (let [db-name (clojure.core/name db-name-kw)
+                                              db-id   (resolve-db-id db-name)]
+                                          [db-id {:input_schemas (vec (:input_schemas wsd-config))
+                                                  :output_schema (:output_schema wsd-config)}])))
+                                 databases)]
+    (ws/set-instance-workspace! {:name      name
+                                 :databases resolved-databases})
+    (log/infof "Loaded workspace %s from config.yml with %d database(s)"
+               (pr-str name) (count resolved-databases))
+    {:workspace-name name
+     :database-count (count resolved-databases)}))
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]

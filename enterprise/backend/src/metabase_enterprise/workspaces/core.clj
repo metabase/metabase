@@ -61,13 +61,56 @@
   []
   (workspace/list-workspaces))
 
+;;; ------------------------ Instance-side state (config.yml) -----------------------
+;;;
+;;; The child instance's workspace state is held in this atom, populated at boot by
+;;; the `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`).
+;;; It is *not* the same as the manager-side `:model/Workspace` rows: those are written
+;;; by the manager's CRUD endpoints, and using them for instance-side reads conflates
+;;; two operational surfaces — on a single-instance dev box it lets the manager's
+;;; workspaces leak into `/api/workspace-instance/current`.
+;;;
+;;; The atom is fresh per process — on each boot it's repopulated from `config.yml`,
+;;; or empty if no `:workspace` section is present.
+
+(defonce ^{:doc "The single workspace loaded into this instance from `config.yml`, or nil
+  when no workspace was loaded.
+
+  Shape:
+    {:name <workspace-name>
+     :databases {<database-id> {:input_schemas [...]
+                                :output_schema <schema>}
+                 ...}}"}
+  workspace-instance-config
+  (atom nil))
+
+(defn set-instance-workspace!
+  "Set the in-process workspace config for this instance. Called by the `:workspace`
+  section loader at boot. Replaces any prior value."
+  [config]
+  (reset! workspace-instance-config config))
+
+(defn clear-instance-workspace!
+  "Clear the in-process workspace config. Mostly for tests."
+  []
+  (reset! workspace-instance-config nil))
+
+(defn instance-workspace
+  "Return the workspace loaded on this instance, or nil if none."
+  []
+  @workspace-instance-config)
+
 (defn db-workspace-schema
-  "Return the workspace-isolated output schema name for `db-id`, or nil when no
-   provisioned workspace database exists for that database."
+  "Return the workspace-isolated output schema name for `db-id` on this instance,
+   or nil when this instance is not running a workspace, or the workspace has no
+   entry for `db-id`. Reads from the in-process atom populated by `config.yml`.
+
+   This is the instance-side read that gates transform write redirection. The
+   manager-side `:model/WorkspaceDatabase` rows are NOT consulted — they belong
+   to the manager's CRUD surface and shouldn't influence what runs on the
+   instance's transforms."
   [db-id]
-  (t2/select-one-fn :output_schema :model/WorkspaceDatabase
-                    :database_id db-id
-                    :status :provisioned))
+  (get-in @workspace-instance-config [:databases db-id :output_schema]))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."

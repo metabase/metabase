@@ -5,6 +5,7 @@
    and `record-remapping!`."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
@@ -23,26 +24,16 @@
        (finally (ws.table-remapping/clear-mappings-for-db! db-id))))
 
 (defn- with-provisioned-workspace-db
-  "Insert a `:provisioned` :model/WorkspaceDatabase row pointing at `db-id` with
-   `output-schema`, run `f`, then delete the row and its parent workspace.
-   While `f` runs, `metabase-enterprise.workspaces.core/db-workspace-schema`
-   resolves to `output-schema` for `db-id` — the new home of what was formerly
-   a singleton config atom."
+  "Set the in-process workspace atom so `db-workspace-schema` returns
+   `output-schema` for `db-id`, run `f`, clear the atom on the way out."
   [db-id output-schema f]
-  (let [ws-id (t2/insert-returning-pk! :model/Workspace
-                                       {:name (str "table-remapping-test-ws-" (random-uuid))})]
-    (try
-      (t2/insert! :model/WorkspaceDatabase
-                  {:workspace_id     ws-id
-                   :database_id      db-id
-                   :database_details {}
-                   :output_schema    output-schema
-                   :input_schemas    []
-                   :status           :provisioned})
-      (f)
-      (finally
-        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
-        (t2/delete! :model/Workspace :id ws-id)))))
+  (try
+    (ws/set-instance-workspace! {:name "table-remapping-test-ws"
+                                 :databases {db-id {:input_schemas []
+                                                    :output_schema output-schema}}})
+    (f)
+    (finally
+      (ws/clear-instance-workspace!))))
 
 (deftest remap-table-returns-nil-when-no-mapping-test
   (clean-db-fixture

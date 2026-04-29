@@ -49,31 +49,38 @@
                @recorded)
             "record-remapping! receives the canonical (schema, name) and the same name as to-name")))))
 
+(defn- with-instance-workspace-for-db!
+  "Set the in-process workspace atom so that `db-workspace-schema` returns
+   `output-schema` for the test database, run `body-fn`, clear it on the way out."
+  [output-schema body-fn]
+  (try
+    (ws/set-instance-workspace! {:name "test-ws"
+                                 :databases {(mt/id) {:input_schemas []
+                                                      :output_schema output-schema}}})
+    (body-fn)
+    (finally
+      (ws/clear-instance-workspace!))))
+
 (deftest resolve-transform-target-end-to-end-test
   (testing "end-to-end against the test app DB: a remapping row appears after the hook fires"
-    (mt/with-temp [:model/Workspace         {ws-id :id} {:name (str "ws-" (random-uuid))}
-                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
-                                               :database_id      (mt/id)
-                                               :database_details {}
-                                               :output_schema    "ws_test_schema"
-                                               :input_schemas    []
-                                               :status           :provisioned}]
-      (try
-        (ws.table-remapping/clear-mappings-for-db! (mt/id))
-        (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}
-              result (ws.transform-hooks/resolve-transform-target (mt/id) target)]
-          (is (= {:schema "ws_test_schema" :name "ORDERS" :type :table}
-                 result))
-          (testing "TableRemapping row was inserted with the canonical (schema, name) on the from-side"
-            (let [row (t2/select-one :model/TableRemapping
-                                     :database_id     (mt/id)
-                                     :from_schema     "PUBLIC"
-                                     :from_table_name "ORDERS")]
-              (is (some? row))
-              (is (= "ws_test_schema" (:to_schema row)))
-              (is (= "ORDERS"         (:to_table_name row))))))
-        (finally
-          (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}
+                result (ws.transform-hooks/resolve-transform-target (mt/id) target)]
+            (is (= {:schema "ws_test_schema" :name "ORDERS" :type :table}
+                   result))
+            (testing "TableRemapping row was inserted with the canonical (schema, name) on the from-side"
+              (let [row (t2/select-one :model/TableRemapping
+                                       :database_id     (mt/id)
+                                       :from_schema     "PUBLIC"
+                                       :from_table_name "ORDERS")]
+                (is (some? row))
+                (is (= "ws_test_schema" (:to_schema row)))
+                (is (= "ORDERS"         (:to_table_name row))))))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
 (defn- with-stubbed-execute-multimethod!
   "Replace `transforms.i/execute!` with a stub that captures the transform map it receives.
@@ -89,39 +96,34 @@
 
 (deftest python-transforms-inherit-target-rewrite-test
   (testing "Python transforms see the rewritten target via the wrapper-level gate"
-    (mt/with-temp [:model/Workspace         {ws-id :id} {:name (str "ws-" (random-uuid))}
-                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
-                                               :database_id      (mt/id)
-                                               :database_details {}
-                                               :output_schema    "ws_test_schema"
-                                               :input_schemas    []
-                                               :status           :provisioned}]
-      (try
-        (ws.table-remapping/clear-mappings-for-db! (mt/id))
-        (let [captured        (atom nil)
-              python-transform {:id     999
-                                :source {:type :python}
-                                :target {:database (mt/id)
-                                         :schema   "PUBLIC"
-                                         :name     "FOO"
-                                         :type     :table}}]
-          (with-stubbed-execute-multimethod!
-            captured
-            (fn []
-              (transforms.execute/execute! python-transform)))
-          (is (= "ws_test_schema" (get-in @captured [:target :schema]))
-              "Python transform's :target.schema is rewritten before dispatch")
-          (is (= "FOO" (get-in @captured [:target :name]))
-              ":name is preserved")
-          (testing "TableRemapping row was recorded for the Python path too"
-            (let [row (t2/select-one :model/TableRemapping
-                                     :database_id     (mt/id)
-                                     :from_schema     "PUBLIC"
-                                     :from_table_name "FOO")]
-              (is (some? row) "Python target rewrite records a TableRemapping row")
-              (is (= "ws_test_schema" (:to_schema row))))))
-        (finally
-          (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (let [captured        (atom nil)
+                python-transform {:id     999
+                                  :source {:type :python}
+                                  :target {:database (mt/id)
+                                           :schema   "PUBLIC"
+                                           :name     "FOO"
+                                           :type     :table}}]
+            (with-stubbed-execute-multimethod!
+              captured
+              (fn []
+                (transforms.execute/execute! python-transform)))
+            (is (= "ws_test_schema" (get-in @captured [:target :schema]))
+                "Python transform's :target.schema is rewritten before dispatch")
+            (is (= "FOO" (get-in @captured [:target :name]))
+                ":name is preserved")
+            (testing "TableRemapping row was recorded for the Python path too"
+              (let [row (t2/select-one :model/TableRemapping
+                                       :database_id     (mt/id)
+                                       :from_schema     "PUBLIC"
+                                       :from_table_name "FOO")]
+                (is (some? row) "Python target rewrite records a TableRemapping row")
+                (is (= "ws_test_schema" (:to_schema row))))))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
 (deftest non-workspaced-db-target-passthrough-via-execute-test
   (testing "When no WorkspaceDatabase is provisioned, the wrapper passes target through unchanged"
