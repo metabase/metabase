@@ -13,6 +13,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { getIcon } from "metabase/common/utils/icon";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -21,7 +22,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type { CardId, CollectionId } from "metabase-types/api";
 

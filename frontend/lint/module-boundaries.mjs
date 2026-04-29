@@ -34,12 +34,22 @@ const elements = [
     mode: "full",
     enforceOutgoing: true,
   }),
-  // basic
+
+  // mlv1/mlv2 need to be in this order
+  // for precedence
   createElement({
     type: "basic",
+    name: "mlv1",
+    pattern: "frontend/src/metabase-lib/v1/**",
+  }),
+  createElement({
+    type: "lib",
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/**",
+    enforceOutgoing: true,
   }),
+
+  // basic
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api" }),
   // shared

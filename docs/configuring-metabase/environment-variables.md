@@ -101,13 +101,22 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of embed path, query parameters, user agent, and IP address of who views your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help us improve.
+Enable the collection of anonymous usage data in order to help Metabase improve..
 
 ### `MB_API_KEY`
 
