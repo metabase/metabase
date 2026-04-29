@@ -20,17 +20,3 @@ export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
     ensureMetabaseProviderPropsStore().getState().props?.pluginsConfig || {}
   );
 };
-
-export const MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN: {
-  handleLink: HandleLinkFn;
-} = {
-  handleLink: (_url: string) => Promise.resolve({ handled: false }),
-};
-
-/**
- * Invokes the handleLink plugin if configured in the host app and returns an object with a 'handled' property, indicating if the host app handled the link.
- * For iframe SDK, this sends a postMessage to the parent window and awaits the response.
- */
-export async function handleLinkSdkPlugin(url: string) {
-  return await MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN.handleLink(url);
-}

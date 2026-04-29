@@ -7,6 +7,7 @@ import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { resetPluginRegistry } from "metabase/lib/plugins-v2";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -22,10 +23,11 @@ describe("formatUrl", () => {
 
   afterEach(() => {
     ensureMetabaseProviderPropsStore().cleanup();
+    resetPluginRegistry();
     jest.restoreAllMocks();
   });
 
-  it("calls handleLinkSdkPlugin and prevents default in SDK", async () => {
+  it("calls the customer handleLink plugin and prevents default in SDK", async () => {
     mockSettings({
       "token-features": createMockTokenFeatures({ embedding_sdk: true }),
     });
@@ -56,11 +58,14 @@ describe("formatUrl", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
-  it("does not call handleLinkSdkPlugin in core app", async () => {
+  it("does not call the customer handleLink plugin in core app", async () => {
     await mockIsEmbeddingSdk(false);
 
     const url = "https://example.com/dashboard/2";
     const handleLink = jest.fn();
+    const windowOpen = jest
+      .spyOn(window, "open")
+      .mockImplementation(() => null);
 
     ensureMetabaseProviderPropsStore().setProps({
       pluginsConfig: { handleLink },
@@ -74,13 +79,18 @@ describe("formatUrl", () => {
     render(node);
 
     const link = screen.getByRole("link");
-    // Manually creating the event instead of using fireEvent.click because we need to inspect
-    // the defaultPrevented property of the event.
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
     link.dispatchEvent(event);
 
+    // The hook is always wired now; the SDK override gates on isEmbeddingSdk()
+    // and falls through to the default (window.open) when not in the SDK runtime,
+    // so the customer plugin must not be called.
     expect(handleLink).not.toHaveBeenCalled();
-    expect(event.defaultPrevented).toBe(false);
+    expect(windowOpen).toHaveBeenCalledWith(
+      url,
+      "_blank",
+      "noopener,noreferrer",
+    );
   });
 
   it("should return a string when not in jsx mode", () => {

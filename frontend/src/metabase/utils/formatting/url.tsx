@@ -1,10 +1,10 @@
 import cx from "classnames";
 
-import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { hook } from "metabase/lib/plugins-v2";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
@@ -53,21 +53,25 @@ export function formatUrl(value: string, options: OptionsType = {}) {
       );
     }
 
-    const onClickCaptureInSdk = isEmbeddingSdk()
-      ? {
-          onClickCapture: async (e: React.MouseEvent<HTMLAnchorElement>) => {
-            e.preventDefault(); // Prevent immediately while we await the response
-            const result = await handleLinkSdkPlugin(url);
-            if (!result.handled) {
-              // Parent didn't handle it - proceed with default navigation
-              window.open(url, "_blank", "noopener");
-            }
-          },
-        }
-      : {};
+    const onClickCapture = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.stopPropagation();
+      e.preventDefault();
+      await hook(
+        "dashboard.openLink",
+        ({ url }) => {
+          window.open(url, "_blank", "noopener,noreferrer");
+          return Promise.resolve();
+        },
+        { url },
+      );
+    };
 
     return (
-      <ExternalLink className={className} href={url} {...onClickCaptureInSdk}>
+      <ExternalLink
+        className={className}
+        href={url}
+        onClickCapture={onClickCapture}
+      >
         {text}
       </ExternalLink>
     );

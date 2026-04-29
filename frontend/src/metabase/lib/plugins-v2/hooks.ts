@@ -12,6 +12,16 @@ type HookEntry = {
 };
 
 const registry = new Map<string, HookEntry>();
+const activatedPlugins = new Set<string>();
+
+/**
+ * Clear all registered overrides/extends and forget which plugins have been
+ * activated. Intended for tests and HMR — never call from production code.
+ */
+export function resetPluginRegistry(): void {
+  registry.clear();
+  activatedPlugins.clear();
+}
 
 function getOrCreate(name: string): HookEntry {
   let entry = registry.get(name);
@@ -81,14 +91,13 @@ export function createPlugin(
   name: string,
   setup: (api: CreatePluginApi) => void,
 ): Plugin {
-  let activated = false;
   return {
     name,
     activate() {
-      if (activated) {
+      if (activatedPlugins.has(name)) {
         return;
       }
-      activated = true;
+      activatedPlugins.add(name);
       setup({
         override: (hookName, impl) => {
           const entry = getOrCreate(hookName as string);

@@ -2,6 +2,7 @@ import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { resetPluginRegistry } from "metabase/lib/plugins-v2";
 import {
   getUrlTarget,
   open,
@@ -62,6 +63,7 @@ describe("open()", () => {
   afterEach(() => {
     jest.restoreAllMocks();
     ensureMetabaseProviderPropsStore().cleanup();
+    resetPluginRegistry();
   });
 
   it("should prevent default behavior when handleLink returns { handled: true }", async () => {

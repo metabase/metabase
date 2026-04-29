@@ -3,13 +3,19 @@ import querystring from "querystring";
 import type { LocationDescriptor, LocationDescriptorObject } from "history";
 import _ from "underscore";
 
-import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { hook } from "metabase/lib/plugins-v2";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
+
+declare module "metabase/lib/plugins-v2/types" {
+  interface HookRegistry {
+    "dashboard.openLink": (params: { url: string }) => Promise<void>;
+  }
+}
 
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
@@ -149,33 +155,31 @@ export async function open(
 ): Promise<void> {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  // In the sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk()) {
-    const result = await handleLinkSdkPlugin(url);
-    if (result.handled) {
-      // Plugin handled the link, don't continue with default behavior
-      return;
-    }
-  }
-
-  if (shouldOpenInBlankWindow(url, options)) {
-    openInBlankWindow(url);
-  } else if (isSameOrigin(url)) {
-    if (!isMetabaseUrl(url)) {
-      clickLink(url, false);
-    } else if (openInSameOrigin) {
-      const location = getLocation(url);
-      if (isObject(location) && "pathname" in location) {
-        openInSameOrigin(location);
+  await hook(
+    "dashboard.openLink",
+    ({ url }) => {
+      if (shouldOpenInBlankWindow(url, options)) {
+        openInBlankWindow(url);
+      } else if (isSameOrigin(url)) {
+        if (!isMetabaseUrl(url)) {
+          clickLink(url, false);
+        } else if (openInSameOrigin) {
+          const location = getLocation(url);
+          if (isObject(location) && "pathname" in location) {
+            openInSameOrigin(location);
+          } else {
+            openInSameWindow(url);
+          }
+        } else {
+          openInSameWindow(url);
+        }
       } else {
         openInSameWindow(url);
       }
-    } else {
-      openInSameWindow(url);
-    }
-  } else {
-    openInSameWindow(url);
-  }
+      return Promise.resolve();
+    },
+    { url },
+  );
 }
 
 export function openInBlankWindow(url: string): void {
