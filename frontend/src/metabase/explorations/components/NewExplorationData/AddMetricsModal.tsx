@@ -419,7 +419,7 @@ function DimensionList({
               }}
               onClick={() => onToggle(dimension)}
             >
-              {dimension["display-name"]}
+              {dimension.display_name}
             </UnstyledButton>
           );
         })}

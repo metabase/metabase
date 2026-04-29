@@ -84,8 +84,8 @@
                                          :type          :metric
                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (let [hydrated (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
-              dim-name (some-> hydrated :dimensions first :display-name)]
-          (is (some? dim-name) "metric should have at least one hydrated dimension with a display-name")
+              dim-name (some-> hydrated :dimensions first :display_name)]
+          (is (some? dim-name) "metric should have at least one hydrated dimension with a display_name")
           (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
                                                :q (subs dim-name 0 (min 3 (count dim-name))))]
             (is (some #(= (:id metric) (:id %)) (:metrics response))

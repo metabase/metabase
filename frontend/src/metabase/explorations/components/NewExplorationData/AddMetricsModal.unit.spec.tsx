@@ -22,19 +22,19 @@ import { AddMetricsModal } from "./AddMetricsModal";
 
 const dimRevenue = createMockMetricDimension({
   id: "dim-revenue",
-  "display-name": "Customer size",
+  display_name: "Customer size",
 });
 const dimChurn = createMockMetricDimension({
   id: "dim-churn",
-  "display-name": "Plan",
+  display_name: "Plan",
 });
 const dimShared = createMockMetricDimension({
   id: "dim-shared",
-  "display-name": "Country",
+  display_name: "Country",
 });
 const dimLibrary = createMockMetricDimension({
   id: "dim-library",
-  "display-name": "Tier",
+  display_name: "Tier",
 });
 
 const metricRevenue = createMockMetric({

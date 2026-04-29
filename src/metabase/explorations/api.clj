@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metrics.api :as metrics.api]
    [metabase.metrics.core :as metrics]
    [metabase.queries.models.card :as card]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
@@ -278,10 +279,12 @@
         slimmed        (mapv (fn [m]
                                (-> m
                                    (assoc :dimension_ids (mapv :id (:dimensions m)))
-                                   (dissoc :dimensions)))
+                                   (dissoc :dimensions)
+                                   (update :dimension_mappings
+                                           metrics.api/snake-case-dimension-mappings)))
                              filtered)]
     {:metrics    slimmed
-     :dimensions (dedupe-dimensions filtered)}))
+     :dimensions (metrics.api/snake-case-dimensions (dedupe-dimensions filtered))}))
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."

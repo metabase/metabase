@@ -8,9 +8,9 @@ export const createMockMetricDimension = (
   opts?: Partial<MetricDimension>,
 ): MetricDimension => ({
   id: "1",
-  "display-name": "Dimension",
-  "effective-type": "type/Text",
-  "semantic-type": null,
+  display_name: "Dimension",
+  effective_type: "type/Text",
+  semantic_type: null,
   ...opts,
 });
 

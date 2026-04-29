@@ -19,9 +19,9 @@ export type MetricDimensionSource = {
 
 export type MetricDimension = {
   id: DimensionId;
-  "display-name": string;
-  "effective-type": string;
-  "semantic-type": string | null;
+  display_name: string;
+  effective_type: string;
+  semantic_type: string | null;
   group?: MetricDimensionGroup;
   sources?: MetricDimensionSource[];
 };

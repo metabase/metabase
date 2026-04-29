@@ -1,6 +1,7 @@
 (ns metabase.metrics.api
   "/api/metric endpoints."
   (:require
+   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib-metric.core :as lib-metric]
@@ -74,13 +75,39 @@
      :offset offset
      :data   metrics}))
 
+(def dimension-key-renames
+  "Map kebab-case keys carried over from JSON-stored dimensions to the snake_case
+   wire format used by the rest of the API. Internal Clojure code (lib_metric,
+   sync, perms) keeps the kebab keys; conversion happens here at the response edge."
+  {:display-name     :display_name
+   :effective-type   :effective_type
+   :semantic-type    :semantic_type
+   :has-field-values :has_field_values
+   :status-message   :status_message})
+
+(def dimension-mapping-key-renames
+  "Map kebab-case keys carried over from JSON-stored dimension_mappings to the
+   snake_case wire format used by the rest of the API."
+  {:dimension-id :dimension_id
+   :table-id     :table_id})
+
+(defn snake-case-dimensions
+  "Rename dimension keys from kebab-case to snake_case for API responses."
+  [dims]
+  (mapv #(set/rename-keys % dimension-key-renames) (or dims [])))
+
+(defn snake-case-dimension-mappings
+  "Rename dimension_mapping keys from kebab-case to snake_case for API responses."
+  [mappings]
+  (mapv #(set/rename-keys % dimension-mapping-key-renames) (or mappings [])))
+
 (mu/defn- hydrated-metric [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
   (-> (t2/select-one :model/Card :id id :type "metric")
       metrics.perms/filter-dimensions-for-user
-      (update :dimensions #(or % []))
-      (update :dimension_mappings #(or % []))))
+      (update :dimensions snake-case-dimensions)
+      (update :dimension_mappings snake-case-dimension-mappings)))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.

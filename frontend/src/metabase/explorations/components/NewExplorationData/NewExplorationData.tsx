@@ -56,9 +56,9 @@ function buildCreateExplorationRequest(
     })),
     dimensions: dimensions.map((d) => ({
       dimension_id: d.id,
-      display_name: d["display-name"],
-      effective_type: d["effective-type"],
-      semantic_type: d["semantic-type"],
+      display_name: d.display_name,
+      effective_type: d.effective_type,
+      semantic_type: d.semantic_type,
     })),
     timeline_ids: timelines.map((tl) => tl.id),
   };
@@ -240,7 +240,7 @@ interface PillItem {
 function dimensionToPillItem(item: MetricDimension): PillItem {
   return {
     id: item.id,
-    name: item["display-name"],
+    name: item.display_name,
   };
 }
 
