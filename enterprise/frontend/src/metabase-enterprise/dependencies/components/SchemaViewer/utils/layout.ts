@@ -17,6 +17,29 @@ const COLLISION_Y_STEP = 100;
 // Maximum number of Y steps to try before giving up on a given column
 const MAX_COLLISION_Y_STEPS = 40;
 
+type NodeDimensions = {
+  width: number;
+  height: number;
+};
+
+type NeighborPlacement = {
+  neighborId: string;
+  prefersRight: boolean;
+};
+
+type OccupiedBox = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+type PlacementState = {
+  columnsByX: Map<number, OccupiedBox[]>;
+  dimensionsById: Map<string, NodeDimensions>;
+  maxRight: number;
+};
+
 export function getNodesWithPositions(
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
@@ -92,63 +115,29 @@ export function mergeWithExistingPositions(
   // Track which IDs are already positioned (existing tables, plus any new
   // tables that have been placed in the iteration below).
   const placedById = new Map<string, SchemaViewerFlowNode>();
+  const placementState = createPlacementState(incoming);
   for (const node of incoming) {
     const existing = currentById.get(node.id);
     if (existing != null) {
       // Preserve position and style (keeps opacity: 1, measured width/height).
-      placedById.set(node.id, {
+      const positionedNode = {
         ...node,
         position: existing.position,
         style: existing.style,
-      });
+      };
+      placedById.set(node.id, positionedNode);
+      registerPlacedNode(positionedNode, placementState);
     }
   }
 
   // Remaining = new tables still to position.
-  let remaining = incoming.filter((n) => !currentById.has(n.id));
-
-  // Iterate in passes: a new node is placeable once at least one of its
-  // connected neighbors has been placed (either originally existing or
-  // positioned in an earlier pass).
-  let progressed = true;
-  while (remaining.length > 0 && progressed) {
-    progressed = false;
-    const stillRemaining: SchemaViewerFlowNode[] = [];
-    for (const node of remaining) {
-      const connectingEdge = edges.find(
-        (e) =>
-          (e.source === node.id && placedById.has(e.target)) ||
-          (e.target === node.id && placedById.has(e.source)),
-      );
-      if (connectingEdge == null) {
-        stillRemaining.push(node);
-        continue;
-      }
-      const neighborId =
-        connectingEdge.source === node.id
-          ? connectingEdge.target
-          : connectingEdge.source;
-      const neighbor = placedById.get(neighborId)!;
-      // rankdir: LR — target sits to the right of source.
-      const prefersRight = connectingEdge.target === node.id;
-      const position = findNonCollidingPosition(
-        node,
-        neighbor,
-        prefersRight,
-        placedById,
-      );
-      placedById.set(node.id, {
-        ...node,
-        position,
-        style: {
-          ...node.style,
-          opacity: 1, // Visible immediately; no Dagre pass needed.
-        },
-      });
-      progressed = true;
-    }
-    remaining = stillRemaining;
-  }
+  const adjacency = buildAdjacency(edges);
+  const remaining = placeNodesByAdjacency(
+    incoming.filter((n) => !currentById.has(n.id)),
+    placedById,
+    adjacency,
+    placementState,
+  );
 
   // If any new node has no reachable neighbor in the current graph,
   // give up and let Dagre handle it.
@@ -174,21 +163,26 @@ function findNonCollidingPosition(
   newNode: SchemaViewerFlowNode,
   neighbor: SchemaViewerFlowNode,
   prefersRight: boolean,
-  placed: Map<string, SchemaViewerFlowNode>,
+  placementState: PlacementState,
 ): { x: number; y: number } {
-  const width = getStyleDimension(newNode, "width") ?? NODE_WIDTH;
-  const height = getStyleDimension(newNode, "height") ?? HEADER_HEIGHT;
-  const xOffset = NODE_WIDTH + DAGRE_RANK_SEP;
+  const { width, height } = getNodeDimensions(
+    newNode,
+    placementState.dimensionsById,
+  );
+  const { width: neighborWidth } = getNodeDimensions(
+    neighbor,
+    placementState.dimensionsById,
+  );
   const preferredX = prefersRight
-    ? neighbor.position.x + xOffset
-    : neighbor.position.x - xOffset;
+    ? neighbor.position.x + neighborWidth + DAGRE_RANK_SEP
+    : neighbor.position.x - width - DAGRE_RANK_SEP;
   const alternateX = prefersRight
-    ? neighbor.position.x - xOffset
-    : neighbor.position.x + xOffset;
+    ? neighbor.position.x - width - DAGRE_RANK_SEP
+    : neighbor.position.x + neighborWidth + DAGRE_RANK_SEP;
   const baseY = neighbor.position.y;
 
   const fits = (x: number, y: number) =>
-    !collidesWithAny(x, y, width, height, placed);
+    !collidesWithAny(x, y, width, height, placementState.columnsByX);
 
   // Try increasing Y offsets, checking both columns at each step. Within a
   // given Y step, preferred side is checked before alternate. For i > 0 we
@@ -220,12 +214,7 @@ function findNonCollidingPosition(
   }
 
   // Last resort: fresh column to the right of everything.
-  let maxRight = 0;
-  for (const n of placed.values()) {
-    const w = getStyleDimension(n, "width") ?? NODE_WIDTH;
-    maxRight = Math.max(maxRight, n.position.x + w);
-  }
-  return { x: maxRight + DAGRE_RANK_SEP, y: baseY };
+  return { x: placementState.maxRight + DAGRE_RANK_SEP, y: baseY };
 }
 
 function collidesWithAny(
@@ -233,20 +222,29 @@ function collidesWithAny(
   y: number,
   width: number,
   height: number,
-  placed: Map<string, SchemaViewerFlowNode>,
+  columnsByX: Map<number, OccupiedBox[]>,
 ): boolean {
-  for (const node of placed.values()) {
-    const nx = node.position.x;
-    const ny = node.position.y;
-    const nw = getStyleDimension(node, "width") ?? NODE_WIDTH;
-    const nh = getStyleDimension(node, "height") ?? 0;
+  const left = x;
+  const right = x + width;
+  const top = y;
+  const bottom = y + height;
+
+  for (const [columnX, boxes] of columnsByX) {
     if (
-      x < nx + nw + COLLISION_PADDING &&
-      x + width + COLLISION_PADDING > nx &&
-      y < ny + nh + COLLISION_PADDING &&
-      y + height + COLLISION_PADDING > ny
+      left >= columnX + NODE_WIDTH + COLLISION_PADDING ||
+      right + COLLISION_PADDING <= columnX
     ) {
-      return true;
+      continue;
+    }
+    for (const box of boxes) {
+      if (
+        left < box.right + COLLISION_PADDING &&
+        right + COLLISION_PADDING > box.left &&
+        top < box.bottom + COLLISION_PADDING &&
+        bottom + COLLISION_PADDING > box.top
+      ) {
+        return true;
+      }
     }
   }
   return false;
@@ -258,6 +256,134 @@ function getStyleDimension(
 ): number | null {
   const value = node.style?.[key];
   return typeof value === "number" ? value : null;
+}
+
+function getNodeDimensions(
+  node: SchemaViewerFlowNode,
+  dimensionsById?: Map<string, NodeDimensions>,
+): NodeDimensions {
+  return (
+    dimensionsById?.get(node.id) ?? {
+      width: getStyleDimension(node, "width") ?? NODE_WIDTH,
+      height: getStyleDimension(node, "height") ?? HEADER_HEIGHT,
+    }
+  );
+}
+
+function createPlacementState(
+  nodes: SchemaViewerFlowNode[],
+  placedById?: Map<string, SchemaViewerFlowNode>,
+): PlacementState {
+  const dimensionsById = new Map(
+    nodes.map((node) => [node.id, getNodeDimensions(node)]),
+  );
+  const state: PlacementState = {
+    columnsByX: new Map(),
+    dimensionsById,
+    maxRight: 0,
+  };
+  if (placedById != null) {
+    for (const node of placedById.values()) {
+      registerPlacedNode(node, state);
+    }
+  }
+  return state;
+}
+
+function registerPlacedNode(
+  node: SchemaViewerFlowNode,
+  placementState: PlacementState,
+): void {
+  const { width, height } = getNodeDimensions(
+    node,
+    placementState.dimensionsById,
+  );
+  const x = node.position.x;
+  const y = node.position.y;
+  const boxes = placementState.columnsByX.get(x);
+  const occupied: OccupiedBox = {
+    left: x,
+    right: x + width,
+    top: y,
+    bottom: y + height,
+  };
+  if (boxes == null) {
+    placementState.columnsByX.set(x, [occupied]);
+  } else {
+    boxes.push(occupied);
+  }
+  placementState.maxRight = Math.max(placementState.maxRight, occupied.right);
+}
+
+function buildAdjacency(
+  edges: { source: string; target: string }[],
+): Map<string, NeighborPlacement[]> {
+  const adjacency = new Map<string, NeighborPlacement[]>();
+  for (const edge of edges) {
+    const sourceNeighbors = adjacency.get(edge.source);
+    const targetNeighbors = adjacency.get(edge.target);
+    const sourcePlacement = {
+      neighborId: edge.target,
+      prefersRight: false,
+    };
+    const targetPlacement = {
+      neighborId: edge.source,
+      prefersRight: true,
+    };
+    if (sourceNeighbors == null) {
+      adjacency.set(edge.source, [sourcePlacement]);
+    } else {
+      sourceNeighbors.push(sourcePlacement);
+    }
+    if (targetNeighbors == null) {
+      adjacency.set(edge.target, [targetPlacement]);
+    } else {
+      targetNeighbors.push(targetPlacement);
+    }
+  }
+  return adjacency;
+}
+
+function placeNodesByAdjacency(
+  nodes: SchemaViewerFlowNode[],
+  placedById: Map<string, SchemaViewerFlowNode>,
+  adjacency: Map<string, NeighborPlacement[]>,
+  placementState: PlacementState,
+): SchemaViewerFlowNode[] {
+  let remaining = nodes;
+  let progressed = true;
+  while (remaining.length > 0 && progressed) {
+    progressed = false;
+    const stillRemaining: SchemaViewerFlowNode[] = [];
+    for (const node of remaining) {
+      const placement = adjacency
+        .get(node.id)
+        ?.find(({ neighborId }) => placedById.has(neighborId));
+      if (placement == null) {
+        stillRemaining.push(node);
+        continue;
+      }
+      const neighbor = placedById.get(placement.neighborId)!;
+      const positionedNode = {
+        ...node,
+        position: findNonCollidingPosition(
+          node,
+          neighbor,
+          placement.prefersRight,
+          placementState,
+        ),
+        style: {
+          ...node.style,
+          opacity: 1,
+        },
+      };
+      placedById.set(node.id, positionedNode);
+      registerPlacedNode(positionedNode, placementState);
+      progressed = true;
+    }
+    remaining = stillRemaining;
+  }
+  return remaining;
 }
 
 /**
@@ -278,8 +404,16 @@ export function focusNodeLayout(
   }
 
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
-  const focalWidth = getStyleDimension(focal, "width") ?? NODE_WIDTH;
-  const focalHeight = getStyleDimension(focal, "height") ?? HEADER_HEIGHT;
+  const placedById = new Map<string, SchemaViewerFlowNode>();
+  placedById.set(focalId, {
+    ...focal,
+    style: { ...focal.style, opacity: 1 },
+  });
+  const placementState = createPlacementState(nodes, placedById);
+  const { width: focalWidth, height: focalHeight } = getNodeDimensions(
+    focal,
+    placementState.dimensionsById,
+  );
   const focalCenterY = focal.position.y + focalHeight / 2;
 
   // Partition neighbors by edge direction (self-refs are ignored).
@@ -292,12 +426,6 @@ export function focusNodeLayout(
       incomingIds.add(edge.source);
     }
   }
-
-  const placedById = new Map<string, SchemaViewerFlowNode>();
-  placedById.set(focalId, {
-    ...focal,
-    style: { ...focal.style, opacity: 1 },
-  });
 
   // Drop each row onto a single column that's vertically centered on the
   // focal node. A small additional gap below COLLISION_PADDING keeps rows
@@ -312,7 +440,7 @@ export function focusNodeLayout(
       return;
     }
     const heights = neighbors.map(
-      (n) => getStyleDimension(n, "height") ?? HEADER_HEIGHT,
+      (n) => getNodeDimensions(n, placementState.dimensionsById).height,
     );
     const totalHeight =
       heights.reduce((sum, h) => sum + h, 0) +
@@ -320,11 +448,13 @@ export function focusNodeLayout(
     let cursorY = focalCenterY - totalHeight / 2;
     for (let i = 0; i < neighbors.length; i++) {
       const node = neighbors[i];
-      placedById.set(node.id, {
+      const positionedNode = {
         ...node,
         position: { x, y: cursorY },
         style: { ...node.style, opacity: 1 },
-      });
+      };
+      placedById.set(node.id, positionedNode);
+      registerPlacedNode(positionedNode, placementState);
       cursorY += heights[i] + columnGap;
     }
   };
@@ -335,62 +465,29 @@ export function focusNodeLayout(
   // Anything not directly connected to the focal node: place it next to a
   // neighbor that's already positioned. Iterate in passes — just like the
   // FK-expansion merge path — so chains keep growing outward.
-  let remaining = nodes.filter((n) => !placedById.has(n.id));
-  let progressed = true;
-  while (remaining.length > 0 && progressed) {
-    progressed = false;
-    const stillRemaining: SchemaViewerFlowNode[] = [];
-    for (const node of remaining) {
-      const connectingEdge = edges.find(
-        (e) =>
-          (e.source === node.id && placedById.has(e.target)) ||
-          (e.target === node.id && placedById.has(e.source)),
-      );
-      if (connectingEdge == null) {
-        stillRemaining.push(node);
-        continue;
-      }
-      const neighborId =
-        connectingEdge.source === node.id
-          ? connectingEdge.target
-          : connectingEdge.source;
-      const neighbor = placedById.get(neighborId)!;
-      // rankdir: LR — target sits to the right of source.
-      const prefersRight = connectingEdge.target === node.id;
-      const position = findNonCollidingPosition(
-        node,
-        neighbor,
-        prefersRight,
-        placedById,
-      );
-      placedById.set(node.id, {
-        ...node,
-        position,
-        style: { ...node.style, opacity: 1 },
-      });
-      progressed = true;
-    }
-    remaining = stillRemaining;
-  }
+  const adjacency = buildAdjacency(edges);
+  const remaining = placeNodesByAdjacency(
+    nodes.filter((n) => !placedById.has(n.id)),
+    placedById,
+    adjacency,
+    placementState,
+  );
 
   // Fully disconnected leftovers: drop them in a fresh column to the right
   // of everything that's already placed, stacked top-down. This keeps them
   // out of the focal layout while still making them reachable via pan.
   if (remaining.length > 0) {
-    let maxRight = 0;
-    for (const node of placedById.values()) {
-      const w = getStyleDimension(node, "width") ?? NODE_WIDTH;
-      maxRight = Math.max(maxRight, node.position.x + w);
-    }
     let cursorY = focal.position.y;
     for (const node of remaining) {
-      const h = getStyleDimension(node, "height") ?? HEADER_HEIGHT;
-      placedById.set(node.id, {
+      const { height } = getNodeDimensions(node, placementState.dimensionsById);
+      const positionedNode = {
         ...node,
-        position: { x: maxRight + DAGRE_RANK_SEP, y: cursorY },
+        position: { x: placementState.maxRight + DAGRE_RANK_SEP, y: cursorY },
         style: { ...node.style, opacity: 1 },
-      });
-      cursorY += h + columnGap;
+      };
+      placedById.set(node.id, positionedNode);
+      registerPlacedNode(positionedNode, placementState);
+      cursorY += height + columnGap;
     }
   }
 
