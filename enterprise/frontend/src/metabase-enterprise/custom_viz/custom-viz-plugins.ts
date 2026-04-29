@@ -325,16 +325,26 @@ export async function loadCustomVizPlugin(
       height: number | null;
     }) => {
       const { resolvedColorScheme } = useColorScheme();
-      return React.createElement(vizDef.VisualizationComponent, {
-        ...rest,
-        colorScheme: resolvedColorScheme,
-        onClick: onVisualizationClick as unknown as (
-          clickObject: CustomVizClickObject<Record<string, unknown>> | null,
-        ) => void,
-        onHover: onHoverChange as unknown as (
-          hoverObject?: CustomVizHoverObject | null,
-        ) => void,
-      });
+      // Wrapping div is the membrane's scope marker — distortionCallback
+      // uses closest('[data-plugin-sandbox=<id>]') to decide whether a
+      // crossed-over Element belongs to this plugin or to host UI.
+      return React.createElement(
+        "div",
+        {
+          "data-plugin-sandbox": String(plugin.id),
+          style: { width: "100%", height: "100%" },
+        },
+        React.createElement(vizDef.VisualizationComponent, {
+          ...rest,
+          colorScheme: resolvedColorScheme,
+          onClick: onVisualizationClick as unknown as (
+            clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+          ) => void,
+          onHover: onHoverChange as unknown as (
+            hoverObject?: CustomVizHoverObject | null,
+          ) => void,
+        }),
+      );
     };
 
     // Attach the required static properties onto the component function

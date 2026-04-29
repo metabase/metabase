@@ -8,51 +8,56 @@ import {
   SET_ATTRIBUTE_NS,
 } from "./allowlist";
 import { getFunctionName } from "./debugging";
+import { getSafeSandboxDomElement, isDomElement } from "./distortions-dom";
 
 export function makeDistortionCallback(pluginId: string) {
-  return function distortionCallback(fun: object): object {
-    if (typeof fun !== "function") {
-      return fun;
+  return function distortionCallback(value: object): object {
+    if (isDomElement(value)) {
+      return getSafeSandboxDomElement(value, pluginId);
     }
 
-    if (isUserDefinedFunction(fun)) {
-      return fun;
+    if (typeof value !== "function") {
+      return value;
     }
 
-    if (fun === CANVAS_WIDTH_SETTER) {
+    if (isUserDefinedFunction(value)) {
+      return value;
+    }
+
+    if (value === CANVAS_WIDTH_SETTER) {
       return canvasWidthSetterDistortion;
     }
 
-    if (fun === CANVAS_HEIGHT_SETTER) {
+    if (value === CANVAS_HEIGHT_SETTER) {
       return canvasHeightSetterDistortion;
     }
 
-    if (SANITIZED_SETTERS.has(fun)) {
-      const info = SANITIZED_SETTERS.get(fun)!;
+    if (SANITIZED_SETTERS.has(value)) {
+      const info = SANITIZED_SETTERS.get(value)!;
       return sanitizedSetterDistortion(pluginId, info.name, info.originalSet);
     }
 
-    if (fun === CREATE_ELEMENT) {
+    if (value === CREATE_ELEMENT) {
       return createElementDistortion(pluginId);
     }
 
-    if (fun === INSERT_ADJACENT_HTML) {
+    if (value === INSERT_ADJACENT_HTML) {
       return insertAdjacentHTMLDistortion(pluginId);
     }
 
-    if (fun === SET_ATTRIBUTE) {
+    if (value === SET_ATTRIBUTE) {
       return setAttributeDistortion(pluginId);
     }
 
-    if (fun === SET_ATTRIBUTE_NS) {
+    if (value === SET_ATTRIBUTE_NS) {
       return setAttributeNSDistortion(pluginId);
     }
 
-    if (ALLOWED_FUNCTIONS.has(fun)) {
-      return fun;
+    if (ALLOWED_FUNCTIONS.has(value)) {
+      return value;
     }
 
-    const name = getFunctionName(fun);
+    const name = getFunctionName(value);
     return function blocked() {
       throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
     };

@@ -1984,4 +1984,62 @@ describe("sandbox", () => {
       /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
     );
   });
+
+  it("isolates DOM access to the plugin subtree (out-of-scope reads and writes hit a decoy)", () => {
+    const hostSelector = "#root";
+    const payload = `
+      var hostEl = document.querySelector('${hostSelector}');
+      if (hostEl) {
+        const elementId = hostEl.getAttribute("id");
+        hostEl.setAttribute('data-pwned-by-plugin', 'true');
+        console.log('plugin read element id', elementId);
+        console.log('plugin saw decoy', hostEl.getAttribute('data-plugin-sandbox-decoy'));
+      } else {
+        console.log('plugin-saw-decoy', false);
+      }
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<CardId>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "log").as("consoleLog");
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    // The plugin reached for visualization-root but received a decoy with
+    // data-plugin-sandbox-decoy="true" instead of the real element.
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin saw decoy",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin read element id",
+      "sandbox-decoy",
+    );
+
+    // The swap is reported to host console for diagnostics.
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
+    );
+
+    // The real host element was untouched.
+    cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
+  });
 });
