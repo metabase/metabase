@@ -2,7 +2,7 @@
 
 These conventions apply when writing **and** reviewing Cypress E2E specs in `e2e/test/scenarios/`.
 
-For framework-level guidance, the canonical source is the official Cypress best practices page: <https://docs.cypress.io/app/core-concepts/best-practices>. Specific rules from that page are folded in below as we run into them in real reviews; the page itself is the authoritative reference for anything not covered here.
+For framework-level guidance, the canonical source is the official Cypress best practices page: <https://docs.cypress.io/app/core-concepts/best-practices>. Specific rules from that page are folded in below as we encounter them; the page itself is the authoritative reference for anything not covered here.
 
 ## File location and naming
 
@@ -96,11 +96,49 @@ Top-level `cy.findByText(...)` or `cy.contains(...)` inside an `it` / `before` /
 
 - `cy.contains("[role='dialog']", "Save")` — two-argument form with a scoping selector
 - `cy.findByRole("dialog").findByText("Save")` — chain off a scoping query
-- `cy.findByRole("dialog").within(() => cy.findByText("Save"))` — `within` **chained off** a scoping query
+- `cy.findByRole("dialog").within(() => { ... })` — use `within` when **multiple** commands need to share the scope (see the next rule)
 
 **`within` must ALWAYS be chained off an existing selector** — `someSelector().within(() => { ... })`. A bare `cy.within(...)` has no scope, defeats the entire purpose of `within`, and is wrong by construction. Flag every standalone `cy.within(...)` on sight.
 
-The `metabase/no-unscoped-text-selectors` lint rule enforces this for the top-level case **only**. Wrapping the query in a helper function evades the rule (the rule walks up to the nearest block, which is the helper's body — not the test block). The convention still applies inside helpers: a helper that calls `cy.findByText(...)` unscoped is just as flaky as the inline version, and a reviewer has to catch it manually.
+**Don't reach for `within` when a chain would do.** If the callback contains a single command, just chain it off the parent directly — the `within` adds noise and gains nothing. Reserve `within` for when there are two or more inner commands that genuinely benefit from a shared scope.
+
+```js
+// Bad — single-statement within is just ceremony around a chain
+cy.findByRole("dialog").within(() => {
+  cy.findByText("Save").click();
+});
+
+// Good — chain directly
+cy.findByRole("dialog").findByText("Save").click();
+
+// Good — within earns its keep when multiple commands share the scope
+cy.findByRole("dialog").within(() => {
+  cy.findByLabelText("Name").type("Hello");
+  cy.findByLabelText("Description").type("world");
+  cy.findByRole("button", { name: "Save" }).click();
+});
+```
+
+**Don't name the within callback parameter.** `within` passes the jQuery-wrapped subject in, but the inner Cypress commands inherit the scope automatically — the parameter is never used at runtime, and naming it suggests to the reader that it's needed (it isn't). If you actually need the subject, that's what `.then()` is for, not `within`.
+
+```js
+// Bad — `modal` is unused; the .within() callback receives it but you don't need it
+cy.findByTestId("save-question-modal").within((modal) => {
+  cy.findByText("Save").click();
+});
+
+// Good
+cy.findByTestId("save-question-modal").within(() => {
+  cy.findByText("Save").click();
+});
+
+// If you actually need the jQuery subject, use .then() instead
+cy.findByTestId("save-question-modal").then(($modal) => {
+  expect($modal).to.have.attr("aria-modal", "true");
+});
+```
+
+The `metabase/no-unscoped-text-selectors` lint rule enforces this for the top-level case **only**. Wrapping the query in a helper function evades the rule (the rule walks up to the nearest block, which is the helper's body — not the test block). The convention still applies inside helpers: a helper that calls `cy.findByText(...)` unscoped is just as flaky as the inline version, and the lint rule won't catch it.
 
 ## Setup: API over UI
 
@@ -172,7 +210,7 @@ foo().click();
 
 The difference looks subtle on the page but is huge in implication: a `const` captures the chainer at definition time (already in-flight, not reusable); a function defers the lookup so every call re-runs it.
 
-The `cypress/no-assigning-return-values` lint rule (already on at error level in our e2e config) catches the simple cases. Anything that slips past it — values returned from helper functions, destructuring, indirection through wrapper objects — is on the reviewer to flag.
+The `cypress/no-assigning-return-values` lint rule (already on at error level in our e2e config) catches the simple cases. Anything that slips past it — values returned from helper functions, destructuring, indirection through wrapper objects — has to be caught manually.
 
 ## Assertions
 
@@ -188,6 +226,21 @@ cy.findByText("Editing").should("not.exist");
 // Good — anchor on a positive signal first, then assert absence
 cy.findByText("Saved").should("be.visible");
 cy.findByText("Editing").should("not.exist");
+```
+
+- **Collapse multiple text checks against the same parent into one assertion chain.** When you're checking that a container contains (or doesn't contain) several strings, three separate `findByText().should(...)` queries are slower (each retries independently), noisier, and not atomic — the DOM can change between queries. A single chain on the parent yields the same checks against one snapshot, with one retry budget.
+
+```js
+// Bad — three queries, three retry timeouts, no atomicity
+parent().findByText("Foo").should("exist");
+parent().findByText("Bar").should("exist");
+parent().findByText("Baz").should("not.exist");
+
+// Good — one query, one retry budget, atomic
+parent()
+  .should("contain", "Foo")
+  .and("contain", "Bar")
+  .and("not.contain", "Baz");
 ```
 
 ## Isolation
@@ -273,7 +326,10 @@ it("should show side panel with help content when 'Help is here' is clicked", ()
 });
 ```
 
-When reviewing, flag these and suggest moving them to the component's unit test rather than merging them into a larger e2e flow. Merging is for tests that genuinely need to be e2e but were over-fragmented; deleting (and re-implementing as a unit test) is for tests that shouldn't have been e2e in the first place.
+Two distinct outcomes for these tests:
+
+- **Move to a unit test** — when the static-UI check is genuinely useful coverage but doesn't need the e2e boot. The right home is the component's Jest spec.
+- **Delete outright** — when the same issue is already covered by an existing Jest or backend test. The e2e version is just paying full freight for coverage the cheaper layer already provides.
 
 Test isolation does **not** mean one assertion per test. It means each `it()` should be independently runnable. Within a single `it()`, asserting on multiple things across a user flow is correct and expected.
 
@@ -328,7 +384,7 @@ Before writing a new `it()` block, look at sibling tests in the same `describe`.
 
 A near-duplicate test pays the full `beforeEach` cost again, doubles the maintenance surface (two places to update when the flow changes), and obscures intent — readers can't tell why the second test exists if it's not visibly different from the first.
 
-Signals to look for during review:
+Signals that this is the case:
 - The new `it()` repeats the same `H.openOrdersTable()` / `H.visitDashboard(id)` / opening sequence as the test above it.
 - The new `it()` differs only in the last few lines.
 - The new `it()` title is a near-paraphrase of an existing one ("can pick a sum function" + "can pick an avg function" — these are likely the same test parameterised over function name).
