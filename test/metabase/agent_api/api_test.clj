@@ -328,7 +328,14 @@
                                                       "stages:\n"
                                                       "  - lib/type: mbql.stage/mbql\n"
                                                       (format "    source-table: ['%s', PUBLIC, NOT_A_TABLE]\n" (db-name)))})]
-      (is (=? {:error "unknown-table"} response)))))
+      (is (=? {:error "unknown-table"} response))))
+
+  (testing "Representation repair agent errors without explicit status default to 400"
+    (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query (orders-yaml
+                                                  :aggregation [(format "[field, {}, ['%s', PUBLIC, ORDERS, ID]]"
+                                                                        (db-name))])})]
+      (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
 
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"

@@ -212,6 +212,20 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
+(defn- as-agent-input-error
+  "Wrap `e` as an agent-input error.
+
+  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
+  HTTP callers additionally need a status code; default representation/repair failures to
+  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
+  Existing statuses are preserved (notably permission 403s, which callers should normally
+  avoid wrapping in the first place)."
+  [^clojure.lang.ExceptionInfo e]
+  (let [data (assoc (or (ex-data e) {}) :agent-error? true)
+        data (cond-> data
+               (nil? (:status-code data)) (assoc :status-code 400))]
+    (ex-info (ex-message e) data e)))
+
 (defn execute-representations-query
   "Execute a notebook query in the canonical MBQL 5 YAML representations format.
 
@@ -240,9 +254,7 @@
         parsed      (try
                       (repr/parse-yaml yaml-string)
                       (catch clojure.lang.ExceptionInfo e
-                        (throw (ex-info (ex-message e)
-                                        (assoc (ex-data e) :agent-error? true)
-                                        e))))
+                        (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)]
     ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
@@ -267,9 +279,7 @@
         ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
         (if (= 403 (:status-code (ex-data e)))
           (throw e)
-          (throw (ex-info (ex-message e)
-                          (assoc (ex-data e) :agent-error? true)
-                          e)))))))
+          (throw (as-agent-input-error e)))))))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 
