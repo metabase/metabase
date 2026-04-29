@@ -61,7 +61,8 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
       <Popover.Target>
         <Button
           size="xs"
-          fw="bold"
+          h={32}
+          fw="normal"
           px="md"
           variant="subtle"
           color="text-primary"
@@ -120,7 +121,8 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
         <Popover.Target>
           <Button
             size="xs"
-            fw="bold"
+            h={32}
+            fw="normal"
             px="md"
             variant="subtle"
             color="text-primary"

@@ -83,7 +83,7 @@ export function QueryExplorerBar({
       {/* Center: time range + granularity as a pill group */}
       {(filterControl || granularityControl) && (
         <Flex
-          h="1.875rem"
+          h={32}
           align="stretch"
           bd="1px solid var(--mb-color-border)"
           bdrs="xl"

@@ -29,6 +29,7 @@ export function McpExploreButton({ app, instanceUrl }: McpExploreButtonProps) {
     <Button
       variant="default"
       size="xs"
+      h={32}
       px="10px"
       leftSection={<Icon name="click" size={12} />}
       onClick={handleExplore}

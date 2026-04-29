@@ -17,11 +17,19 @@ export function ChartTypePicker({
   onChange,
 }: ChartTypePickerProps) {
   return (
-    <Flex gap="xs" bg="background-secondary" p="xs" bdrs="md">
+    <Flex
+      h={32}
+      align="center"
+      gap="xs"
+      bg="background-secondary"
+      px="xs"
+      bdrs="md"
+    >
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon
           w="2rem"
           key={type}
+          size={24}
           variant={value === type ? "filled" : "subtle"}
           bg={value === type ? "background-primary" : undefined}
           onClick={() => onChange(type)}
