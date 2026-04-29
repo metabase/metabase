@@ -192,7 +192,8 @@
    2 #{:type/Number}
    3 #{:type/DateTime}
    4 #{:type/*}
-   5 #{:type/Text}})
+   5 #{:type/Text}
+   6 #{:type/Number :type/Text :type/DateTime}})
 
 (def ^:dynamic ^Long *latest-fingerprint-version*
   "The newest (highest-numbered) version of our Field fingerprints."

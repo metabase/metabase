@@ -11,10 +11,7 @@ import type {
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type {
-  DataPermissionValue,
-  PermissionEditorType,
-} from "metabase/admin/permissions/types";
+import type { PermissionEditorType } from "metabase/admin/permissions/types";
 import {
   Collections,
   ROOT_COLLECTION,
@@ -32,6 +29,7 @@ import type {
   Collection,
   CollectionId,
   CollectionPermissions,
+  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
 

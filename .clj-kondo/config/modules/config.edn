@@ -181,6 +181,7 @@
    :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
+           metabase.analytics.settings
            metabase.analytics.snowplow}
    :uses #{analytics-interface
            api
@@ -194,6 +195,7 @@
            models
            permissions
            premium-features
+           request
            session
            settings
            sso
@@ -906,11 +908,13 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
+           models
            premium-features
            server
            settings
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard}
+   :model-exports #{:model/EmbeddingTheme}}
 
   embedding-rest
   {:team "Embedding"
@@ -930,7 +934,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1015,6 +1019,11 @@
   {:team "UX West"
    :api  #{metabase.initialization-status.core}
    :uses #{}}
+
+  interestingness
+  {:team "UX West"
+   :api  #{metabase.interestingness.core}
+   :uses #{util}}
 
   internal-stats
   {:team "UX West"
@@ -1219,6 +1228,7 @@
               config
               documents
               driver
+              interestingness
               legacy-mbql
               lib
               lib-be
@@ -1791,8 +1801,10 @@
   request
   {:team "UX West"
    :api  #{metabase.request.core
+           metabase.request.current
            metabase.request.init
-           metabase.request.schema}
+           metabase.request.schema
+           metabase.request.user-agent}
    :uses #{analytics-interface
            api
            config
@@ -2113,6 +2125,7 @@
            database-routing
            driver
            events
+           interestingness
            lib
            models
            premium-features
@@ -3342,7 +3355,8 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api}
-   :uses #{api
+   :uses #{analytics-interface
+           api
            driver
            events
            lib
@@ -3350,6 +3364,7 @@
            query-processor
            server
            sql-tools
+           tracing
            transforms
            transforms-base
            util}
