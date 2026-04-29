@@ -51,7 +51,7 @@ const elements = [
 
   // basic
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
-  createElement({ type: "shared", name: "api" }),
+  createElement({ type: "shared", name: "api", enforceOutgoing: true }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
@@ -83,8 +83,10 @@ const elements = [
     "frontend/src/metabase/App.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
+    "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
