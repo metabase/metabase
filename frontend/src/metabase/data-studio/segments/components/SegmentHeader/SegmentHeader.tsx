@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
+import { modelIconMap } from "metabase/common/utils/icon";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
@@ -10,7 +11,6 @@ import {
 import type { SegmentTabUrls } from "metabase/data-studio/segments/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
-import { modelIconMap } from "metabase/utils/icon";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";

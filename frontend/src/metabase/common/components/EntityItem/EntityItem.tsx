@@ -25,10 +25,10 @@ import { CheckBox } from "metabase/common/components/CheckBox";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
+import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import type { IconName, IconProps } from "metabase/ui";
 import { Ellipsified } from "metabase/ui";
-import type { IconData } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import type { CollectionItem } from "metabase-types/api";
 

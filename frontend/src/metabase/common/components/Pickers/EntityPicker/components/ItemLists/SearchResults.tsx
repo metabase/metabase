@@ -6,6 +6,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -167,7 +168,7 @@ const LocationInfo = ({
     return null;
   }
 
-  const iconProps = match(item.model)
+  const iconProps = match<OmniPickerItem["model"], IconData | null>(item.model)
     .with("table", "schema", "database", () => null)
     .otherwise(() =>
       getIcon({

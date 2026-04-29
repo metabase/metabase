@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
+import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { IconData } from "metabase/utils/icon";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,

@@ -1,9 +1,9 @@
 import type { CSSProperties, HTMLAttributes, ImgHTMLAttributes } from "react";
 
+import type { IconData } from "metabase/common/utils/icon";
 import { Icon, type IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import { maybeColor } from "metabase/ui/utils/colors";
-import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];

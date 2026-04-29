@@ -53,8 +53,7 @@
           (is (= :table
                  (card/detect-pulse-chart-type card nil multi-col-data)))))
       (testing "custom viz with registered plugin but no bundle falls back to :table"
-        (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/no-bundle"
-                                                 :identifier   "no-bundle"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "no-bundle"
                                                  :display_name "No Bundle"
                                                  :status       :active
                                                  :enabled      true}]
@@ -62,8 +61,7 @@
             (is (= :table
                    (card/detect-pulse-chart-type card nil multi-col-data))))))
       (testing "disabled custom viz plugin falls back to :table"
-        (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/disabled"
-                                                 :identifier   "disabled-chart"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "disabled-chart"
                                                  :display_name "Disabled"
                                                  :status       :active
                                                  :enabled      false}]
@@ -71,8 +69,7 @@
             (is (= :table
                    (card/detect-pulse-chart-type card nil multi-col-data))))))
       (testing "custom viz with registered plugin and bundle falls back to :table when :custom-viz feature is disabled"
-        (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/feature-off"
-                                                 :identifier   "feature-off"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "feature-off"
                                                  :display_name "Feature Off"
                                                  :status       :active
                                                  :enabled      true}]
@@ -82,8 +79,7 @@
                 (is (= :table
                        (card/detect-pulse-chart-type card nil multi-col-data))))))))
       (testing "custom viz with registered plugin and bundle still falls back to :table (static custom viz not supported)"
-        (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/has-bundle"
-                                                 :identifier   "has-bundle"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "has-bundle"
                                                  :display_name "Has Bundle"
                                                  :status       :active
                                                  :enabled      true}]
@@ -99,8 +95,7 @@
     (testing "custom-viz-bundles resolves plugin bundle and assets"
       (let [bundle-content "function customViz(){}"
             asset-bytes    (.getBytes "fake-png-data")]
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/bundle-resolve"
-                                                        :identifier   "bundle-resolve"
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bundle-resolve"
                                                         :display_name "Bundle Resolve"
                                                         :status       :active
                                                         :enabled      true
@@ -126,8 +121,7 @@
 (deftest custom-viz-bundles-no-manifest-test
   (mt/with-premium-features #{:custom-viz}
     (testing "custom-viz-bundles returns bundle with empty assets when plugin has no manifest"
-      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/no-manifest"
-                                               :identifier   "no-manifest"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "no-manifest"
                                                :display_name "No Manifest"
                                                :status       :active
                                                :enabled      true}]
@@ -141,8 +135,7 @@
 (deftest custom-viz-bundles-asset-edge-cases-test
   (mt/with-premium-features #{:custom-viz}
     (testing "custom-viz-bundles skips assets whose bytes cannot be resolved"
-      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/missing-asset"
-                                               :identifier   "missing-asset"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "missing-asset"
                                                :display_name "Missing Asset"
                                                :status       :active
                                                :enabled      true
@@ -159,8 +152,7 @@
             (is (contains? assets "present.png"))
             (is (not (contains? assets "missing.png")))))))
     (testing "custom-viz-bundles falls back to application/octet-stream when content-type is unknown"
-      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/unknown-ct"
-                                               :identifier   "unknown-ct"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "unknown-ct"
                                                :display_name "Unknown CT"
                                                :status       :active
                                                :enabled      true
@@ -200,8 +192,7 @@
 (deftest javascript-visualization-passes-resolved-bundles-for-custom-display-test
   (mt/with-premium-features #{:custom-viz}
     (testing "*javascript-visualization* receives resolved bundles when display is :custom:*"
-      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/wired-through"
-                                               :identifier   "wired-through"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "wired-through"
                                                :display_name "Wired Through"
                                                :status       :active
                                                :enabled      true}]
