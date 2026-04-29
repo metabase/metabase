@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.histogram-test
+(ns metabase.interestingness.chart.histogram-test
   (:require
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase.metabot.stats.histogram :as histogram]))
+   [metabase.interestingness.chart.histogram :as histogram]))
 
 (set! *warn-on-reflection* true)
 

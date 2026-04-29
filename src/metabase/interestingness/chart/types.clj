@@ -1,4 +1,4 @@
-(ns metabase.metabot.stats.types
+(ns metabase.interestingness.chart.types
   "Malli schemas for chart statistics computation."
   (:require
    [metabase.util.malli.registry :as mr]))

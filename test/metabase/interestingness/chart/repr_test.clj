@@ -1,13 +1,13 @@
-(ns metabase.metabot.stats.repr-test
+(ns metabase.interestingness.chart.repr-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.stats.categorical :as categorical]
-   [metabase.metabot.stats.core :as stats.core]
-   [metabase.metabot.stats.histogram :as histogram]
-   [metabase.metabot.stats.repr :as repr]
-   [metabase.metabot.stats.scatter :as scatter]
-   [metabase.metabot.stats.time-series :as time-series]
+   [metabase.interestingness.chart.categorical :as categorical]
+   [metabase.interestingness.chart.histogram :as histogram]
+   [metabase.interestingness.chart.repr :as repr]
+   [metabase.interestingness.chart.scatter :as scatter]
+   [metabase.interestingness.chart.stats :as stats.core]
+   [metabase.interestingness.chart.time-series :as time-series]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)

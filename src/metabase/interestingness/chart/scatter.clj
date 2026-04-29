@@ -1,9 +1,9 @@
-(ns metabase.metabot.stats.scatter
+(ns metabase.interestingness.chart.scatter
   "Scatter plot statistics."
   (:require
-   [metabase.metabot.stats.outliers :as outliers]
-   [metabase.metabot.stats.types :as stats.types]
-   [metabase.metabot.stats.util :as stats.u]
+   [metabase.interestingness.chart.outliers :as outliers]
+   [metabase.interestingness.chart.types :as stats.types]
+   [metabase.interestingness.chart.util :as stats.u]
    [metabase.util.malli :as mu]
    [tech.v3.datatype.functional :as dfn]))
 

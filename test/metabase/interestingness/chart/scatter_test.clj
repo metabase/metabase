@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.scatter-test
+(ns metabase.interestingness.chart.scatter-test
   (:require
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase.metabot.stats.scatter :as scatter]))
+   [metabase.interestingness.chart.scatter :as scatter]))
 
 (set! *warn-on-reflection* true)
 

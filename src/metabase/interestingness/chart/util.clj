@@ -1,7 +1,7 @@
-(ns metabase.metabot.stats.util
+(ns metabase.interestingness.chart.util
   "Shared utilities used across various stats chart types."
   (:require
-   [metabase.metabot.stats.types :as stats.types]
+   [metabase.interestingness.chart.types :as stats.types]
    [metabase.util.malli :as mu]
    [tech.v3.datatype.functional :as dfn]))
 

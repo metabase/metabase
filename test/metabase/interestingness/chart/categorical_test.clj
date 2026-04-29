@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.categorical-test
+(ns metabase.interestingness.chart.categorical-test
   (:require
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase.metabot.stats.categorical :as categorical]))
+   [metabase.interestingness.chart.categorical :as categorical]))
 
 (set! *warn-on-reflection* true)
 

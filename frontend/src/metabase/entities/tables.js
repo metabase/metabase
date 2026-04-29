@@ -30,7 +30,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
@@ -348,9 +347,7 @@ export const Tables = createEntity({
 
     return state;
   },
-  objectSelectors: {
-    getColor: (table) => color("accent2"),
-  },
+  objectSelectors: {},
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),

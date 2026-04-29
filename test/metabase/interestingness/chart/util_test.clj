@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.util-test
+(ns metabase.interestingness.chart.util-test
   (:require
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase.metabot.stats.util :as stats.u]))
+   [metabase.interestingness.chart.util :as stats.u]))
 
 (set! *warn-on-reflection* true)
 
