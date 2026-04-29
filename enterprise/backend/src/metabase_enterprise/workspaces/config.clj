@@ -8,13 +8,13 @@
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
-(def ^:private default-user
-  "The single admin user bundled into the exported config — lets a fresh Metabase
-  instance bootstrap from this file and log in immediately. Callers are expected
-  to change the password after import."
-  {:first_name   "Workspace"
-   :last_name    "Admin"
-   :email        "workspace@workspace.local"
+(defn- user-entry
+  "Build the admin user entry for the config from the workspace creator. Falls back
+   to a generic default if the creator has been deleted."
+  [creator]
+  {:first_name   (or (:first_name creator) "Workspace")
+   :last_name    (or (:last_name creator) "Admin")
+   :email        (or (:email creator) "workspace@workspace.local")
    :password     "password1"
    :is_superuser true})
 
@@ -60,7 +60,7 @@
                         [wsd db])]
         {:version 1
          :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-                   :users     [default-user]
+                   :users     [(user-entry (:creator ws))]
                    :workspace {:name      (:name ws)
                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 

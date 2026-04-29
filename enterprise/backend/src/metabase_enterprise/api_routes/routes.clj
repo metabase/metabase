@@ -41,6 +41,7 @@
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
+   [metabase-enterprise.workspaces.api.sharing]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -135,7 +136,8 @@
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
    "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
-   "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)})
+   "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)
+   "/workspace-sharing"            (premium-handler metabase-enterprise.workspaces.api.sharing/routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map
