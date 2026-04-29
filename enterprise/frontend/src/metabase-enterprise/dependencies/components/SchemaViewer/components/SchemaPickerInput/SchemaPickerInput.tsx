@@ -1,5 +1,5 @@
 import { useClickOutside, useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -24,11 +24,18 @@ import S from "./SchemaPickerInput.module.css";
 type SchemaPickerInputProps = {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
+  /**
+   * Fires immediately before the picker pushes a new (database, schema)
+   * URL. The parent uses this to reset any state that should not survive a
+   * context switch (e.g. the selection-intent in the canvas).
+   */
+  onSchemaChange: () => void;
 };
 
 export function SchemaPickerInput({
   databaseId,
   schema,
+  onSchemaChange,
 }: SchemaPickerInputProps) {
   const dispatch = useDispatch();
   const [opened, { open, close, toggle }] = useDisclosure(databaseId == null);
@@ -96,34 +103,31 @@ export function SchemaPickerInput({
     );
   }, [databases, popoverSchemaListDbId]);
 
-  // Auto-select when database has a single schema. Gated on
-  // `selectedDatabaseId` (not `popoverSchemaListDbId`) so this only fires
-  // when the user has explicitly clicked a DB row in the picker — not
-  // when we pre-populate the schema list for the currently-viewed DB.
-  useEffect(() => {
-    if (selectedDatabaseId != null && schemas != null) {
-      if (schemas.length === 1) {
-        // Single schema - include it in the URL
+  // Click on a DB row: if the DB has 0 or 1 schemas there's no choice to
+  // offer — navigate directly. Otherwise drill into the schema list. Safe
+  // to inline because the DB list only renders once `databases` is loaded
+  // (it's gated on `!isLoadingDatabases`), so `db.schemas` is available at
+  // click time.
+  const handleDatabaseClick = useCallback(
+    (dbId: DatabaseId) => {
+      const db = databases?.find((d) => d.id === dbId);
+      const dbSchemas = db?.schemas?.filter(
+        (schemaName): schemaName is SchemaName => schemaName.trim().length > 0,
+      );
+      if (dbSchemas != null && dbSchemas.length <= 1) {
         const url = Urls.dataStudioErd({
-          databaseId: selectedDatabaseId,
-          schema: schemas[0],
+          databaseId: dbId,
+          schema: dbSchemas[0],
         });
+        onSchemaChange();
         dispatch(push(url));
-        setSelectedDatabaseId(null);
         close();
-      } else if (schemas.length === 0) {
-        // No schemas - just use database
-        const url = Urls.dataStudioErd({ databaseId: selectedDatabaseId });
-        dispatch(push(url));
-        setSelectedDatabaseId(null);
-        close();
+        return;
       }
-    }
-  }, [schemas, selectedDatabaseId, dispatch, close]);
-
-  const handleDatabaseClick = useCallback((dbId: DatabaseId) => {
-    setSelectedDatabaseId(dbId);
-  }, []);
+      setSelectedDatabaseId(dbId);
+    },
+    [databases, dispatch, close, onSchemaChange],
+  );
 
   const handleSchemaClick = useCallback(
     (schemaName: SchemaName) => {
@@ -136,12 +140,13 @@ export function SchemaPickerInput({
           databaseId: dbIdForNavigation,
           schema: schemaName,
         });
+        onSchemaChange();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       }
     },
-    [popoverSchemaListDbId, dispatch, close],
+    [popoverSchemaListDbId, dispatch, close, onSchemaChange],
   );
 
   const handleBack = useCallback(() => {

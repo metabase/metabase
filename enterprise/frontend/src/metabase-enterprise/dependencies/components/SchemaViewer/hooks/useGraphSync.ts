@@ -76,15 +76,16 @@ export function useGraphSync({
   // of how it was changed (picker click, direct URL navigation, history
   // back/forward). Without this, the previous schema's nodes linger on screen
   // until the new fetch resolves and the sync effect replaces them.
+  // Done as an in-render reset (not an effect) so the canvas clears on the
+  // same paint as the context change — no flash of old nodes under the new
+  // schema picker label.
   const prevContextForClearRef = useRef(contextKey);
-  useEffect(() => {
-    if (prevContextForClearRef.current !== contextKey) {
-      prevContextForClearRef.current = contextKey;
-      setNodes([]);
-      setEdges([]);
-      setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
-    }
-  }, [contextKey, setNodes, setEdges, setExpandingTableIds]);
+  if (prevContextForClearRef.current !== contextKey) {
+    prevContextForClearRef.current = contextKey;
+    setNodes([]);
+    setEdges([]);
+    setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
+  }
 
   useEffect(() => {
     if (!hasEntry || error != null) {

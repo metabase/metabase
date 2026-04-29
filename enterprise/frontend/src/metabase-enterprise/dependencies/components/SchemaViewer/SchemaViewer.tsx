@@ -6,10 +6,9 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
@@ -21,9 +20,11 @@ import {
   Text,
   useColorScheme,
 } from "metabase/ui";
-import { getErdQueryParams } from "metabase/utils/urls";
-import { useGetErdQuery } from "metabase-enterprise/api";
-import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  DatabaseId,
+  ErdResponse,
+} from "metabase-types/api";
 
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
@@ -59,23 +60,26 @@ const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
 type SchemaViewerProps = {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  /**
-   * External/extra focal table IDs (cross-schema tables expanded into via
-   * FK click). Owned by the page-level `useRestoreSchemaViewerState` hook.
-   */
-  extraTableIds: readonly ConcreteTableId[];
-  /** Add a table to the extra focal set. */
+  /** Add a table to the extra focal set (FK click expansion). */
   onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
   /** Stable key for the current (databaseId, schema). */
   contextKey: string | null;
+  /** ERD response from `useGetErdQuery`. */
+  data: ErdResponse | undefined;
+  /** RTK-Query `isFetching` flag. */
+  isFetching: boolean;
+  /** RTK-Query error, if any. */
+  error: unknown;
 };
 
 export function SchemaViewer({
   databaseId,
   schema,
-  extraTableIds,
   onExtraTableIdAdd,
   contextKey,
+  data,
+  isFetching,
+  error,
 }: SchemaViewerProps) {
   // IDs of tables the camera should fit/zoom to next. Populated in two
   // places: (1) the graph-sync effect when FK expansion adds new tables,
@@ -86,12 +90,6 @@ export function SchemaViewer({
   const clearPendingFitNodeIds = useCallback(
     () => setPendingFitNodeIds(null),
     [],
-  );
-
-  const { data, isFetching, error } = useGetErdQuery(
-    databaseId != null
-      ? getErdQueryParams({ databaseId, schema, tableIds: extraTableIds })
-      : skipToken,
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
@@ -198,7 +196,23 @@ export function SchemaViewer({
 
   const { handleEdgeClick } = useEdgeZoom({ setPendingFitNodeIds });
 
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Selection is intent: the user picks a table and we remember that pick.
+  // The visible selection (`selectedNodeId`) is derived during render, so
+  // when the picked node temporarily disappears from the graph (schema
+  // change, table removed, etc.) the info panel renders nothing — and if
+  // the node returns later, selection lights up again without a follow-up
+  // commit.
+  const [selectedNodeIdIntent, setSelectedNodeId] = useState<string | null>(
+    null,
+  );
+  const selectedNodeId = useMemo(
+    () =>
+      selectedNodeIdIntent != null &&
+      nodes.some((n) => n.id === selectedNodeIdIntent)
+        ? selectedNodeIdIntent
+        : null,
+    [nodes, selectedNodeIdIntent],
+  );
 
   const handleClearSelection = useCallback(() => {
     setSelectedNodeId(null);
@@ -236,17 +250,9 @@ export function SchemaViewer({
     ],
   );
 
-  // Drop a stale selection when the selected node disappears from the graph
-  // (schema change, table removed, etc.). Without this, the info panel would
-  // keep rendering against a node that no longer exists.
-  useEffect(() => {
-    if (
-      selectedNodeId != null &&
-      !nodes.some((node) => node.id === selectedNodeId)
-    ) {
-      setSelectedNodeId(null);
-    }
-  }, [nodes, selectedNodeId]);
+  const handleSchemaChange = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
 
   // Lift selected edges above unselected ones so the highlighted edge
   // always renders on top of any edges that cross through it. We do this
@@ -324,7 +330,11 @@ export function SchemaViewer({
         />
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
-            <SchemaPickerInput databaseId={databaseId} schema={schema} />
+            <SchemaPickerInput
+              databaseId={databaseId}
+              schema={schema}
+              onSchemaChange={handleSchemaChange}
+            />
             <SchemaViewerNodeSearch key={contextKey ?? ""} nodes={nodes} />
           </Group>
         </Panel>

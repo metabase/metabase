@@ -2,8 +2,11 @@ import type { Location } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Stack } from "metabase/ui";
+import { getErdQueryParams } from "metabase/utils/urls";
+import { useGetErdQuery } from "metabase-enterprise/api";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
@@ -40,14 +43,22 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   const { extraTableIds, addExtraTableId, contextKey } =
     useRestoreSchemaViewerState({ databaseId, schema, initialTableIds });
 
+  const { data, isFetching, error } = useGetErdQuery(
+    databaseId != null
+      ? getErdQueryParams({ databaseId, schema, tableIds: extraTableIds })
+      : skipToken,
+  );
+
   return (
     <Stack h="100%">
       <SchemaViewer
         databaseId={databaseId}
         schema={schema}
-        extraTableIds={extraTableIds}
         onExtraTableIdAdd={addExtraTableId}
         contextKey={contextKey}
+        data={data}
+        isFetching={isFetching}
+        error={error}
       />
     </Stack>
   );
