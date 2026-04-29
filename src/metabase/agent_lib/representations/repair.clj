@@ -2055,6 +2055,35 @@
      node)
    form))
 
+;;; ----- E5: blank `[expression, opts, ""]` reference --------------------------------
+
+(defn- blank-expression-ref-error!
+  "Detect any `[expression, <opts>, <name>]` reference whose name slot is missing,
+  blank, or non-string. lib's schema requires a non-blank string identifier here
+  (matching an entry in some upstream stage's `expressions:` block); without it the
+  reference resolves to nothing and the query produces wrong results or fails downstream.
+
+  Carried over from the sexp pipeline's
+  `validate/operators.clj/validate-operator-specific!` `expression-ref` branch."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (when (and (vector? node)
+                (not (map-entry? node))
+                (= 3 (count node))
+                (= "expression" (nth node 0))
+                (map? (nth node 1)))
+       (let [name-slot (nth node 2)]
+         (when (or (not (string? name-slot))
+                   (= "" (str/trim (str name-slot))))
+           (throw (ex-info
+                   (tru "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage''s `expressions:` block.")
+                   {:agent-error? true
+                    :error        :blank-expression-ref
+                    :clause       node})))))
+     node)
+   form))
+
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
 (defn- friendly-errors*
@@ -2067,7 +2096,8 @@
         (aggregation-entry-not-aggregation-error! stage idx)))
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
-    (sexp-legacy-measure-error! query))
+    (sexp-legacy-measure-error! query)
+    (blank-expression-ref-error! query))
   query)
 
 ;;; ============================================================

@@ -2234,3 +2234,55 @@
                           "source-table" ["Sample" "PUBLIC" "ORDERS"]
                           "aggregation"  [["metric" {} "@card-1"]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
+
+;;; ----- E5: blank [expression, opts, ""] reference ----------------------------------
+
+(deftest friendly-error-blank-expression-ref-test
+  (testing "`[expression, {}, \"\"]` blank ref raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  [["+" {"lib/expression-name" "X"}
+                                           ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 1]]
+                          "filters"      [["=" {} ["expression" {} ""] 0]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :blank-expression-ref (:error data))))))))
+  (testing "`[expression, {}, \"   \"]` (whitespace-only) also triggers"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["expression" {} "   "] 0]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :blank-expression-ref (:error (ex-data e))))))))
+  (testing "`[expression, {}, nil]` (non-string) also triggers"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["expression" {} nil] 0]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :blank-expression-ref (:error (ex-data e)))))))))
+
+(deftest friendly-error-non-blank-expression-ref-passes-test
+  (testing "valid `[expression, {}, \"my-expr\"]` does NOT trigger"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  [["+" {"lib/expression-name" "my-expr"}
+                                           ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 1]]
+                          "filters"      [["=" {} ["expression" {} "my-expr"] 0]]}]}]
+      (is (some? (repair/repair trivial-mp q))))))
