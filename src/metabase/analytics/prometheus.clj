@@ -59,8 +59,11 @@
   (try
     (let [registry   (setup-metrics! registry-name)
           web-server (when port (start-web-server! port registry))]
+      (log/info "[prom-init] make-prometheus-system: PrometheusSystem ready")
       (->PrometheusSystem registry web-server))
     (catch Exception e
+      (log/errorf "[prom-init] make-prometheus-system FAILED with %s (message and stack omitted to avoid leaking)"
+                  (.getName (class e)))
       (throw (ex-info (trs "Failed to initialize Prometheus on port {0}" port)
                       {:port port}
                       e)))))
@@ -692,24 +695,37 @@
   will throw."
   [registry-name]
   (log/info "Starting prometheus metrics collector")
-  (let [registry (prometheus/collector-registry registry-name)
-        registry (apply prometheus/register
-                        (collector.ring/initialize registry)
-                        (concat (jvm-collectors)
-                                (jetty-collectors)
-                                [@c3p0-collector]
-                                (product-collectors)
-                                (quartz-collectors)))]
+  (let [registry        (prometheus/collector-registry registry-name)
+        _               (log/info "[prom-init] 1/10 collector-registry created")
+        ring-collectors (collector.ring/initialize registry)
+        _               (log/info "[prom-init] 2/10 ring collectors initialized")
+        jvm-cols        (jvm-collectors)
+        _               (log/info "[prom-init] 3/10 jvm collectors built")
+        jetty-cols      (jetty-collectors)
+        _               (log/info "[prom-init] 4/10 jetty collectors built")
+        c3p0-col        @c3p0-collector
+        _               (log/info "[prom-init] 5/10 c3p0 collector dereffed")
+        product-cols    (product-collectors)
+        _               (log/info "[prom-init] 6/10 product collectors built")
+        quartz-cols     (quartz-collectors)
+        _               (log/info "[prom-init] 7/10 quartz collectors built")
+        registry        (apply prometheus/register
+                               ring-collectors
+                               (concat jvm-cols jetty-cols [c3p0-col] product-cols quartz-cols))
+        _               (log/info "[prom-init] 8/10 all collectors registered")]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric (qualified-vals labels) value))
+    (log/info "[prom-init] 9/10 initial labelled values populated")
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
              #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_hiccups (/ % 1e6)))))
+    (log/info "[prom-init] 10a/10 hiccup-meter started")
     (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
     (reset! jvm-alloc-rate-thread
             (alloc-rate-meter/start-alloc-rate-meter
              #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_allocation_rate %))))
+    (log/info "[prom-init] 10b/10 alloc-rate-meter started — setup-metrics! complete")
     registry))
 
 (defn- start-web-server!
@@ -738,15 +754,25 @@
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
+  (log/infof "[prom-init] setup! entered on thread %s; system=%s *setting-up*=%s"
+             (.getName (Thread/currentThread))
+             (some? system)
+             *setting-up*)
   (when (and (not system) (not *setting-up*))
     (binding [*setting-up* true]
       (let [port (prometheus-server-port)]
         (when-not port
           (log/info "Running prometheus metrics without a webserver"))
+        (log/infof "[prom-init] setup! requesting #'system lock on thread %s"
+                   (.getName (Thread/currentThread)))
         (locking #'system
+          (log/infof "[prom-init] setup! acquired #'system lock on thread %s; system=%s"
+                     (.getName (Thread/currentThread))
+                     (some? system))
           (when-not system
             (let [sys (make-prometheus-system port "metabase-registry")]
-              (alter-var-root #'system (constantly sys)))))))))
+              (alter-var-root #'system (constantly sys))
+              (log/info "[prom-init] setup! complete; #'system installed"))))))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
