@@ -29,6 +29,14 @@ type UseRestoreSchemaViewerStateResult = {
    * (e.g. clearing the canvas).
    */
   contextKey: string | null;
+  /**
+   * True while we're still resolving the per-context saved prefs for the
+   * current `contextKey`. Callers should defer issuing the ERD query until
+   * this flips false — otherwise they'll fire two requests per context
+   * (one with the placeholder empty `extraTableIds`, one with the
+   * restored set).
+   */
+  isRestoring: boolean;
 };
 
 /**
@@ -140,54 +148,65 @@ export function useRestoreSchemaViewerState({
   // ---- per-context extra focal tables: restore + persist ----
 
   const contextKey =
-    databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
+    databaseId != null ? `${databaseId}__${schema ?? ""}` : null;
 
-  const { value: savedPrefs, setValue: setSavedPrefs } = useUserKeyValue({
+  const {
+    value: savedPrefs,
+    setValue: setSavedPrefs,
+    isLoading: isLoadingSavedPrefs,
+  } = useUserKeyValue({
     namespace: "schema_viewer",
     key: contextKey ?? "",
     skip: contextKey == null,
   });
 
-  // Ref-backed store keyed by `${databaseId}:${schema}` so we don't re-apply
+  // Ref-backed store keyed by `${databaseId}__${schema}` so we don't re-apply
   // URL ids / saved prefs when the user later clears the set in the same
-  // context (avoids clearing-then-restoring loops).
+  // context (avoids clearing-then-restoring loops). Set to `contextKey` once
+  // we've decided what `extraTableIds` should be (URL-seeded, prefs-restored,
+  // or confirmed-empty).
   const initializedContextRef = useRef<string | null>(null);
 
   const [extraTableIds, setExtraTableIds] = useState<
     readonly ConcreteTableId[]
   >(initialTableIds ?? []);
 
-  // When context (database / schema) changes: seed from URL if present, else
-  // clear and wait for saved prefs to arrive (next effect).
+  // When context (database / schema) changes: seed from URL if present, mark
+  // initialized when URL provided ids (so we don't wait for saved prefs).
+  // Otherwise clear and wait for saved prefs (next in-render block).
   const prevContextKeyRef = useRef(contextKey);
   if (prevContextKeyRef.current !== contextKey) {
     prevContextKeyRef.current = contextKey;
     initializedContextRef.current = null;
     setExtraTableIds(initialTableIds ?? []);
-  }
-
-  // Restore saved prefs once per context (skipped when URL supplied ids).
-  useEffect(() => {
-    if (databaseId == null) {
-      return;
-    }
-    if (initializedContextRef.current === contextKey) {
-      return;
-    }
     if (initialTableIds != null && initialTableIds.length > 0) {
       initializedContextRef.current = contextKey;
-      return;
     }
+  }
+
+  // Restore saved prefs once they resolve. Done in-render (not in an effect)
+  // so the gate `isRestoring` flips false on the same paint as the state
+  // commits — letting consumers fire the ERD query exactly once with the
+  // restored `extraTableIds`, instead of once with `[]` and again with the
+  // restored set.
+  if (
+    contextKey != null &&
+    initializedContextRef.current !== contextKey &&
+    !isLoadingSavedPrefs
+  ) {
+    initializedContextRef.current = contextKey;
     if (
       savedPrefs != null &&
       typeof savedPrefs === "object" &&
       "table_ids" in savedPrefs &&
       Array.isArray(savedPrefs.table_ids)
     ) {
-      initializedContextRef.current = contextKey;
       setExtraTableIds(savedPrefs.table_ids as ConcreteTableId[]);
     }
-  }, [databaseId, contextKey, initialTableIds, savedPrefs]);
+  }
+
+  const isRestoring =
+    contextKey != null && initializedContextRef.current !== contextKey;
 
   const addExtraTableId = useCallback(
     (tableId: ConcreteTableId) => {
@@ -203,5 +222,5 @@ export function useRestoreSchemaViewerState({
     [setSavedPrefs],
   );
 
-  return { extraTableIds, addExtraTableId, contextKey };
+  return { extraTableIds, addExtraTableId, contextKey, isRestoring };
 }

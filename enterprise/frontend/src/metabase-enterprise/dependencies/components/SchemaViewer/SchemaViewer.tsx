@@ -30,17 +30,18 @@ import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
 import { AutoLayoutButton } from "./components/AutoLayoutButton";
 import { SchemaViewerEdge } from "./components/Edge";
+import { FitToCanvas } from "./components/FitToCanvas";
 import { FitToNewNodes } from "./components/FitToNewNodes";
-import { SchemaViewerNodeLayout } from "./components/NodeLayout";
 import { SchemaViewerNodeSearch } from "./components/NodeSearch";
 import { SchemaPickerInput } from "./components/SchemaPickerInput";
 import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./components/TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
+import { useCanvasLayout } from "./hooks/useCanvasLayout";
 import { useEdgeZoom } from "./hooks/useEdgeZoom";
 import { useGraphSync } from "./hooks/useGraphSync";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
-import { focusNodeLayout, toFlowGraph } from "./utils";
+import { toFlowGraph } from "./utils";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -92,6 +93,15 @@ export function SchemaViewer({
     [],
   );
 
+  // Bumped with a fresh trigger object whenever a full-canvas layout is
+  // applied (fresh data via `useGraphSync`, or manual relayout via
+  // `useCanvasLayout`). Consumed by `<FitToCanvas>` to call ReactFlow's
+  // `fitView()` so the camera reframes to the new bounds.
+  const [pendingFreshFit, setPendingFreshFit] = useState<{
+    duration?: number;
+  } | null>(null);
+  const clearPendingFreshFit = useCallback(() => setPendingFreshFit(null), []);
+
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
     [],
   );
@@ -132,6 +142,7 @@ export function SchemaViewer({
     setEdges,
     setExpandingTableIds,
     setPendingFitNodeIds,
+    setPendingFreshFit,
   });
 
   // Handler for expanding to a related table via FK click
@@ -164,6 +175,15 @@ export function SchemaViewer({
     [databaseId, onExtraTableIdAdd, registerPendingEdgeSelection],
   );
 
+  const { relayout, focusOnNode } = useCanvasLayout({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    setPendingFitNodeIds,
+    setPendingFreshFit,
+  });
+
   // Track the node id most recently focused via the Focus node button so the
   // button can disable itself until the user selects a different node.
   const [lastFocusedNodeId, setLastFocusedNodeId] = useState<string | null>(
@@ -172,26 +192,10 @@ export function SchemaViewer({
 
   const handleFocusNode = useCallback(
     (nodeId: string) => {
-      setNodes((currentNodes) => {
-        const laidOut = focusNodeLayout(
-          nodeId,
-          currentNodes,
-          edges.map((edge) => ({ source: edge.source, target: edge.target })),
-        );
-        // Clear any previous node selection so the fresh layout starts from
-        // a clean slate.
-        return laidOut.map((n) => (n.selected ? { ...n, selected: false } : n));
-      });
-      // Drop any edge highlighting from before the rearrangement.
-      setEdges((currentEdges) =>
-        currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
-      );
-      // Zoom in on the focal node itself — useZoomToNodes clamps to ≥0.5 so
-      // the table stays legible, and keeps the node's header in view.
-      setPendingFitNodeIds([nodeId]);
+      focusOnNode(nodeId);
       setLastFocusedNodeId(nodeId);
     },
-    [edges, setNodes, setEdges],
+    [focusOnNode],
   );
 
   const { handleEdgeClick } = useEdgeZoom({ setPendingFitNodeIds });
@@ -252,6 +256,7 @@ export function SchemaViewer({
 
   const handleSchemaChange = useCallback(() => {
     setSelectedNodeId(null);
+    setPendingFreshFit(null);
   }, []);
 
   // Lift selected edges above unselected ones so the highlighted edge
@@ -302,14 +307,14 @@ export function SchemaViewer({
           nodeIds={pendingFitNodeIds}
           onDone={clearPendingFitNodeIds}
         />
+        <FitToCanvas trigger={pendingFreshFit} onDone={clearPendingFreshFit} />
         <Panel position="top-right">
           <AppSwitcher className={S.appSwitcher} />
         </Panel>
-        {nodes.length > 0 && <SchemaViewerNodeLayout />}
         {nodes.length > 0 && (
           <Panel position="bottom-left">
             <Group gap="sm">
-              <AutoLayoutButton />
+              <AutoLayoutButton onClick={relayout} />
               {selectedNodeId != null && (
                 <Button
                   bg="background-primary"

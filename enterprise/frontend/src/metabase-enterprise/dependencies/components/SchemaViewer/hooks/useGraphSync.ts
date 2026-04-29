@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { ConcreteTableId } from "metabase-types/api";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import { mergeWithExistingPositions } from "../utils";
+import { getNodesWithPositions, mergeWithExistingPositions } from "../utils";
 
 type UseGraphSyncArgs = {
   /** True once a databaseId has been picked — without it we render nothing. */
@@ -27,6 +27,12 @@ type UseGraphSyncArgs = {
     React.SetStateAction<Set<ConcreteTableId>>
   >;
   setPendingFitNodeIds: (nodeIds: readonly string[] | null) => void;
+  /**
+   * Bumped with a fresh trigger object whenever a full-canvas Dagre layout
+   * is applied — e.g. first load or schema switch. Consumers use this to
+   * fire a `fitView()` on the same paint.
+   */
+  setPendingFreshFit: (trigger: { duration?: number } | null) => void;
 };
 
 /**
@@ -57,6 +63,7 @@ export function useGraphSync({
   setEdges,
   setExpandingTableIds,
   setPendingFitNodeIds,
+  setPendingFreshFit,
 }: UseGraphSyncArgs) {
   // When the user expands a new table via FK click, these candidate IDs
   // hold the edge that should be auto-selected once the new graph arrives.
@@ -119,9 +126,9 @@ export function useGraphSync({
 
     // Merge incoming nodes with current positions so an incremental expansion
     // (e.g. clicking an FK to fetch a related table) doesn't blank the canvas
-    // by replacing every node with a fresh opacity-0 copy. Falls back to the
-    // fresh graph for first loads, schema switches, removals, or disconnected
-    // new nodes — those still go through the normal Dagre relayout path.
+    // by replacing every node with a fresh opacity-0 copy. Falls back to a
+    // fresh full-canvas Dagre layout for first loads, schema switches,
+    // removals, or disconnected new nodes.
     const currentNodes = nodesRef.current;
     const currentById = new Map(currentNodes.map((n) => [n.id, n]));
     const merged = mergeWithExistingPositions(
@@ -129,8 +136,7 @@ export function useGraphSync({
       currentNodes,
       graph.edges,
     );
-
-    const nextNodes = merged ?? graph.nodes;
+    const nextNodes = merged ?? getNodesWithPositions(graph.nodes, graph.edges);
     setNodes(nextNodes);
 
     // Clear any expand-in-flight markers for tables that just arrived in the
@@ -155,16 +161,21 @@ export function useGraphSync({
       return changed ? next : prev;
     });
 
-    // If this was an incremental add (there was a current canvas and some of
-    // it carried over), queue up a fitView on the newly-added tables so the
-    // camera pans to wherever they landed.
-    if (currentNodes.length > 0) {
-      const addedIds = nextNodes
-        .filter((n) => !currentById.has(n.id))
-        .map((n) => n.id);
-      if (addedIds.length > 0) {
-        setPendingFitNodeIds(addedIds);
+    if (merged != null) {
+      // Incremental add: queue a fitView on newly-added tables so the camera
+      // pans to wherever they landed (≥0.5 zoom, header in viewport).
+      if (currentNodes.length > 0) {
+        const addedIds = nextNodes
+          .filter((n) => !currentById.has(n.id))
+          .map((n) => n.id);
+        if (addedIds.length > 0) {
+          setPendingFitNodeIds(addedIds);
+        }
       }
+    } else {
+      // Fresh layout: fit the whole canvas (uses ReactFlow's default fitView
+      // bounds, so wide schemas can zoom out below the per-node-fit floor).
+      setPendingFreshFit({});
     }
   }, [
     hasEntry,
@@ -175,6 +186,7 @@ export function useGraphSync({
     setEdges,
     setExpandingTableIds,
     setPendingFitNodeIds,
+    setPendingFreshFit,
   ]);
 
   /**

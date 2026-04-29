@@ -56,8 +56,8 @@ export function getNodeId(node: { table_id: TableId }): string {
   return `table-${node.table_id}`;
 }
 
-function getNodeHeight(node: ErdNode): number {
-  return HEADER_HEIGHT + node.fields.length * ROW_HEIGHT;
+function nodeHeight(fieldCount: number): number {
+  return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
 }
 
 type TableEdgeRoles = {
@@ -89,7 +89,7 @@ function toFlowNode(
     },
     style: {
       width: NODE_WIDTH,
-      height: getNodeHeight(node),
+      height: nodeHeight(node.fields.length),
       opacity: 0, // Hide until positioned by dagre layout
     },
   };
@@ -180,11 +180,6 @@ export function toFlowGraph(data: ErdResponse): {
   return memoizedToFlowGraph(data);
 }
 
-function getLayoutNodeHeight(node: SchemaViewerFlowNode): number {
-  const fieldCount = node.data.fields?.length ?? 0;
-  return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
-}
-
 export function getNodesWithPositions(
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
@@ -198,10 +193,9 @@ export function getNodesWithPositions(
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
-    const height = getLayoutNodeHeight(node);
     dagreGraph.setNode(node.id, {
       width: NODE_WIDTH,
-      height,
+      height: nodeHeight(node.data.fields?.length ?? 0),
     });
   });
 

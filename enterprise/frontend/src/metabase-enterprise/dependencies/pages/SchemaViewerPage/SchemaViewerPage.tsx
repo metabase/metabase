@@ -40,11 +40,14 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
     return ids.map((id) => Number(id) as ConcreteTableId);
   }, [rawTableIds]);
 
-  const { extraTableIds, addExtraTableId, contextKey } =
+  const { extraTableIds, addExtraTableId, contextKey, isRestoring } =
     useRestoreSchemaViewerState({ databaseId, schema, initialTableIds });
 
+  // Defer the ERD query until per-context saved prefs have resolved — without
+  // this gate we'd fire two requests on every schema entry: one with empty
+  // `extraTableIds`, then another once the restored set arrives.
   const { data, isFetching, error } = useGetErdQuery(
-    databaseId != null
+    databaseId != null && !isRestoring
       ? getErdQueryParams({ databaseId, schema, tableIds: extraTableIds })
       : skipToken,
   );
