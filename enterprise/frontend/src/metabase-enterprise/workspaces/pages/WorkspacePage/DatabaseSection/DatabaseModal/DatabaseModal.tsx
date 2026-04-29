@@ -320,7 +320,7 @@ function DatabaseSchemaSelect({
   return (
     <FormMultiSelect
       name="inputSchemas"
-      label={t`Schemas`}
+      label={t`Readable schemas`}
       description={t`Tables in these schemas are readable in this workspace.`}
       placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
       data={availableSchemas}

@@ -31,10 +31,10 @@ export function getDatabaseColumn(): TreeTableColumnDef<DatabaseRow> {
   };
 }
 
-export function getSchemasColumn(): TreeTableColumnDef<DatabaseRow> {
+export function getReadableSchemasColumn(): TreeTableColumnDef<DatabaseRow> {
   return {
-    id: "schemas",
-    header: t`Schemas`,
+    id: "input_schemas",
+    header: t`Readable schemas`,
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.workspaceDatabase.input_schemas.join(", "),
@@ -42,6 +42,21 @@ export function getSchemasColumn(): TreeTableColumnDef<DatabaseRow> {
   };
 }
 
+export function getWritableSchemaColumn(): TreeTableColumnDef<DatabaseRow> {
+  return {
+    id: "output_schema",
+    header: t`Writable schema`,
+    width: "auto",
+    minWidth: 200,
+    accessorFn: (row) => row.workspaceDatabase.output_schema,
+    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+  };
+}
+
 export function getColumns(): TreeTableColumnDef<DatabaseRow>[] {
-  return [getDatabaseColumn(), getSchemasColumn()];
+  return [
+    getDatabaseColumn(),
+    getReadableSchemasColumn(),
+    getWritableSchemaColumn(),
+  ];
 }

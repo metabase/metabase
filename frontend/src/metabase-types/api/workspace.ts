@@ -18,7 +18,7 @@ export type Workspace = {
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
-  output_schema?: string;
+  output_schema: string;
 };
 
 export type CreateWorkspaceRequest = {
