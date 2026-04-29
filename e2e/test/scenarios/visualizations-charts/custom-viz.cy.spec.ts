@@ -2042,4 +2042,63 @@ describe("sandbox", () => {
     // The real host element was untouched.
     cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
   });
+
+  it("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", () => {
+    const payload = `
+      var seenMutations = 0;
+      var observer = new MutationObserver(function(records) {
+        seenMutations += records.length;
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+      setTimeout(function() {
+        console.log('plugin observed mutations:', seenMutations);
+      }, 1500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<CardId>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "log").as("consoleLog");
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByTestId("visualization-root")
+      .findByTestId("table-root")
+      .should("be.visible");
+    H.undoToastList()
+      .findByText(/"demo-viz" visualization is currently unavailable/)
+      .should("be.visible");
+
+    // Mutate the real host DOM. If the plugin held a real reference to
+    // document.body, these would fire its observer. The membrane swapped
+    // body for a detached decoy, so observation is wired to a node that
+    // never sees host changes.
+    cy.document().then((doc) => {
+      const probe = doc.createElement("div");
+      probe.setAttribute("data-mutation-probe", "true");
+      doc.body.appendChild(probe);
+      doc.body.setAttribute("data-mutation-probe-attr", "true");
+      probe.remove();
+      doc.body.removeAttribute("data-mutation-probe-attr");
+    });
+
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    );
+  });
 });
