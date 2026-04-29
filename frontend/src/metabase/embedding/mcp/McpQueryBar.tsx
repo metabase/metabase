@@ -60,6 +60,7 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
     <Popover opened={isDateFilterOpen} onChange={setIsDateFilterOpen}>
       <Popover.Target>
         <Button
+          size="xs"
           fw="bold"
           px="md"
           variant="subtle"
@@ -118,8 +119,8 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
       <Popover opened={isBucketOpen} onChange={setIsBucketOpen}>
         <Popover.Target>
           <Button
+            size="xs"
             fw="bold"
-            py="xs"
             px="md"
             variant="subtle"
             color="text-primary"

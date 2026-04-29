@@ -83,14 +83,15 @@ export function QueryExplorerBar({
       {/* Center: time range + granularity as a pill group */}
       {(filterControl || granularityControl) && (
         <Flex
-          align="center"
+          h="1.875rem"
+          align="stretch"
           bd="1px solid var(--mb-color-border)"
           bdrs="xl"
           style={{ overflow: "hidden" }}
         >
           {filterControl}
           {filterControl && granularityControl && (
-            <Divider orientation="vertical" style={{ alignSelf: "stretch" }} />
+            <Divider orientation="vertical" />
           )}
           {granularityControl}
         </Flex>
