@@ -114,7 +114,7 @@ When people open a new Metabot chat, Metabase shows a few suggested prompts base
 
 Click **Regenerate suggested prompts** to generate a fresh set of prompts. You can also run individual prompts to test Metabot's answers, or delete prompts that aren't useful. The Internal and Embedded tabs each maintain their own set of suggestions, so regenerating on one tab doesn't affect the other.
 
-## MCP server settings
+## Enable MCP server
 
 _Admin > AI > AI settings_
 
