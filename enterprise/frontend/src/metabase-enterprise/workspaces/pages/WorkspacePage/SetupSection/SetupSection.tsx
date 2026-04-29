@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import { Box, Button, Code, Divider, Stack, Text } from "metabase/ui";
+import { Box, Button, Code, Divider, Stack, Text, Tooltip } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";
@@ -38,9 +38,11 @@ export function SetupSection({ workspace }: SetupSectionProps) {
               {t`Download config file`}
             </Button>
           ) : (
-            <Button variant="filled" disabled>
-              {t`Download config file`}
-            </Button>
+            <Tooltip label={t`No databases configured yet.`}>
+              <Button variant="filled" disabled>
+                {t`Download config file`}
+              </Button>
+            </Tooltip>
           )}
         </Box>
       </Stack>
