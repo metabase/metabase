@@ -5,7 +5,114 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(defn- do-with-sample-metrics-archived
+  "Temporarily archive any metric cards belonging to the sample database so they
+   don't interfere with test assertions. Restores them after `thunk` completes."
+  [thunk]
+  (let [sample-db-id   (t2/select-one-pk :model/Database :is_sample true)
+        metric-ids     (when sample-db-id
+                         (t2/select-pks-vec :model/Card
+                                            :type :metric
+                                            :archived false
+                                            :database_id sample-db-id))]
+    (if (seq metric-ids)
+      (try
+        (t2/query {:update :report_card
+                   :set    {:archived true}
+                   :where  [:in :id metric-ids]})
+        (thunk)
+        (finally
+          (t2/query {:update :report_card
+                     :set    {:archived false}
+                     :where  [:in :id metric-ids]})))
+      (thunk))))
+
+(defmacro with-sample-metrics-archived
+  "Execute `body` with any sample-database metric cards temporarily archived."
+  [& body]
+  `(do-with-sample-metrics-archived (fn [] ~@body)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    GET /api/exploration/dimensions                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest dimensions-returns-hydrated-metrics-test
+  (testing "GET /api/exploration/dimensions returns metrics referencing dimensions by id"
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _m1 {:name          "Alpha Metric"
+                                      :type          :metric
+                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card _m2 {:name          "Beta Metric"
+                                      :type          :metric
+                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")
+              metrics  (:metrics response)
+              dims     (:dimensions response)
+              dim-ids  (set (map :id dims))]
+          (is (= 2 (count metrics)))
+          (is (every? #(contains? % :dimension_ids) metrics))
+          (is (every? #(not (contains? % :dimensions)) metrics))
+          (is (every? #(contains? % :dimension_mappings) metrics))
+          (testing "dimensions are deduplicated by id"
+            (is (= (count dims) (count dim-ids))))
+          (testing "every metric's dimension_ids reference dimensions in the top-level list"
+            (doseq [m metrics]
+              (is (every? #(contains? dim-ids %) (:dimension_ids m))))))))))
+
+(deftest dimensions-search-by-name-test
+  (testing "GET /api/exploration/dimensions filters case-insensitively by metric name"
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _m1 {:name          "Revenue"
+                                      :type          :metric
+                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card _m2 {:name          "Order Count"
+                                      :type          :metric
+                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions" :q "reven")]
+          (is (= 1 (count (:metrics response))))
+          (is (= "Revenue" (:name (first (:metrics response))))))))))
+
+(deftest dimensions-search-by-dimension-display-name-test
+  (testing "GET /api/exploration/dimensions matches metrics whose dimension display-name contains q"
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card metric {:name          "Sales"
+                                         :type          :metric
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [hydrated (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+              dim-name (some-> hydrated :dimensions first :display-name)]
+          (is (some? dim-name) "metric should have at least one hydrated dimension with a display-name")
+          (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
+                                               :q (subs dim-name 0 (min 3 (count dim-name))))]
+            (is (some #(= (:id metric) (:id %)) (:metrics response))
+                "metric should be returned because a dimension display-name matched")))))))
+
+(deftest dimensions-search-no-match-test
+  (testing "GET /api/exploration/dimensions returns empty lists when nothing matches"
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _m {:name          "Hello"
+                                     :type          :metric
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
+                                             :q "zzz_no_such_thing_zzz")]
+          (is (= [] (:metrics response)))
+          (is (= [] (:dimensions response))))))))
+
+(deftest dimensions-respects-collection-perms-test
+  (testing "GET /api/exploration/dimensions excludes metrics in collections the user can't read"
+    (with-sample-metrics-archived
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}
+                       :model/Card _hidden {:name          "Hidden Metric"
+                                            :type          :metric
+                                            :collection_id (:id collection)
+                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")]
+            (is (not-any? #(= "Hidden Metric" (:name %)) (:metrics response)))))))))
 
 (defn- valid-metric-card [user-id]
   {:type          :metric

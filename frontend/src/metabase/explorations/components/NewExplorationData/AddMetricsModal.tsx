@@ -3,14 +3,14 @@ import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { metricApi, useListMetricsQuery } from "metabase/api";
+import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type {
   ExplorationMetric,
   MetricDimension,
 } from "metabase/explorations/types";
 import { isLibraryMetric } from "metabase/explorations/utils";
-import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
@@ -23,7 +23,12 @@ import {
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
-import type { DimensionId, MetricBaseData } from "metabase-types/api";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import type {
+  ExplorationMetric as ApiExplorationMetric,
+  DimensionId,
+  MetricBaseData,
+} from "metabase-types/api";
 
 import S from "./AddMetricsModal.module.css";
 
@@ -46,79 +51,21 @@ export interface AddMetricsModalProps {
   ) => void;
 }
 
-function dedupeDimensions(metrics: ExplorationMetric[]): MetricDimension[] {
-  const map = new Map<DimensionId, MetricDimension>();
-  for (const metric of metrics) {
-    for (const dimension of metric.dimensions ?? []) {
-      if (!map.has(dimension.id)) {
-        map.set(dimension.id, dimension);
-      }
+function toMetricWithCollection(
+  metric: ApiExplorationMetric,
+  dimensionsById: Map<DimensionId, MetricDimension>,
+): MetricWithCollection {
+  const resolved: MetricDimension[] = [];
+  for (const id of metric.dimension_ids) {
+    const dim = dimensionsById.get(id);
+    if (dim) {
+      resolved.push(dim);
     }
   }
-  return [...map.values()];
-}
-
-function useFullMetrics(opened: boolean) {
-  const {
-    data: response,
-    isLoading: isListLoading,
-    error: listError,
-  } = useListMetricsQuery(undefined, { skip: !opened });
-  const dispatch = useDispatch();
-  const [items, setItems] = useState<MetricWithCollection[]>([]);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [detailsError, setDetailsError] = useState<unknown>(null);
-
-  useEffect(() => {
-    if (!opened) {
-      return;
-    }
-    if (!response || response.data.length === 0) {
-      setItems([]);
-      return;
-    }
-    let cancelled = false;
-    setIsLoadingDetails(true);
-    setDetailsError(null);
-
-    const collectionById = new Map(
-      response.data.map((metric) => [metric.id, metric.collection]),
-    );
-    Promise.all(
-      response.data.map((metric) =>
-        dispatch(metricApi.endpoints.getMetric.initiate(metric.id)).unwrap(),
-      ),
-    )
-      .then((results) => {
-        if (!cancelled) {
-          setItems(
-            results.map((metric) => ({
-              ...metric,
-              collection: metric.collection ?? collectionById.get(metric.id),
-            })),
-          );
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setDetailsError(err);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingDetails(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [opened, dispatch, response]);
-
-  return {
-    metrics: items,
-    isLoading: isListLoading || isLoadingDetails,
-    error: listError ?? detailsError,
-  };
+  // Strip dimension_ids from the API shape and attach resolved dimensions so
+  // the rest of the modal can keep working with `ExplorationMetric` (= Metric).
+  const { dimension_ids: _ignored, ...rest } = metric;
+  return { ...rest, dimensions: resolved } as MetricWithCollection;
 }
 
 export function AddMetricsModal({
@@ -128,9 +75,38 @@ export function AddMetricsModal({
   selectedDimensions,
   onSelectedItemsChange,
 }: AddMetricsModalProps) {
-  const { metrics: rawMetrics, isLoading, error } = useFullMetrics(opened);
-
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+
+  const {
+    data: response,
+    isFetching,
+    error,
+  } = useGetExplorationDataQuery(
+    { q: debouncedSearch.trim() || undefined },
+    { skip: !opened },
+  );
+
+  const visibleDimensions = useMemo<MetricDimension[]>(
+    () => response?.dimensions ?? [],
+    [response],
+  );
+
+  const dimensionsById = useMemo(() => {
+    const map = new Map<DimensionId, MetricDimension>();
+    for (const d of visibleDimensions) {
+      map.set(d.id, d);
+    }
+    return map;
+  }, [visibleDimensions]);
+
+  const rawMetrics = useMemo<MetricWithCollection[]>(
+    () =>
+      (response?.metrics ?? []).map((m) =>
+        toMetricWithCollection(m, dimensionsById),
+      ),
+    [response, dimensionsById],
+  );
 
   // Draft selection — committed to the parent only on Done.
   const [draftMetrics, setDraftMetrics] =
@@ -155,7 +131,7 @@ export function AddMetricsModal({
     onClose();
   }, [draftMetrics, draftDimensions, onSelectedItemsChange, onClose]);
 
-  const allMetrics = useMemo(
+  const visibleMetrics = useMemo(
     () =>
       [...rawMetrics].sort((a, b) => {
         const aLib = isLibraryMetric(a);
@@ -178,28 +154,9 @@ export function AddMetricsModal({
     [draftDimensions],
   );
 
-  const filteredMetrics = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) {
-      return allMetrics;
-    }
-    return allMetrics.filter(
-      (metric) =>
-        metric.name.toLowerCase().includes(query) ||
-        metric.dimensions.some((dimension) =>
-          dimension["display-name"].toLowerCase().includes(query),
-        ),
-    );
-  }, [allMetrics, search]);
-
-  const visibleDimensions = useMemo(
-    () => dedupeDimensions(filteredMetrics),
-    [filteredMetrics],
-  );
-
   const metricsByDimension = useMemo(() => {
     const map = new Map<DimensionId, ExplorationMetric[]>();
-    for (const metric of allMetrics) {
+    for (const metric of visibleMetrics) {
       for (const dimension of metric.dimensions) {
         const list = map.get(dimension.id);
         if (list) {
@@ -210,7 +167,7 @@ export function AddMetricsModal({
       }
     }
     return map;
-  }, [allMetrics]);
+  }, [visibleMetrics]);
 
   const toggleMetric = useCallback(
     (metric: ExplorationMetric) => {
@@ -305,12 +262,12 @@ export function AddMetricsModal({
             leftSection={<Icon name="search" />}
             mb="md"
           />
-          <LoadingAndErrorWrapper loading={isLoading} error={error}>
+          <LoadingAndErrorWrapper loading={isFetching} error={error}>
             <Flex gap="lg" h="28rem">
               <Stack flex={1} gap="sm" mih={0}>
                 <Text fw="bold">{t`Metrics`}</Text>
                 <MetricList
-                  metrics={filteredMetrics}
+                  metrics={visibleMetrics}
                   selectedIds={selectedMetricIds}
                   onToggle={toggleMetric}
                 />

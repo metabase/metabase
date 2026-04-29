@@ -155,6 +155,18 @@
   [card]
   (= (keyword (:type card)) :model))
 
+(defn visible-metric-cards-where-clause
+  "HoneySQL `:where` clause selecting non-archived metric Cards that the current user
+   can read (collection visibility applied). Use with `t2/select` / `t2/count` against
+   `:model/Card`."
+  []
+  [:and
+   [:= :type "metric"]
+   [:= :archived false]
+   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
+                                                                :include-archived-items    :exclude
+                                                                :permission-level          :read})])
+
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]

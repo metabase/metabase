@@ -955,6 +955,31 @@
                     :model/Table
                     :model/User}}
 
+  explorations
+  {:team "UX West"
+   :api  #{metabase.explorations.api
+           metabase.explorations.core
+           metabase.explorations.init}
+   :uses #{api
+           app-db
+           lib
+           lib-be
+           metrics
+           models
+           queries
+           query-processor
+           startup
+           util}
+   :model-exports #{:model/Exploration
+                    :model/ExplorationQuery
+                    :model/ExplorationQueryResult
+                    :model/ExplorationThread
+                    :model/ExplorationThreadDimension
+                    :model/ExplorationThreadMetric
+                    :model/ExplorationThreadTimeline}
+   :model-imports #{:model/Card
+                    :model/User}}
+
   formatter
   {:team "UX West"
    :api  #{metabase.formatter.core}
@@ -1281,6 +1306,7 @@
            parameters
            permissions
            premium-features
+           queries
            query-processor
            request
            server
@@ -1622,6 +1648,7 @@
   {:team "Graphy"
    :api  #{metabase.queries.core
            metabase.queries.init
+           metabase.queries.models.card
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
    :uses #{analytics
@@ -1734,6 +1761,7 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
+              metabase.query-processor.middleware.cache.impl
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates

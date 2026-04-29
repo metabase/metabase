@@ -36,6 +36,19 @@ export type GetMetricListResponse = {
   data: MetricBaseData[];
 } & PaginationResponse;
 
+export type GetExplorationDataRequest = {
+  q?: string;
+};
+
+export type ExplorationMetric = Omit<Metric, "dimensions"> & {
+  dimension_ids: DimensionId[];
+};
+
+export type GetExplorationDataResponse = {
+  metrics: ExplorationMetric[];
+  dimensions: MetricDimension[];
+};
+
 export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
 export type MathOperator = (typeof MATH_OPERATORS)[number];
 

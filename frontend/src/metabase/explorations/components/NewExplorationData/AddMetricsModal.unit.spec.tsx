@@ -268,12 +268,15 @@ describe("AddMetricsModal", () => {
       "churn",
     );
 
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Monthly recurring revenue"),
-      ).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Churn rate")).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByText("Churn rate")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Monthly recurring revenue"),
+        ).not.toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
     expect(screen.queryByText("Customer size")).not.toBeInTheDocument();
     expect(screen.getByText("Plan")).toBeInTheDocument();

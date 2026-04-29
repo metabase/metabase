@@ -3,11 +3,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -42,23 +42,12 @@
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
-(def ^:private visibility-config
-  {:include-trash-collection? false
-   :include-archived-items    :exclude
-   :permission-level          :read})
-
-(defn- metrics-where-clause []
-  [:and
-   [:= :type "metric"]
-   [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id visibility-config)])
-
 (defn- count-metrics []
-  (t2/count :model/Card {:where (metrics-where-clause)}))
+  (t2/count :model/Card {:where (card/visible-metric-cards-where-clause)}))
 
 (defn- select-metrics [limit offset]
   (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (metrics-where-clause)
+                 {:where    (card/visible-metric-cards-where-clause)
                   :order-by [[:name :asc]]
                   :limit    limit
                   :offset   offset})

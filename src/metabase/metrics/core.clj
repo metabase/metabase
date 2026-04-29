@@ -15,6 +15,7 @@
 
 (shared.ns/import-fns
  [metrics.dimension
+  annotate-dimensions-with-field-data
   dimension-values
   dimension-search-values
   dimension-remapped-value]
