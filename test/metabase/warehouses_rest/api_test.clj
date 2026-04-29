@@ -751,32 +751,32 @@
 
 (deftest databases-metadata-test
   (testing "GET /api/database/metadata"
-    (mt/with-temp [:model/Database {db-id :id} {:name "test-db" :engine :h2}
-                   :model/Table    {t-id :id}  {:db_id db-id :name "my_table" :schema "PUBLIC"
-                                                :description "A test table"}
-                   :model/Field    {f1-id :id} {:table_id t-id :name "id" :base_type :type/Integer
-                                                :database_type "BIGINT"
-                                                :semantic_type :type/PK}
-                   :model/Field    _           {:table_id t-id :name "created_at" :base_type :type/Text
-                                                :database_type "TIMESTAMP"
-                                                :effective_type :type/DateTime
-                                                :semantic_type :type/Name
-                                                :coercion_strategy :Coercion/ISO8601->DateTime
-                                                :description "The creation time"}
-                   :model/Field    _           {:table_id t-id :name "parent_id" :base_type :type/Integer
-                                                :database_type "BIGINT"
-                                                :semantic_type :type/FK
-                                                :fk_target_field_id f1-id}]
-      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")
-            table-id ["test-db" "PUBLIC" "my_table"]]
-        (is (=? {:name "test-db" :engine "h2"}
-                (m/find-first (comp #{"test-db"} :name) databases)))
-        (is (=? {:db_id "test-db" :name "my_table" :schema "PUBLIC" :description "A test table"}
-                (m/find-first (comp #{"my_table"} :name) tables)))
-        (is (=? {:table_id table-id :name "id" :base_type "type/Integer" :database_type "BIGINT"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}     {:db_id db-id :name "my_table" :schema "PUBLIC"
+                                                   :description "A test table"}
+                   :model/Field    {f1-id :id}    {:table_id t-id :name "id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/PK}
+                   :model/Field    {f2-id :id}    {:table_id t-id :name "created_at" :base_type :type/Text
+                                                   :database_type "TIMESTAMP"
+                                                   :effective_type :type/DateTime
+                                                   :semantic_type :type/Name
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime
+                                                   :description "The creation time"}
+                   :model/Field    {f3-id :id}    {:table_id t-id :name "parent_id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/FK
+                                                   :fk_target_field_id f1-id}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (=? {:id db-id :name "test-db" :engine "h2"}
+                (m/find-first (comp #{db-id} :id) databases)))
+        (is (=? {:id t-id :db_id db-id :name "my_table" :schema "PUBLIC" :description "A test table"}
+                (m/find-first (comp #{t-id} :id) tables)))
+        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer" :database_type "BIGINT"
                  :semantic_type "type/PK"}
-                (m/find-first (comp #{"id"} :name) fields)))
-        (is (=? {:table_id          table-id
+                (m/find-first (comp #{f1-id} :id) fields)))
+        (is (=? {:id                f2-id
+                 :table_id          t-id
                  :name              "created_at"
                  :base_type         "type/Text"
                  :database_type     "TIMESTAMP"
@@ -784,14 +784,15 @@
                  :semantic_type     "type/Name"
                  :coercion_strategy "Coercion/ISO8601->DateTime"
                  :description       "The creation time"}
-                (m/find-first (comp #{"created_at"} :name) fields)))
-        (is (=? {:table_id           table-id
+                (m/find-first (comp #{f2-id} :id) fields)))
+        (is (=? {:id                 f3-id
+                 :table_id           t-id
                  :name               "parent_id"
                  :base_type          "type/Integer"
                  :database_type      "BIGINT"
                  :semantic_type      "type/FK"
-                 :fk_target_field_id (conj table-id "id")}
-                (m/find-first (comp #{"parent_id"} :name) fields)))))))
+                 :fk_target_field_id f1-id}
+                (m/find-first (comp #{f3-id} :id) fields)))))))
 
 (deftest databases-metadata-no-perms-test
   (testing "GET /api/database/metadata — user without data perms sees nothing"
@@ -819,20 +820,18 @@
                                                    :human_readable_values ["Low" "Mid" "High"]
                                                    :has_more_values true}]
       (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
-            by-field                (into {} (map (juxt :field_id identity)) field_values)
-            f1-pid                  ["fv-db" "PUBLIC" "people" "state"]
-            f2-pid                  ["fv-db" "PUBLIC" "people" "rating"]]
-        (is (=? {:field_id        f1-pid
+            by-field                (into {} (map (juxt :field_id identity)) field_values)]
+        (is (=? {:field_id        f1-id
                  :values          [["CA"] ["NY"] ["TX"]]
                  :has_more_values false}
-                (by-field f1-pid)))
-        (is (nil? (:human_readable_values (by-field f1-pid)))
+                (by-field f1-id)))
+        (is (nil? (:human_readable_values (by-field f1-id)))
             "human_readable_values is omitted when empty")
-        (is (=? {:field_id              f2-pid
+        (is (=? {:field_id              f2-id
                  :values                [[1] [2] [3]]
                  :human_readable_values ["Low" "Mid" "High"]
                  :has_more_values       true}
-                (by-field f2-pid)))))))
+                (by-field f2-id)))))))
 
 (deftest databases-field-values-non-admin-test
   (testing "GET /api/database/field-values — non-admin requests are rejected"
@@ -860,8 +859,7 @@
                                                    :values [["NY"]]
                                                    :has_more_values false}]
       (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
-            f-pid                   ["fv-db" "PUBLIC" "people" "state"]
-            for-field               (filter #(= f-pid (:field_id %)) field_values)]
+            for-field               (filter #(= f-id (:field_id %)) field_values)]
         (is (= 1 (count for-field))
             "only the :full entry streams; :sandbox / other variants are excluded")
         (is (= [["CA"]] (-> for-field first :values)))))))
@@ -870,11 +868,11 @@
   (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
     (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
                    :model/Table    {t-id :id}  {:db_id db-id :name "audit_table" :schema "PUBLIC"}
-                   :model/Field    _           {:table_id t-id :name "audit_col" :base_type :type/Integer}]
+                   :model/Field    {f-id :id}  {:table_id t-id :name "audit_col" :base_type :type/Integer}]
       (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
-        (is (nil? (m/find-first (comp #{"audit-db"}    :name) databases)))
-        (is (nil? (m/find-first (comp #{"audit_table"} :name) tables)))
-        (is (nil? (m/find-first (comp #{"audit_col"}   :name) fields)))))))
+        (is (nil? (m/find-first (comp #{db-id} :id) databases)))
+        (is (nil? (m/find-first (comp #{t-id}  :id) tables)))
+        (is (nil? (m/find-first (comp #{f-id}  :id) fields)))))))
 
 (deftest databases-metadata-import-test
   (testing "POST /api/database/metadata"
