@@ -1,6 +1,7 @@
 (ns metabase.explorations.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -21,8 +22,8 @@
                   :description  "Q3 dip"
                   :prompt       "break down by region"
                   :metrics      [{:card_id (:id metric)
-                                  :dimension_mappings [{:dimension_id "d1"
-                                                        :table_id 1
+                                  :dimension_mappings [{:dimension-id "d1"
+                                                        :table-id 1
                                                         :target ["field" {} 1]}]}]
                   :dimensions   [{:dimension_id "d1" :display_name "Region"}]
                   :timeline_ids [(:id tl)]}
@@ -47,8 +48,8 @@
     (mt/with-temp [:model/User u {:email "matrix@example.com"}
                    :model/Card m1 (valid-metric-card (:id u))
                    :model/Card m2 (valid-metric-card (:id u))]
-      (let [mapping  [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}
-                      {:dimension_id "d2" :table_id 1 :target ["field" {} 2]}]
+      (let [mapping  [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}
+                      {:dimension-id "d2" :table-id 1 :target ["field" {} 2]}]
             body     {:name "matrix"
                       :metrics [{:card_id (:id m1) :dimension_mappings mapping}
                                 {:card_id (:id m2) :dimension_mappings mapping}]
@@ -79,6 +80,137 @@
         (let [resp (mt/user-http-request owner :get 200 (format "exploration/%d" eid))]
           (is (= eid (:id resp))))))))
 
+(deftest exploration-create-skips-pairs-without-mapping-test
+  (testing "POST / drops (metric, dimension) pairs where the metric has no mapping for the dimension"
+    (mt/with-temp [:model/User u {:email "applicability@example.com"}
+                   :model/Card revenue (valid-metric-card (:id u))
+                   :model/Card signups (valid-metric-card (:id u))]
+      (let [body {:name "applicability"
+                  :metrics [{:card_id (:id revenue)
+                             :dimension_mappings [{:dimension-id "plan"   :table-id 1 :target ["field" {} 1]}]}
+                            {:card_id (:id signups)
+                             :dimension_mappings [{:dimension-id "plan"   :table-id 1 :target ["field" {} 2]}
+                                                  {:dimension-id "channel" :table-id 1 :target ["field" {} 3]}]}]
+                  :dimensions [{:dimension_id "plan"} {:dimension_id "channel"}]}
+            resp     (mt/user-http-request u :post 200 "exploration" body)
+            queries  (-> resp :threads first :queries)]
+        (is (= 3 (count queries))
+            "revenue×plan, signups×plan, signups×channel — revenue×channel is dropped")
+        (is (= #{[(:id revenue) "plan"]
+                 [(:id signups) "plan"]
+                 [(:id signups) "channel"]}
+               (set (map (juxt :card_id :dimension_id) queries))))
+        (is (= [0 1 2] (sort (map :position queries)))
+            "positions are sequential with no gaps from filtered pairs")))))
+
+(deftest exploration-create-names-queries-by-metric-and-dimension-test
+  (testing "POST / sets each query's name to '{metric} by {dimension}' using the dimension's display_name"
+    (mt/with-temp [:model/User u {:email "naming@example.com"}
+                   :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
+      (let [body {:name "naming"
+                  :metrics    [{:card_id (:id revenue)
+                                :dimension_mappings [{:dimension-id "country" :table-id 1 :target ["field" {} 1]}
+                                                     {:dimension-id "no-name" :table-id 1 :target ["field" {} 2]}]}]
+                  :dimensions [{:dimension_id "country" :display_name "Country"}
+                               {:dimension_id "no-name"}]}
+            resp     (mt/user-http-request u :post 200 "exploration" body)
+            queries  (-> resp :threads first :queries)
+            by-dim   (into {} (map (juxt :dimension_id :name) queries))]
+        (is (= "Revenue by Country" (get by-dim "country"))
+            "uses the metric Card name and the dimension's display_name")
+        (is (= "Revenue by no-name" (get by-dim "no-name"))
+            "falls back to dimension_id when display_name is absent")))))
+
+(deftest exploration-list-queries-endpoint-test
+  (testing "GET /:id/queries returns lightweight summaries without dataset_query"
+    (mt/with-temp [:model/User u {:email "list@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "list"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            eid       (:id resp)
+            summaries (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
+        (is (= 1 (count summaries)))
+        (let [s (first summaries)]
+          (is (contains? s :status))
+          (is (= "pending" (:status s)))
+          (is (contains? s :position))
+          (is (not (contains? s :dataset_query)) "dataset_query must not leak")
+          (is (not (contains? s :result_data)) "result blob must not leak"))))))
+
+(deftest exploration-list-queries-permissions-test
+  (testing "GET /:id/queries enforces the same read-check as the parent exploration"
+    (mt/with-temp [:model/User owner {:email "lq-owner@example.com"}
+                   :model/User other {:email "lq-other@example.com"}]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "lq-private"})]
+        (mt/user-http-request other :get 403 (format "exploration/%d/queries" eid))))))
+
+(defn- store-fake-result!
+  "Insert an ExplorationQueryResult that mirrors the worker's serialization format so the
+  result endpoint can replay it."
+  [query-id qp-result]
+  (let [bytes (cache.impl/do-with-serialization
+               (fn [in result-fn]
+                 (in qp-result)
+                 (result-fn)))]
+    (t2/insert! :model/ExplorationQueryResult
+                {:exploration_query_id query-id
+                 :result_data          bytes})))
+
+(defn- mark-done! [query-id]
+  (t2/update! :model/ExplorationQuery query-id {:status "done"}))
+
+(deftest exploration-query-result-streams-stored-result-test
+  (testing "GET /query/:id streams the stored worker result as JSON"
+    (mt/with-temp [:model/User u {:email "result@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp     (mt/user-http-request u :post 200 "exploration"
+                                           {:name "result"
+                                            :metrics [{:card_id (:id metric)
+                                                       :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                            :dimensions [{:dimension_id "d1"}]})
+            qid      (-> resp :threads first :queries first :id)
+            qp-out   {:status :completed
+                      :data   {:cols [{:name "x"} {:name "y"}]
+                               :rows [["a" 1] ["b" 2]]}
+                      :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (let [body (mt/user-http-request u :get 202 (format "exploration/query/%d" qid))]
+          (is (= [["a" 1] ["b" 2]] (-> body :data :rows))
+              "rows from the stored qp-result are streamed back")
+          (is (= [{:name "x"} {:name "y"}] (-> body :data :cols))
+              "cols metadata round-trips through the streaming rff"))))))
+
+(deftest exploration-query-result-409-when-not-done-test
+  (testing "GET /query/:id returns 409 with status info while the query is still pending"
+    (mt/with-temp [:model/User u {:email "pending@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "pending"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            qid  (-> resp :threads first :queries first :id)
+            body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
+        (is (= "pending" (:status body)))
+        (is (= qid (:id body)))))))
+
+(deftest exploration-query-result-permissions-test
+  (testing "GET /query/:id enforces the parent exploration's read check"
+    (mt/with-temp [:model/User owner {:email "qr-owner@example.com"}
+                   :model/User other {:email "qr-other@example.com"}
+                   :model/Card metric (valid-metric-card (:id owner))]
+      (let [resp (mt/user-http-request owner :post 200 "exploration"
+                                       {:name "qr-private"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            qid  (-> resp :threads first :queries first :id)]
+        (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
+
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"
     (mt/with-temp [:model/User u {:email "cd@example.com"}
@@ -87,7 +219,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "cascade"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]
                                         :timeline_ids [(:id tl)]})
             eid  (:id resp)

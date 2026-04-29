@@ -14,3 +14,17 @@
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json
    :dataset_query          mi/transform-json})
+
+(defmethod mi/can-read? :model/ExplorationQuery
+  ([instance]
+   (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
+  ([_model pk]
+   (when-let [q (t2/select-one [:model/ExplorationQuery :exploration_thread_id] :id pk)]
+     (mi/can-read? :model/ExplorationThread (:exploration_thread_id q)))))
+
+(defmethod mi/can-write? :model/ExplorationQuery
+  ([instance]
+   (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
+  ([_model pk]
+   (when-let [q (t2/select-one [:model/ExplorationQuery :exploration_thread_id] :id pk)]
+     (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
