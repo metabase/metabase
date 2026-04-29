@@ -177,7 +177,8 @@
   :temperature     0.3
   :tools           [#'tools/search-tool
                     #'tools/read-resource-tool
-                    #'tools/select-exploration-metrics-tool]})
+                    #'tools/select-exploration-metrics-tool
+                    #'tools/set-exploration-name-tool]})
 
 (def ^:private api-string->capability-keyword
   "Map from API capability strings (as sent by the frontend) to the keywords

@@ -48,7 +48,8 @@
   document-construct-sql-chart-tool
   document-construct-model-chart-tool]
  [tools.explorations
-  select-exploration-metrics-tool]
+  select-exploration-metrics-tool
+  set-exploration-name-tool]
  [tools.metadata
   list-available-data-sources-tool
   list-available-fields-tool

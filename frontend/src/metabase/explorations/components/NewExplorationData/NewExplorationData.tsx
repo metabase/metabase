@@ -36,9 +36,11 @@ export interface NewExplorationDataProps {
   setDimensions: (dimensions: MetricDimension[]) => void;
   timelines: Timeline[];
   setTimelines: (timelines: Timeline[]) => void;
+  name: string | null;
 }
 
 function buildCreateExplorationRequest(
+  name: string | null,
   prompt: string,
   metrics: ExplorationMetric[],
   dimensions: MetricDimension[],
@@ -46,7 +48,7 @@ function buildCreateExplorationRequest(
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
   return {
-    name: trimmedPrompt.length > 0 ? trimmedPrompt : t`New exploration`,
+    name: name ? name : t`New exploration`,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
     metrics: metrics.map((m) => ({
       card_id: m.id,
@@ -69,6 +71,7 @@ export function NewExplorationData({
   setDimensions,
   timelines,
   setTimelines,
+  name,
 }: NewExplorationDataProps) {
   const dispatch = useDispatch();
 
@@ -86,6 +89,7 @@ export function NewExplorationData({
       .map((message) => message.message)
       .join("\n---\n");
     const request = buildCreateExplorationRequest(
+      name,
       prompt,
       metrics,
       dimensions,
@@ -93,7 +97,15 @@ export function NewExplorationData({
     );
     const exploration = await createExploration(request).unwrap();
     dispatch(push(`/explorations/${exploration.id}`));
-  }, [createExploration, dispatch, messages, metrics, dimensions, timelines]);
+  }, [
+    createExploration,
+    dispatch,
+    messages,
+    metrics,
+    dimensions,
+    timelines,
+    name,
+  ]);
 
   const canStart = metrics.length > 0 && dimensions.length > 0;
 
