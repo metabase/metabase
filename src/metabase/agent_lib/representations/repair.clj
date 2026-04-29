@@ -1059,7 +1059,7 @@
 ;;; Background: when the user asks for something like "top categories by total revenue", the
 ;;; LLM tends to write `order-by` by re-stating the aggregation expression inline:
 ;;;
-;;;   aggregation: [[sum, {}, [field, {}, [..., TOTAL]]]]
+;;;   aggregation: [[sum, {}, [field, {}, [..., TOTAL]]]]
 ;;;   order-by:    [[desc, {}, [sum, {}, [field, {}, [..., TOTAL]]]]]   # <-- inline copy
 ;;;
 ;;; In MBQL 5 / legacy MBQL the `order-by` direction must wrap an aggregation **reference**,
@@ -1950,6 +1950,37 @@
                    :entry-index  entry-idx
                    :entry        entry})))))))
 
+;;; ----- E2: `case` / `if` with `"default"` in opts ------------------------------------
+
+(defn- case-default-in-opts-error!
+  "Detect a `case` / `if` clause whose options map carries a `\"default\"` key. lib's
+  canonical shape uses the *third positional argument* as the fallback, e.g.
+
+      [case, {}, [[pred1 then1] [pred2 then2]], default-value]
+
+  Some LLMs (especially those primed by JSON-Schema-style examples) put `default` into the
+  options map instead. lib silently ignores the unknown opts key and the case clause
+  evaluates to `null` for any branch miss - a wrong-result class of bug.
+
+  Throws `:agent-error?` ex-info on the first offender. Carried over from the sexp
+  pipeline's `validate/operators.clj/validate-operator-specific!` `case` branch."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (when (and (vector? node)
+                (>= (count node) 2)
+                (string? (nth node 0))
+                (contains? #{"case" "if"} (nth node 0))
+                (map? (nth node 1))
+                (contains? (nth node 1) "default"))
+       (throw (ex-info
+               (tru "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss).")
+               {:agent-error? true
+                :error        :case-default-in-opts
+                :clause       node})))
+     node)
+   form))
+
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
 (defn- friendly-errors*
@@ -1959,7 +1990,8 @@
   (when (and (map? query) (vector? (get query "stages")))
     (doseq [[idx stage] (map-indexed vector (get query "stages"))]
       (when (map? stage)
-        (aggregation-entry-not-aggregation-error! stage idx))))
+        (aggregation-entry-not-aggregation-error! stage idx)))
+    (case-default-in-opts-error! query))
   query)
 
 ;;; ============================================================

@@ -2093,3 +2093,53 @@
         (is false "should have thrown")
         (catch clojure.lang.ExceptionInfo e
           (is (= 1 (:stage-index (ex-data e)))))))))
+
+;;; ----- E2: case/if with "default" in opts ------------------------------------------
+
+(deftest friendly-error-case-default-in-opts-test
+  (testing "`case` with `default` in options raises clean :agent-error?"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  [["case" {"default" "unknown" "lib/expression-name" "Bucket"}
+                                           [[["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 0] "zero"]]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :case-default-in-opts (:error data)))
+            (is (re-find #"third positional argument" (ex-message e))))))))
+  (testing "`if` with `default` in options also triggers"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  [["if" {"default" "no" "lib/expression-name" "Y"}
+                                           [[["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 0] "yes"]]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :case-default-in-opts (:error (ex-data e)))))))))
+
+(deftest friendly-error-case-canonical-default-passes-test
+  (testing "canonical `case` with default as 3rd arg does NOT trigger"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  [["case" {"lib/expression-name" "Bucket"}
+                                           [[["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 0] "zero"]]
+                                           "unknown"]]}]}]
+      (is (some? (repair/repair trivial-mp q)))))
+  (testing "case with no default at all also passes"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  [["case" {"lib/expression-name" "Bucket"}
+                                           [[["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 0] "zero"]]]]}]}]
+      (is (some? (repair/repair trivial-mp q))))))
