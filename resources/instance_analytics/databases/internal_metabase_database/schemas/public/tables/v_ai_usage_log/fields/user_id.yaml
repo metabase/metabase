@@ -3,10 +3,7 @@ display_name: User ID
 description: ID of the user who triggered the call (null for system/Quartz calls).
 created_at: '2026-04-24T19:39:29.861736Z'
 visibility_type: normal
-table_id:
-- Internal Metabase Database
-- public
-- v_ai_usage_log
+table_id: [Internal Metabase Database, public, v_ai_usage_log]
 database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
@@ -17,19 +14,15 @@ fk_target_field_id:
 - v_users
 - user_id
 dimensions: []
-position: 9
+position: 10
 custom_position: 0
-database_position: 9
+database_position: 10
 has_field_values: auto-list
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_ai_usage_log
-  model: Table
-- id: user_id
-  model: Field
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_ai_usage_log, model: Table}
+- {id: user_id, model: Field}
 database_is_generated: false
 database_is_nullable: true
 database_is_pk: false
