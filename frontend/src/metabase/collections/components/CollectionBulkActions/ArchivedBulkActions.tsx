@@ -8,6 +8,7 @@ import {
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useSetArchive } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -32,6 +33,7 @@ export const ArchivedBulkActions = ({
   setSelectedAction,
 }: ArchivedBulkActionsProps) => {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
 
   const hasSelectedItems = useMemo(
     () => !!selectedItems && !_.isEmpty(selectedItems),
@@ -59,7 +61,7 @@ export const ArchivedBulkActions = ({
   }, [selected]);
 
   const handleBulkRestore = () => {
-    const actions = selected.map((item) => item.setArchived(false));
+    const actions = selected.map((item) => archive(item, false));
     Promise.all(actions).finally(unselect);
   };
 

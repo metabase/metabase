@@ -3,6 +3,7 @@ import { c, t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { canArchiveItem } from "metabase/collections/utils";
+import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -17,9 +18,10 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
   });
   const canArchive = collection ? canArchiveItem(item, collection) : false;
   const [dropdownOpened, dropdownActions] = useDisclosure();
+  const archive = useSetArchive();
 
   const handleArchive = () => {
-    item.setArchived?.(true);
+    archive(item as ArchivableItem, true);
     dropdownActions.close();
   };
 

@@ -23,6 +23,7 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
+import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { entityForObject } from "metabase/entities/utils";
@@ -86,6 +87,7 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
   const [sendToast] = useToast();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
@@ -110,9 +112,10 @@ function ActionMenu({
     onMove?.([item]);
   }, [item, onMove]);
 
-  const handleArchive = useCallback(() => {
-    return item.setArchived ? item.setArchived(true) : Promise.resolve();
-  }, [item]);
+  const handleArchive = useCallback(
+    () => archive(item as ArchivableItem, true),
+    [archive, item],
+  );
 
   const handleToggleBookmark = useMemo(() => {
     if (!createBookmark && !deleteBookmark) {
