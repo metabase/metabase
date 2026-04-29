@@ -72,7 +72,7 @@ Guest embeds don't authenticate people's identities on the Metabase side, so peo
 Without a Metabase account, however, Metabase won't have a way to remember a user or their session, which means:
 
 - Metabase [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) won't work --- if you need to lock down sensitive data, you must set up [locked parameters](#example-securing-data-with-locked-parameters-on-a-guest-embed) for _each_ of your guest embeds.
-- Any filter selections in a guest embed will reset once the signed JWT expires, _unless_ you configure [JWT refresh](./guest-embedding.md#refreshing-the-jwt) so the embed swaps in a fresh token without reloading.
+- Any filter selections in a guest embed will reset once the signed JWT expires, _unless_ you configure [JWT refresh](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) so the embed swaps in a fresh token without reloading.
 - All guest embed usage will show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md) under "External user".
 
 ## Security in guest embedding vs. modular and full app embedding
@@ -93,7 +93,7 @@ This diagram illustrates how an embed gets secured by a signed JWT:
 2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./guest-embedding.md#how-guest-embedding-works). The signed JWT should encode any query [parameters](./static-embedding-parameters.md) you're using to filter your data.
 3. **Response**: your Metabase backend returns data based on the query parameters encoded in the signed JWT.
 4. **Success**: your frontend displays the embedded Metabase page with the correct data.
-5. **(Optional) Refresh / Initialize**: if you've configured a [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-the-jwt), the embed will call that endpoint you've set up for a fresh token the next time the embed needs to make a data request after the current token has expired (like when someone changes the filter value). The embed won't automatically fetch a new token. The endpoint can also serve the first token on load, so you can use the endpoint to revoke access by refusing to issue a new token.
+5. **(Optional) Refresh / Initialize**: if you've configured a [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server), the embed will call that endpoint you've set up for a fresh token the next time the embed needs to make a data request after the current token has expired (like when someone changes the filter value). The embed won't automatically fetch a new token. The endpoint can also serve the first token on load, so you can use the endpoint to revoke access by refusing to issue a new token.
 
 ### Example: securing data with locked parameters on a guest embed
 
