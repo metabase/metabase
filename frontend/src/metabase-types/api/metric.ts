@@ -79,6 +79,11 @@ export type MetricDatasetRequest = {
   definition: JsMetricDefinition;
 };
 
+export type GetMetricRequest = {
+  id: MetricId;
+  sortDimensionsByInterestingness?: boolean;
+};
+
 export type GetMetricDimensionValuesRequest = {
   metricId: MetricId;
   dimensionId: DimensionId;

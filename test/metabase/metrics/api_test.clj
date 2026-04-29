@@ -205,6 +205,56 @@
               (is (#{"list" "search" "none"} (:has-field-values dim))
                   (str "dimension " (:name dim) " has-field-values should be list, search, or none")))))))))
 
+(deftest fetch-metric-sort-dimensions-by-interestingness-test
+  (testing "GET /api/metric/:id?sort_dimensions_by_interestingness=true"
+    (mt/with-temp [:model/Card metric {:name          "Metric for sort test"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; Seed known interestingness scores on the venues fields this metric's dimensions reference.
+      ;; Use a mix so we can distinguish descending sort + nulls-last.
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name)     {:dimension_interestingness 0.9}
+        (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price)    {:dimension_interestingness 0.4}
+          (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:dimension_interestingness 0.1}
+            (mt/with-temp-vals-in-db :model/Field (mt/id :venues :latitude)  {:dimension_interestingness nil}
+              (let [field-id-of   (fn [dim] (some-> dim :sources first :field-id))
+                    seeded-fids   {(mt/id :venues :name)        0.9
+                                   (mt/id :venues :price)       0.4
+                                   (mt/id :venues :category_id) 0.1
+                                   (mt/id :venues :latitude)    nil}
+                    default-resp  (mt/user-http-request :rasta :get 200
+                                                        (str "metric/" (:id metric)))
+                    sorted-resp   (mt/user-http-request :rasta :get 200
+                                                        (str "metric/" (:id metric)
+                                                             "?sort_dimensions_by_interestingness=true"))]
+                (testing "without the flag, default order is preserved"
+                  (is (seq (:dimensions default-resp)))
+                  (is (= (map :id (:dimensions default-resp))
+                         (map :id (:dimensions (mt/user-http-request :rasta :get 200
+                                                                     (str "metric/" (:id metric))))))
+                      "repeated calls with no flag yield the same ordering"))
+                (testing "interestingness score is always present on dimensions"
+                  (is (every? #(contains? % :dimension_interestingness)
+                              (:dimensions default-resp))
+                      "every dimension has the key even without the sort flag")
+                  (let [by-fid (into {}
+                                     (map (fn [d] [(field-id-of d) (:dimension_interestingness d)]))
+                                     (:dimensions default-resp))]
+                    (doseq [[fid expected-score] seeded-fids]
+                      (is (= expected-score (get by-fid fid))
+                          (str "score for field " fid " should match seeded value")))))
+                (testing "with the flag, seeded dimensions are ordered by score desc (nulls last)"
+                  (let [scored (->> (:dimensions sorted-resp)
+                                    (map (fn [d] [d (field-id-of d)]))
+                                    (filter (fn [[_ fid]] (contains? seeded-fids fid)))
+                                    (map (fn [[d fid]] [(:id d) fid (get seeded-fids fid)])))
+                        score-order (map #(nth % 2) scored)
+                        non-nil     (remove nil? score-order)]
+                    (is (= non-nil (reverse (sort non-nil)))
+                        "non-nil scores appear in descending order")
+                    (when (some nil? score-order)
+                      (is (not-any? some? (drop-while some? score-order))
+                          "nil scores appear at/after all non-nil scores among seeded dims"))))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+

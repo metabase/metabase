@@ -24,6 +24,9 @@ export type MetricDimension = {
   semantic_type: string | null;
   group?: MetricDimensionGroup;
   sources?: MetricDimensionSource[];
+  /** Score in [0.0, 1.0] from the interestingness feature; null if the dimension's
+      underlying field has not been scored. */
+  dimension_interestingness?: number | null;
 };
 
 export type DimensionMappingTarget = ["field", Record<string, unknown>, number];

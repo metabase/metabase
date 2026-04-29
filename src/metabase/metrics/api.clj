@@ -85,18 +85,33 @@
      :offset offset
      :data   metrics}))
 
-(mu/defn- hydrated-metric [id :- ms/PositiveInt]
+(mu/defn- hydrated-metric
+  [id :- ms/PositiveInt
+   {:keys [sort-dimensions-by-interestingness?]} :- [:map
+                                                     [:sort-dimensions-by-interestingness? {:optional true} :boolean]]]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
-  (-> (t2/select-one :model/Card :id id :type "metric")
-      metrics.perms/filter-dimensions-for-user))
+  (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
+              metrics.perms/filter-dimensions-for-user
+              metrics.perms/annotate-dimensions-with-interestingness)
+    sort-dimensions-by-interestingness?
+    metrics.perms/sort-dimensions-by-interestingness))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [metric (hydrated-metric id)]
+  Returns the metric with hydrated dimensions and dimension mappings.
+
+  Pass `sort_dimensions_by_interestingness=true` to sort `:dimensions` descending by the
+  underlying field's `dimension_interestingness` score (fields without a score go last).
+  Snake_case here matches the rest of Metabase's JSON/URL surface; there is no automatic
+  case conversion on the wire."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [sort_dimensions_by_interestingness]}
+   :- [:map
+       [:sort_dimensions_by_interestingness {:default false} [:maybe ms/BooleanValue]]]]
+  (let [metric (hydrated-metric id {:sort-dimensions-by-interestingness? sort_dimensions_by_interestingness})]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -267,7 +282,7 @@
   [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id {})]
     (metrics/dimension-values
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -282,7 +297,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id {})]
     (metrics/dimension-search-values
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -298,7 +313,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id {})]
     (metrics/dimension-remapped-value
      (:dimensions metric)
      (:dimension_mappings metric)

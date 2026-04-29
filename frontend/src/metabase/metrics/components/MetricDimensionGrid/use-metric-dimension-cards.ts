@@ -8,11 +8,14 @@ import { getDefaultDimensions } from "./utils";
 const SHOW_MORE_BATCH_SIZE = 4;
 
 export function useMetricDimensionCards(metricId: MetricId) {
-  const { definition, isLoading } = useMetricDefinition(metricId);
+  const { definition, dimensionScores, isLoading } = useMetricDefinition(
+    metricId,
+    { sortDimensionsByInterestingness: true },
+  );
 
   const allDimensions = useMemo(
-    () => (definition ? getDefaultDimensions(definition) : []),
-    [definition],
+    () => (definition ? getDefaultDimensions(definition, dimensionScores) : []),
+    [definition, dimensionScores],
   );
 
   const [visibleCount, setVisibleCount] = useState<number | null>(null);

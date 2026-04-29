@@ -24,7 +24,7 @@ interface MetricTabsProps {
 
 export function MetricTabs({ card, urls }: MetricTabsProps) {
   const metadata = useSelector(getMetadata);
-  const { data: metric } = useGetMetricQuery(card.id);
+  const { data: metric } = useGetMetricQuery({ id: card.id });
   const hasDimensions =
     metric?.dimensions != null && metric.dimensions.length > 0;
   const tabs = useMemo(
