@@ -90,3 +90,43 @@ export type ConversationDetail = {
   ip_address: string | null;
   feedback: ConversationFeedback[];
 };
+
+export type DataComplexityCatalogId = "library" | "universe" | "metabot";
+export type DataComplexityComponentId =
+  | "entity_count"
+  | "name_collisions"
+  | "synonym_pairs"
+  | "field_count"
+  | "repeated_measures";
+
+export type DataComplexitySubScore =
+  | {
+      measurement: null;
+      score: null;
+      error: string;
+    }
+  | {
+      measurement: number;
+      score: number;
+    };
+
+export type DataComplexityCatalog = {
+  total: number | null;
+  components: {
+    [K in DataComplexityComponentId]: DataComplexitySubScore;
+  };
+};
+
+export type DataComplexityScoresResponse = {
+  meta: {
+    formula_version: number;
+    synonym_threshold: number;
+    calculated_at?: string;
+    embedding_model?: {
+      provider: string;
+      model_name: string;
+    } | null;
+  };
+} & {
+  [K in DataComplexityCatalogId]: DataComplexityCatalog;
+};

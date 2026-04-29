@@ -5,11 +5,14 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { useDispatch } from "metabase/redux";
-import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 
+import { useRefreshDataComplexityScoresMutation } from "../../api";
 import {
   VIEW_CONVERSATIONS,
   VIEW_GROUP_MEMBERS,
@@ -25,6 +28,7 @@ import {
 import { BreakoutChart } from "./BreakoutChart";
 import S from "./ConversationStatsPage.module.css";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
+import { DataComplexityCards } from "./DataComplexityCards";
 import {
   type StatsFilters,
   type UsageStatsMetric,
@@ -211,10 +215,12 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   return (
     <MetabotAdminLayout fullWidth>
-      <SettingsPageWrapper mt="sm">
+      <SettingsPageWrapper mt="sm" title={t`Usage stats`}>
+        <DataComplexityHeader />
+        <DataComplexityCards />
         <Flex align="center" justify="space-between">
-          <Title order={2} display="flex" style={{ alignItems: "center" }}>
-            {t`Usage stats`}
+          <Title order={3} display="flex" style={{ alignItems: "center" }}>
+            {t`Usage metrics`}
           </Title>
 
           <ConversationFilters
@@ -314,5 +320,47 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         </SimpleGrid>
       </SettingsPageWrapper>
     </MetabotAdminLayout>
+  );
+}
+
+export function DataComplexityHeader() {
+  const [
+    refreshDataComplexityScores,
+    { isLoading: refreshDataComplexityScoresLoading },
+  ] = useRefreshDataComplexityScoresMutation();
+  const [sendToast] = useToast();
+
+  const handleRecompute = useCallback(async () => {
+    try {
+      await refreshDataComplexityScores().unwrap();
+    } catch (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: getErrorMessage(
+          error,
+          t`Could not recompute data complexity.`,
+        ),
+      });
+    }
+  }, [refreshDataComplexityScores, sendToast]);
+
+  return (
+    <Flex align="center" justify="space-between">
+      <Title order={3} display="flex" style={{ alignItems: "center" }}>
+        {t`Data complexity`}
+      </Title>
+
+      <Flex gap="sm" wrap="wrap" align="center">
+        <Button
+          variant="default"
+          onClick={handleRecompute}
+          loading={refreshDataComplexityScoresLoading}
+          disabled={refreshDataComplexityScoresLoading}
+        >
+          {t`Recompute`}
+        </Button>
+      </Flex>
+    </Flex>
   );
 }
