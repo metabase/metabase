@@ -16,15 +16,15 @@ export const CustomVisualizationsNav = () => {
   );
 
   const pathname = useSelector(getLocation).pathname;
-  const isFull = hasCustomVizAvailable && customVizDevModeEnabled;
+  const hasSubNav = hasCustomVizAvailable && customVizDevModeEnabled;
   const isManageVisualizationsActive =
     pathname.startsWith(Urls.customVizAdd()) ||
     pathname.startsWith(Urls.customVizEdit(undefined));
 
   return (
     <SettingsNavItem
-      active={isManageVisualizationsActive && !isFull ? true : undefined}
-      path={isFull ? undefined : "custom-visualizations"}
+      active={isManageVisualizationsActive && !hasSubNav ? true : undefined}
+      path={hasSubNav ? undefined : "custom-visualizations"}
       folderPattern="custom-visualizations"
       label={
         <Flex gap="sm" align="center">
@@ -34,7 +34,7 @@ export const CustomVisualizationsNav = () => {
       }
       icon="bar"
     >
-      {isFull && (
+      {hasSubNav && (
         <>
           <SettingsNavItem
             key="manage"
