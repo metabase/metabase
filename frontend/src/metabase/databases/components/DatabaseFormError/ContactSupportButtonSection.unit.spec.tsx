@@ -1,8 +1,7 @@
 import { Route } from "react-router";
 
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen, within } from "__support__/ui";
 import { createMockTokenStatus } from "metabase-types/api/mocks";
 
 import { ContactSupportButtonSection } from "./ContactSupportButtonSection";
@@ -13,22 +12,18 @@ interface SetupParams {
 }
 
 const setup = (params?: SetupParams) => {
-  const storeInitialState = createMockState({
-    settings: mockSettings({
+  const { render } = createScenario()
+    .withSettings({
       version: { tag: params?.tag || "v1.2.3" },
       "token-status": params?.isPaidPlan
         ? createMockTokenStatus({ valid: true })
         : undefined,
-    }),
-  });
+    })
+    .build();
 
-  renderWithProviders(
-    <Route path="*" component={ContactSupportButtonSection} />,
-    {
-      storeInitialState,
-      withRouter: true,
-    },
-  );
+  render(<Route path="*" component={ContactSupportButtonSection} />, {
+    withRouter: true,
+  });
 };
 
 describe("ContactSupportButtonSection", () => {

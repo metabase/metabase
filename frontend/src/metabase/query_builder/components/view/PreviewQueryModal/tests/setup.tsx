@@ -1,18 +1,13 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockNativeCard,
-  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { PreviewQueryModal } from "..";
@@ -20,7 +15,7 @@ import { PreviewQueryModal } from "..";
 export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export const setup = ({
@@ -29,21 +24,6 @@ export const setup = ({
   enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const card = createMockNativeCard();
-  const state = createMockState({
-    qb: createMockQueryBuilderState({ card }),
-    entities: createMockEntitiesState({
-      databases: [createMockDatabase()],
-      questions: [card],
-    }),
-    settings: mockSettings({
-      "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
-
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
 
   fetchMock.post("path:/api/dataset/native", {
     status: 500,
@@ -52,5 +32,18 @@ export const setup = ({
     },
   });
 
-  renderWithProviders(<PreviewQueryModal />, { storeInitialState: state });
+  const { render } = createScenario()
+    .withSettings({ "show-metabase-links": showMetabaseLinks })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
+
+  render(<PreviewQueryModal />, {
+    storeInitialState: {
+      qb: createMockQueryBuilderState({ card }),
+      entities: createMockEntitiesState({
+        databases: [createMockDatabase()],
+        questions: [card],
+      }),
+    },
+  });
 };

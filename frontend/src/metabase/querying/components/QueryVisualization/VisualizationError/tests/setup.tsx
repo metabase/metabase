@@ -1,16 +1,10 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { createMockMetadata } from "__support__/metadata";
-import { mockSettings } from "__support__/settings";
+import { createScenario } from "__support__/scenarios";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Database, TokenFeatures } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockDatabase,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 
 import { VisualizationError } from "../VisualizationError";
 
@@ -19,7 +13,7 @@ export interface SetupOpts {
   card?: Card;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export const setup = ({
@@ -29,20 +23,9 @@ export const setup = ({
   tokenFeatures = {},
   enterprisePlugins = [],
 }: SetupOpts) => {
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [database],
-      questions: [card],
-    }),
-    settings: mockSettings({
-      "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
-
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
+  const builder = createScenario()
+    .withSettings({ "show-metabase-links": showMetabaseLinks })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures });
 
   const metadata = createMockMetadata({
     questions: [card],
@@ -50,13 +33,22 @@ export const setup = ({
   });
   const question = checkNotNull(metadata.question(card.id));
 
-  renderWithProviders(
+  const { render } = builder.build();
+
+  render(
     <VisualizationError
       question={question}
       duration={0}
       error="An error occurred"
       via={[]}
     />,
-    { storeInitialState: state },
+    {
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: [database],
+          questions: [card],
+        }),
+      },
+    },
   );
 };

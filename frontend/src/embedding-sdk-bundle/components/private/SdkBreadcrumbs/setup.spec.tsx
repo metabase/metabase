@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { P, match } from "ts-pattern";
 
 import {
+  setupCollectionsScenario,
+  setupDashboardScenario,
+} from "__support__/scenarios";
+import {
   setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupDatabaseListEndpoint,
   setupTableEndpoints,
@@ -153,11 +153,7 @@ export const setup = async () => {
     }),
   ];
 
-  setupCollectionsEndpoints({
-    collections: [ROOT_TEST_COLLECTION, NESTED_COLLECTION],
-  });
-
-  setupCollectionByIdEndpoint({
+  setupCollectionsScenario({
     collections: [ROOT_TEST_COLLECTION, NESTED_COLLECTION],
   });
 
@@ -171,14 +167,12 @@ export const setup = async () => {
     collectionItems: [],
   });
 
-  setupDashboardEndpoints(TEST_DASHBOARD);
-
-  setupDashboardQueryMetadataEndpoint(
-    TEST_DASHBOARD,
-    createMockDashboardQueryMetadata({
+  setupDashboardScenario({
+    dashboard: TEST_DASHBOARD,
+    metadata: createMockDashboardQueryMetadata({
       databases: [TEST_DATABASE],
     }),
-  );
+  });
 
   setupCardEndpoints(TEST_CARD);
   setupCardQueryEndpoints(TEST_CARD, createMockDataset());

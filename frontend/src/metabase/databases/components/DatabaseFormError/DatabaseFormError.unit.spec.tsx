@@ -1,6 +1,5 @@
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen, within } from "__support__/ui";
 
 import { DatabaseFormError } from "./DatabaseFormError";
 import {
@@ -15,23 +14,20 @@ interface SetupOptions {
 
 const setup = (opts?: SetupOptions) => {
   const { errorVariant, errorMessage } = opts || {};
-  const defaultState = createMockState({
-    settings: mockSettings({
+  const { render } = createScenario()
+    .withSettings({
       "show-metabase-links": true,
       version: { tag: "v1.0.0" },
-    }),
-  });
+    })
+    .build();
 
-  return renderWithProviders(
+  return render(
     <TestFormErrorProvider
       errorMessage={errorMessage}
       errorVariant={errorVariant}
     >
       <DatabaseFormError />
     </TestFormErrorProvider>,
-    {
-      storeInitialState: defaultState,
-    },
   );
 };
 

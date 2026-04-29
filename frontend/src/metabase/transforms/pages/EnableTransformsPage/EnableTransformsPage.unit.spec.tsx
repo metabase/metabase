@@ -1,14 +1,9 @@
 import { Route } from "react-router";
 
+import { createScenario } from "__support__/scenarios";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { EnableTransformsPage } from "./EnableTransformsPage";
 
@@ -19,16 +14,14 @@ type SetupOpts = {
 
 const setup = ({ isAdmin = true, tokenFeatures = {} }: SetupOpts = {}) => {
   setupDatabaseListEndpoint([]);
-  const state = createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
 
   const path = "/transforms";
-  renderWithProviders(<Route path={path} component={EnableTransformsPage} />, {
-    storeInitialState: state,
+  const { render } = createScenario()
+    .withUser({ is_superuser: isAdmin })
+    .withEnterprise({ tokenFeatures })
+    .build();
+
+  render(<Route path={path} component={EnableTransformsPage} />, {
     withRouter: true,
     initialRoute: path,
   });

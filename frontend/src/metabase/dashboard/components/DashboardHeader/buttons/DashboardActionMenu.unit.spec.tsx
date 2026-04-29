@@ -1,21 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createScenario,
+  setupNotificationChannelsScenario,
+} from "__support__/scenarios";
+import { screen } from "__support__/ui";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
-import type { ChannelApiResponse, User } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
-  createMockDashboard,
   createMockDashboardCard,
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { DashboardActionMenu } from "./DashboardActionMenu";
@@ -37,27 +33,35 @@ const setup = ({
   hasSlackSetup?: boolean;
   canManageSubscriptions?: boolean;
   isEnterprise?: boolean;
-  dashboard?: Partial<ReturnType<typeof createMockDashboard>>;
+  dashboard?: Partial<Dashboard>;
 } = {}) => {
-  const dashboard = createMockDashboard({
-    dashcards: [DASHCARD],
-    ...dashboardOverrides,
-  });
+  const builder = createScenario()
+    .withDashboard({ dashcards: [DASHCARD], ...dashboardOverrides })
+    .withUser({
+      is_superuser: isAdmin,
+      ...(isEnterprise && {
+        permissions: {
+          can_access_subscription: canManageSubscriptions ?? false,
+        } as any,
+      }),
+    })
+    .withDashboardReduxState();
 
   if (isEnterprise) {
-    setupEnterpriseOnlyPlugin("application_permissions");
+    builder.withEnterprise({
+      plugins: ["application_permissions"],
+      tokenFeatures: { advanced_permissions: true },
+    });
   }
 
-  const currentUser = createMockUser({
-    is_superuser: isAdmin,
+  setupNotificationChannelsScenario({
+    email: hasEmailSetup,
+    slack: hasSlackSetup,
   });
 
-  setupNotificationChannelsEndpoints({
-    email: { configured: hasEmailSetup },
-    slack: { configured: hasSlackSetup },
-  } as ChannelApiResponse["channels"]);
+  const { dashboard, render } = builder.build();
 
-  const { store } = renderWithProviders(
+  const { store } = render(
     <Route
       path="*"
       component={() => (
@@ -77,44 +81,7 @@ const setup = ({
         </MockDashboardContext>
       )}
     />,
-    {
-      withRouter: true,
-      storeInitialState: {
-        currentUser: isEnterprise
-          ? ({
-              ...currentUser,
-              permissions: {
-                can_access_subscription: canManageSubscriptions ?? false,
-              },
-            } as User)
-          : currentUser,
-        ...(isEnterprise && {
-          settings: mockSettings(
-            createMockSettings({
-              "token-features": createMockTokenFeatures({
-                advanced_permissions: true,
-              }),
-            }),
-          ),
-        }),
-        dashboard: createMockDashboardState({
-          dashboardId: dashboard.id,
-          dashboards: {
-            [dashboard.id]: {
-              ...dashboard,
-              dashcards: dashboard.dashcards.map((c) => c.id),
-            },
-          },
-          dashcards: {
-            [DASHCARD.id]: {
-              ...DASHCARD,
-              isDirty: false,
-              isRemoved: false,
-            },
-          },
-        }),
-      },
-    },
+    { withRouter: true },
   );
 
   return { store };

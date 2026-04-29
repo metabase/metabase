@@ -1,8 +1,5 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -38,15 +35,12 @@ const setup = ({
   location,
   oss = true,
 }: TestComponentProps & { oss?: boolean }) => {
-  const state = createMockState({
-    settings: createMockSettingsState({
-      "token-features": oss ? OSSFeatures : EEFeatures,
-    }),
-  });
+  const { render } = createScenario()
+    .withEnterprise({ tokenFeatures: oss ? OSSFeatures : EEFeatures })
+    .build();
 
-  return renderWithProviders(
+  return render(
     <TestComponent url={url} campaign={campaign} location={location} />,
-    { storeInitialState: state },
   );
 };
 

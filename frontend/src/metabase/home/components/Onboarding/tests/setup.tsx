@@ -1,19 +1,10 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockTokenStatus,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockTokenStatus } from "metabase-types/api/mocks";
 
 import { Onboarding } from "../Onboarding";
 import type { ChecklistItemValue } from "../types";
@@ -27,7 +18,7 @@ export type SetupProps = {
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 };
 
 export const setup = ({
@@ -43,36 +34,31 @@ export const setup = ({
 }: SetupProps = {}) => {
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupBugReportingDetailsEndpoint();
-  const state = createMockState({
-    app: createMockAppState({
-      tempStorage: {
-        "last-opened-onboarding-checklist-item": openItem,
-      },
-    }),
-    currentUser: createMockUser({ is_superuser: isAdmin }),
-    settings: mockSettings({
+
+  const { render } = createScenario()
+    .withUser({ is_superuser: isAdmin })
+    .withSettings({
       "application-name": applicationName,
       "enable-xrays": enableXrays,
       "example-dashboard-id": hasExampleDashboard ? 1 : null,
       "is-hosted?": isHosted,
       "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
       "token-status": hasTokenFeatures
         ? createMockTokenStatus({ valid: true })
         : null,
-    }),
-  });
+    })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
-
-  renderWithProviders(
-    <Route path="/getting-started" component={Onboarding} />,
-    {
-      initialRoute: "/getting-started",
-      storeInitialState: state,
-      withRouter: true,
+  render(<Route path="/getting-started" component={Onboarding} />, {
+    initialRoute: "/getting-started",
+    withRouter: true,
+    storeInitialState: {
+      app: {
+        tempStorage: {
+          "last-opened-onboarding-checklist-item": openItem,
+        },
+      } as any,
     },
-  );
+  });
 };

@@ -2,21 +2,20 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  createDashboardReduxState,
+  setupNotificationChannelsScenario,
+} from "__support__/scenarios";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Dashboard,
   DashboardCard,
   DashboardSubscription,
   TokenFeatures,
@@ -59,28 +58,6 @@ const defaultParameters = [
   },
 ];
 
-function createDashboardState(
-  dashboard: Dashboard,
-  dashcards: DashboardCard[],
-) {
-  return createMockDashboardState({
-    dashboardId: dashboard.id,
-    dashcards: dashcards.reduce(
-      (acc, card) => {
-        acc[card.id] = card;
-        return acc;
-      },
-      {} as Record<number, DashboardCard>,
-    ),
-    dashboards: {
-      [dashboard.id]: {
-        ...dashboard,
-        dashcards: dashcards.map((d) => d.id),
-      },
-    },
-  });
-}
-
 type SetupOpts = {
   email?: boolean;
   slack?: boolean;
@@ -118,50 +95,9 @@ export function setup({
     parameters,
   });
 
-  const channelData: {
-    channels: {
-      email?: any;
-      slack?: any;
-    };
-  } = { channels: {} };
-
-  if (email) {
-    channelData.channels.email = {
-      type: "email",
-      name: "Email",
-      allows_recipients: true,
-      recipients: ["user", "email"],
-      schedules: ["hourly"],
-      configured: true,
-    };
-  }
-
-  if (slack) {
-    channelData.channels.slack = {
-      type: "slack",
-      name: "Slack",
-      allows_recipients: false,
-      schedules: ["hourly"],
-      configured: true,
-      fields: [
-        {
-          name: "channel",
-          type: "select",
-          displayName: "Post to",
-          options: [
-            { displayName: "#general", id: "C001" },
-            { displayName: "#random", id: "C002" },
-            { displayName: "#alerts", id: "C003" },
-          ],
-          required: true,
-        },
-      ],
-    };
-  }
-
   (mockIsEmbeddingSdk as jest.Mock).mockReturnValue(isEmbeddingSdk);
 
-  setupNotificationChannelsEndpoints(channelData.channels);
+  setupNotificationChannelsScenario({ email, slack });
 
   setupUserRecipientsEndpoint({
     users: [user],
@@ -185,13 +121,12 @@ export function setup({
 
   fetchMock.post("path:/api/pulse/test", 200);
 
-  const features = createMockTokenFeatures(tokenFeatures);
-  const storeSettings = mockSettings({ "token-features": features });
+  const storeSettings = mockSettings({
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
 
   if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(
@@ -206,7 +141,7 @@ export function setup({
           last_name: currentUser?.lastName,
           is_superuser: isAdmin,
         }),
-        dashboard: createDashboardState(dashboard, dashcards),
+        dashboard: createDashboardReduxState({ ...dashboard, dashcards }),
       }),
     },
   );

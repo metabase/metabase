@@ -1,17 +1,15 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../../test-utils";
 import type { NotebookStep } from "../../../types";
@@ -22,7 +20,7 @@ export interface SetupOpts {
   step?: NotebookStep;
   readOnly?: boolean;
   isEmbeddingSdk?: boolean;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 export const setup = ({
   step = createMockNotebookStep(),
@@ -30,10 +28,9 @@ export const setup = ({
   isEmbeddingSdk = false,
   enterprisePlugins,
 }: SetupOpts = {}) => {
+  const builder = createScenario().withDatabase("sample");
   if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
+    builder.withEnterprise({ plugins: enterprisePlugins });
   }
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
@@ -41,7 +38,6 @@ export const setup = ({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
-  setupDatabasesEndpoints([createSampleDatabase()]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   // In embedding SDK we call a different endpoint because we use a different data picker (metabase#52889)
@@ -56,7 +52,8 @@ export const setup = ({
     setupSearchEndpoints([]);
   }
 
-  renderWithProviders(
+  const { render } = builder.build();
+  render(
     <NotebookProvider>
       <DataStep
         step={step}

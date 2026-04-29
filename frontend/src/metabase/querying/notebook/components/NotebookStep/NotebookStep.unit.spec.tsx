@@ -1,16 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import { createScenario } from "__support__/scenarios";
 import {
   setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type Question from "metabase-lib/v1/Question";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
 import type {
@@ -30,14 +29,14 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const openStep = jest.fn();
   const updateQuery = jest.fn();
 
-  setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
 
-  renderWithProviders(
+  const { render } = createScenario().withDatabase("sample").build();
+  render(
     <NotebookProvider>
       <NotebookStep
         step={step}

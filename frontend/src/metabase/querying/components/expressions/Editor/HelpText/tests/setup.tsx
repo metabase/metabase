@@ -1,9 +1,7 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { createMockMetadata } from "__support__/metadata";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { createScenario } from "__support__/scenarios";
 import { getHelpText } from "metabase/querying/expressions";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
@@ -11,7 +9,6 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -24,7 +21,7 @@ export interface SetupOpts {
   reportTimezone?: string;
 
   showMetabaseLinks?: boolean;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   tokenFeatures?: Partial<TokenFeatures>;
   expressionMode?: Lib.ExpressionMode;
 }
@@ -37,13 +34,6 @@ export async function setup({
   tokenFeatures = {},
   expressionMode = "expression",
 }: SetupOpts) {
-  const state = createMockState({
-    settings: mockSettings({
-      "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
-
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
   const provider = createMetadataProvider({
     databaseId: SAMPLE_DB_ID,
@@ -64,13 +54,12 @@ export async function setup({
     expressionMode,
   };
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
+  const { render } = createScenario()
+    .withSettings({ "show-metabase-links": showMetabaseLinks })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  renderWithProviders(<HelpText {...props} />, {
-    storeInitialState: state,
-  });
+  render(<HelpText {...props} />);
 
   const helpText = getHelpText(
     checkNotNull(enclosingFunction?.name),

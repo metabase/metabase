@@ -1,8 +1,5 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import type { URLSearchFilterQueryParams } from "metabase/search/types";
 import type { TokenFeatures } from "metabase-types/api";
@@ -13,7 +10,7 @@ import {
 
 export interface SearchSidebarSetupOptions {
   tokenFeatures?: TokenFeatures;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   value?: URLSearchFilterQueryParams;
   onChange?: (filters: URLSearchFilterQueryParams) => void;
 }
@@ -26,21 +23,10 @@ export const setup = ({
   value = {},
   onChange = jest.fn(),
 }: SearchSidebarSetupOptions = {}) => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
+  const { render } = createScenario()
+    .withDatabase(TEST_DATABASE)
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  const settings = mockSettings({ "token-features": tokenFeatures });
-
-  const state = createMockState({
-    settings,
-  });
-
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
-  }
-
-  renderWithProviders(<SearchSidebar value={value} onChange={onChange} />, {
-    storeInitialState: state,
-  });
+  render(<SearchSidebar value={value} onChange={onChange} />);
 };

@@ -1,24 +1,15 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupDatabaseEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { screen } from "__support__/ui";
 import * as Urls from "metabase/utils/urls";
-import type {
-  EnterpriseSettings,
-  TokenFeatures,
-  Transform,
-} from "metabase-types/api";
+import type { EnterpriseSettings, Transform } from "metabase-types/api";
 import {
   createMockDatabase,
-  createMockTokenFeatures,
   createMockTransform,
   createMockTransformOwner,
   createMockTransformRun,
@@ -61,32 +52,19 @@ function setup({
     }),
   ]);
 
-  let state: State;
+  const builder = createScenario().withSettings({
+    "remote-sync-type": remoteSyncType,
+    "remote-sync-enabled": !!remoteSyncType,
+  });
   if (remoteSyncType) {
-    const tokenFeatures: Partial<TokenFeatures> = {
-      remote_sync: !!remoteSyncType,
-    };
-    const settings = mockSettings({
-      "remote-sync-type": remoteSyncType,
-      "remote-sync-enabled": !!remoteSyncType,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    });
-    state = createMockState({
-      settings,
-    });
-
-    const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  } else {
-    state = createMockState({
-      settings: mockSettings({
-        "remote-sync-type": remoteSyncType,
-        "remote-sync-enabled": !!remoteSyncType,
-      }),
+    builder.withEnterprise({
+      plugins: ["remote_sync"],
+      tokenFeatures: { remote_sync: true },
     });
   }
+  const { render } = builder.build();
 
-  renderWithProviders(
+  render(
     <Route
       path={Urls.transform(transform.id)}
       component={() => <TransformSettingsSection transform={transform} />}
@@ -94,7 +72,6 @@ function setup({
     {
       withRouter: true,
       initialRoute: Urls.transform(transform.id),
-      storeInitialState: state,
     },
   );
 }

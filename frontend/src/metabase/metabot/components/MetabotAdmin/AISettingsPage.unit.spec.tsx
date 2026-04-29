@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import {
   findRequests,
   setupCollectionByIdEndpoint,
@@ -13,11 +14,9 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { setupMetabotPromptSuggestionsEndpoint } from "__support__/server-mocks/metabot";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockSettingDefinition,
@@ -46,10 +45,7 @@ const setup = async ({
     embedding_sdk: enableEmbedding,
   });
 
-  mockSettings({ "token-features": tokenFeatures });
-  setupEnterprisePlugins();
-
-  const settings = createMockSettings({
+  const settingValues = {
     "ai-features-enabled?": aiFeaturesEnabled,
     "agent-api-enabled?": true,
     "embedded-metabot-enabled?": true,
@@ -57,6 +53,17 @@ const setup = async ({
     "llm-metabot-provider": null,
     "mcp-enabled?": true,
     "metabot-enabled?": true,
+  };
+
+  const { render } = createScenario()
+    .withSettings(settingValues)
+    .withEnterprise({ tokenFeatures: { embedding_sdk: enableEmbedding } })
+    .build();
+
+  setupEnterprisePlugins();
+
+  const settings = createMockSettings({
+    ...settingValues,
     "token-features": tokenFeatures,
   });
 
@@ -102,14 +109,11 @@ const setup = async ({
     }),
   );
 
-  const view = renderWithProviders(
+  const view = render(
     <Route path="/admin/metabot*" component={AISettingsPage} />,
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: {
-        settings: createMockSettingsState(settings),
-      },
     },
   );
 

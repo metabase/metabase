@@ -1,9 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupCollectionsScenario } from "__support__/scenarios";
 import {
-  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -155,8 +154,7 @@ function setup({
   );
 
   setupSearchEndpoints(collectionItems);
-  setupCollectionsEndpoints({ collections: [TEST_COLLECTION] });
-  setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
+  setupCollectionsScenario({ collections: [TEST_COLLECTION] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,
     collectionItems,

@@ -1,15 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
-import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals";
 import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import type {
@@ -19,7 +18,6 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
-  createMockTokenFeatures,
   createMockUser,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -471,15 +469,6 @@ function setup({
   onAlertUpdatedMock?: jest.Mock;
   cardType?: "question" | "model" | "metric";
 }) {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      advanced_permissions: true,
-    }),
-  });
-
-  setupEnterpriseOnlyPlugin("advanced_permissions");
-  setupEnterpriseOnlyPlugin("application_permissions");
-
   const mockCard = createMockCard({
     type: cardType,
     display: "line",
@@ -509,37 +498,42 @@ function setup({
       can_access_subscription: false,
     };
   }
-  const storeConfig = {
+
+  const { render } = createScenario()
+    .withUser(currentUser)
+    .withEnterprise({
+      plugins: ["advanced_permissions", "application_permissions"],
+      tokenFeatures: { advanced_permissions: true },
+    })
+    .build();
+
+  const renderOptions = {
     storeInitialState: {
-      currentUser,
-      qb: createMockQueryBuilderState({
-        card: mockCard,
-      }),
+      qb: createMockQueryBuilderState({ card: mockCard }),
       entities: createMockEntitiesState({
         databases: [createSampleDatabase()],
         questions: [mockCard],
       }),
-      settings,
     },
   };
 
   if (editingNotification) {
-    renderWithProviders(
+    render(
       <CreateOrEditQuestionAlertModalWithQuestion
         editingNotification={editingNotification}
         onAlertUpdated={onAlertUpdatedMock}
         onClose={jest.fn()}
       />,
-      storeConfig,
+      renderOptions,
     );
     return;
   }
 
-  renderWithProviders(
+  render(
     <CreateOrEditQuestionAlertModalWithQuestion
       onAlertCreated={onAlertCreatedMock}
       onClose={jest.fn()}
     />,
-    storeConfig,
+    renderOptions,
   );
 }

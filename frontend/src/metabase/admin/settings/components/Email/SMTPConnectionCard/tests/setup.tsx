@@ -1,12 +1,10 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
 import { SMTPConnectionCard } from "metabase/admin/settings/components/Email/SMTPConnectionCard/SMTPConnectionCard";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { SettingKey, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -16,7 +14,7 @@ import {
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   isHosted?: boolean;
   smtpOverrideEnabled?: boolean;
 }
@@ -40,13 +38,13 @@ export function setup({
     ),
   );
 
-  const state = createMockState({ settings: mockSettings(settings) });
+  const { render } = createScenario()
+    .withSettings({
+      "is-hosted?": isHosted,
+      "smtp-override-enabled": smtpOverrideEnabled,
+    })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
-
-  renderWithProviders(<SMTPConnectionCard />, {
-    storeInitialState: state,
-  });
+  render(<SMTPConnectionCard />);
 }

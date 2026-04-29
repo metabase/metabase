@@ -1,29 +1,22 @@
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 import type { Settings, TokenFeatures } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { EmbedHomepage } from "../EmbedHomepage";
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   settings?: Partial<Settings>;
   isAdmin?: boolean;
 }
 
 export async function setup({
-  tokenFeatures = createMockTokenFeatures(),
+  tokenFeatures,
   enterprisePlugins,
   settings = {},
   isAdmin = false,
@@ -33,29 +26,19 @@ export async function setup({
   fetchMock.put("path:/api/setting/embedding-homepage", 200);
   fetchMock.post("path:/api/product-feedback", 200);
 
-  const state = createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
-    settings: createMockSettingsState({
-      "token-features": createMockTokenFeatures(tokenFeatures),
-      ...settings,
-    }),
+  const { render } = createScenario()
+    .withUser({ is_superuser: isAdmin })
+    .withSettings(settings as Record<string, unknown>)
+    .withEnterprise({
+      plugins: enterprisePlugins,
+      tokenFeatures: tokenFeatures ?? {},
+    })
+    .build();
+
+  render(<Route path="/" component={EmbedHomepage} />, {
+    withRouter: true,
+    withUndos: true,
   });
-
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
-  }
-
-  renderWithProviders(
-    <Route path="/" component={EmbedHomepage} />,
-
-    {
-      storeInitialState: state,
-      withRouter: true,
-      withUndos: true,
-    },
-  );
 }
 
 export const getLastHomepageSettingSettingCall = () =>

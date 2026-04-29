@@ -1,25 +1,15 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import {
-  getIcon,
-  queryIcon,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { getIcon, queryIcon, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type { WrappedResult } from "metabase/search/types";
 import type { TokenFeatures } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import { createWrappedSearchResult } from "./util";
 
@@ -50,7 +40,7 @@ const officialCollectionResult = createWrappedSearchResult({
 
 interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   result: WrappedResult;
 }
 
@@ -65,20 +55,13 @@ const setup = ({
 
   setupUserRecipientsEndpoint({ users: [createMockUser()] });
 
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
   reinitialize();
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
+  const { render } = createScenario()
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  renderWithProviders(<SearchResult result={result} index={0} />, {
-    storeInitialState: state,
-  });
+  render(<SearchResult result={result} index={0} />);
 };
 
 describe("SearchResult > Collections", () => {

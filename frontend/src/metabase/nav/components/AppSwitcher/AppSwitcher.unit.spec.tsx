@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { Route } from "react-router";
 
+import { createScenario } from "__support__/scenarios";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import {
   createMockAdminAppState,
   createMockAdminState,
@@ -12,7 +12,6 @@ import {
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
-  createMockTokenFeatures,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -55,22 +54,25 @@ async function setup({
 } = {}) {
   setupBugReportingDetailsEndpoint();
 
-  const settings = mockSettings({
-    "is-hosted?": isHosted,
-    "token-status": createMockTokenStatus({ valid: isPaidPlan }),
-    "help-link": helpLinkSetting,
-    "help-link-custom-destination": helpLinkCustomDestinationSetting,
-    "instance-creation": instanceCreationDate,
-    "token-features": createMockTokenFeatures(),
-  });
-
   const admin = createMockAdminState({
     app: createMockAdminAppState({
       paths: isAdmin ? [adminNavItem] : [],
     }),
   });
 
-  renderWithProviders(
+  const { render } = createScenario()
+    .withUser({ ...USER, is_superuser: isAdmin })
+    .withSettings({
+      "is-hosted?": isHosted,
+      "token-status": createMockTokenStatus({ valid: isPaidPlan }),
+      "help-link": helpLinkSetting,
+      "help-link-custom-destination": helpLinkCustomDestinationSetting,
+      "instance-creation": instanceCreationDate,
+    })
+    .withEnterprise({})
+    .build();
+
+  render(
     <>
       <Route path="/" component={AppSwitcher} />
       <Route path="/admin" component={AppSwitcher} />
@@ -78,11 +80,7 @@ async function setup({
     </>,
     {
       withRouter: true,
-      storeInitialState: {
-        admin,
-        settings,
-        currentUser: { ...USER, is_superuser: isAdmin },
-      },
+      storeInitialState: { admin },
     },
   );
 

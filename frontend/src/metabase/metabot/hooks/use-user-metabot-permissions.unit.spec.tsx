@@ -1,14 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen, waitFor } from "__support__/ui";
 import type { UserMetabotPermissionsResponse } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUserMetabotPermissions,
-} from "metabase-types/api/mocks";
+import { createMockUserMetabotPermissions } from "metabase-types/api/mocks";
 
 import { useUserMetabotPermissions } from "./use-user-metabot-permissions";
 
@@ -35,16 +31,16 @@ function setup({
     fetchMock.get("path:/api/metabot/permissions/user-permissions", apiStatus);
   }
 
-  const settings = mockSettings({
-    "llm-metabot-configured?": true,
-    "metabot-enabled?": isMetabotEnabled,
-    "token-features": createMockTokenFeatures({ ai_controls: true }),
-  });
+  const { render } = createScenario()
+    .withSettings({
+      "llm-metabot-configured?": true,
+      "metabot-enabled?": isMetabotEnabled,
+    })
+    .withEnterprise({ tokenFeatures: { ai_controls: true } })
+    .build();
   setupEnterprisePlugins();
 
-  renderWithProviders(<TestComponent />, {
-    storeInitialState: createMockState({ settings }),
-  });
+  render(<TestComponent />);
 }
 
 async function getPerms() {

@@ -1,15 +1,9 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, Parameter, TokenFeatures } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockParameter,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockParameter } from "metabase-types/api/mocks";
 
 import { DisabledNativeCardHelpText } from "../DisabledNativeCardHelpText";
 
@@ -19,7 +13,7 @@ export interface SetupOpts {
   isModel?: boolean;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export const setup = ({
@@ -29,23 +23,17 @@ export const setup = ({
   tokenFeatures = {},
   enterprisePlugins = [],
 }: SetupOpts = {}) => {
-  const state = createMockState({
-    settings: mockSettings({
-      "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
   const question = new Question(
     createMockCard({ type: cardType }),
     SAMPLE_METADATA,
   );
 
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
+  const { render } = createScenario()
+    .withSettings({ "show-metabase-links": showMetabaseLinks })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  renderWithProviders(
+  render(
     <DisabledNativeCardHelpText question={question} parameter={parameter} />,
-    { storeInitialState: state },
   );
 };

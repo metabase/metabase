@@ -1,10 +1,9 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupDashboardScenario } from "__support__/scenarios";
 import {
   findRequests,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
   setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -41,9 +40,7 @@ export const setup = (options?: {
   });
 
   if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   const tokenFeatures = createMockTokenFeatures({
@@ -60,13 +57,12 @@ export const setup = (options?: {
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
-  setupDashboardEndpoints(mockDashboard);
-  setupDashboardQueryMetadataEndpoint(
-    mockDashboard,
-    createMockDashboardQueryMetadata({
+  setupDashboardScenario({
+    dashboard: mockDashboard,
+    metadata: createMockDashboardQueryMetadata({
       databases: [mockDatabase],
     }),
-  );
+  });
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
   setupNotificationChannelsEndpoints(

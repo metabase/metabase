@@ -1,7 +1,5 @@
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { createMockSettings } from "metabase-types/api/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 
 import { AdminEmail } from "./AdminEmail";
 
@@ -10,17 +8,11 @@ interface SetupOpts {
 }
 
 const setup = ({ adminEmail }: SetupOpts) => {
-  const storeInitialState = createMockState({
-    settings: mockSettings(
-      createMockSettings({
-        "admin-email": adminEmail,
-      }),
-    ),
-  });
+  const { render } = createScenario()
+    .withSettings({ "admin-email": adminEmail })
+    .build();
 
-  renderWithProviders(<AdminEmail />, {
-    storeInitialState,
-  });
+  render(<AdminEmail />);
 };
 
 describe("AdminEmail", () => {

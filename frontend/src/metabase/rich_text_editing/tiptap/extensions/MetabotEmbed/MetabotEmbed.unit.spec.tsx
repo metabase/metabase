@@ -2,13 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import {
-  createMockTokenFeatures,
-  createMockUserMetabotPermissions,
-} from "metabase-types/api/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen, waitFor, within } from "__support__/ui";
+import { createMockUserMetabotPermissions } from "metabase-types/api/mocks";
 
 import { MetabotComponent } from "./MetabotEmbed";
 import {
@@ -36,21 +32,18 @@ describe("MetabotEmbed", () => {
       "path:/api/metabot/permissions/user-permissions",
       createMockUserMetabotPermissions(),
     );
-    mockSettings({
-      "token-features": createMockTokenFeatures({ ai_controls: true }),
-    });
+    createScenario()
+      .withEnterprise({ tokenFeatures: { ai_controls: true } })
+      .build();
     setupEnterprisePlugins();
   });
 
   describe("when metabot is disabled", () => {
     it("should show disabled button with tooltip", async () => {
-      renderWithProviders(<MetabotComponent {...defaultProps} />, {
-        storeInitialState: createMockState({
-          settings: mockSettings({
-            "metabot-enabled?": false,
-          }),
-        }),
-      });
+      const { render } = createScenario()
+        .withSettings({ "metabot-enabled?": false })
+        .build();
+      render(<MetabotComponent {...defaultProps} />);
 
       const runButton = screen.getByRole("button", { name: /run/i });
       expect(runButton).toBeDisabled();
@@ -65,14 +58,13 @@ describe("MetabotEmbed", () => {
 
   describe("when metabot is enabled", () => {
     it("should show enabled button without tooltip", async () => {
-      renderWithProviders(<MetabotComponent {...defaultProps} />, {
-        storeInitialState: createMockState({
-          settings: mockSettings({
-            "metabot-enabled?": true,
-            "llm-metabot-configured?": true,
-          }),
-        }),
-      });
+      const { render } = createScenario()
+        .withSettings({
+          "metabot-enabled?": true,
+          "llm-metabot-configured?": true,
+        })
+        .build();
+      render(<MetabotComponent {...defaultProps} />);
 
       const runButton = screen.getByRole("button", { name: /run/i });
       await waitFor(() => expect(runButton).toBeEnabled());

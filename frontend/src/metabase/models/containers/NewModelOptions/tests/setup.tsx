@@ -1,15 +1,9 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import type { TokenFeatures } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-  createMockUserPermissions,
-} from "metabase-types/api/mocks";
+import { createMockUserPermissions } from "metabase-types/api/mocks";
 
 import NewModelOptions from "../NewModelOptions";
 
@@ -18,7 +12,7 @@ export interface SetupOpts {
   canCreateNativeQueries?: boolean;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export function setup({
@@ -28,25 +22,18 @@ export function setup({
   tokenFeatures = {},
   enterprisePlugins = [],
 }: SetupOpts) {
-  const state = createMockState({
-    currentUser: createMockUser({
+  const { render } = createScenario()
+    .withUser({
       permissions: createMockUserPermissions({
         can_create_queries: canCreateQueries,
         can_create_native_queries: canCreateNativeQueries,
       }),
-    }),
-    settings: mockSettings({
-      "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
+    })
+    .withSettings({ "show-metabase-links": showMetabaseLinks })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
-
-  renderWithProviders(<Route path="*" component={NewModelOptions}></Route>, {
+  render(<Route path="*" component={NewModelOptions}></Route>, {
     withRouter: true,
-    storeInitialState: state,
   });
 }

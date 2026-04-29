@@ -1,8 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 
 import { CommunityLocalizationNotice } from "./CommunityLocalizationNotice";
 
@@ -13,26 +11,19 @@ function setup({
   isAdminView: boolean;
   isWhiteLabeling: boolean;
 }) {
-  const state = createMockState({
-    settings: mockSettings({
+  const { render } = createScenario()
+    .withSettings({
       "application-name": isWhiteLabeling ? "Basemeta" : "Metabase",
-      "token-features": createMockTokenFeatures({
-        whitelabel: isWhiteLabeling,
-      }),
       "show-metabase-links": !isWhiteLabeling,
-    }),
-  });
+    })
+    .withEnterprise({ tokenFeatures: { whitelabel: isWhiteLabeling } })
+    .build();
 
   if (isWhiteLabeling) {
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(
-    <CommunityLocalizationNotice isAdminView={isAdminView} />,
-    {
-      storeInitialState: state,
-    },
-  );
+  render(<CommunityLocalizationNotice isAdminView={isAdminView} />);
 }
 
 describe("CommunityLocalizationNotice", () => {

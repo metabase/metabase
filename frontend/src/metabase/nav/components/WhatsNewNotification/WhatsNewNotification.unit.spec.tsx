@@ -1,14 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import { setupSettingEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { screen, waitFor } from "__support__/ui";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo
 import {
-  createMockTokenFeatures,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
@@ -60,24 +58,20 @@ const setup = ({
   });
 
   // Mock the Redux state for settings read by useSetting and other selectors
-  const state = createMockState({
-    settings: mockSettings({
+  const { render } = createScenario()
+    .withSettings({
       version: versionMock,
       "last-acknowledged-version": lastAcknowledged,
       "application-name": isWhiteLabeling ? "My App" : "Metabase",
-      "token-features": createMockTokenFeatures({
-        whitelabel: isWhiteLabeling,
-      }),
-    }),
-  });
+    })
+    .withEnterprise({ tokenFeatures: { whitelabel: isWhiteLabeling } })
+    .build();
 
   if (isWhiteLabeling) {
     setupEnterprisePlugins(); // Keep this if whitelabeling is EE
   }
 
-  return renderWithProviders(<WhatsNewNotification />, {
-    storeInitialState: state,
-  });
+  return render(<WhatsNewNotification />);
 };
 
 describe("WhatsNewNotification", () => {

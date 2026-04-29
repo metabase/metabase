@@ -1,9 +1,8 @@
 import { screen, waitFor } from "@testing-library/react";
 
+import { setupDashboardScenario } from "__support__/scenarios";
 import {
   findRequests,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
@@ -114,14 +113,12 @@ function setupDashboardRelatedEndpoints(
   });
   const database = createSampleDatabase();
 
-  setupDashboardEndpoints(dashboard);
-
-  setupDashboardQueryMetadataEndpoint(
+  setupDashboardScenario({
     dashboard,
-    createMockDashboardQueryMetadata({
+    metadata: createMockDashboardQueryMetadata({
       databases: [database],
     }),
-  );
+  });
 
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
 

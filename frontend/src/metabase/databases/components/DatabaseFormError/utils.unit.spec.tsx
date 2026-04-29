@@ -8,7 +8,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import {
   type FormProvidersOptions,
@@ -67,11 +66,9 @@ describe("getDocsLinkConditionally", () => {
 describe("useCloudGatewayIPs", () => {
   const setup = (cloudGatewayIPs: string[] | null) => {
     return renderHookWithProviders(useCloudGatewayIPs, {
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "cloud-gateway-ips": cloudGatewayIPs,
-        }),
-      }),
+      storeInitialState: {
+        settings: mockSettings({ "cloud-gateway-ips": cloudGatewayIPs }),
+      },
     });
   };
 

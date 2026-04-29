@@ -1,14 +1,11 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
-  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import PinnedItemCard from "./PinnedItemCard";
@@ -27,18 +24,14 @@ function setup({
   item: CollectionItem;
   collection?: Collection;
 }) {
-  const storeInitialState = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures({
-        content_verification: true,
-      }),
-    }),
-  });
+  const { render } = createScenario()
+    .withEnterprise({
+      plugins: ["content_verification", "moderation"],
+      tokenFeatures: { content_verification: true },
+    })
+    .build();
 
-  setupEnterpriseOnlyPlugin("content_verification");
-  setupEnterpriseOnlyPlugin("moderation");
-
-  return renderWithProviders(
+  return render(
     <Route
       path="/"
       component={() => (
@@ -50,7 +43,7 @@ function setup({
         />
       )}
     />,
-    { withRouter: true, storeInitialState },
+    { withRouter: true },
   );
 }
 

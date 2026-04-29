@@ -1,7 +1,5 @@
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { createMockSettings } from "metabase-types/api/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 
 import { DevInstanceBanner } from "./DevInstanceBanner";
 
@@ -11,18 +9,14 @@ interface SetupOpts {
 }
 
 const setup = ({ isDevMode = false, isHosted = false }: SetupOpts = {}) => {
-  const settings = createMockSettings({
-    "development-mode?": isDevMode,
-    "is-hosted?": isHosted,
-  });
+  const { render } = createScenario()
+    .withSettings({
+      "development-mode?": isDevMode,
+      "is-hosted?": isHosted,
+    })
+    .build();
 
-  const state = createMockState({
-    settings: mockSettings(settings),
-  });
-
-  renderWithProviders(<DevInstanceBanner />, {
-    storeInitialState: state,
-  });
+  render(<DevInstanceBanner />);
 };
 
 describe("DevInstanceBanner", () => {

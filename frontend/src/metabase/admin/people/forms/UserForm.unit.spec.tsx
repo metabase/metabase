@@ -1,16 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import { setupTenantEntpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { screen, waitFor } from "__support__/ui";
 import type { Tenant } from "metabase-types/api";
 import {
   createMockGroup,
   createMockTenant,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -35,7 +33,7 @@ const USER = createMockUser({
 });
 
 interface SetupOpts {
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   initialValues?: typeof USER;
   external?: boolean;
   tenants?: Tenant[];
@@ -54,31 +52,20 @@ const setup = ({
 
   setupTenantEntpoints(tenants);
 
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures({
-        sandboxes: true,
-        tenants: true,
-      }),
-    }),
-  });
+  const { render } = createScenario()
+    .withEnterprise({
+      plugins: enterprisePlugins,
+      tokenFeatures: { sandboxes: true, tenants: true },
+    })
+    .build();
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
-  }
-
-  renderWithProviders(
+  render(
     <UserForm
       onSubmit={onSubmit}
       onCancel={onCancel}
       initialValues={initialValues}
       external={external}
     />,
-    {
-      storeInitialState: state,
-    },
   );
 
   return {

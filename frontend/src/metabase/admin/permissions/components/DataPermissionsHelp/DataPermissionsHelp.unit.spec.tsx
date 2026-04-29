@@ -1,24 +1,15 @@
-import { mockSettings } from "__support__/settings";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { createScenario } from "__support__/scenarios";
+import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 async function setup({ hasAdvancedPermissions = false } = {}) {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      advanced_permissions: hasAdvancedPermissions,
-    }),
-  });
+  const { render } = createScenario()
+    .withEnterprise({
+      tokenFeatures: { advanced_permissions: hasAdvancedPermissions },
+    })
+    .build();
 
-  renderWithProviders(<DataPermissionsHelp />, {
-    storeInitialState: {
-      settings,
-    },
-  });
+  render(<DataPermissionsHelp />);
 
   await waitForLoaderToBeRemoved();
 }

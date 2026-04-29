@@ -1,7 +1,5 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import type {
   DatabaseData,
   Engine,
@@ -99,7 +97,7 @@ export const TEST_ENGINES: Record<string, Engine> = {
 
 export interface SetupOpts {
   settings?: Settings;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   engines?: Record<string, Engine>;
   initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
   isAdvanced?: boolean;
@@ -112,19 +110,14 @@ export const setup = ({
   initialValues = {},
   isAdvanced = true,
 }: SetupOpts = {}) => {
-  const state = createMockState({
-    settings: mockSettings({ ...settings, engines }),
-  });
-
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
-  }
+  const { render } = createScenario()
+    .withSettings({ ...settings, engines } as Record<string, unknown>)
+    .withEnterprise({ plugins: enterprisePlugins })
+    .build();
 
   const onSubmit = jest.fn();
 
-  renderWithProviders(
+  render(
     <DatabaseForm
       initialValues={{
         engine: "h2",
@@ -134,9 +127,6 @@ export const setup = ({
       onSubmit={onSubmit}
       location="admin"
     />,
-    {
-      storeInitialState: state,
-    },
   );
 
   return { onSubmit };

@@ -1,15 +1,8 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import {
-  type RenderWithProvidersOptions,
-  renderWithProviders,
-} from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
+import type { RenderWithProvidersOptions } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
-import {
-  createMockDashboard,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { DashboardEntityIdCard } from "../DashboardEntityIdCard";
 
@@ -20,21 +13,15 @@ export const setup = ({
   ...renderOptions
 }: {
   dashboard?: Dashboard;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   enableSerialization?: boolean;
 } & RenderWithProvidersOptions = {}) => {
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures({
-        serialization: enableSerialization,
-      }),
-    }),
-  });
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
-  return renderWithProviders(<DashboardEntityIdCard dashboard={dashboard} />, {
-    ...renderOptions,
-    storeInitialState: state,
-  });
+  const { render } = createScenario()
+    .withEnterprise({
+      plugins: enterprisePlugins,
+      tokenFeatures: { serialization: enableSerialization },
+    })
+    .build();
+
+  return render(<DashboardEntityIdCard dashboard={dashboard} />, renderOptions);
 };

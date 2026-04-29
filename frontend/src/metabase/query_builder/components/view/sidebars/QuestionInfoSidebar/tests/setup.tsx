@@ -1,18 +1,17 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupCardsUsingModelEndpoint,
   setupRevisionsEndpoints,
-  setupTokenStatusEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
-import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { getQuestion } from "metabase/query_builder/selectors";
 import {
   createMockQueryBuilderState,
@@ -20,11 +19,7 @@ import {
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings, User } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockSettings,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
@@ -33,12 +28,12 @@ export interface SetupOpts {
   card?: Card;
   settings?: Settings;
   user?: Partial<User>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export const setup = async ({
   card = createMockCard(),
-  settings = createMockSettings(),
+  settings,
   user,
   enterprisePlugins = [],
 }: SetupOpts = {}) => {
@@ -50,31 +45,39 @@ export const setup = async ({
   setupPerformanceEndpoints([]);
   setupAuditInfoEndpoint();
 
-  const state = createMockState({
+  const builder = createScenario()
+    .withUser(currentUser)
+    .withEnterprise({ plugins: enterprisePlugins });
+  if (settings) {
+    builder.withSettings(settings as unknown as Record<string, unknown>);
+  }
+  const { render } = builder.build();
+
+  // Re-derive the qb state so the selector below can pick the current card.
+  const stateForSelector = createMockState({
     currentUser,
-    settings: mockSettings(settings),
     qb: createMockQueryBuilderState({ card }),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
     }),
   });
-  const question = checkNotNull(getQuestion(state));
+  const question = checkNotNull(getQuestion(stateForSelector));
   const onSave = jest.fn();
-
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
-
-  setupTokenStatusEndpoint({ valid: enterprisePlugins.length > 0 });
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />
   );
 
-  renderWithProviders(<Route path="*" component={TestQuestionInfoSidebar} />, {
+  render(<Route path="*" component={TestQuestionInfoSidebar} />, {
     withRouter: true,
-    storeInitialState: state,
+    storeInitialState: {
+      qb: createMockQueryBuilderState({ card }),
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      }),
+    },
   });
 
   await waitForLoaderToBeRemoved();

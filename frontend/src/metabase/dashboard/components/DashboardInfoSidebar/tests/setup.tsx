@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupAuditInfoEndpoint,
   setupDashboardEndpoints,
@@ -8,11 +9,9 @@ import {
   setupRevisionsEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -27,12 +26,12 @@ import { DashboardInfoSidebar } from "../DashboardInfoSidebar";
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
-  settings = createMockSettings(),
+  settings,
   enterprisePlugins = [],
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
@@ -45,25 +44,18 @@ export async function setup({
   setupPerformanceEndpoints([]);
   setupAuditInfoEndpoint();
 
-  const state = createMockState({
-    currentUser,
-    settings: mockSettings({
-      ...settings,
-      "token-features": createMockTokenFeatures(
-        settings["token-features"] || {},
-      ),
-    }),
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
-      dashboards: [dashboard],
-    }),
-  });
+  const builder = createScenario()
+    .withUser(currentUser)
+    .withEnterprise({
+      plugins: enterprisePlugins,
+      tokenFeatures: settings?.["token-features"] ?? {},
+    });
+  if (settings) {
+    builder.withSettings(settings as unknown as Record<string, unknown>);
+  }
+  const { render } = builder.build();
 
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
-
-  renderWithProviders(
+  render(
     <Route
       path="*"
       component={() => (
@@ -76,7 +68,15 @@ export async function setup({
         </MockDashboardContext>
       )}
     />,
-    { storeInitialState: state, withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: [createSampleDatabase()],
+          dashboards: [dashboard],
+        }),
+      },
+    },
   );
   await waitForLoaderToBeRemoved();
 

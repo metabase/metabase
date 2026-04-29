@@ -1,20 +1,14 @@
 import type { ReactNode } from "react";
 import { Route } from "react-router";
 
+import { createScenario } from "__support__/scenarios";
 import {
   setupCollectionTreeEndpoint,
   setupDatabaseListEndpoint,
   setupListTransformsEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { TransformListPage } from "./TransformListPage";
 
@@ -57,15 +51,10 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   setupListTransformsEndpoint([]);
   setupDatabaseListEndpoint([]);
 
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
-
   const path = "/transforms";
-  renderWithProviders(<Route path={path} component={TransformListPage} />, {
-    storeInitialState: state,
+  const { render } = createScenario().withEnterprise({ tokenFeatures }).build();
+
+  render(<Route path={path} component={TransformListPage} />, {
     withRouter: true,
     initialRoute: path,
   });

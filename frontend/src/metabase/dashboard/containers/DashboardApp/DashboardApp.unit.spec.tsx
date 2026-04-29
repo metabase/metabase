@@ -3,13 +3,12 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
+import { setupDashboardScenario } from "__support__/scenarios";
 import {
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
@@ -63,13 +62,12 @@ async function setup({ dashboard }: Options = {}) {
   const dashboardId = mockDashboard.id;
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
-  setupDashboardEndpoints(mockDashboard);
-  setupDashboardQueryMetadataEndpoint(
-    mockDashboard,
-    createMockDashboardQueryMetadata({
+  setupDashboardScenario({
+    dashboard: mockDashboard,
+    metadata: createMockDashboardQueryMetadata({
       databases: [TEST_DATABASE_WITH_ACTIONS],
     }),
-  );
+  });
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,

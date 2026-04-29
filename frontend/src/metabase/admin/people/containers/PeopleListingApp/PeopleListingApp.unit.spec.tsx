@@ -1,19 +1,14 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import {
   setupGroupsEndpoint,
   setupPermissionMembershipEndpoint,
   setupTenantEntpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { screen } from "__support__/ui";
 import type { Tenant, User } from "metabase-types/api";
-import {
-  createMockGroup,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { PeopleListingApp } from "./PeopleListingApp";
 
@@ -36,12 +31,11 @@ const setup = ({
   tenants?: Tenant[];
   useTenants?: boolean;
 } = {}) => {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      tenants: true,
-    }),
-    "use-tenants": useTenants,
-  });
+  const { render } = createScenario()
+    .withUser(currentUser)
+    .withSettings({ "use-tenants": useTenants })
+    .withEnterprise({ tokenFeatures: { tenants: true } })
+    .build();
 
   setupEnterprisePlugins();
   setupTenantEntpoints(tenants);
@@ -59,7 +53,7 @@ const setup = ({
 
   setupPermissionMembershipEndpoint({});
 
-  renderWithProviders(
+  render(
     <PeopleListingApp
       external={external}
       showInviteButton={showInviteButton}
@@ -67,12 +61,6 @@ const setup = ({
     >
       <></>
     </PeopleListingApp>,
-    {
-      storeInitialState: createMockState({
-        settings,
-        currentUser,
-      }),
-    },
   );
 };
 

@@ -2,13 +2,9 @@ import type { ComponentProps } from "react";
 import { times } from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
+import { createScenario } from "__support__/scenarios";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import {
-  createMockBookmark,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockBookmark } from "metabase-types/api/mocks";
 
 import BookmarkList from "./BookmarkList";
 
@@ -20,15 +16,14 @@ const mockProps: ComponentProps<typeof BookmarkList> = {
   initialState: "expanded",
 };
 
-const enterpriseState = createMockState({
-  settings: mockSettings({
-    "token-features": createMockTokenFeatures({
-      remote_sync: true,
-      official_collections: true,
-      audit_app: true,
-    }),
-  }),
+const enterpriseScenario = createScenario().withEnterprise({
+  tokenFeatures: {
+    remote_sync: true,
+    official_collections: true,
+    audit_app: true,
+  },
 });
+const { render: renderEnterprise } = enterpriseScenario.build();
 setupEnterprisePlugins();
 
 const createBookmarks = (howMany: number) => {
@@ -84,14 +79,13 @@ describe("BookmarkList", () => {
     ])(
       "renders the $icon icon for $name collection bookmarks",
       ({ name, icon, overrides }) => {
-        renderWithProviders(
+        renderEnterprise(
           <BookmarkList
             {...mockProps}
             bookmarks={[
               createMockBookmark({ type: "collection", name, ...overrides }),
             ]}
           />,
-          { storeInitialState: enterpriseState },
         );
 
         const row = screen.getByText(name).closest("a");

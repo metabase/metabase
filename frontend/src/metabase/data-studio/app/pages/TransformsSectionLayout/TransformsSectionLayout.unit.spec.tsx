@@ -1,18 +1,12 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import {
   setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { screen } from "__support__/ui";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { TransformsSectionLayout } from "./TransformsSectionLayout";
 
@@ -39,38 +33,40 @@ const setup = ({
     currentUser.email = storeUserEmail;
   }
 
-  const settingsValues = createMockSettings({
-    "token-features": createMockTokenFeatures({
-      "transforms-basic": hasTransformFeature,
-      hosting: isHosted,
-    }),
-    "transforms-enabled": transformsEnabled,
-    "is-hosted?": isHosted,
-    "token-status": {
-      status: "valid",
-      valid: true,
-      "store-users": isStoreUser ? [{ email: storeUserEmail }] : [],
-      features: [],
-    },
-  });
-  const settings = mockSettings(settingsValues);
-
   setupDatabaseListEndpoint([]);
-  setupPropertiesEndpoints(settingsValues);
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "transforms-enabled": transformsEnabled,
+      "is-hosted?": isHosted,
+    }),
+  );
+
+  const builder = createScenario()
+    .withUser(currentUser)
+    .withSettings({
+      "transforms-enabled": transformsEnabled,
+      "is-hosted?": isHosted,
+      "token-status": {
+        status: "valid",
+        valid: true,
+        "store-users": isStoreUser ? [{ email: storeUserEmail }] : [],
+        features: [],
+      },
+    })
+    .withEnterprise({
+      tokenFeatures: {
+        "transforms-basic": hasTransformFeature,
+        hosting: isHosted,
+      },
+    });
 
   if (isHosted || hasTransformFeature) {
-    setupEnterpriseOnlyPlugin("transforms");
+    builder.withEnterprise({ plugins: ["transforms"] });
   }
 
-  renderWithProviders(
-    <TransformsSectionLayout>List of transforms</TransformsSectionLayout>,
-    {
-      storeInitialState: createMockState({
-        settings,
-        currentUser,
-      }),
-    },
-  );
+  const { render } = builder.build();
+
+  render(<TransformsSectionLayout>List of transforms</TransformsSectionLayout>);
 };
 
 describe("TransformSectionLayout", () => {

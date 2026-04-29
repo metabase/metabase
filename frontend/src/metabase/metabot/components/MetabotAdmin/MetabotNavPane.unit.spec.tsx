@@ -1,11 +1,9 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { MetabotNavPane } from "./MetabotNavPane";
 
@@ -18,28 +16,20 @@ const setup = ({
   aiControlsEnabled?: boolean;
   isConfigured?: boolean;
 } = {}) => {
-  mockSettings({
-    "ai-features-enabled?": aiFeaturesEnabled,
-    "token-features": createMockTokenFeatures({
-      ai_controls: aiControlsEnabled,
-    }),
-  });
+  const { render } = createScenario()
+    .withSettings({
+      "ai-features-enabled?": aiFeaturesEnabled,
+      "llm-metabot-configured?": isConfigured,
+    })
+    .withEnterprise({ tokenFeatures: { ai_controls: aiControlsEnabled } })
+    .build();
 
   setupEnterprisePlugins();
 
-  return renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotNavPane} />,
-    {
-      withRouter: true,
-      initialRoute: "/admin/metabot",
-      storeInitialState: {
-        settings: createMockSettingsState({
-          "ai-features-enabled?": aiFeaturesEnabled,
-          "llm-metabot-configured?": isConfigured,
-        }),
-      },
-    },
-  );
+  return render(<Route path="/admin/metabot*" component={MetabotNavPane} />, {
+    withRouter: true,
+    initialRoute: "/admin/metabot",
+  });
 };
 
 describe("MetabotNavPane", () => {

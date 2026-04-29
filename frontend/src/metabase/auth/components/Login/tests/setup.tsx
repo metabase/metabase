@@ -1,11 +1,8 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { Login } from "../Login";
 
@@ -13,7 +10,7 @@ interface SetupOpts {
   initialRoute?: string;
   isPasswordLoginEnabled?: boolean;
   isGoogleAuthEnabled?: boolean;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
@@ -24,23 +21,19 @@ export const setup = ({
   enterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
-  const state = createMockState({
-    settings: mockSettings({
+  const { render } = createScenario()
+    .withSettings({
       "enable-password-login": isPasswordLoginEnabled,
       "google-auth-enabled": isGoogleAuthEnabled,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
+    })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
-
-  renderWithProviders(
+  render(
     <>
       <Route path="/auth/login" component={Login} />
       <Route path="/auth/login/:provider" component={Login} />
     </>,
-    { storeInitialState: state, withRouter: true, initialRoute },
+    { withRouter: true, initialRoute },
   );
 };

@@ -1,18 +1,15 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import {
   setupCardDataset,
   setupSchemaEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { act, screen } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSegment,
   createMockTable,
-  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { SegmentForm } from "./SegmentForm";
@@ -36,27 +33,23 @@ const setup = ({ remoteSyncType, isTablePublished }: SetupOpts) => {
   setupCardDataset();
   setupSchemaEndpoints(db);
 
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures({
-        remote_sync: true,
-      }),
+  const { render } = createScenario()
+    .withEnterprise({
+      plugins: ["remote_sync"],
+      tokenFeatures: { remote_sync: true },
+    })
+    .withSettings({
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,
-    }),
-  });
+    })
+    .build();
 
-  setupEnterpriseOnlyPlugin("remote_sync");
-
-  renderWithProviders(
+  render(
     <SegmentForm
       onIsDirtyChange={jest.fn()}
       onSubmit={jest.fn()}
       segment={segment}
     />,
-    {
-      storeInitialState: state,
-    },
   );
 };
 

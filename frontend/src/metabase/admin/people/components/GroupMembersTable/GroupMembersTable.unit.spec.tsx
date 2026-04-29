@@ -1,12 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 import type { Group, Member } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { GroupMembersTable } from "./GroupMembersTable";
 
@@ -32,17 +27,17 @@ const createMockGroupWithMembers = (opts?: Partial<Group>): Group => ({
 });
 
 const setup = ({ group }: { group: Group }) => {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      advanced_permissions: true,
-      tenants: true,
-    }),
-    "use-tenants": true,
-  });
+  const { render } = createScenario()
+    .withAdminUser()
+    .withSettings({ "use-tenants": true })
+    .withEnterprise({
+      tokenFeatures: { advanced_permissions: true, tenants: true },
+    })
+    .build();
 
   setupEnterprisePlugins();
 
-  renderWithProviders(
+  render(
     <GroupMembersTable
       group={group}
       showAddUser={false}
@@ -51,12 +46,6 @@ const setup = ({ group }: { group: Group }) => {
       onMembershipRemove={jest.fn()}
       onMembershipUpdate={jest.fn()}
     />,
-    {
-      storeInitialState: createMockState({
-        settings,
-        currentUser: createMockUser({ is_superuser: true }),
-      }),
-    },
   );
 };
 

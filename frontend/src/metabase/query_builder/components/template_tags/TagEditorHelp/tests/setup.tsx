@@ -1,20 +1,15 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import Database from "metabase-lib/v1/metadata/Database";
 import type { TokenFeatures } from "metabase-types/api";
-import {
-  createMockDatabase,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { TagEditorHelp } from "../TagEditorHelp";
 
 export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export const setup = ({
@@ -22,26 +17,17 @@ export const setup = ({
   tokenFeatures = {},
   enterprisePlugins = [],
 }: SetupOpts = {}) => {
-  const state = createMockState({
-    settings: mockSettings({
-      "show-metabase-links": showMetabaseLinks,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
+  const { render } = createScenario()
+    .withSettings({ "show-metabase-links": showMetabaseLinks })
+    .withEnterprise({ plugins: enterprisePlugins, tokenFeatures })
+    .build();
 
-  enterprisePlugins.forEach((plugin) => {
-    setupEnterpriseOnlyPlugin(plugin);
-  });
-
-  renderWithProviders(
+  render(
     <TagEditorHelp
       database={new Database({ ...createMockDatabase(), tables: [] })}
       sampleDatabaseId={99}
       setDatasetQuery={jest.fn()}
       switchToSettings={jest.fn()}
     />,
-    {
-      storeInitialState: state,
-    },
   );
 };

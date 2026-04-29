@@ -1,14 +1,7 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createScenario } from "__support__/scenarios";
+import { screen } from "__support__/ui";
 
 import { AdminPeopleApp } from "./AdminPeopleApp";
 
@@ -28,23 +21,18 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
   };
   const setupOpts = Object.assign(defaultSetupOpts, inputSetupOpts ?? {});
 
-  const state = createMockState({
-    currentUser: createMockUser({
-      is_superuser: setupOpts.isSuperUser,
-    }),
-    settings: createMockSettingsState({
+  const { render } = createScenario()
+    .withUser({ is_superuser: setupOpts.isSuperUser })
+    .withSettings({
       "active-users-count": setupOpts.activeUsersCount,
       "use-tenants": setupOpts.useTenants,
-      "token-features": createMockTokenFeatures({
-        sso_saml: setupOpts.ssoEnabled,
-      }),
-    }),
-  });
+    })
+    .withEnterprise({ tokenFeatures: { sso_saml: setupOpts.ssoEnabled } })
+    .build();
 
-  renderWithProviders(
+  render(
     <Route path="/" component={() => <AdminPeopleApp>empty</AdminPeopleApp>} />,
     {
-      storeInitialState: state,
       withRouter: true,
     },
   );

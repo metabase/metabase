@@ -2,12 +2,9 @@ import { Fragment } from "react";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import { mockSettings } from "__support__/settings";
-import {
-  renderHookWithProviders,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderHookWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
@@ -71,18 +68,18 @@ describe("useTroubleshootingTips", () => {
 
   describe("showMetabaseLinks handling", () => {
     const linksSetup = (showMetabaseLinks: boolean) => {
-      const storeInitialState = createMockState({
-        settings: mockSettings({
+      const { render } = createScenario()
+        .withSettings({
           "show-metabase-links": showMetabaseLinks,
-          "token-features": createMockTokenFeatures({ whitelabel: true }),
           "is-hosted?": true,
-        }),
-      });
+        })
+        .withEnterprise({ tokenFeatures: { whitelabel: true } })
+        .build();
 
       setupEnterprisePlugins();
 
       // This time we render inside a Route component to more easily assert links presence
-      renderWithProviders(
+      render(
         <Route
           path="*"
           component={() => {
@@ -97,10 +94,7 @@ describe("useTroubleshootingTips", () => {
             );
           }}
         />,
-        {
-          withRouter: true,
-          storeInitialState,
-        },
+        { withRouter: true },
       );
     };
     const expectedLinks = [

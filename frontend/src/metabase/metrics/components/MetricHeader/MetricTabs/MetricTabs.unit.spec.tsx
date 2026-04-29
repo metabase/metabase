@@ -1,9 +1,9 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createScenario } from "__support__/scenarios";
 import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { waitFor } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -63,15 +63,15 @@ describe("MetricTabs", () => {
 
     setupMetricEndpoint(metric);
 
-    const state = createMockState({
-      entities: createMockEntitiesState({
-        databases: hasDataPermissions ? [createSampleDatabase()] : [],
-        questions: [card],
-      }),
-    });
+    const { render } = createScenario().build();
 
-    renderWithProviders(<MetricTabs card={card} urls={urls} />, {
-      storeInitialState: state,
+    render(<MetricTabs card={card} urls={urls} />, {
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: hasDataPermissions ? [createSampleDatabase()] : [],
+          questions: [card],
+        }),
+      },
     });
   }
 

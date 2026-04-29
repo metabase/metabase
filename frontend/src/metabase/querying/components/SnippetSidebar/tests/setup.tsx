@@ -1,20 +1,18 @@
 /* istanbul ignore file */
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { waitForLoaderToBeRemoved } from "__support__/ui";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockNativeQuerySnippet,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -25,7 +23,7 @@ const MOCK_SNIPPET = createMockNativeQuerySnippet();
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   user?: Partial<User>;
 }
 
@@ -44,17 +42,13 @@ export async function setup({
     models: ["collection", "snippet"],
   });
 
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
-
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+  const builder = createScenario();
+  if (enterprisePlugins || Object.keys(tokenFeatures).length > 0) {
+    builder.withEnterprise({ plugins: enterprisePlugins, tokenFeatures });
   }
+  const { render } = builder.build();
 
-  renderWithProviders(
+  render(
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
@@ -63,9 +57,6 @@ export async function setup({
       snippetCollectionId={null}
       user={createMockUser(user)}
     />,
-    {
-      storeInitialState: state,
-    },
   );
   await waitForLoaderToBeRemoved();
 }

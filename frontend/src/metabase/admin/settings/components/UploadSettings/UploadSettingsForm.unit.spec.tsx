@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createScenario } from "__support__/scenarios";
 import {
   findRequests,
   setupDatabaseListEndpoint,
@@ -7,7 +8,6 @@ import {
   setupSchemaEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -17,7 +17,6 @@ import {
   within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -80,20 +79,17 @@ function setup({
   },
   isHosted = false,
 }: SetupOpts = {}) {
-  const state = createMockState({
-    entities: createMockEntitiesState({ databases }),
-    settings: mockSettings({
-      "is-hosted?": isHosted,
-    }),
-  });
-
   databases.forEach((db) => {
     setupSchemaEndpoints(db);
   });
 
+  const { render } = createScenario()
+    .withSettings({ "is-hosted?": isHosted })
+    .build();
+
   const updateSpy = jest.fn(() => Promise.resolve({ error: "" }));
 
-  renderWithProviders(
+  render(
     <>
       <UploadSettingsFormView
         databases={databases}
@@ -102,7 +98,9 @@ function setup({
       />
       <UndoListing />
     </>,
-    { storeInitialState: state },
+    {
+      storeInitialState: { entities: createMockEntitiesState({ databases }) },
+    },
   );
   return { updateSpy };
 }

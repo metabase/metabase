@@ -1,23 +1,19 @@
 import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
-  setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
-} from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+  createScenario,
+  setupCollectionsScenario,
+  setupNotificationChannelsScenario,
+} from "__support__/scenarios";
+import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
-  createMockTokenFeatures,
-  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { DashboardHeader } from "../DashboardHeader";
@@ -53,66 +49,27 @@ export const setup = async ({
   email?: boolean;
   slack?: boolean;
   collections?: Collection[];
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   tokenFeatures?: Partial<TokenFeatures>;
 }) => {
-  setupCollectionsEndpoints({ collections });
-  setupCollectionByIdEndpoint({ collections });
+  setupCollectionsScenario({ collections });
+  setupNotificationChannelsScenario({ email, slack });
 
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures(tokenFeatures),
-  });
+  const builder = createScenario()
+    .withDashboard(dashboard)
+    .withUser({ is_superuser: isAdmin })
+    .withDashboardReduxState();
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
+  if (enterprisePlugins || Object.keys(tokenFeatures).length > 0) {
+    builder.withEnterprise({
+      plugins: enterprisePlugins,
+      tokenFeatures,
     });
   }
 
-  const channelData: {
-    channels: {
-      email?: any;
-      slack?: any;
-    };
-  } = { channels: {} };
+  const { render } = builder.build();
 
-  if (email) {
-    channelData.channels.email = {
-      type: "email",
-      name: "Email",
-      allows_recipients: true,
-      recipients: ["user", "email"],
-      schedules: ["hourly"],
-      configured: true,
-    };
-  }
-
-  if (slack) {
-    channelData.channels.slack = {
-      type: "slack",
-      name: "Slack",
-      allows_recipients: false,
-      schedules: ["hourly"],
-      configured: true,
-      fields: [
-        {
-          name: "channel",
-          type: "select",
-          displayName: "Post to",
-          options: [
-            { displayName: "#general", id: "C001" },
-            { displayName: "#random", id: "C002" },
-            { displayName: "#alerts", id: "C003" },
-          ],
-          required: true,
-        },
-      ],
-    };
-  }
-
-  setupNotificationChannelsEndpoints(channelData.channels);
-
-  renderWithProviders(
+  render(
     <Route
       path="*"
       component={() => (
@@ -132,31 +89,7 @@ export const setup = async ({
         </MockDashboardContext>
       )}
     />,
-    {
-      withRouter: true,
-      storeInitialState: {
-        currentUser: createMockUser({
-          is_superuser: isAdmin,
-        }),
-        settings,
-        dashboard: createMockDashboardState({
-          dashboardId: dashboard.id,
-          dashboards: {
-            [dashboard.id]: {
-              ...dashboard,
-              dashcards: dashboard.dashcards.map((c) => c.id),
-            },
-          },
-          dashcards: {
-            [DASHCARD.id]: {
-              ...DASHCARD,
-              isDirty: false,
-              isRemoved: false,
-            },
-          },
-        }),
-      },
-    },
+    { withRouter: true },
   );
 
   await waitForLoaderToBeRemoved();

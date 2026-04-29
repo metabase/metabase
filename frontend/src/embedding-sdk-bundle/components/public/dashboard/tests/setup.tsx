@@ -1,23 +1,21 @@
 import type { ComponentType } from "react";
-import { indexBy } from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
-  setupAlertsEndpoints,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
+  createDashboardReduxState,
+  setupDashboardScenario,
+  setupNotificationChannelsScenario,
+  setupSavedCardScenario,
+} from "__support__/scenarios";
+import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { screen } from "__support__/ui";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -25,7 +23,6 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {
@@ -161,7 +158,12 @@ export const setupSdkDashboard = async ({
     parameters: [parameter],
   });
 
-  setupDashboardEndpoints(dashboard);
+  setupDashboardScenario({
+    dashboard,
+    metadata: createMockDashboardQueryMetadata({
+      databases: [database],
+    }),
+  });
 
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
@@ -169,30 +171,18 @@ export const setupSdkDashboard = async ({
     collectionItems: [],
   });
 
-  setupDashboardQueryMetadataEndpoint(
-    dashboard,
-    createMockDashboardQueryMetadata({
-      databases: [database],
-    }),
-  );
-
-  setupCardEndpoints(tableCard);
-  setupCardQueryEndpoints(tableCard, createMockDataset());
-  setupCardQueryMetadataEndpoint(
-    tableCard,
-    createMockCardQueryMetadata({
-      databases: [TEST_DB],
-    }),
-  );
+  setupSavedCardScenario({
+    card: tableCard,
+    dataset: createMockDataset(),
+    metadata: createMockCardQueryMetadata({ databases: [TEST_DB] }),
+  });
 
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
 
-  setupAlertsEndpoints(tableCard, []);
-
-  setupNotificationChannelsEndpoints({
-    email: { configured: isEmailConfigured },
-    slack: { configured: isSlackConfigured },
-  } as any);
+  setupNotificationChannelsScenario({
+    email: isEmailConfigured,
+    slack: isSlackConfigured,
+  });
 
   setupDatabasesEndpoints([createMockDatabase()]);
 
@@ -220,16 +210,7 @@ export const setupSdkDashboard = async ({
 
   const state = setupSdkState({
     currentUser: user,
-    dashboard: createMockDashboardState({
-      dashboardId: dashboard.id,
-      dashboards: {
-        [dashboard.id]: {
-          ...dashboard,
-          dashcards: dashcards.map((dc) => dc.id),
-        },
-      },
-      dashcards: indexBy(dashcards, "id"),
-    }),
+    dashboard: createDashboardReduxState({ ...dashboard, dashcards }),
     tokenFeatures,
   });
 

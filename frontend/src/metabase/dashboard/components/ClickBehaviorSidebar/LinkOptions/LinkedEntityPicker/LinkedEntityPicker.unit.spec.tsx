@@ -1,10 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupCollectionsScenario } from "__support__/scenarios";
 import {
-  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -88,8 +87,7 @@ function setup({
   collectionItems = [],
 }: SetupOpts) {
   mockGetBoundingClientRect();
-  setupCollectionsEndpoints({ collections: COLLECTIONS });
-  setupCollectionByIdEndpoint({ collections: COLLECTIONS });
+  setupCollectionsScenario({ collections: COLLECTIONS });
   setupSearchEndpoints(searchResults);
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,

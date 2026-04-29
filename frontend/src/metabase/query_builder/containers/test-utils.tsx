@@ -4,24 +4,17 @@ import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 
+import { createScenario } from "__support__/scenarios";
 import {
   setupAdhocQueryMetadataEndpoint,
-  setupAlertsEndpoints,
   setupCardDataset,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
   setupFieldValuesEndpoint,
   setupGetUserKeyValueEndpoint,
-  setupModelIndexEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import {
-  renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
@@ -32,7 +25,6 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import type { RequestState, State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
@@ -48,7 +40,6 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
-  createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
@@ -236,7 +227,22 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
-  setupDatabasesEndpoints([TEST_DB]);
+  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
+
+  const builder = createScenario()
+    .withDatabase(TEST_DB)
+    .withUser({
+      permissions: createMockUserPermissions({
+        can_create_queries: true,
+        can_create_native_queries: true,
+      }),
+    })
+    .withSettings({ "site-url": "http://localhost:3000" });
+
+  if (isSavedCard(card)) {
+    builder.withCard(card, { dataset, metadata });
+  }
+
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupCollectionsEndpoints({ collections: [] });
@@ -249,17 +255,7 @@ export const setup = async ({
     key: "turn_into_model_modal",
     value: false,
   });
-
-  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
   setupAdhocQueryMetadataEndpoint(metadata);
-
-  if (isSavedCard(card)) {
-    setupCardsEndpoints([card]);
-    setupCardQueryMetadataEndpoint(card, metadata);
-    setupCardQueryEndpoints(card, dataset);
-    setupAlertsEndpoints(card, []);
-    setupModelIndexEndpoints(card.id, []);
-  }
 
   if (card === null) {
     fetchMock.get("path:/api/model-index", [createMockModelIndex()]);
@@ -267,11 +263,12 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
+  const { render } = builder.build();
   const {
     store: { getState },
     container,
     history,
-  } = renderWithProviders(
+  } = render(
     <div>
       <Route>
         <Route path="/" component={TestHome} />
@@ -299,15 +296,6 @@ export const setup = async ({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: createMockState({
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({
-            can_create_queries: true,
-            can_create_native_queries: true,
-          }),
-        }),
-        settings: mockSettings({ "site-url": "http://localhost:3000" }),
-      }),
     },
   );
 

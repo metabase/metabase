@@ -1,17 +1,11 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { createScenario } from "__support__/scenarios";
 import { setupUserEndpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { User, UserListResult } from "metabase-types/api";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { EditUserModal } from "../EditUserModal";
 
@@ -28,38 +22,28 @@ export const setup = ({
   enterprisePlugins,
 }: {
   userData: Partial<User>;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
 }) => {
   setupUserEndpoints(createMockUser(userData) as unknown as UserListResult);
-
-  const storeInitialState = createMockState({
-    entities: createMockEntitiesState({}),
-    settings: mockSettings(
-      createMockSettings({
-        "token-features": createMockTokenFeatures({
-          advanced_permissions: true,
-          sandboxes: true,
-        }),
-      }),
-    ),
-  });
-
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
 
   fetchMock.get("path:/api/permissions/group", []);
   fetchMock.get("path:/api/permissions/membership", {});
 
-  // setupPermissionsGraphEndpoints([]);
+  const { render } = createScenario()
+    .withEnterprise({
+      plugins: enterprisePlugins,
+      tokenFeatures: { advanced_permissions: true, sandboxes: true },
+    })
+    .build();
+
   const onCloseSpy = jest.fn();
-  renderWithProviders(
+  render(
     <EditUserModal
       params={{ userId: String(userData.id) }}
       onClose={onCloseSpy}
     />,
     {
-      storeInitialState,
+      storeInitialState: { entities: createMockEntitiesState({}) },
     },
   );
   return { onCloseSpy };
