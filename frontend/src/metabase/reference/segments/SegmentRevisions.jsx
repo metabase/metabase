@@ -9,6 +9,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { modelIconMap } from "metabase/lib/icon";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";
@@ -75,7 +76,7 @@ class SegmentRevisions extends Component {
       <div style={style} className={CS.full} data-testid="segment-revisions">
         <ReferenceHeader
           name={t`Revision history for ${this.props.segment.name}`}
-          headerIcon="segment"
+          headerIcon={modelIconMap.segment}
         />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}

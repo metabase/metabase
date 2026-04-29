@@ -10,6 +10,7 @@ import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useQuestionListQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { modelIconMap } from "metabase/lib/icon";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
@@ -57,7 +58,7 @@ const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
         type="questions"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
         {() =>

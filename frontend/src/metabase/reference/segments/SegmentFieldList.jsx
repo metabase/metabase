@@ -9,6 +9,7 @@ import { List } from "metabase/common/components/List";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { modelIconMap } from "metabase/lib/icon";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
@@ -122,7 +123,7 @@ const SegmentFieldList = (props) => {
       )}
       <EditableReferenceHeader
         type="segment"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
         name={t`Fields in ${segment.name}`}
         user={user}
         isEditing={isEditing}

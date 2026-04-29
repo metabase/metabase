@@ -246,7 +246,7 @@ const TableSectionBase = ({
             >{t`Fields`}</Tabs.Tab>
             <Tabs.Tab
               value="segments"
-              leftSection={<Icon name="segment2" />}
+              leftSection={<Icon name="segment" />}
             >{t`Segments`}</Tabs.Tab>
             <Tabs.Tab
               value="measures"
