@@ -32,23 +32,24 @@
   (ws/list-remappings))
 
 (api.macros/defendpoint :get "/current" :- [:maybe WorkspaceInstance]
-  "Read-only summary of the workspace loaded on this (child) instance."
+  "Read-only summary of the workspace loaded on this instance.
+
+  Reads from the in-process atom populated at boot by the `:workspace` section of
+  `config.yml`. Returns `nil` when no workspace was loaded — i.e. this is a manager-only
+  instance, or no `config.yml` was present at boot."
   []
   (api/check-superuser)
-  (when-let [workspace (->> (ws/list-workspaces)
-                            (sort-by :created_at)
-                            reverse
-                            (some (fn [w] (when (seq (:databases w)) w))))]
-    (let [db-ids    (mapv :database_id (:databases workspace))
+  (when-let [workspace (ws/instance-workspace)]
+    (let [db-ids    (keys (:databases workspace))
           dbs-by-id (when (seq db-ids)
                       (into {} (map (juxt :id identity))
                             (t2/select [:model/Database :id :name] :id [:in db-ids])))]
       {:name             (:name workspace)
        :remappings_count (count (ws/list-remappings))
        :databases        (into {}
-                               (map (fn [wsd]
-                                      [(:database_id wsd)
-                                       {:name          (get-in dbs-by-id [(:database_id wsd) :name] "")
+                               (map (fn [[db-id wsd]]
+                                      [db-id
+                                       {:name          (get-in dbs-by-id [db-id :name] "")
                                         :input_schemas (vec (:input_schemas wsd))
                                         :output_schema (or (:output_schema wsd) "")}]))
                                (:databases workspace))})))
