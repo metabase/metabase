@@ -658,7 +658,7 @@
   (->> (for [[field-path field-type] (seq field-types)
              :when field-type]
          (let [curr-type (get field-type-map field-type :type/*)]
-           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+           {:name              (str/join " → " (map name field-path)) ;; right arrow
             :database-type     (db-type-map curr-type)
             :base-type         curr-type
             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...

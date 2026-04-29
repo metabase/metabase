@@ -412,7 +412,7 @@
    [:prompt {:optional true} ConstructQueryPrompt]])
 
 (defn- evaluate-yaml-to-live-query
-  "Run the representations pipeline (parse \u2192 repair \u2192 validate \u2192 resolve) on a YAML
+  "Run the representations pipeline (parse → repair → validate → resolve) on a YAML
   request body and return the resolved MBQL 5 lib query (with `:lib/metadata` attached).
   The pipeline raises `:agent-error?` ex-data on any LLM-input failure (unknown DB,
   unknown table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]]
