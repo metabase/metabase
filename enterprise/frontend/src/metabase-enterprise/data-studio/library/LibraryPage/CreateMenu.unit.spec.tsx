@@ -62,17 +62,23 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Metric", "Snippet", "Snippet folder"]);
+    ).toEqual([
+      "Published table",
+      "Collection",
+      "Metric",
+      "Snippet",
+      "Snippet folder",
+    ]);
   });
 
-  it("renders publish option for data analysts", async () => {
+  it("renders publish and collection options for data analysts", async () => {
     setup({ user: { is_data_analyst: true } });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table"]);
+    ).toEqual(["Published table", "Collection"]);
   });
 
   it("renders publish and metric options if user only has query builder access", async () => {
@@ -82,7 +88,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Metric"]);
+    ).toEqual(["Published table", "Collection", "Metric"]);
   });
 
   it("does not render Metric option when canWriteToMetricCollection is false", async () => {
