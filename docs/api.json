@@ -3217,6 +3217,162 @@
         },
         "required" : [ "query" ]
       },
+      "metabase.agent-api.api.create-dashboard-request" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "question_ids" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "metabase.agent-api.api.create-dashboard-response" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashcard_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "id", "name", "collection_id", "description", "dashcard_ids" ]
+      },
+      "metabase.agent-api.api.create-question-request" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "query" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "visualization_settings" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name", "query" ]
+      },
+      "metabase.agent-api.api.create-question-response" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "id", "name", "display", "collection_id", "description" ]
+      },
       "metabase.agent-api.api.entity-type" : {
         "description" : "The type of queryable entity.",
         "type" : "string",
@@ -9572,16 +9728,9 @@
         "description" : "Schema for fingerprint information for Fields deriving from `:type/Number`.",
         "type" : "object",
         "properties" : {
-          "avg" : {
+          "mode-fraction" : {
             "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "max" : {
-            "oneOf" : [ {
-              "type" : "number"
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
               "type" : "null"
             } ]
@@ -9600,7 +9749,14 @@
               "type" : "null"
             } ]
           },
-          "q3" : {
+          "max" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "avg" : {
             "oneOf" : [ {
               "type" : "number"
             }, {
@@ -9610,6 +9766,41 @@
           "sd" : {
             "oneOf" : [ {
               "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "skewness" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "q3" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "top-3-fraction" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "excess-kurtosis" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "zero-fraction" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
               "type" : "null"
             } ]
@@ -9627,9 +9818,50 @@
               "type" : "null"
             } ]
           },
+          "hour-distribution" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
           "latest" : {
             "oneOf" : [ {
               "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "mode-fraction" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "skewness" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "top-3-fraction" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "weekday-distribution" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+              }
             }, {
               "type" : "null"
             } ]
@@ -9640,14 +9872,7 @@
         "description" : "Schema for fingerprint information for Fields deriving from `:type/Text`.",
         "type" : "object",
         "properties" : {
-          "average-length" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "percent-email" : {
+          "mode-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
@@ -9661,7 +9886,7 @@
               "type" : "null"
             } ]
           },
-          "percent-state" : {
+          "percent-blank" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
@@ -9669,6 +9894,48 @@
             } ]
           },
           "percent-url" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent-state" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent-email" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "max-length" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "average-length" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "min-length" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "top-3-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
@@ -13916,73 +14183,6 @@
         },
         "required" : [ "field_values" ]
       },
-      "metabase.warehouses-rest.api.metadata-import-report" : {
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "object",
-            "properties" : {
-              "failed" : {
-                "type" : "array",
-                "items" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              },
-              "matched" : {
-                "type" : "integer"
-              },
-              "missing" : {
-                "type" : "array",
-                "items" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              }
-            },
-            "required" : [ "matched", "missing" ]
-          },
-          "fields" : {
-            "type" : "object",
-            "properties" : {
-              "created" : {
-                "type" : "integer"
-              },
-              "matched" : {
-                "type" : "integer"
-              },
-              "missing" : {
-                "type" : "array",
-                "items" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              }
-            },
-            "required" : [ "matched", "created", "missing" ]
-          },
-          "tables" : {
-            "type" : "object",
-            "properties" : {
-              "created" : {
-                "type" : "integer"
-              },
-              "matched" : {
-                "type" : "integer"
-              },
-              "missing" : {
-                "type" : "array",
-                "items" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              }
-            },
-            "required" : [ "matched", "created", "missing" ]
-          }
-        },
-        "required" : [ "databases", "tables", "fields" ]
-      },
       "metabase.warehouses-rest.api.table-info" : {
         "type" : "object",
         "properties" : {
@@ -14518,6 +14718,42 @@
         "tags" : [ "/api/activity" ]
       }
     },
+    "/api/agent/v1/dashboard" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-dashboard",
+        "summary" : "POST /api/agent/v1/dashboard",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.create-dashboard-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.create-dashboard-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
     "/api/agent/v1/execute" : {
       "post" : {
         "operationId" : "post-api-agent-v1-execute",
@@ -14706,6 +14942,42 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/question" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-question",
+        "summary" : "POST /api/agent/v1/question",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter should be a base64-encoded string returned by construct_query.\n  Optionally specify display type, description, collection, and visualization settings.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.create-question-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.create-question-request"
+              }
+            }
           }
         },
         "tags" : [ "/api/agent" ]
@@ -18365,7 +18637,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -18893,7 +19165,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -21220,40 +21492,6 @@
           }
         },
         "tags" : [ "/api/database" ]
-      },
-      "post" : {
-        "operationId" : "post-api-database-metadata",
-        "summary" : "POST /api/database/metadata",
-        "description" : "Import database/table/field metadata previously exported from `GET /api/database/metadata`.\n\n  Entities are matched by natural key — databases by `(name, engine)`, tables by\n  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids\n  in the payload are only used to link fields to their tables within the request.\n\n  Tables and fields that don't exist on the target are created when their parent\n  (database for tables; table for fields) is present on the target. Databases are\n  not auto-created — missing databases are reported instead. Field `fk_target_field_id`\n  is re-resolved through the natural-key lookup after all fields exist.\n\n  For matched entities, only user-editable metadata is written: table `description`;\n  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and\n  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are\n  also populated from the payload. Keys absent from the payload (including null values)\n  are left untouched on matched entities.\n\n  Processing is isolated per target database: each matched DB imports in its own\n  transaction so a failure on one DB does not roll back the others. DBs whose\n  transaction failed appear under `databases.failed` in the response along with\n  the error message; every other DB's tables, fields, and same-DB `fk_target_field_id`\n  references still commit. Cross-database `fk_target_field_id` references are\n  resolved in a final pass after all per-DB transactions have committed.\n\n  Returns counts of matched + created entities per type, a list of entities in the\n  payload that could not be placed (their parent was missing on the target), and,\n  when any DB failed, a `databases.failed` list naming each failed DB.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.metadata-import-report"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/database" ]
       }
     },
     "/api/database/sample_database" : {
@@ -21960,6 +22198,17 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "include_measures",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -22035,6 +22284,17 @@
         }, {
           "in" : "query",
           "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_measures",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -23694,6 +23954,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
                     "permissions" : {
                       "type" : "array",
                       "items" : {
@@ -23716,7 +23979,7 @@
                       }
                     }
                   },
-                  "required" : [ "permissions" ]
+                  "required" : [ "permissions", "advanced" ]
                 }
               }
             }
@@ -23743,6 +24006,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
                     "permissions" : {
                       "type" : "array",
                       "items" : {
@@ -23765,7 +24031,7 @@
                       }
                     }
                   },
-                  "required" : [ "permissions" ]
+                  "required" : [ "permissions", "advanced" ]
                 }
               }
             }
@@ -23808,6 +24074,112 @@
                 "required" : [ "permissions" ]
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/permissions" ]
+      }
+    },
+    "/api/ee/ai-controls/permissions/advanced" : {
+      "post" : {
+        "operationId" : "post-api-ee-ai-controls-permissions-advanced",
+        "summary" : "POST /api/ee/ai-controls/permissions/advanced",
+        "description" : "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "perm_type" : {
+                            "type" : "string",
+                            "enum" : [ "permission/metabot", "permission/metabot-nlq", "permission/metabot-other-tools", "permission/metabot-sql-generation" ]
+                          },
+                          "perm_value" : {
+                            "type" : "string",
+                            "enum" : [ "yes", "no" ]
+                          }
+                        },
+                        "required" : [ "group_id", "perm_type", "perm_value" ]
+                      }
+                    }
+                  },
+                  "required" : [ "permissions", "advanced" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/permissions" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-ai-controls-permissions-advanced",
+        "summary" : "DELETE /api/ee/ai-controls/permissions/advanced",
+        "description" : "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "perm_type" : {
+                            "type" : "string",
+                            "enum" : [ "permission/metabot", "permission/metabot-nlq", "permission/metabot-other-tools", "permission/metabot-sql-generation" ]
+                          },
+                          "perm_value" : {
+                            "type" : "string",
+                            "enum" : [ "yes", "no" ]
+                          }
+                        },
+                        "required" : [ "group_id", "perm_type", "perm_value" ]
+                      }
+                    }
+                  },
+                  "required" : [ "permissions", "advanced" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/ai-controls/permissions" ]
