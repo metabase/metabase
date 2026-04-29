@@ -1200,13 +1200,15 @@
 
 (api.macros/defendpoint :get "/erd" :- ::erd/erd-response
   "Return an Entity Relationship Diagram (ERD) for tables and their FK relationships.
-  When `table-ids` is provided, those tables are the focal points.
-  When only `database-id` is provided, auto-selects the most connected tables."
+  When `schema` is provided, all readable tables in that schema are focal points.
+  When `table-ids` is provided, those tables are additional focal points.
+  When only `database-id` is provided, all readable tables in the database are focal points."
   [_route-params
-   {:keys [database-id table-ids schema]} :- ::erd/erd-request]
+   {:keys [database-id table-ids schema] :as query-params} :- ::erd/erd-request]
   (erd/erd {:database-id database-id
-            :table-ids   table-ids
-            :schema      (not-empty schema)}))
+            :table-ids        table-ids
+            :schema           schema
+            :schema-selected? (contains? query-params :schema)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

@@ -94,8 +94,8 @@
 (deftest erd-external-fk-target-resolution-test
   (mt/with-premium-features #{:dependencies}
     (testing "FK field pointing to a readable table beyond the hop budget still carries the target IDs"
-      ;; Chain A → B → C. Focal = A, default hops loads A + B. C lives one
-      ;; hop past the budget but is readable — B's FK field must still surface
+      ;; Chain A → B → C. Focal = A, one-layer expansion loads A + B. C is
+      ;; outside the loaded node set but readable — B's FK field must still surface
       ;; C's table/field IDs so the frontend can offer to expand to it.
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {c-id :id} {:db_id db-id :name "c" :schema "PUBLIC"}
@@ -135,7 +135,7 @@
 
 (deftest erd-schema-boundary-stops-bfs-test
   (mt/with-premium-features #{:dependencies}
-    (testing "BFS does not cross the schema boundary; cross-schema FK targets surface as IDs only"
+    (testing "one-layer FK expansion does not cross the schema boundary; cross-schema FK targets surface as IDs only"
       ;; public.a has FK to erd.b. When the user views schema=public, b must
       ;; not be loaded as a node, but a.b_id must still carry b's table/field IDs
       ;; so the frontend can expand on click.
@@ -242,6 +242,133 @@
               node-names (set (map :name (:nodes response)))]
           (is (= #{"p1" "p2" "x"} node-names)))))))
 
+(deftest erd-endpoint-database-only-and-blank-schema-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "database-only request loads every readable table in the database"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
+                     :model/Table _ {:db_id db-id :name "empty_schema" :schema ""}
+                     :model/Table _ {:db_id db-id :name "other_schema" :schema "other"}]
+        (let [response   (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                               :database-id db-id)
+              node-names (set (map :name (:nodes response)))]
+          (is (= #{"nil_schema" "empty_schema" "other_schema"} node-names)))))
+
+    (testing "blank schema request matches nil and empty-string schemas only"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
+                     :model/Table _ {:db_id db-id :name "empty_schema" :schema ""}
+                     :model/Table _ {:db_id db-id :name "other_schema" :schema "other"}]
+        (let [response   (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                               :database-id db-id
+                                               :schema "")
+              node-names (set (map :name (:nodes response)))]
+          (is (= #{"nil_schema" "empty_schema"} node-names)))))))
+
+(deftest erd-endpoint-table-ids-are-scoped-to-database-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "table-ids from another database are ignored"
+      (mt/with-temp [:model/Database {db-a-id :id} {}
+                     :model/Table _ {:db_id db-a-id :name "local" :schema "PUBLIC"}
+                     :model/Database {db-b-id :id} {}
+                     :model/Table {other-table-id :id} {:db_id db-b-id :name "other" :schema "PUBLIC"}]
+        (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                             :database-id db-a-id
+                                             :table-ids other-table-id)]
+          (is (empty? (:nodes response)))
+          (is (empty? (:edges response))))))))
+
+(deftest erd-endpoint-excludes-hidden-and-sensitive-metadata-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "hidden tables and hidden/sensitive fields are omitted"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {visible-table-id :id} {:db_id db-id :name "visible" :schema "PUBLIC"}
+                     :model/Field _ {:table_id visible-table-id :name "visible_id"
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id visible-table-id :name "secret"
+                                     :database_type "INTEGER" :base_type :type/Integer
+                                     :visibility_type "sensitive"}
+                     :model/Field _ {:table_id visible-table-id :name "hidden_field"
+                                     :database_type "INTEGER" :base_type :type/Integer
+                                     :visibility_type "hidden"}
+                     :model/Table _ {:db_id db-id :name "hidden_table" :schema "PUBLIC"
+                                     :visibility_type "hidden"}]
+        (let [response    (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                                :database-id db-id
+                                                :schema "PUBLIC")
+              node-names  (set (map :name (:nodes response)))
+              field-names (set (map :name (mapcat :fields (:nodes response))))]
+          (is (= #{"visible"} node-names))
+          (is (= #{"visible_id"} field-names)))))))
+
+(deftest erd-endpoint-does-not-leak-hidden-fk-targets-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "FK targets hidden by table or field visibility are nulled and do not produce edges"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {hidden-target-table-id :id} {:db_id db-id :name "hidden_target" :schema "PUBLIC"
+                                                                :visibility_type "hidden"}
+                     :model/Field {hidden-target-field-id :id} {:table_id hidden-target-table-id :name "id"
+                                                                :database_type "INTEGER" :base_type :type/Integer
+                                                                :semantic_type :type/PK}
+                     :model/Table {visible-target-table-id :id} {:db_id db-id :name "visible_target" :schema "PUBLIC"}
+                     :model/Field {sensitive-target-field-id :id} {:table_id visible-target-table-id :name "secret_id"
+                                                                   :database_type "INTEGER" :base_type :type/Integer
+                                                                   :semantic_type :type/PK
+                                                                   :visibility_type "sensitive"}
+                     :model/Table {source-table-id :id} {:db_id db-id :name "source" :schema "PUBLIC"}
+                     :model/Field {hidden-table-fk-id :id} {:table_id source-table-id :name "hidden_target_id"
+                                                            :database_type "INTEGER" :base_type :type/Integer
+                                                            :semantic_type :type/FK
+                                                            :fk_target_field_id hidden-target-field-id}
+                     :model/Field {sensitive-field-fk-id :id} {:table_id source-table-id :name "sensitive_target_id"
+                                                               :database_type "INTEGER" :base_type :type/Integer
+                                                               :semantic_type :type/FK
+                                                               :fk_target_field_id sensitive-target-field-id}]
+        (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                                  :database-id db-id
+                                                  :schema "PUBLIC")
+              nodes-by-name (into {} (map (juxt :name identity)) (:nodes response))
+              source-node   (get nodes-by-name "source")
+              fields-by-id  (into {} (map (juxt :id identity)) (:fields source-node))]
+          (is (not (contains? nodes-by-name "hidden_target")))
+          (is (contains? nodes-by-name "visible_target"))
+          (is (empty? (:edges response)))
+          (doseq [fk-field-id [hidden-table-fk-id sensitive-field-fk-id]]
+            (is (nil? (:fk_target_table_id (get fields-by-id fk-field-id))))
+            (is (nil? (:fk_target_field_id (get fields-by-id fk-field-id))))))))))
+
+(deftest erd-endpoint-published-external-fk-target-test
+  (mt/with-premium-features #{:dependencies :library}
+    (testing "published cross-schema FK targets keep target IDs when only readable via collection"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/PermissionsGroup {gid :id} {}
+                       :model/Database {db-id :id} {}
+                       :model/Table {target-table-id :id} {:db_id db-id :name "target" :schema "other"
+                                                           :is_published true :collection_id coll-id}
+                       :model/Field {target-pk-id :id} {:table_id target-table-id :name "id"
+                                                        :database_type "INTEGER" :base_type :type/Integer
+                                                        :semantic_type :type/PK}
+                       :model/Table {source-table-id :id} {:db_id db-id :name "source" :schema "public"
+                                                           :is_published true :collection_id coll-id}
+                       :model/Field {source-fk-id :id} {:table_id source-table-id :name "target_id"
+                                                        :database_type "INTEGER" :base_type :type/Integer
+                                                        :semantic_type :type/FK
+                                                        :fk_target_field_id target-pk-id}]
+          (perms/add-user-to-group! (mt/user->id :rasta) gid)
+          (perms/grant-collection-read-permissions! gid coll-id)
+          (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                                    :database-id db-id
+                                                    :schema "public")
+                nodes-by-name (into {} (map (juxt :name identity)) (:nodes response))
+                source-node   (get nodes-by-name "source")
+                fk-field      (first (filter #(= source-fk-id (:id %)) (:fields source-node)))]
+            (is (contains? nodes-by-name "source"))
+            (is (not (contains? nodes-by-name "target"))
+                "cross-schema target should remain off-canvas")
+            (is (= target-table-id (:fk_target_table_id fk-field)))
+            (is (= target-pk-id (:fk_target_field_id fk-field)))))))))
+
 (deftest erd-endpoint-guard-rails-test
   (testing "without :dependencies feature returns 402"
     (mt/with-premium-features #{}
@@ -280,9 +407,9 @@
                 (is (contains? (set (map :table_id (:nodes response)))
                                (:fk_target_table_id field)))))))))))
 
-(deftest erd-permissions-intermediate-table-blocks-bfs-test
+(deftest erd-permissions-intermediate-table-blocks-expansion-test
   (mt/with-premium-features #{:dependencies}
-    (testing "unreadable intermediate table blocks BFS — downstream tables are not discovered"
+    (testing "unreadable intermediate table blocks FK expansion — downstream tables are not discovered"
       ;; Graph: orders → products, reviews → products
       ;; Grant: orders + reviews + people, deny: products
       ;; orders' FK to products is blocked, reviews' FK to products is blocked
@@ -301,3 +428,23 @@
               (is (= {:orders [:people]
                       :people []}
                      (graph-shape response))))))))))
+
+(deftest erd-permissions-manage-table-metadata-allows-erd-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "manage-table-metadata is enough because ERD is a metadata view"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                       :model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id :name "metadata_only" :schema "PUBLIC"}
+                       :model/Field _ {:table_id table-id :name "id"
+                                       :database_type "INTEGER" :base_type :type/Integer
+                                       :semantic_type :type/PK}]
+          (perms/add-user-to-group! (mt/user->id :rasta) gid)
+          (data-perms/set-database-permission! gid db-id :perms/view-data :blocked)
+          (data-perms/set-database-permission! gid db-id :perms/create-queries :no)
+          (data-perms/set-table-permission! gid table-id :perms/manage-table-metadata :yes)
+          (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                               :database-id db-id
+                                               :table-ids table-id)]
+            (is (= {:metadata_only []}
+                   (graph-shape response)))))))))

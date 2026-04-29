@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.erd
   "Entity Relationship Diagram (ERD) logic: resolving focal tables,
-   BFS subgraph expansion, and response building."
+   one-layer FK expansion, and response building."
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
@@ -55,149 +55,148 @@
 
 (def ^:private ^{:doc "Columns needed for mi/can-read? permission checks on Table."}
   table-perm-columns
-  [:id :db_id :is_published :collection_id])
+  [:id :db_id :name :display_name :schema :is_published :collection_id])
 
-(defn- readable-table-ids-in-scope
-  "Return the set of readable, active table IDs in the given database+schema.
-   When `schema` is nil, returns all readable tables in the database."
-  [database-id schema]
-  (->> (t2/select :model/Table
-                  {:select table-perm-columns
-                   :where  (cond-> [:and
-                                    [:= :db_id database-id]
-                                    [:= :active true]]
-                             schema (conj [:= :schema schema]))})
-       (filter mi/can-read?)
-       (map :id)
-       set))
+(defn- schema-clause
+  "The rest of the database API treats a blank schema name as the union of nil
+   and empty-string schemas. Keep that convention here too."
+  [schema]
+  (if (= schema "")
+    [:or
+     [:= :schema nil]
+     [:= :schema ""]]
+    [:= :schema schema]))
 
-;;; ---------------------------------------- Phase 2: Lazy BFS fetch ----------------------------------------
+(defn- visible-field-clause []
+  [:or
+   [:= :visibility_type nil]
+   [:not-in :visibility_type ["hidden" "sensitive" "retired"]]])
 
-(defn- fetch-readable-tables
-  "Fetch tables by IDs, filtering to only those the user can read.
-   When `schema-filter` is non-nil, tables outside that schema are excluded —
-   used to stop BFS propagation at schema boundaries without restricting the
-   focal set, which is loaded unconditionally.
-   Returns {:tables-by-id {id -> table}, :table-ids #{ids}}."
-  [table-ids schema-filter]
-  (when (seq table-ids)
-    (let [where    (cond-> [:and
-                            [:in :id table-ids]
-                            [:= :active true]]
-                     schema-filter (conj [:= :schema schema-filter]))
-          tables   (filter mi/can-read? (t2/select :model/Table {:where where}))
-          by-id    (into {} (map (fn [t] [(:id t) t])) tables)]
-      {:tables-by-id by-id
-       :table-ids    (set (keys by-id))})))
+(defn- index-by-id [xs]
+  (into {} (map (juxt :id identity)) xs))
+
+(defn- readable-tables
+  "Fetch readable, active, visible tables in `database-id`.
+   Optional `table-ids` restricts by IDs; optional `schema` restricts by schema.
+   `schema=\"\"` matches both nil and empty-string schemas."
+  [database-id & {:keys [table-ids schema] :as opts}]
+  (if (and (contains? opts :table-ids) (empty? table-ids))
+    []
+    (let [where (cond-> [:and
+                         [:= :db_id database-id]
+                         [:= :active true]
+                         [:= :visibility_type nil]]
+                  (contains? opts :table-ids) (conj [:in :id table-ids])
+                  (contains? opts :schema)    (conj (schema-clause schema)))]
+      (->> (t2/select :model/Table
+                      {:select table-perm-columns
+                       :where  where})
+           (filter mi/can-read?)))))
+
+(defn- readable-table-ids
+  [database-id & opts]
+  (into #{} (map :id) (apply readable-tables database-id opts)))
+
+;;; ---------------------------------------- Phase 2: Fetch ERD graph ----------------------------------------
 
 (defn- fetch-fields-for-tables
-  "Fetch all active, non-retired fields for the given table IDs.
+  "Fetch all active, visible fields for the given table IDs.
    Returns a vector of field maps."
   [table-ids]
   (when (seq table-ids)
     (t2/select :model/Field
-               :table_id [:in table-ids]
-               :active true
-               :visibility_type [:not= "retired"])))
+               {:where [:and
+                        [:in :table_id table-ids]
+                        [:= :active true]
+                        (visible-field-clause)]})))
+
+(defn- fetch-fields-by-ids
+  "Fetch active, visible fields by ID."
+  [field-ids]
+  (when (seq field-ids)
+    (t2/select :model/Field
+               {:where [:and
+                        [:in :id field-ids]
+                        [:= :active true]
+                        (visible-field-clause)]})))
 
 (defn- discover-fk-targets
   "Given a collection of fields, find FK target field IDs that point to tables
    we haven't loaded yet. Returns the set of new table IDs to fetch.
-   Checks `field-by-id` first and only queries the DB for unknown target fields."
-  [fields known-table-ids field-by-id]
+   Checks `loaded-field-by-id` first and only queries the DB for unknown target fields."
+  [fields known-table-ids loaded-field-by-id]
   (let [target-field-ids (->> fields (keep :fk_target_field_id) set)]
     (if (empty? target-field-ids)
       #{}
-      (let [unknown-fids (remove field-by-id target-field-ids)
+      (let [unknown-fids (remove loaded-field-by-id target-field-ids)
             ;; Resolve known targets from the accumulated map
-            table-ids    (into #{} (keep (comp :table_id field-by-id)) target-field-ids)
+            table-ids    (into #{} (keep (comp :table_id loaded-field-by-id)) target-field-ids)
             ;; Query DB only for truly unknown target fields
             table-ids    (if (seq unknown-fids)
                            (into table-ids
                                  (map :table_id)
-                                 (t2/select :model/Field
-                                            :id [:in unknown-fids]
-                                            :active true
-                                            :visibility_type [:not= "retired"]))
+                                 (fetch-fields-by-ids unknown-fids))
                            table-ids)]
         (set/difference table-ids known-table-ids)))))
 
 (defn- fetch-erd-subgraph
-  "Iteratively expand from focal tables by following FK relationships for n hops.
-   Each hop fetches only newly-discovered tables and their fields. When `schema`
-   is non-nil, BFS propagation stops at the schema boundary — tables in other
-   schemas still surface via `fk_target_table_id` on fields (through
-   `resolve-external-fk-targets`), but they are not loaded as nodes. The focal
-   set is always loaded regardless of schema.
-   Returns {:tables-by-id, :fields-by-table, :field-by-id, :all-table-ids}."
-  [focal-table-ids hops schema]
-  (loop [tables-by-id    {}
-         fields-by-table {}
-         field-by-id     {}
-         frontier        focal-table-ids
-         remaining-hops  (inc hops) ;; inc because hop 0 = loading the focal tables themselves
-         schema-filter   nil] ;; nil on the focal iter, `schema` on subsequent iters
-    (if (or (zero? remaining-hops) (empty? frontier))
-      {:tables-by-id   tables-by-id
-       :fields-by-table fields-by-table
-       :field-by-id    field-by-id
-       :all-table-ids  (set (keys tables-by-id))}
-      (let [{new-tables-by-id :tables-by-id
-             new-table-ids    :table-ids}  (or (fetch-readable-tables frontier schema-filter)
-                                               {:tables-by-id {} :table-ids #{}})
-            new-fields                     (fetch-fields-for-tables new-table-ids)
-            new-fields-by-table            (group-by :table_id new-fields)
-            new-field-by-id                (into {} (map (fn [f] [(:id f) f])) new-fields)
-            ;; Merge into accumulated state
-            tables-by-id'                  (merge tables-by-id new-tables-by-id)
-            fields-by-table'               (merge fields-by-table new-fields-by-table)
-            field-by-id'                   (merge field-by-id new-field-by-id)
-            ;; Discover next frontier: tables reachable via FKs not yet loaded
-            next-frontier                  (discover-fk-targets new-fields (set (keys tables-by-id')) field-by-id')]
-        (recur tables-by-id' fields-by-table' field-by-id' next-frontier (dec remaining-hops) schema)))))
+  "Load the focal tables plus one layer of readable FK target tables.
+
+   The focal set is loaded without applying the schema boundary so explicitly
+   expanded cross-schema tables can become nodes. The one FK-neighbor layer is
+   schema-scoped when a schema was selected; off-schema targets still surface
+   later as FK target IDs, but not as nodes."
+  [database-id focal-tables schema-selected? schema]
+  (let [focal-table-ids        (into #{} (map :id) focal-tables)
+        focal-fields           (fetch-fields-for-tables focal-table-ids)
+        focal-field-by-id      (index-by-id focal-fields)
+        neighbor-table-ids     (discover-fk-targets focal-fields focal-table-ids focal-field-by-id)
+        neighbor-tables        (if schema-selected?
+                                 (readable-tables database-id :table-ids neighbor-table-ids :schema schema)
+                                 (readable-tables database-id :table-ids neighbor-table-ids))
+        neighbor-table-ids     (into #{} (map :id) neighbor-tables)
+        neighbor-fields        (fetch-fields-for-tables neighbor-table-ids)
+        all-tables             (concat focal-tables neighbor-tables)
+        all-fields             (concat focal-fields neighbor-fields)]
+    {:tables-by-id       (index-by-id all-tables)
+     :fields-by-table    (group-by :table_id all-fields)
+     :loaded-field-by-id (index-by-id all-fields)}))
 
 ;;; ---------------------------------------- Phase 3: Build response ----------------------------------------
 
 (defn- resolve-external-fk-targets
   "For FK target field IDs referenced by the loaded fields but not present in
-   `field-by-id` (because they live in tables beyond the current hop limit),
+   `loaded-field-by-id` (because they live outside the loaded node set),
    resolve each target field's `:table_id` from the DB and filter by the user's
-   read permission on that table. Returns `{field-id {:table_id N}}` — enough
-   for `build-erd-field` to populate `fk_target_table_id` without leaking
+   read permission on that table. Returns `{field-id table-id}` — enough for
+   `build-erd-field` to populate `fk_target_table_id` without leaking
    references to tables the user can't read.
 
    Preserves the original security posture (unreadable targets still get nulled
-   downstream) while freeing FK pointers from the accident of the hop budget."
-  [all-fields field-by-id]
+   downstream) while allowing the frontend to expand readable off-canvas tables."
+  [database-id all-fields loaded-field-by-id]
   (let [target-ids (into #{}
                          (comp (keep :fk_target_field_id)
-                               (remove field-by-id))
+                               (remove loaded-field-by-id))
                          all-fields)]
     (if (empty? target-ids)
       {}
-      (let [fields          (t2/select [:model/Field :id :table_id]
-                                       :id [:in target-ids]
-                                       :active true
-                                       :visibility_type [:not= "retired"])
+      (let [fields          (fetch-fields-by-ids target-ids)
             table-ids       (into #{} (map :table_id) fields)
-            readable-tables (when (seq table-ids)
-                              (into #{}
-                                    (comp (filter mi/can-read?) (map :id))
-                                    (t2/select [:model/Table :id :db_id :schema]
-                                               :id [:in table-ids])))]
+            readable-tables (readable-table-ids database-id :table-ids table-ids)]
         (into {}
               (comp (filter #(contains? readable-tables (:table_id %)))
-                    (map (juxt :id #(select-keys % [:table_id]))))
+                    (map (juxt :id :table_id)))
               fields)))))
 
 (defn build-erd-field
   "Convert a field to the ERD field shape.
    Nils out FK target references only when the target table is unreadable
-   (either missing or the user lacks permission); readable targets beyond the
-   loaded hop budget still carry `fk_target_field_id`/`fk_target_table_id` so
+   (either missing or the user lacks permission); readable targets outside the
+   loaded node set still carry `fk_target_field_id`/`fk_target_table_id` so
    the frontend can offer to expand them."
-  [field field-by-id]
-  (let [target-table-id (some-> (:fk_target_field_id field) field-by-id :table_id)]
+  [field target-field-id->table-id]
+  (let [target-table-id (get target-field-id->table-id (:fk_target_field_id field))]
     {:id                 (:id field)
      :name               (:name field)
      :display_name       (:display_name field)
@@ -208,22 +207,22 @@
 
 (defn build-erd-node
   "Build an ERD node for a table with its fields."
-  [table fields field-by-id]
+  [table fields target-field-id->table-id]
   {:table_id     (:id table)
    :name         (:name table)
    :display_name (:display_name table)
    :schema       (:schema table)
    :db_id        (:db_id table)
-   :fields       (mapv #(build-erd-field % field-by-id) fields)})
+   :fields       (mapv #(build-erd-field % target-field-id->table-id) fields)})
 
 (defn build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."
-  [fields-by-table field-by-id visible-table-ids]
+  [fields-by-table loaded-field-by-id visible-table-ids]
   (let [all-fields (mapcat val fields-by-table)]
     (->> all-fields
          (keep (fn [field]
                  (when-let [target-field-id (:fk_target_field_id field)]
-                   (when-let [target-field (field-by-id target-field-id)]
+                   (when-let [target-field (loaded-field-by-id target-field-id)]
                      (let [target-table (:table_id target-field)]
                        (when (and (contains? visible-table-ids (:table_id field))
                                   (contains? visible-table-ids target-table))
@@ -239,27 +238,51 @@
 
 (defn build-erd-response
   "Build the ERD response from fetched subgraph data."
-  [{:keys [tables-by-id fields-by-table field-by-id all-table-ids]}]
-  (let [all-fields        (mapcat val fields-by-table)
-        ;; Extend field-by-id with :table_id for FK targets that weren't loaded
-        ;; into the subgraph so their pointers survive into node fields. Edges
-        ;; still use the original field-by-id — they only connect visible nodes.
-        field-by-id+ext   (merge (resolve-external-fk-targets all-fields field-by-id)
-                                 field-by-id)
-        nodes (->> all-table-ids
+  [database-id {:keys [tables-by-id fields-by-table loaded-field-by-id]}]
+  (let [visible-table-ids          (set (keys tables-by-id))
+        all-fields                 (mapcat val fields-by-table)
+        loaded-target-table-ids    (into {} (map (juxt :id :table_id)) (vals loaded-field-by-id))
+        external-target-table-ids  (resolve-external-fk-targets database-id all-fields loaded-field-by-id)
+        target-field-id->table-id  (merge external-target-table-ids loaded-target-table-ids)
+        nodes (->> visible-table-ids
                    (keep (fn [tid]
                            (when-let [table (tables-by-id tid)]
                              (build-erd-node table
                                              (get fields-by-table tid [])
-                                             field-by-id+ext))))
+                                             target-field-id->table-id))))
                    vec)
-        edges (build-erd-edges fields-by-table field-by-id all-table-ids)]
+        edges (build-erd-edges fields-by-table loaded-field-by-id visible-table-ids)]
     {:nodes nodes
      :edges edges}))
 
 ;;; ---------------------------------------- Main entry point ----------------------------------------
 
-(def ^:private default-hops 1)
+(defn- resolve-focal-tables
+  [{:keys [database-id table-ids schema-selected? schema]}]
+  (let [explicit-table-ids (not-empty (set table-ids))]
+    (cond
+      schema-selected?
+      (let [schema-tables   (readable-tables database-id :schema schema)
+            explicit-tables (when explicit-table-ids
+                              (readable-tables database-id :table-ids explicit-table-ids))
+            tables          (vals (index-by-id (concat schema-tables explicit-tables)))]
+        (when (and (empty? schema-tables) (empty? explicit-table-ids))
+          (throw (ex-info (tru "No tables found in the specified database/schema")
+                          {:status-code 404
+                           :database-id database-id
+                           :schema      schema})))
+        tables)
+
+      explicit-table-ids
+      (readable-tables database-id :table-ids explicit-table-ids)
+
+      :else
+      (let [tables (readable-tables database-id)]
+        (when (empty? tables)
+          (throw (ex-info (tru "No tables found in the specified database")
+                          {:status-code 404
+                           :database-id database-id})))
+        tables))))
 
 (defn erd
   "Return an ERD for the given database, optionally scoped by schema and/or
@@ -270,29 +293,13 @@
      `table-ids` (which are treated as additional focal tables, typically from
      other schemas the user has expanded into via FK click).
    - no `schema`, `table-ids` set: those are the focal tables.
+   - no `schema` or `table-ids`: all readable tables in the database.
 
-   When `schema` is set, BFS propagation stops at that schema — cross-schema FK
-   targets are surfaced on fields (so the UI can offer to expand them) but are
-   not loaded as nodes unless explicitly listed in `table-ids`."
-  [{:keys [database-id table-ids schema]}]
+   When `schema` is set, the one-layer FK expansion stops at that schema —
+   cross-schema FK targets are surfaced on fields (so the UI can offer to expand
+   them) but are not loaded as nodes unless explicitly listed in `table-ids`."
+  [{:keys [database-id schema-selected?] :as request}]
   (api/read-check :model/Database database-id)
-  (let [focal-table-ids (cond
-                          (some? schema)
-                          (let [schema-ids (readable-table-ids-in-scope database-id schema)
-                                combined   (into schema-ids (set table-ids))]
-                            (when (empty? combined)
-                              (throw (ex-info (tru "No tables found in the specified database/schema")
-                                              {:status-code 404
-                                               :database-id database-id
-                                               :schema      schema})))
-                            combined)
-
-                          (seq table-ids)
-                          (set table-ids)
-
-                          :else
-                          (throw (ex-info (tru "Either `schema` or `table-ids` must be provided")
-                                          {:status-code 400
-                                           :database-id database-id})))
-        subgraph        (fetch-erd-subgraph focal-table-ids default-hops schema)]
-    (build-erd-response subgraph)))
+  (let [focal-tables (resolve-focal-tables request)
+        subgraph     (fetch-erd-subgraph database-id focal-tables schema-selected? (:schema request))]
+    (build-erd-response database-id subgraph)))
