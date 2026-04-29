@@ -5,13 +5,12 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon } from "metabase/ui";
 import {
   collection as collectionUrl,
   dashboard as dashboardUrl,
 } from "metabase/utils/urls";
-import type { Collection } from "metabase-types/api";
+import type { Collection, SearchResult } from "metabase-types/api";
 
 export type InfoTextData = {
   link?: string | null;
@@ -19,7 +18,7 @@ export type InfoTextData = {
   label?: string | null;
 };
 
-export const getInfoText = (result: WrappedResult): InfoTextData => {
+export const getInfoText = (result: SearchResult): InfoTextData => {
   switch (result.model) {
     case "collection":
       return getCollectionInfoText(result);
@@ -36,7 +35,7 @@ export const getInfoText = (result: WrappedResult): InfoTextData => {
   }
 };
 
-const getCardInfoText = (result: WrappedResult): InfoTextData => {
+const getCardInfoText = (result: SearchResult): InfoTextData => {
   if (result.dashboard) {
     return {
       label: result.dashboard.name,
@@ -52,7 +51,7 @@ const getCardInfoText = (result: WrappedResult): InfoTextData => {
   return getCollectionResult(result);
 };
 
-const getActionInfoText = (result: WrappedResult): InfoTextData => {
+const getActionInfoText = (result: SearchResult): InfoTextData => {
   return {
     label: result.model_name,
   };
@@ -62,7 +61,7 @@ const getDatabaseInfoText = (): InfoTextData => {
     label: t`Database`,
   };
 };
-const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
+const getCollectionInfoText = (result: SearchResult): InfoTextData => {
   const collection = getCollection(result) ?? {};
 
   if (
@@ -79,7 +78,7 @@ const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
   };
 };
 
-const getCollectionResult = (result: WrappedResult): InfoTextData => {
+const getCollectionResult = (result: SearchResult): InfoTextData => {
   const collection = getCollection(result);
   const colUrl = collectionUrl(collection as Collection);
   const collectionName = collection.name;

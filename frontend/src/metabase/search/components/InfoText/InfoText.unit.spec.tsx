@@ -8,7 +8,6 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { WrappedResult } from "metabase/search/types";
 import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -77,7 +76,7 @@ async function setup({
   });
   setupUserRecipientsEndpoint({ users: [MOCK_USER, MOCK_OTHER_USER] });
 
-  const wrappedResult: WrappedResult = createSearchResult({
+  const wrappedResult: SearchResult = createSearchResult({
     model,
     ...resultProps,
   });
