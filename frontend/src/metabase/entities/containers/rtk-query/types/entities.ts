@@ -95,7 +95,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   normalizeList: (list: unknown) => { list: unknown };
   objectSelectors: {
     getName: (entity: Entity | EntityWrapper) => string;
-    getColor: (entity: Entity | EntityWrapper) => string | undefined;
     getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
   };
   rtk: {

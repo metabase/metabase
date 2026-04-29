@@ -6,7 +6,7 @@ import {
   screen,
   getIcon as testGetIcon,
 } from "__support__/ui";
-import { getIcon } from "metabase/utils/icon";
+import { getIcon } from "metabase/common/utils/icon";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
   createMockCollection,

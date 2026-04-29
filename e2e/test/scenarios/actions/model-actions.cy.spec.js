@@ -774,6 +774,8 @@ describe(
 
           cy.findByText(
             /Error executing Action:.*Invalid impersonated native query\. Must be a single select statement\./,
+            // GraalVM cold start can take >4s, so use a longer timeout
+            { timeout: 30000 },
           );
         });
 
