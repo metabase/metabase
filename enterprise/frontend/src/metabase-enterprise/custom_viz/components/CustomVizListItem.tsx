@@ -13,17 +13,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import {
-  useRefreshCustomVizPluginMutation,
-  useUpdateCustomVizPluginMutation,
-} from "metabase-enterprise/api";
+import * as Urls from "metabase/urls";
+import { useUpdateCustomVizPluginMutation } from "metabase-enterprise/api";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
-import {
-  trackCustomVizPluginRefreshed,
-  trackCustomVizPluginToggled,
-} from "../analytics";
+import { trackCustomVizPluginToggled } from "../analytics";
 
 import { CustomVizIcon } from "./CustomVizIcon";
 import S from "./CustomVizListItem.module.css";
@@ -37,8 +31,6 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
-  const [refreshPlugin, { isLoading: isRefreshing }] =
-    useRefreshCustomVizPluginMutation();
 
   const handleConfirmDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -54,11 +46,6 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
     await updatePlugin({ id: plugin.id, enabled: !plugin.enabled });
     trackCustomVizPluginToggled(plugin.enabled ? "disabled" : "enabled");
   }, [plugin.id, plugin.enabled, updatePlugin]);
-
-  const handleRefresh = useCallback(async () => {
-    await refreshPlugin(plugin.id);
-    trackCustomVizPluginRefreshed();
-  }, [plugin.id, refreshPlugin]);
 
   return (
     <Flex
@@ -76,30 +63,26 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
           <Group justify="space-between">
             <Text fw={700}>{plugin.display_name}</Text>
           </Group>
-          <Group gap="xs">
-            <Text
-              component="a"
-              href={plugin.repo_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-              c="text-tertiary"
-              className={S.customVizItemUrl}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              {plugin.repo_url}
-            </Text>
-            {plugin.resolved_commit && (
-              <>
+          {(plugin.bundle_hash || plugin.metabase_version) && (
+            <Group gap="xs">
+              {plugin.bundle_hash && (
+                <Text size="sm" c="text-tertiary">
+                  {t`Bundle`}: {plugin.bundle_hash.slice(0, 8)}
+                </Text>
+              )}
+              {plugin.bundle_hash && plugin.metabase_version && (
                 <Text size="sm" c="text-tertiary">
                   &bull;
                 </Text>
+              )}
+              {plugin.metabase_version && (
                 <Text size="sm" c="text-tertiary">
-                  {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page */}
+                  {t`Requires Metabase`} {plugin.metabase_version}
                 </Text>
-              </>
-            )}
-          </Group>
+              )}
+            </Group>
+          )}
           {plugin.error_message && (
             <Text size="sm" c="error">
               {plugin.error_message}
@@ -129,18 +112,12 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
             <ActionIcon
               aria-label={t`Plugin actions`}
               variant="subtle"
-              loading={isRefreshing || isDeleting}
+              loading={isDeleting}
             >
               <Icon name="ellipsis" />
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="refresh" />}
-              onClick={handleRefresh}
-            >
-              {t`Re-fetch`}
-            </Menu.Item>
             <Menu.Item
               leftSection={<Icon name={plugin.enabled ? "pause" : "play"} />}
               onClick={handleToggleEnabled}

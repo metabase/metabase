@@ -1,9 +1,9 @@
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import {
   getClickBehavior,
   getClickBehaviorData,
   getParameterValuesBySlug,
-} from "metabase-lib/v1/queries/drills/dashboard-click-drill";
+} from "metabase/dashboard/utils/dashboard-click-drill";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 
 import type {
   ClickObject,

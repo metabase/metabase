@@ -7,7 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.api :as api]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -333,7 +333,7 @@
                           :data      {:queries map?
                                       :charts  map?}}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (#'api/combine-text-parts-xf)
+                          (into [] (metabot.persistence/combine-text-parts-xf)
                                 (agent/run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -434,7 +434,7 @@
             (is (=? [{:type :text :text "Hello after retry"}
                      {:type :data :data-type "state"}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (#'api/combine-text-parts-xf)
+                      (into [] (metabot.persistence/combine-text-parts-xf)
                             (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}

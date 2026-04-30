@@ -13,7 +13,7 @@ import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useColorScheme } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -25,7 +25,6 @@ import type {
 } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
-  CustomVizPlugin,
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
@@ -42,16 +41,16 @@ import { createPluginSandbox } from "./sandbox";
 // ---------------------------------------------------------------------------
 
 // Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, commit, etag } so we can detect when a
-// refetch on the server produced a new commit or the dev bundle changed.
+// Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
+// bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
   number,
-  { identifier: string; commit: string | null; etag: string | null }
+  { identifier: string; hash: string | null }
 >();
 
-const failedPluginCommits = new Map<
+const failedPluginHashes = new Map<
   CustomVizPluginId,
-  CustomVizPlugin["resolved_commit"]
+  CustomVizPluginRuntime["bundle_hash"]
 >();
 
 /**
@@ -154,7 +153,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       const existing = loadedPlugins.get(pluginToLoad.id);
       if (
         existing &&
-        existing.commit === pluginToLoad.resolved_commit &&
+        existing.hash === (pluginToLoad.bundle_hash ?? null) &&
         !pluginToLoad.dev_bundle_url
       ) {
         return;
@@ -203,13 +202,23 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   }
 
   // Plugin list loaded but no matching plugin found — the custom viz was
-  // removed or is otherwise unavailable.  Stop loading so the visualization
-  // registry falls back to the default (Table).
+  // disabled or removed. Drop the cached registration so questions using this
+  // display fall back to the default visualization (Table) on subsequent
+  // renders, even within the same SPA session.
   if (
     needsCustomViz &&
     plugins &&
     !plugins.find((p) => `custom:${p.identifier}` === display)
   ) {
+    if (visualizations.has(display)) {
+      visualizations.delete(display);
+      for (const [id, entry] of loadedPlugins) {
+        if (entry.identifier === display) {
+          loadedPlugins.delete(id);
+          failedPluginHashes.delete(id);
+        }
+      }
+    }
     return { loading: false };
   }
 
@@ -218,24 +227,20 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     : undefined;
 
   // A plugin is "ready" when we've either loaded its bundle or recorded a
-  // failure for the current commit. Failed plugins resolve to loading: false
-  // so the visualization registry falls back to the default instead
-  // of spinning forever.
+  // failure for the current bundle hash. Failed plugins resolve to
+  // loading: false so the visualization registry falls back to the default
+  // instead of spinning forever.
   const isReady = (() => {
     if (!matchedPlugin) {
       return false;
     }
-    const loadedCommit = loadedPlugins.get(matchedPlugin.id)?.commit;
-    const failedCommit = failedPluginCommits.get(matchedPlugin.id);
-    /**
-     * Commits may be null, so null === null is a valid case.
-     * Undefined indicates that the plugin hasn't been loaded yet.
-     */
-    if (loadedCommit === undefined && failedCommit === undefined) {
+    const loadedHash = loadedPlugins.get(matchedPlugin.id)?.hash;
+    const failedHash = failedPluginHashes.get(matchedPlugin.id);
+    if (loadedHash === undefined && failedHash === undefined) {
       return false;
     }
-    const resolvedCommit = matchedPlugin.resolved_commit;
-    return resolvedCommit === loadedCommit || resolvedCommit === failedCommit;
+    const currentHash = matchedPlugin.bundle_hash ?? null;
+    return currentHash === loadedHash || currentHash === failedHash;
   })();
 
   return { loading: needsCustomViz && !isReady };
@@ -252,9 +257,10 @@ export async function loadCustomVizPlugin(
   onInfo?: (message: string) => void,
 ): Promise<string | null> {
   const existing = loadedPlugins.get(plugin.id);
+  const currentHash = plugin.bundle_hash ?? null;
   if (
     existing &&
-    existing.commit === plugin.resolved_commit &&
+    existing.hash === currentHash &&
     !plugin.dev_bundle_url &&
     !cacheBustSuffix
   ) {
@@ -270,8 +276,8 @@ export async function loadCustomVizPlugin(
     );
     if (cacheBustSuffix) {
       bundleUrl.searchParams.set("t", Date.now().toString());
-    } else if (plugin.resolved_commit) {
-      bundleUrl.searchParams.set("v", plugin.resolved_commit);
+    } else if (currentHash) {
+      bundleUrl.searchParams.set("v", currentHash);
     }
     const res = await fetch(bundleUrl.href, { cache: "no-store" });
     if (!res.ok) {
@@ -427,20 +433,19 @@ export async function loadCustomVizPlugin(
     }
     loadedPlugins.set(plugin.id, {
       identifier,
-      commit: plugin.resolved_commit,
-      etag: null,
+      hash: currentHash,
     });
-    failedPluginCommits.delete(plugin.id);
+    failedPluginHashes.delete(plugin.id);
 
     return identifier;
   } catch (error) {
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
-    if (!failedPluginCommits.has(plugin.id)) {
+    if (!failedPluginHashes.has(plugin.id)) {
       onInfo?.(
         t`The "${plugin.display_name}" visualization is currently unavailable.`,
       );
     }
-    failedPluginCommits.set(plugin.id, plugin.resolved_commit);
+    failedPluginHashes.set(plugin.id, currentHash);
     return null;
   }
 }

@@ -8,7 +8,7 @@ import _ from "underscore";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 const mapDispatchToProps = {
   setCollectionArchived: Collections.actions.setArchived,

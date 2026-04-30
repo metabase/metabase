@@ -18,7 +18,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import {
   useDeleteCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,
@@ -106,7 +106,7 @@ export function ManageCustomVizPage() {
         </Flex>
 
         <Text c="text-secondary" maw="40rem">
-          {t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
+          {t`Add custom visualizations to your instance by uploading a packaged plugin bundle (.tgz) produced by the custom-viz CLI.`}
         </Text>
       </Stack>
 

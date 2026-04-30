@@ -1,9 +1,16 @@
 import { spawn } from "node:child_process";
+import { createWriteStream } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const TIMEOUT = 10_000;
+const TIMEOUT = 30_000;
 const POLL_INTERVAL = 250;
 
-async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
+async function waitForHttpOk(
+  url: string,
+  timeoutMs: number,
+  logFile: string,
+): Promise<void> {
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
@@ -13,12 +20,14 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
         return;
       }
     } catch {
-      console.log(`${url} is not up yet`);
+      // not up yet, keep polling
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
   }
 
-  throw new Error(`Dev server did not become ready: ${url}`);
+  throw new Error(
+    `Dev server did not become ready: ${url} (see spawn log at ${logFile})`,
+  );
 }
 
 type StartCustomVizDevServerArgs = {
@@ -42,12 +51,16 @@ export async function startCustomVizDevServer(
     stopCustomVizDevServer(running.pid);
   }
 
+  const logFile = join(tmpdir(), `custom-viz-dev-server-${Date.now()}.log`);
+  const logStream = createWriteStream(logFile);
   const child = spawn("npm", ["run", "dev"], {
     cwd: args.cwd,
     shell: true,
     detached: true,
-    stdio: "ignore",
+    stdio: ["ignore", "pipe", "pipe"],
   });
+  child.stdout?.pipe(logStream);
+  child.stderr?.pipe(logStream);
   child.unref();
 
   if (!child.pid) {
@@ -57,9 +70,9 @@ export async function startCustomVizDevServer(
   const url = `http://localhost:${port}`;
 
   // Ensure the dev server is ready and serving the manifest.
-  await waitForHttpOk(`${url}/metabase-plugin.json`, TIMEOUT);
+  await waitForHttpOk(`${url}/metabase-plugin.json`, TIMEOUT, logFile);
   running = { pid: child.pid, url };
-  console.log(`Custom viz dev server started at ${url}`);
+  console.log(`Custom viz dev server started at ${url} (log: ${logFile})`);
 
   return running;
 }

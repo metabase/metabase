@@ -24,7 +24,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { useDispatch, useSelector } from "metabase/redux";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   Database,
   DatasetQuery,

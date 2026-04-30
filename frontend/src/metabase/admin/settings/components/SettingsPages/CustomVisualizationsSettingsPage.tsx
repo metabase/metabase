@@ -4,6 +4,7 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
   Button,
@@ -83,14 +84,20 @@ const CUSTOM_VIZ_ENABLED_SETTING = "custom-viz-enabled";
 
 function CustomVizEmptyState() {
   const { updateSetting } = useAdminSetting(CUSTOM_VIZ_ENABLED_SETTING);
+  const { sendErrorToast } = useMetadataToasts();
 
   const handleEnable = async () => {
-    await updateSetting({
+    const { error } = await updateSetting({
       key: CUSTOM_VIZ_ENABLED_SETTING,
       value: true,
       toast: false,
     });
-    window.location.reload();
+
+    if (error) {
+      sendErrorToast(t`Failed to enable custom visualizations`);
+    } else {
+      window.location.reload();
+    }
   };
 
   return (

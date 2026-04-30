@@ -2,7 +2,7 @@ import { push } from "react-router-redux";
 
 import { Timelines } from "metabase/entities/timelines";
 import type { State } from "metabase/redux/store";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
 export const setCollectionAndNavigate = (

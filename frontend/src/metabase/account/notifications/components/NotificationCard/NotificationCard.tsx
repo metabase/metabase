@@ -11,7 +11,7 @@ import {
   getNotificationEnabledChannelsMap,
 } from "metabase/notifications/utils";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 import S from "./DashboardNotificationCard.module.css";
@@ -34,7 +34,7 @@ export const NotificationCard = ({
   const { item } = listItem;
   const hasArchive = canArchive(listItem.item, user);
 
-  const entityLink = Urls.question({
+  const entityLink = Urls.card({
     id: item.payload.card_id,
     card_id: item.payload.card_id,
   });

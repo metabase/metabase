@@ -11,15 +11,13 @@ export type CustomVizPluginId = number;
 
 export interface CustomVizPlugin {
   id: CustomVizPluginId;
-  repo_url: string;
   display_name: string;
   identifier: string;
   status: "pending" | "active" | "error";
   enabled: boolean;
   icon: string | null;
   error_message: string | null;
-  pinned_version: string | null;
-  resolved_commit: string | null;
+  bundle_hash?: string | null;
   dev_bundle_url?: string | null;
   dev_only: boolean;
   manifest?: CustomVizPluginManifest | null;
@@ -34,15 +32,13 @@ export interface CustomVizPluginRuntime {
   display_name: string;
   icon: string | null;
   bundle_url: string;
-  resolved_commit: string | null;
+  bundle_hash?: string | null;
   dev_bundle_url?: string | null;
   manifest?: CustomVizPluginManifest | null;
 }
 
 export interface CreateCustomVizPluginRequest {
-  repo_url: string;
-  access_token?: string;
-  pinned_version?: string | null;
+  file: File;
 }
 
 export interface CreateDevCustomVizPluginRequest {
@@ -52,6 +48,9 @@ export interface CreateDevCustomVizPluginRequest {
 export interface UpdateCustomVizPluginRequest {
   id: CustomVizPluginId;
   enabled?: boolean;
-  access_token?: string;
-  pinned_version?: string | null;
+}
+
+export interface ReplaceCustomVizPluginBundleRequest {
+  id: CustomVizPluginId;
+  file: File;
 }
