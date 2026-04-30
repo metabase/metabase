@@ -189,7 +189,7 @@ describe("admin > custom visualizations", () => {
     });
 
     it("should display manifest information and bundle hash after upload", () => {
-      H.setupCustomVizPlugin();
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
       H.visitCustomVizSettings();
       H.getCustomVizPluginIcon("demo-viz").should("be.visible");
       H.main().findByText("demo-viz").should("be.visible");
@@ -197,9 +197,11 @@ describe("admin > custom visualizations", () => {
       cy.log(
         "Bundle hash chip is the first 8 chars of the fixture's deterministic SHA-256",
       );
-      H.main()
-        .findByText(`Bundle: ${H.CUSTOM_VIZ_FIXTURE_BUNDLE_HASH.slice(0, 8)}`)
-        .should("be.visible");
+      H.getCustomVizFixtureHash(H.CUSTOM_VIZ_FIXTURE_TGZ).then((hash) => {
+        H.main()
+          .findByText(`Bundle: ${hash.slice(0, 8)}`)
+          .should("be.visible");
+      });
 
       H.main()
         .findByText(/^Requires Metabase /)
@@ -262,15 +264,17 @@ describe("admin > custom visualizations", () => {
 
     describe("with an installed plugin", () => {
       beforeEach(() => {
-        H.setupCustomVizPlugin();
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
         H.visitCustomVizSettings();
       });
 
       it("should display plugin details in the list", () => {
         H.main().findByText("demo-viz").should("be.visible");
-        H.main()
-          .findByText(`Bundle: ${H.CUSTOM_VIZ_FIXTURE_BUNDLE_HASH.slice(0, 8)}`)
-          .should("be.visible");
+        H.getCustomVizFixtureHash(H.CUSTOM_VIZ_FIXTURE_TGZ).then((hash) => {
+          H.main()
+            .findByText(`Bundle: ${hash.slice(0, 8)}`)
+            .should("be.visible");
+        });
       });
     });
 
@@ -282,75 +286,79 @@ describe("admin > custom visualizations", () => {
       it("should replace the bundle via the edit form", () => {
         H.resetSnowplow();
         H.enableTracking();
-        H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
-          H.visitCustomVizEditForm(plugin.id);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(
+          (plugin: CustomVizPlugin) => {
+            H.visitCustomVizEditForm(plugin.id);
 
-          cy.findByRole("heading", { name: "Replace bundle" }).should(
-            "be.visible",
-          );
+            cy.findByRole("heading", { name: "Replace bundle" }).should(
+              "be.visible",
+            );
 
-          H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
+            H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
-          cy.intercept(
-            "PUT",
-            `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
-          ).as("pluginBundleReplace");
-          cy.findByRole("button", { name: /Replace$/ }).click();
+            cy.intercept(
+              "PUT",
+              `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
+            ).as("pluginBundleReplace");
+            cy.findByRole("button", { name: /Replace$/ }).click();
 
-          cy.wait("@pluginBundleReplace")
-            .its("response.statusCode")
-            .should("eq", 200);
+            cy.wait("@pluginBundleReplace")
+              .its("response.statusCode")
+              .should("eq", 200);
 
-          cy.log("Should redirect back to the list page");
-          cy.location("pathname").should(
-            "eq",
-            "/admin/settings/custom-visualizations",
-          );
-          H.main().findByText("demo-viz").should("be.visible");
-          H.expectUnstructuredSnowplowEvent({
-            event: "custom_viz_plugin_updated",
-            result: "success",
-          });
-          H.expectNoBadSnowplowEvents();
-        });
+            cy.log("Should redirect back to the list page");
+            cy.location("pathname").should(
+              "eq",
+              "/admin/settings/custom-visualizations",
+            );
+            H.main().findByText("demo-viz").should("be.visible");
+            H.expectUnstructuredSnowplowEvent({
+              event: "custom_viz_plugin_updated",
+              result: "success",
+            });
+            H.expectNoBadSnowplowEvents();
+          },
+        );
       });
 
       it("should surface an inline error when replacing with a non-matching bundle", () => {
-        H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
-          H.visitCustomVizEditForm(plugin.id);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(
+          (plugin: CustomVizPlugin) => {
+            H.visitCustomVizEditForm(plugin.id);
 
-          cy.findByRole("link", { name: /Manage visualizations/ }).should(
-            "have.attr",
-            "data-active",
-            "true",
-          );
-
-          cy.log(
-            'The 2nd fixture has manifest.name = "demo-viz-2" — BE rejects because it does not match the existing identifier',
-          );
-          H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
-
-          cy.intercept(
-            "PUT",
-            `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
-          ).as("pluginBundleReplaceInvalid");
-          cy.findByRole("button", { name: /Replace$/ }).click();
-
-          cy.wait("@pluginBundleReplaceInvalid")
-            .its("response.statusCode")
-            .should("eq", 400);
-
-          cy.findByTestId("custom-viz-settings-form").within(() => {
-            cy.findByText(/does not match the plugin's identifier/).should(
-              "be.visible",
+            cy.findByRole("link", { name: /Manage visualizations/ }).should(
+              "have.attr",
+              "data-active",
+              "true",
             );
-          });
 
-          cy.location("pathname").should(
-            "eq",
-            `/admin/settings/custom-visualizations/edit/${plugin.id}`,
-          );
-        });
+            cy.log(
+              'The 2nd fixture has manifest.name = "demo-viz-2" — BE rejects because it does not match the existing identifier',
+            );
+            H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
+
+            cy.intercept(
+              "PUT",
+              `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
+            ).as("pluginBundleReplaceInvalid");
+            cy.findByRole("button", { name: /Replace$/ }).click();
+
+            cy.wait("@pluginBundleReplaceInvalid")
+              .its("response.statusCode")
+              .should("eq", 400);
+
+            cy.findByTestId("custom-viz-settings-form").within(() => {
+              cy.findByText(/does not match the plugin's identifier/).should(
+                "be.visible",
+              );
+            });
+
+            cy.location("pathname").should(
+              "eq",
+              `/admin/settings/custom-visualizations/edit/${plugin.id}`,
+            );
+          },
+        );
       });
     });
 
@@ -362,7 +370,7 @@ describe("admin > custom visualizations", () => {
       it("disabled plugin should fall back to default display and hide from chart type selector", () => {
         H.resetSnowplow();
         H.enableTracking();
-        H.setupCustomVizPlugin().then(() => {
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {
           // Single-value question (Count of Orders) — demo-viz requires
           // exactly one row with one numeric column.
           H.createQuestion(
@@ -437,7 +445,7 @@ describe("admin > custom visualizations", () => {
       it("question should fall back when plugin is deleted", () => {
         H.resetSnowplow();
         H.enableTracking();
-        H.setupCustomVizPlugin().then(() => {
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {
           H.createQuestion(
             {
               name: "Custom Viz Delete Test",
@@ -739,8 +747,6 @@ describe("admin > custom visualizations", () => {
   });
 
   describe("using a plugin — dashboard", () => {
-    before(() => {});
-
     beforeEach(() => {
       H.activateToken("bleeding-edge");
       H.updateSetting("custom-viz-enabled", true);
@@ -1016,8 +1022,6 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — documents", () => {
     const DOC_QUESTION_NAME = "Custom Viz Doc Question";
 
-    before(() => {});
-
     beforeEach(() => {
       H.activateToken("bleeding-edge");
       H.updateSetting("custom-viz-enabled", true);
@@ -1147,8 +1151,6 @@ describe("admin > custom visualizations", () => {
     // actually rendered — some consumers pass `alt` (accessible name) while
     // others render the icon as decorative/aria-hidden.
     const PLUGIN_ICON_SELECTOR = 'span[style*="custom-viz-plugin"]';
-
-    before(() => {});
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");

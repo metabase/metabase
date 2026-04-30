@@ -9,7 +9,7 @@ const POLL_INTERVAL = 250;
 async function waitForHttpOk(
   url: string,
   timeoutMs: number,
-  logFile: string,
+  logFilePath: string,
 ): Promise<void> {
   const start = Date.now();
 
@@ -26,7 +26,7 @@ async function waitForHttpOk(
   }
 
   throw new Error(
-    `Dev server did not become ready: ${url} (see spawn log at ${logFile})`,
+    `Dev server did not become ready: ${url} (see spawn log at ${logFilePath})`,
   );
 }
 
@@ -51,8 +51,8 @@ export async function startCustomVizDevServer(
     stopCustomVizDevServer(running.pid);
   }
 
-  const logFile = join(tmpdir(), `custom-viz-dev-server-${Date.now()}.log`);
-  const logStream = createWriteStream(logFile);
+  const logFilePath = join(tmpdir(), `custom-viz-dev-server-${Date.now()}.log`);
+  const logStream = createWriteStream(logFilePath);
   const child = spawn("npm", ["run", "dev"], {
     cwd: args.cwd,
     shell: true,
@@ -70,9 +70,9 @@ export async function startCustomVizDevServer(
   const url = `http://localhost:${port}`;
 
   // Ensure the dev server is ready and serving the manifest.
-  await waitForHttpOk(`${url}/metabase-plugin.json`, TIMEOUT, logFile);
+  await waitForHttpOk(`${url}/metabase-plugin.json`, TIMEOUT, logFilePath);
   running = { pid: child.pid, url };
-  console.log(`Custom viz dev server started at ${url} (log: ${logFile})`);
+  console.log(`Custom viz dev server started at ${url} (log: ${logFilePath})`);
 
   return running;
 }

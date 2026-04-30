@@ -62,8 +62,7 @@ export function BundleDropzone({ name = "file" }: { name?: string }) {
     : null;
 
   return (
-    <Stack gap="xs">
-      <Text fw={500}>{t`Plugin bundle`}</Text>
+    <Stack>
       <Box
         {...getRootProps()}
         className={cx(S.dropzone, {

@@ -201,7 +201,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
 
   // Plugin list loaded but no matching plugin found — the custom viz was
   // disabled or removed. Drop the cached registration so questions using this
-  // display fall back to the default visualization (Table) on subsequent
+  // display fall back to the default visualization on subsequent
   // renders, even within the same SPA session.
   if (
     needsCustomViz &&

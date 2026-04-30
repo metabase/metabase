@@ -33,6 +33,7 @@ import {
   MAX_BUNDLE_BYTES,
   hasAllowedExtension,
 } from "./BundleDropzone";
+import { CustomVizIcon } from "./CustomVizIcon";
 
 type Props = {
   params?: {
@@ -161,6 +162,34 @@ export function CustomVizPage({ params }: Props) {
                   <Title order={2}>
                     {isEdit ? t`Replace bundle` : t`Add a new visualization`}
                   </Title>
+                  {isEdit && plugin && (
+                    <Group align="center" gap="md" wrap="nowrap">
+                      <CustomVizIcon plugin={plugin} />
+                      <Stack gap={4}>
+                        <Text fw={700}>{plugin.display_name}</Text>
+                        {(plugin.bundle_hash || plugin.metabase_version) && (
+                          <Group gap="xs">
+                            {plugin.bundle_hash && (
+                              <Text size="sm" c="text-tertiary">
+                                {t`Bundle: ${plugin.bundle_hash.slice(0, 8)}`}
+                              </Text>
+                            )}
+                            {plugin.bundle_hash && plugin.metabase_version && (
+                              <Text size="sm" c="text-tertiary">
+                                &bull;
+                              </Text>
+                            )}
+                            {plugin.metabase_version && (
+                              <Text size="sm" c="text-tertiary">
+                                {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page */}
+                                {t`Requires Metabase ${plugin.metabase_version}`}
+                              </Text>
+                            )}
+                          </Group>
+                        )}
+                      </Stack>
+                    </Group>
+                  )}
                   <BundleDropzone />
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">

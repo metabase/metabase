@@ -67,7 +67,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
             <Group gap="xs">
               {plugin.bundle_hash && (
                 <Text size="sm" c="text-tertiary">
-                  {t`Bundle`}: {plugin.bundle_hash.slice(0, 8)}
+                  {t`Bundle: ${plugin.bundle_hash.slice(0, 8)}`}
                 </Text>
               )}
               {plugin.bundle_hash && plugin.metabase_version && (
@@ -78,7 +78,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
               {plugin.metabase_version && (
                 <Text size="sm" c="text-tertiary">
                   {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page */}
-                  {t`Requires Metabase`} {plugin.metabase_version}
+                  {t`Requires Metabase ${plugin.metabase_version}`}
                 </Text>
               )}
             </Group>
