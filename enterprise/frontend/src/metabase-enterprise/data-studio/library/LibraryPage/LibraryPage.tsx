@@ -314,8 +314,11 @@ function LibraryPageContent() {
           }
 
           const isSnippetCollection = data.namespace === "snippets";
-          const isLibraryCollection =
+          const isLibraryDataCollection =
             data.type === "library-data" && !data.is_library_root;
+          const isLibraryCollection =
+            (data.type === "library-data" || data.type === "library-metrics") &&
+            !data.is_library_root;
 
           if (isSnippetCollection && data.id === "root") {
             return <RootSnippetsCollectionMenu collectionId={data.id} />;
@@ -330,7 +333,7 @@ function LibraryPageContent() {
               <CollectionRowMenu
                 collection={data}
                 customArchiveMessage={
-                  children?.length
+                  isLibraryDataCollection && children?.length
                     ? t`Archiving this collection will also unpublish the tables inside it and archive any other child items.`
                     : undefined
                 }

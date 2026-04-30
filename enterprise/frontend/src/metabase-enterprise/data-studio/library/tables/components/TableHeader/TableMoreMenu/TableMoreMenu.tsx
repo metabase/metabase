@@ -7,7 +7,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { ActionIcon, Box, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 
@@ -64,12 +64,12 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
         <Menu.Target>
           <ActionIcon
             aria-label={t`Show table options`}
-            size="sm"
+            size="md"
             onClick={(event) => {
               event.preventDefault();
             }}
           >
-            <Icon name="ellipsis" />
+            <FixedSizeIcon name="ellipsis" size={16} />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
