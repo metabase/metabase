@@ -12,6 +12,7 @@
 
 (doto :model/Workspace
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Workspace :databases]
