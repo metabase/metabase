@@ -25,6 +25,7 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Helpers ---------------------------------------------------
@@ -99,6 +100,21 @@
   "Return the workspace loaded on this instance, or nil if none."
   []
   @workspace-instance-config)
+
+(defenterprise workspace-mode?
+  "EE impl: true iff this instance is running in workspace mode (a `:workspace`
+   section was loaded from `config.yml` at boot). Single source of truth for
+   gating features that conflict with workspace remapping (DB routing,
+   impersonation, writeback, CSV upload, model persistence). Use
+   [[db-workspace-schema]] when you need per-database scoping.
+
+   Deliberately ungated on premium features — same rationale as
+   [[workspace-remap-schema+name]]. A workspace child instance bootstraps
+   from `config.yml` *before* its token is installed; if the workspace map
+   is loaded, we refuse incompatible features regardless of token state."
+  :feature :none
+  []
+  (some? @workspace-instance-config))
 
 (defn db-workspace-schema
   "Return the workspace-isolated output schema name for `db-id` on this instance,

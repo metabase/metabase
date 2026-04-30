@@ -24,6 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (mu/defn- execute-query-action!
@@ -190,6 +191,7 @@
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
+  (workspaces/check-not-in-workspace-mode! "Actions")
   (let [;; if a value is supplied for a hidden parameter, it should raise an error
         field-settings         (get-in action [:visualization_settings :fields])
         hidden-param-ids       (->> (vals field-settings)

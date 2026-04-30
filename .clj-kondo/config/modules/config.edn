@@ -3407,6 +3407,7 @@
            driver
            lib
            models
+           permissions
            premium-features
            query-processor
            sql-tools

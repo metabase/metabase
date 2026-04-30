@@ -63,10 +63,13 @@
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.sql-tools.core :as sql-tools]))
 
 (set! *warn-on-reflection* true)
@@ -220,8 +223,27 @@
   :feature :none
   [qp]
   (fn [{:keys [database] :as query} rff]
-    (if-not (ws.remapping/enabled-for-db? database)
+    (cond
+      (not (ws.remapping/enabled-for-db? database))
       (qp query rff)
+
+      ;; Tier B fail-closed: workspace remap is incompatible with DB routing
+      ;; (which swaps the destination connection — see GHY-3484 audit conflict
+      ;; notes) and connection impersonation (which binds a warehouse role that
+      ;; almost certainly lacks GRANT on workspace schemas).
+      (qp.middleware.enterprise/currently-db-routed?)
+      (throw (ex-info "Database routing is incompatible with workspace table remapping"
+                      {:type qp.error-type/qp :database-id database}))
+
+      ;; impersonation-enforced-for-db? throws when no current user is bound
+      ;; (sync/transform contexts). Skip the check there; impersonation can't
+      ;; engage without a user.
+      (and api/*current-user-id*
+           (perms/impersonation-enforced-for-db? {:id database}))
+      (throw (ex-info "Connection impersonation is incompatible with workspace table remapping"
+                      {:type qp.error-type/qp :database-id database}))
+
+      :else
       (let [remappings (ws.remapping/remappings-for-db database)]
         (if (empty? remappings)
           (qp query rff)
