@@ -185,9 +185,18 @@ export const ComponentProvider = memo(function ComponentProvider({
   const reduxStoreRef = useRef<SdkStore | null>(null);
 
   if (!reduxStoreRef.current) {
-    reduxStoreRef.current =
-      props.reduxStore ??
-      getSdkStore({ isGuestEmbed: !!props.authConfig.isGuest });
+    const isGuestEmbed = !!props.authConfig.isGuest;
+    if (props.reduxStore) {
+      // Host-supplied stores (e.g. EAJS, which calls getSdkStore() at module
+      // load before embedSettings.isGuest is known) can't be seeded at
+      // creation, so we dispatch synchronously during the first render. This
+      // runs before MetabaseReduxProvider mounts and before any consumer can
+      // subscribe, so it doesn't trigger the "update during render" warning.
+      reduxStoreRef.current = props.reduxStore;
+      reduxStoreRef.current.dispatch(setIsGuestEmbed(isGuestEmbed));
+    } else {
+      reduxStoreRef.current = getSdkStore({ isGuestEmbed });
+    }
   }
 
   return (
