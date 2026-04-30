@@ -62,7 +62,7 @@ function RunInstanceSection() {
           >
             {LOCAL_INSTANCE_URL}
           </Anchor>
-        )}.`}
+        )}:`}
       </Text>
       <Code block>{dockerCommand}</Code>
     </Stack>
