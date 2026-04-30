@@ -144,3 +144,28 @@
                      :collection_id nil
                      :id            (:id table)}
                     (t2/select-one :model/Table :id (:id table))))))))))
+
+(deftest disallow-cross-type-collection-nesting-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection data-parent    {:name "Data Parent"    :type collection/library-data-collection-type}
+                   :model/Collection metrics-parent {:name "Metrics Parent" :type collection/library-metrics-collection-type}
+                   :model/Collection data-child     {:name "Data Child"     :type collection/library-data-collection-type
+                                                     :location (str "/" (:id data-parent) "/")}
+                   :model/Collection metrics-child  {:name "Metrics Child"  :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id metrics-parent) "/")}]
+      (testing "Cannot move a library-data collection into a library-metrics parent"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
+                              (t2/update! :model/Collection (:id data-child)
+                                          {:location (str "/" (:id metrics-parent) "/")}))))
+      (testing "Cannot move a library-metrics collection into a library-data parent"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables"
+                              (t2/update! :model/Collection (:id metrics-child)
+                                          {:location (str "/" (:id data-parent) "/")}))))
+      (testing "Cannot move a library-data collection via API to a library-metrics parent"
+        (is (= "Can only add metrics to the 'Metrics' collection"
+               (mt/user-http-request :crowberto :put 400 (str "collection/" (:id data-child))
+                                     {:parent_id (:id metrics-parent)}))))
+      (testing "Cannot move a library-metrics collection via API to a library-data parent"
+        (is (= "Can only add tables to the 'Data' collection"
+               (mt/user-http-request :crowberto :put 400 (str "collection/" (:id metrics-child))
+                                     {:parent_id (:id data-parent)})))))))

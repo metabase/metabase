@@ -30,9 +30,9 @@
       (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
                                                                        library-collection-content-specs)]
         (when-not (allowed-content-types content-type)
-          (throw (ex-info error-message {}))))
+          (throw (ex-info error-message {:status-code 400}))))
       (when (and (= content-type :table) (not= collection-type collection/library-data-collection-type))
-        (throw (ex-info "Tables can only be added to 'Data' collections" {})))))
+        (throw (ex-info "Tables can only be added to 'Data' collections" {:status-code 400})))))
   #_(let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
       (when collection-type
         (when (and (= collection-type collection/library-collection-type) (not (contains? #{collection/library-data-collection-type
