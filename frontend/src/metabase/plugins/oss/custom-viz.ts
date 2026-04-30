@@ -21,7 +21,6 @@ const getDefaultPluginCustomViz = () => ({
   ManageCustomVizPage: PluginPlaceholder as ComponentType<any>,
   CustomVizPage: PluginPlaceholder as ComponentType<any>,
   CustomVizDevPage: PluginPlaceholder as ComponentType<any>,
-  CustomVizEmptyState: PluginPlaceholder as ComponentType<any>,
 
   // Hooks & functions
   useAutoLoadCustomVizPlugin: (_display: string | undefined) => ({
