@@ -88,6 +88,15 @@
  [tools.create-dashboard-subscription
   slackbot-create-dashboard-subscription-tool])
 
+(def query-generation-tool-names
+  "Tool names that produce a runnable query (SQL or notebook). Both the in-app
+  and slackbot variants of `construct_notebook_query` register under the same
+  `:tool-name`, so a single string covers both."
+  #{"create_sql_query"
+    "edit_sql_query"
+    "replace_sql_query"
+    "construct_notebook_query"})
+
 (def ^:private state-dependent-tools
   "Set of tool names that require access to agent state."
   #{"analyze_chart"

@@ -14,7 +14,7 @@ import {
   useTransformPermissions,
 } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   ScheduleDisplayType,
   TransformJob,

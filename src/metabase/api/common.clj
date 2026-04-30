@@ -266,8 +266,10 @@
 
 (defn check-404
   "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-404))
+  ([arg]
+   (check arg generic-404))
+  ([arg msg]
+   (check arg [404 msg])))
 
 (defmacro let-404
   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."
