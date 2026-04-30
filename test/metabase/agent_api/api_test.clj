@@ -19,6 +19,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.yaml :as yaml]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -260,46 +261,54 @@
   []
   (t2/select-one-fn :name :model/Database (mt/id)))
 
-(defn- yaml-list-lines
-  "Render a clause-list YAML block (e.g. `aggregation:`, `filters:`) given pre-formatted
-  scalar lines. `nil` collapses to empty string so callers can `(when items ...)` inline."
-  [k items]
-  (when (seq items)
-    (apply str (str "    " k ":\n")
-           (map #(str "      - " % "\n") items))))
+(defn- ->yaml
+  "Serialize a Clojure value to a YAML string the way the construct-query endpoint expects it
+  (string-keyed map, default flow style chosen by SnakeYAML: compact for short FK vectors,
+  block for the outer query). The resulting YAML is parsed server-side via
+  `clj-yaml.core/parse-string` with `:keywords false`, so structural input here matches the
+  shape the resolver sees in production."
+  [v]
+  (yaml/generate-string v))
 
 (defn- orders-yaml
   "Build a representations YAML query against the `ORDERS` table in the application database.
-  All clause arguments are inline YAML scalar strings to keep tests compact, e.g.
+  Clause arguments (`aggregation`, `breakout`, `filters`, `order-by`, `fields`) are Clojure
+  data that gets serialized to YAML, e.g.
 
       (orders-yaml :limit 10)
-      (orders-yaml :aggregation [\"[count, {}]\"])
-      (orders-yaml :filters     [(orders-not-null-id-filter)])
+      (orders-yaml :aggregation [[\"count\" {}]])
+      (orders-yaml :filters     [[\"not-null\" {} (orders-field-ref \"ID\")]])
 
   This is intentionally a thin string builder \u2014 the structural validation lives in
   `metabase.agent-lib.representations` and is exercised by the repr namespaces' own tests;
   here we just need a believable YAML payload to drive the HTTP endpoint."
-  [& {:keys [limit aggregation breakout filters order-by]}]
-  (str "lib/type: mbql/query\n"
-       "stages:\n"
-       "  - lib/type: mbql.stage/mbql\n"
-       (format "    source-table: ['%s', PUBLIC, ORDERS]\n" (db-name))
-       (yaml-list-lines "aggregation" aggregation)
-       (yaml-list-lines "breakout"    breakout)
-       (yaml-list-lines "filters"     filters)
-       (yaml-list-lines "order-by"    order-by)
-       (when limit (str "    limit: " limit "\n"))))
+  [& {:keys [limit aggregation breakout filters order-by fields]}]
+  (->yaml
+   {"lib/type" "mbql/query"
+    "stages"   [(cond-> {"lib/type"     "mbql.stage/mbql"
+                         "source-table" [(db-name) "PUBLIC" "ORDERS"]}
+                  aggregation (assoc "aggregation" (vec aggregation))
+                  breakout    (assoc "breakout"    (vec breakout))
+                  filters     (assoc "filters"     (vec filters))
+                  order-by    (assoc "order-by"    (vec order-by))
+                  fields      (assoc "fields"      (vec fields))
+                  limit       (assoc "limit"       limit))]}))
 
 (defn- orders-field-ref
-  "YAML-flow field ref against an ORDERS column, e.g. `[field, {}, ['test-data (h2)', PUBLIC, ORDERS, ID]]`."
+  "Field-ref clause against an ORDERS column as Clojure data, e.g.
+  `[\"field\" {} [\"test-data (h2)\" \"PUBLIC\" \"ORDERS\" \"ID\"]]`. Suitable as an inner
+  argument inside `aggregation` / `filters` / `order-by` clauses passed to [[orders-yaml]]."
   [col-name]
-  (format "[field, {}, ['%s', PUBLIC, ORDERS, %s]]" (db-name) col-name))
+  ["field" {} [(db-name) "PUBLIC" "ORDERS" col-name]])
 
 (defn- source-card-yaml
   "Build a minimal representations YAML query whose first stage uses `source-card:`."
   [entity-id]
-  (format "lib/type: mbql/query\nstages:\n  - lib/type: mbql.stage/mbql\n    source-card: %s\n    limit: 5\n"
-          entity-id))
+  (->yaml
+   {"lib/type" "mbql/query"
+    "stages"   [{"lib/type"    "mbql.stage/mbql"
+                 "source-card" entity-id
+                 "limit"       5}]}))
 
 ;;; ---------------------------------------- /v2/construct-query ----------------------------------------
 
@@ -333,8 +342,7 @@
   (testing "Representation repair agent errors without explicit status default to 400"
     (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
                                          {:query (orders-yaml
-                                                  :aggregation [(format "[field, {}, ['%s', PUBLIC, ORDERS, ID]]"
-                                                                        (db-name))])})]
+                                                  :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
 
 (deftest construct-query-permission-checks-test
@@ -342,7 +350,7 @@
     (mt/with-no-data-perms-for-all-users!
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
-                                   {:query (orders-yaml :aggregation ["[count, {}]"])})))))
+                                   {:query (orders-yaml :aggregation [["count" {}]])})))))
 
   (testing "Rejects a first-stage source-card the current user cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -366,7 +374,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
                                      {:query (orders-yaml
-                                              :aggregation [(format "[metric, {}, %s]" (:entity_id metric))])})))))))
+                                              :aggregation [["metric" {} (:entity_id metric)]])})))))))
 
 (deftest construct-query-rejects-empty-query-test
   (testing "Empty / blank :query is rejected by the request schema"
@@ -450,7 +458,7 @@
     (testing "Constructs a query that references a metric by entity_id in an aggregation"
       (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                            {:query (orders-yaml
-                                                    :aggregation [(format "[metric, {}, %s]" (:entity_id metric))])})]
+                                                    :aggregation [["metric" {} (:entity_id metric)]])})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
@@ -464,13 +472,13 @@
       ;; well-formed but absent eid to drive the `:unknown-card` path specifically.
       (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
                                            {:query (orders-yaml
-                                                    :aggregation ["[metric, {}, AAAAAAAAAAAAAAAAAAAAA]"])})]
+                                                    :aggregation [["metric" {} "AAAAAAAAAAAAAAAAAAAAA"]])})]
         (is (=? {:error "unknown-card"} response))))))
 
 (deftest construct-query-with-count-aggregation-test
   (testing "Count aggregation produces a valid query"
     (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:query (orders-yaml :aggregation ["[count, {}]"]
+                                         {:query (orders-yaml :aggregation [["count" {}]]
                                                               :limit 10)})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
@@ -480,7 +488,7 @@
   (testing "Constructs a query with filters"
     (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                          {:query (orders-yaml
-                                                  :filters [(format "[not-null, {}, %s]" (orders-field-ref "ID"))]
+                                                  :filters [["not-null" {} (orders-field-ref "ID")]]
                                                   :limit   10)})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
@@ -508,7 +516,7 @@
 (deftest combined-query-test
   (testing "Returns results for a table query that fits in a single page"
     (let [response (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:query (orders-yaml :order-by [(format "[asc, {}, %s]" (orders-field-ref "ID"))]
+                                         {:query (orders-yaml :order-by [["asc" {} (orders-field-ref "ID")]]
                                                               :limit    5)})]
       (is (=? {:status             "completed"
                :row_count          5
@@ -521,7 +529,7 @@
     (let [page-size  200
           total-rows 250
           page1      (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                           {:query (orders-yaml :order-by [(format "[asc, {}, %s]" (orders-field-ref "ID"))]
+                                           {:query (orders-yaml :order-by [["asc" {} (orders-field-ref "ID")]]
                                                                 :limit    total-rows)})
           page2      (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                            {:continuation_token (:continuation_token page1)})]
@@ -541,7 +549,7 @@
     (is (=? {:status             "completed"
              :continuation_token nil?}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:query (orders-yaml :aggregation ["[count, {}]"])}))))
+                                  {:query (orders-yaml :aggregation [["count" {}]])}))))
 
   (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
@@ -579,7 +587,7 @@
                :row_count pos?}
               (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                     {:query (orders-yaml
-                                             :aggregation [(format "[metric, {}, %s]" (:entity_id metric))])}))))))
+                                             :aggregation [["metric" {} (:entity_id metric)]])}))))))
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
@@ -599,8 +607,7 @@
 (deftest create-question-test
   (testing "Creates a saved question from a constructed query"
     (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id (mt/id :orders)}
-                                                :operations [["limit" 10]]})
+                                               {:query (orders-yaml :limit 10)})
           create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                {:name  "Agent Test Question"
                                                 :query (:query construct-resp)})]
@@ -616,8 +623,7 @@
   (testing "Creates a question with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
       (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                                 {:source     {:type "table" :id (mt/id :orders)}
-                                                  :operations [["limit" 10]]})
+                                                 {:query (orders-yaml :limit 10)})
             create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                  {:name          "Agent Question With Options"
                                                   :query         (:query construct-resp)

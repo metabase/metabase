@@ -525,6 +525,12 @@
                                          :dataset_query (orders-count-query)}]
         (let [[session-id _] (initialize!)
               orders-id      (mt/id :orders)
+              db-name        (t2/select-one-fn :name :model/Database (mt/id))
+              orders-yaml    (str "lib/type: mbql/query\n"
+                                  "stages:\n"
+                                  "  - lib/type: mbql.stage/mbql\n"
+                                  (format "    source-table: ['%s', PUBLIC, ORDERS]\n" db-name)
+                                  "    limit: 5\n")
               ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
               ;; assertion in `call-tool` fails partway through the sequence.
               question-id    (atom nil)
@@ -541,13 +547,8 @@
                                             {:id (:id metric) :field-id (str metric-fid)})
                   _              (call-tool session-id "search" {:term_queries ["orders"]})
                   ;; Query construction + execution
-                  construct-data (call-tool session-id "construct_query"
-                                            {:source     {:type "table" :id orders-id}
-                                             :operations [["limit" 5]]
-                                             :prompt     "show 5 orders"})
-                  _              (call-tool session-id "query"
-                                            {:source     {:type "table" :id orders-id}
-                                             :operations [["limit" 5]]})
+                  construct-data (call-tool session-id "construct_query" {:query orders-yaml})
+                  _              (call-tool session-id "query" {:query orders-yaml})
                   _              (call-tool session-id "execute_query"
                                             {:query_handle (:query_handle construct-data)})
                   ;; Write tools — record IDs as soon as they're known so the `finally` block
