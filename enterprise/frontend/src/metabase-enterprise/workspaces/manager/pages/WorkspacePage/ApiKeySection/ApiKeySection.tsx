@@ -68,8 +68,7 @@ function ManageApiKeySection({
   const handleRegenerate = () => {
     show({
       title: t`Regenerate API key`,
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only workspace management UI
-      message: t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`,
+      message: t`We will replace the existing API key with a new key. You won't be able to recover the old key.`,
       confirmButtonText: t`Regenerate`,
       confirmButtonProps: { variant: "filled", color: "brand" },
       onConfirm: async () => {
