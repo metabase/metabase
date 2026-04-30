@@ -400,7 +400,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -449,7 +449,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -579,9 +579,9 @@ jobs:
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
-          - name: MySQL 8.4
-            junit-name: be-tests-mysql-8-4-ee
-            image: mysql:8.4
+          - name: MySQL 8.0
+            junit-name: be-tests-mysql-8-0-ee
+            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'

@@ -8,7 +8,7 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.settings :as settings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -22,16 +22,22 @@
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
 (defn- current-fingerprint
-  "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
-  `formula_version` + `parameters` fields. Includes `weights` so re-tuning forces a re-score
-  without bumping `formula-version`; only structural changes to the scoring algorithm need that."
+  "String capturing everything that changes the meaning of an emitted score.
+
+  Mirrors the Snowplow `formula_version` + `parameters` fields. `weights` is included so re-tuning
+  forces a re-score without a `formula-version` bump; only structural scoring-algorithm changes
+  need that.
+
+  The synonym-axis fragment comes from [[synonym-source/fingerprint-fragment]] so the fingerprint
+  reacts to the source toggle and the configured model — and on the search-index path also picks
+  up swaps in the active pgvector model so a re-index that swaps the model invalidates prior
+  scores."
   []
-  (let [embedding-model (semantic-search/active-embedding-model)]
-    (pr-str (into (sorted-map)
-                  (cond-> {:formula-version   complexity/formula-version
-                           :synonym-threshold complexity/synonym-similarity-threshold
-                           :weights           complexity/weights}
-                    embedding-model (assoc :embedding-model embedding-model))))))
+  (pr-str (into (sorted-map)
+                (merge {:formula-version   complexity/formula-version
+                        :synonym-threshold complexity/synonym-similarity-threshold
+                        :weights           complexity/weights}
+                       (synonym-source/fingerprint-fragment)))))
 
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
@@ -48,7 +54,9 @@
   [claim-fingerprint]
   (if (settings/data-complexity-scoring-enabled)
     (try
-      (let [result (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
+      (let [result (complexity/complexity-scores
+                    (assoc (synonym-source/complexity-scores-opts)
+                           :metabot-scope (metabot-scope/internal-metabot-scope)))]
         (if (::complexity/snowplow-published? (meta result))
           (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
           (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
