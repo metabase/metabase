@@ -47,6 +47,10 @@ export const explorationApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/exploration/query/${id}`,
       }),
+      // Hold each query's result in the cache for 30 minutes after the last
+      // subscriber unmounts so that flipping between previously-viewed queries
+      // inside one session is instant (no skeleton flash on re-select).
+      keepUnusedDataFor: 30 * 60,
     }),
   }),
 });
