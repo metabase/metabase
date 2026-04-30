@@ -22,6 +22,7 @@ export const ClickActionsViewSection = ({
 
   const sectionContent = (
     <Flex
+      data-testid={`click-actions-${type}-section`}
       direction={contentDirection}
       gap="sm"
       mb={isSortRow ? "sm" : undefined}
