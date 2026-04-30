@@ -105,7 +105,13 @@ export function AddTimelinesModal({
             leftSection={<Icon name="search" />}
             mb="md"
           />
-          <LoadingAndErrorWrapper loading={isLoading} error={error}>
+          <LoadingAndErrorWrapper
+            loading={isLoading}
+            error={error}
+            style={{
+              height: "28rem",
+            }}
+          >
             <Stack gap="sm" h="28rem">
               <Text fw="bold">{t`Timelines`}</Text>
               <TimelineList

@@ -10,7 +10,10 @@ import type {
   ExplorationMetric,
   MetricDimension,
 } from "metabase/explorations/types";
-import { isLibraryMetric } from "metabase/explorations/utils";
+import {
+  groupDimensionsBySemanticType,
+  isLibraryMetric,
+} from "metabase/explorations/utils";
 import {
   Box,
   Button,
@@ -39,6 +42,7 @@ type MetricWithCollection = ExplorationMetric & {
 const METRIC_ITEM_HEIGHT = 70;
 const METRIC_ITEM_GAP = 8;
 const DIMENSION_ITEM_HEIGHT = 36;
+const DIMENSION_ITEM_GAP = 4;
 
 export interface AddMetricsModalProps {
   opened: boolean;
@@ -386,15 +390,26 @@ function DimensionList({
   onToggle,
   className,
 }: DimensionListProps) {
+  const rows = useMemo(
+    () => groupDimensionsBySemanticType(dimensions),
+    [dimensions],
+  );
+
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
-    count: dimensions.length,
+    count: rows.length,
     getScrollElement: useCallback(() => parentRef.current, []),
     estimateSize: useCallback(() => DIMENSION_ITEM_HEIGHT, []),
+    measureElement: useCallback(
+      (el: Element | null) =>
+        (el?.getBoundingClientRect().height ?? DIMENSION_ITEM_HEIGHT) +
+        DIMENSION_ITEM_GAP,
+      [],
+    ),
     overscan: 5,
   });
 
-  if (dimensions.length === 0) {
+  if (rows.length === 0) {
     return (
       <Text c="text-secondary" py="md">
         {t`No dimensions available`}
@@ -413,14 +428,43 @@ function DimensionList({
         }}
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
-          const dimension = dimensions[virtualRow.index];
+          const row = rows[virtualRow.index];
+
+          if (row.type === "header") {
+            return (
+              <Text
+                key={virtualRow.key}
+                ref={virtualizer.measureElement}
+                data-index={virtualRow.index}
+                fw="bold"
+                size="sm"
+                c="text-secondary"
+                lh="1rem"
+                className={S.dimensionGroupHeader}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+                data-interestingness={row.averageInterestingness || "null"}
+              >
+                {row.label}
+              </Text>
+            );
+          }
+
+          const dimension = row.dimension;
           const selected = isSelected(dimension.id);
           const sourceName = dimension.group?.display_name;
 
           return (
             <UnstyledButton
               key={virtualRow.key}
+              ref={virtualizer.measureElement}
               role="listitem"
+              data-index={virtualRow.index}
               aria-pressed={selected}
               data-interestingness={
                 dimension.dimension_interestingness || "null"

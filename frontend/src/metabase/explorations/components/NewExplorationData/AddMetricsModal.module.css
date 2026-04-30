@@ -32,6 +32,14 @@
   border-radius: 0.5rem;
 }
 
+.dimensionGroupHeader {
+  padding-top: 1rem;
+
+  &:first-child {
+    padding-top: 0;
+  }
+}
+
 .dimensionChip {
   position: absolute;
   top: 0;
