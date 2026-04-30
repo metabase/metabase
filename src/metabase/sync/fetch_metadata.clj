@@ -24,6 +24,16 @@
   [_db-id _schema _name]
   nil)
 
+(defenterprise filter-workspace-side-tables
+  "Drop tuples from a `describe-database` result whose `(schema, name)` matches
+  the to-side of any active TableRemapping for `db-id`. The workspace's physical
+  isolation tables are surfaced by the warehouse driver but must not become
+  `:model/Table` rows in app-db -- they back canonical Tables via remap, not
+  their own identity. OSS fallback is identity (no filtering). See DEV-1898."
+  metabase-enterprise.workspaces.table-remapping
+  [tuples _db-id]
+  tuples)
+
 (defn- effective-schema+name
   "Pair used when querying the driver for a Table's fields. Lets workspace mode
   redirect to the isolated warehouse table while the app-db row keeps its

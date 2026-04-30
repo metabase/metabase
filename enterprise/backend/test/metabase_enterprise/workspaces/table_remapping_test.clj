@@ -11,6 +11,7 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -401,3 +402,73 @@
                  (let [other-after (cache-config-invalidated-at other-db-id)]
                    (is (= (t/instant other-initial) (t/instant other-after))
                        "the other database's invalidated_at is untouched")))))))))))
+
+;;; -------------------------- DEV-1898: filter-workspace-side-tables --------------------------
+
+(deftest filter-workspace-side-tables-no-rows-test
+  (testing "without any remap rows, the filter is identity"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (let [tuples #{{:schema "public" :name "orders"}
+                      {:schema "public" :name "users"}}]
+         (is (= tuples (fetch-metadata/filter-workspace-side-tables tuples (mt/id)))))))))
+
+(deftest filter-workspace-side-tables-drops-only-to-side-test
+  (testing "with a remap row, only the to-side (schema, name) tuple is dropped"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public"   :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (let [tuples   #{{:schema "public"   :name "orders"}
+                        {:schema "public"   :name "users"}
+                        {:schema "ws_alice" :name "orders"}}
+             filtered (fetch-metadata/filter-workspace-side-tables tuples (mt/id))]
+         (is (= #{{:schema "public" :name "orders"}
+                  {:schema "public" :name "users"}}
+                filtered)
+             "ws_alice.orders is removed; canonical tuples pass through"))))))
+
+(deftest filter-workspace-side-tables-scoped-by-database-test
+  (testing "remappings on db A do not affect filtering on db B"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public"   :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (let [other-db-id 999999
+             tuples      #{{:schema "ws_alice" :name "orders"}}]
+         (is (= tuples (fetch-metadata/filter-workspace-side-tables tuples other-db-id))
+             "another database's table-list is untouched"))))))
+
+(deftest sync-tables-and-database-skips-workspace-side-tuples-test
+  (testing "DEV-1898: sync-tables-and-database! does not create :model/Table rows for workspace-side tuples"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (mt/with-temp [:model/Table _ {:db_id  (mt/id)
+                                      :schema "public"
+                                      :name   "dev_1898_orders"}]
+         (ws.table-remapping/add-mapping!
+          (mt/id)
+          {:schema "public"      :table "dev_1898_orders"}
+          {:schema "ws_dev_1898" :table "dev_1898_orders"})
+         ;; Simulate a driver whose describe-database surfaces both the canonical
+         ;; and workspace-isolation schemas.
+         (let [fake-metadata {:tables #{{:schema "public"      :name "dev_1898_orders"}
+                                        {:schema "ws_dev_1898" :name "dev_1898_orders"}}}]
+           (with-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
+             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
+         (let [created-pairs (set (t2/select-fn-set (juxt :schema :name)
+                                                    :model/Table
+                                                    :db_id (mt/id)
+                                                    :name  "dev_1898_orders"))]
+           (is (contains? created-pairs ["public" "dev_1898_orders"])
+               "canonical Table row exists")
+           (is (not (contains? created-pairs ["ws_dev_1898" "dev_1898_orders"]))
+               "workspace-side Table row is filtered out and never persisted")))))))

@@ -168,6 +168,22 @@
                 [(:to_db m) (:to_schema m) (:to_table_name m)]]))
         (t2/select :model/TableRemapping :database_id database-id)))
 
+(defenterprise filter-workspace-side-tables
+  "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
+   matches the to-side of any active `TableRemapping` row for `db-id`. Workspace
+   isolation tables show up in `describe-database` because the connection has
+   GRANT on the isolation schema, but they must not become `:model/Table` rows —
+   canonical Tables back them via remap. Like the read-side hook, deliberately
+   ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
+  :feature :none
+  [tuples db-id]
+  (let [to-pairs (into #{}
+                       (map (fn [[_to-db to-schema to-name]] [to-schema to-name]))
+                       (vals (all-mappings-for-db db-id)))]
+    (if (empty? to-pairs)
+      tuples
+      (into #{} (remove (fn [t] (contains? to-pairs [(:schema t) (:name t)]))) tuples))))
+
 ;;; -------------------------------------------- Write API --------------------------------------------
 
 (defn- unique-violation?
