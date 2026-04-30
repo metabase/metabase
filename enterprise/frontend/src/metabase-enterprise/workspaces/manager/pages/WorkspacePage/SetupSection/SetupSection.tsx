@@ -29,7 +29,7 @@ export function SetupSection({ workspace }: SetupSectionProps) {
         <Box>
           {hasDatabases ? (
             <Button
-              variant="filled"
+              variant="default"
               component="a"
               href={configUrl}
               download="config.yml"
@@ -38,7 +38,7 @@ export function SetupSection({ workspace }: SetupSectionProps) {
             </Button>
           ) : (
             <Tooltip label={t`No databases configured yet.`}>
-              <Button variant="filled" disabled>
+              <Button variant="default" disabled>
                 {t`Download config file`}
               </Button>
             </Tooltip>
