@@ -11,6 +11,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.warehouses-rest.metadata-file-import.processors :as processors]
    [toucan2.core :as t2]))
 
@@ -18,19 +19,20 @@
 
 (deftest process-databases-matches-by-name-and-engine-test
   (testing "a source row whose (name, engine) pair matches an existing target Database
-            produces a :matched result whose :target-id is the existing row's id"
+            produces a :matched result whose :target-id is the existing row's id.
+            :source-id carries the portable id (the database name)."
     (mt/with-temp [:model/Database {target-id :id} {:name "imported-db" :engine :postgres}]
-      (is (= [{:source-id 99 :target-id target-id :status :matched}]
+      (is (= [{:source-id "imported-db" :target-id target-id :status :matched}]
              (into [] (processors/process-databases!
-                       [[1 {:id 99 :name "imported-db" :engine "postgres"}]])))))))
+                       [[1 {:name "imported-db" :engine "postgres"}]])))))))
 
 (deftest process-databases-emits-no-match-when-name-or-engine-differs-test
   (testing "an unmatched row emits a :no-match result with line attribution and a
             human-readable detail string. Phase 1 is non-fatal — the loader logs and
             skips dependents rather than aborting boot."
     (let [[result] (into [] (processors/process-databases!
-                             [[7 {:id 999 :name "no-such-db-zzz" :engine "h2"}]]))]
-      (is (= 999 (:source-id result)))
+                             [[7 {:name "no-such-db-zzz" :engine "h2"}]]))]
+      (is (= "no-such-db-zzz" (:source-id result)))
       (is (= :no-match (:status result)))
       (is (= 7 (:line result)))
       (is (string? (:detail result)))
@@ -43,23 +45,24 @@
     (mt/with-temp [:model/Database {pg-id :id} {:name "shared-name-test" :engine :postgres}
                    :model/Database {h2-id :id} {:name "shared-name-test" :engine :h2}]
       (let [[r] (into [] (processors/process-databases!
-                          [[1 {:id 1 :name "shared-name-test" :engine "h2"}]]))]
+                          [[1 {:name "shared-name-test" :engine "h2"}]]))]
         (is (= h2-id (:target-id r)))
         (is (not= pg-id (:target-id r)))))))
 
 (deftest process-databases-validation-failure-throws-with-attribution-test
   (testing "a malformed row (missing required key) throws ex-info carrying
-            :kind :invalid_input, the file line number, and the row's source id —
-            the loader uses these for the boot-time error message"
+            :kind :invalid_input, the file line number, and the row's portable
+            source id (its :name) — the loader uses these for the boot-time error
+            message"
     (try
       (into [] (processors/process-databases!
-                [[42 {:id 99 :name "missing-engine"}]]))   ;; no :engine
+                [[42 {:name "missing-engine"}]]))   ;; no :engine
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (let [data (ex-data e)]
           (is (= :invalid_input (:kind data)))
           (is (= 42 (:line data)))
-          (is (= 99 (:source-id data))))))))
+          (is (= "missing-engine" (:source-id data))))))))
 
 (deftest process-databases-preserves-input-order-test
   (testing "results are in input order regardless of internal SELECT ordering or
@@ -67,12 +70,12 @@
     (mt/with-temp [:model/Database {a-id :id} {:name "order-a" :engine :postgres}
                    :model/Database {b-id :id} {:name "order-b" :engine :postgres}]
       (let [results (into [] (processors/process-databases!
-                              [[1 {:id 10 :name "order-b"        :engine "postgres"}]
-                               [2 {:id 20 :name "no-such-name-q" :engine "h2"}]
-                               [3 {:id 30 :name "order-a"        :engine "postgres"}]]))]
-        (is (= [10 20 30]                        (mapv :source-id results)))
-        (is (= [b-id nil a-id]                   (mapv :target-id results)))
-        (is (= [:matched :no-match :matched]     (mapv :status results)))))))
+                              [[1 {:name "order-b"        :engine "postgres"}]
+                               [2 {:name "no-such-name-q" :engine "h2"}]
+                               [3 {:name "order-a"        :engine "postgres"}]]))]
+        (is (= ["order-b" "no-such-name-q" "order-a"] (mapv :source-id results)))
+        (is (= [b-id nil a-id]                        (mapv :target-id results)))
+        (is (= [:matched :no-match :matched]          (mapv :status results)))))))
 
 (deftest process-databases-empty-batch-test
   (testing "empty input → empty output, no SQL, no exception"
@@ -83,35 +86,32 @@
             seq/iteration (the test path) without re-running the eager batch work"
     (mt/with-temp [:model/Database {target-id :id} {:name "stream-probe" :engine :postgres}]
       (let [result     (processors/process-databases!
-                        [[1 {:id 99 :name "stream-probe" :engine "postgres"}]])
+                        [[1 {:name "stream-probe" :engine "postgres"}]])
             via-reduce (reduce (fn [acc r] (assoc acc (:source-id r) (:target-id r))) {} result)
             via-seq    (vec (seq result))]
-        (is (= {99 target-id} via-reduce))
+        (is (= {"stream-probe" target-id} via-reduce))
         (is (= 1 (count via-seq)))))))
 
 ;;; ============================== process-tables ==============================
 
 (deftest process-tables-matches-by-db-schema-name-test
   (testing "a source row matching an existing target Table by (target-db-id, schema, name)
-            produces a :matched result with the existing row's id"
+            produces a :matched result with the existing row's id. :source-id carries the
+            portable table id [db-name schema name]."
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-match-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"}]
-      (let [db-id-map  {77 db-id}
-            [r] (into [] (processors/process-tables!
-                          [[1 {:id 501 :db_id 77 :schema "public" :name "orders"}]]
-                          db-id-map))]
-        (is (= {:source-id 501 :target-id tbl-id :status :matched} r))))))
+      (is (= [{:source-id ["tbl-match-db" "public" "orders"] :target-id tbl-id :status :matched}]
+             (into [] (processors/process-tables!
+                       [[1 {:db_id "tbl-match-db" :schema "public" :name "orders"}]])))))))
 
 (deftest process-tables-inserts-unmatched-test
   (testing "a source row with no existing target Table is bulk-inserted; the result
             carries :status :inserted and the new row exists in the appdb"
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-insert-db" :engine :postgres}]
-      (let [db-id-map {77 db-id}
-            [r]       (into [] (processors/process-tables!
-                                [[1 {:id 999 :db_id 77 :schema "public" :name "fresh-table"}]]
-                                db-id-map))
-            inserted  (t2/select-one :model/Table :id (:target-id r))]
-        (is (= 999 (:source-id r)))
+      (let [[r]      (into [] (processors/process-tables!
+                               [[1 {:db_id "tbl-insert-db" :schema "public" :name "fresh-table"}]]))
+            inserted (t2/select-one :model/Table :id (:target-id r))]
+        (is (= ["tbl-insert-db" "public" "fresh-table"] (:source-id r)))
         (is (= :inserted (:status r)))
         (is (some? (:target-id r)))
         (is (= db-id (:db_id inserted)))
@@ -125,13 +125,11 @@
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-patch-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
                                               :description "old description"}]
-      (let [db-id-map {77 db-id}]
-        (into [] (processors/process-tables!
-                  [[1 {:id 501 :db_id 77 :schema "public" :name "orders"
-                       :description "new description"}]]
-                  db-id-map))
-        (is (= "new description"
-               (:description (t2/select-one :model/Table :id tbl-id))))))))
+      (into [] (processors/process-tables!
+                [[1 {:db_id "tbl-patch-db" :schema "public" :name "orders"
+                     :description "new description"}]]))
+      (is (= "new description"
+             (:description (t2/select-one :model/Table :id tbl-id)))))))
 
 (deftest process-tables-leaves-target-description-untouched-when-source-has-none-test
   (testing "patch-on-match policy: when the source row has no description, the target
@@ -139,22 +137,18 @@
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-no-patch-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
                                               :description "preserved"}]
-      (let [db-id-map {77 db-id}]
-        (into [] (processors/process-tables!
-                  [[1 {:id 501 :db_id 77 :schema "public" :name "orders"}]]
-                  db-id-map))
-        (is (= "preserved"
-               (:description (t2/select-one :model/Table :id tbl-id))))))))
+      (into [] (processors/process-tables!
+                [[1 {:db_id "tbl-no-patch-db" :schema "public" :name "orders"}]]))
+      (is (= "preserved"
+             (:description (t2/select-one :model/Table :id tbl-id)))))))
 
-(deftest process-tables-emits-no-target-db-when-source-db-id-not-mapped-test
-  (testing "if the source row's db_id isn't in the loader-supplied db-id-map, the row
-            is reported as :no-target-db and no SQL runs for it. The loader logs WARN
-            and skips dependent fields."
-    (let [db-id-map {77 1234}
-          [r]       (into [] (processors/process-tables!
-                              [[5 {:id 501 :db_id 999 :schema "public" :name "orders"}]]
-                              db-id-map))]
-      (is (= 501 (:source-id r)))
+(deftest process-tables-emits-no-target-db-when-source-db-id-does-not-resolve-test
+  (testing "if the source row's :db_id (db name) doesn't resolve to a target Database,
+            the row is reported as :no-target-db and no further SQL runs for it. The
+            loader logs WARN and skips dependent fields."
+    (let [[r] (into [] (processors/process-tables!
+                        [[5 {:db_id "no-such-db-zzz" :schema "public" :name "orders"}]]))]
+      (is (= ["no-such-db-zzz" "public" "orders"] (:source-id r)))
       (is (= :no-target-db (:status r)))
       (is (= 5 (:line r)))
       (is (string? (:detail r)))
@@ -165,10 +159,8 @@
             whose schema column is NULL"
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-nil-schema-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema nil :name "no-schema-tbl"}]
-      (let [db-id-map {77 db-id}
-            [r]       (into [] (processors/process-tables!
-                                [[1 {:id 501 :db_id 77 :name "no-schema-tbl"}]]
-                                db-id-map))]
+      (let [[r] (into [] (processors/process-tables!
+                          [[1 {:db_id "tbl-nil-schema-db" :name "no-schema-tbl"}]]))]
         (is (= :matched (:status r)))
         (is (= tbl-id (:target-id r)))))))
 
@@ -178,12 +170,10 @@
             data_layer=internal — these would normally come from :model/Table's insert hooks
             but we bypass those (see comment at the call site about set-new-table-permissions!
             and Postgres lock exhaustion)"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-defaults-db" :engine :postgres}]
-      (let [db-id-map {77 db-id}
-            [r]       (into [] (processors/process-tables!
-                                [[1 {:id 501 :db_id 77 :schema "public" :name "user_profiles"}]]
-                                db-id-map))
-            row       (t2/select-one :model/Table :id (:target-id r))]
+    (mt/with-temp [:model/Database {_ :id} {:name "tbl-defaults-db" :engine :postgres}]
+      (let [[r] (into [] (processors/process-tables!
+                          [[1 {:db_id "tbl-defaults-db" :schema "public" :name "user_profiles"}]]))
+            row (t2/select-one :model/Table :id (:target-id r))]
         (is (= true                (:active row)))
         (is (= "complete"          (:initial_sync_status row)))
         (is (= :internal           (:data_layer row))
@@ -193,261 +183,366 @@
 
 (deftest process-tables-validation-failure-throws-with-attribution-test
   (testing "a malformed row throws ex-info with :kind :invalid_input, the line number,
-            and the row's source id"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-validate-db" :engine :postgres}]
-      (let [db-id-map {77 db-id}]
-        (try
-          (into [] (processors/process-tables!
-                    [[42 {:id 501 :db_id 77 :schema "public"}]]   ;; missing :name
-                    db-id-map))
-          (is false "should have thrown")
-          (catch clojure.lang.ExceptionInfo e
-            (let [data (ex-data e)]
-              (is (= :invalid_input (:kind data)))
-              (is (= 42 (:line data)))
-              (is (= 501 (:source-id data))))))))))
+            and the row's portable source id"
+    (mt/with-temp [:model/Database {_ :id} {:name "tbl-validate-db" :engine :postgres}]
+      (try
+        (into [] (processors/process-tables!
+                  [[42 {:db_id "tbl-validate-db" :schema "public"}]]))   ;; missing :name
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (= :invalid_input (:kind data)))
+            (is (= 42 (:line data)))
+            (is (= ["tbl-validate-db" "public" nil] (:source-id data))
+                "portable source id derived from (:db_id :schema :name) — :name is nil since it's missing")))))))
 
 (deftest process-tables-preserves-input-order-test
   (testing "results are in input order regardless of internal SELECT/INSERT ordering or
             which rows match vs insert vs miss"
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-order-db" :engine :postgres}
                    :model/Table {existing :id} {:db_id db-id :schema "public" :name "existing"}]
-      (let [db-id-map {77 db-id}
-            results   (into [] (processors/process-tables!
-                                [[1 {:id 10 :db_id 77 :schema "public" :name "existing"}]
-                                 [2 {:id 20 :db_id 99 :schema "public" :name "no-target-db-row"}]
-                                 [3 {:id 30 :db_id 77 :schema "public" :name "fresh-1"}]]
-                                db-id-map))]
-        (is (= [10 20 30]                                  (mapv :source-id results)))
-        (is (= [:matched :no-target-db :inserted]          (mapv :status results)))
-        (is (= existing                                    (:target-id (nth results 0))))
-        (is (= nil                                         (:target-id (nth results 1))))
-        (is (some?                                         (:target-id (nth results 2))))))))
+      (let [results (into [] (processors/process-tables!
+                              [[1 {:db_id "tbl-order-db" :schema "public" :name "existing"}]
+                               [2 {:db_id "no-such-db-zzz" :schema "public" :name "no-target-db-row"}]
+                               [3 {:db_id "tbl-order-db" :schema "public" :name "fresh-1"}]]))]
+        (is (= [["tbl-order-db" "public" "existing"]
+                ["no-such-db-zzz" "public" "no-target-db-row"]
+                ["tbl-order-db" "public" "fresh-1"]]            (mapv :source-id results)))
+        (is (= [:matched :no-target-db :inserted]               (mapv :status results)))
+        (is (= existing                                         (:target-id (nth results 0))))
+        (is (= nil                                              (:target-id (nth results 1))))
+        (is (some?                                              (:target-id (nth results 2))))))))
 
 (deftest process-tables-empty-batch-test
   (testing "empty input → empty output"
-    (is (= [] (into [] (processors/process-tables! [] {}))))))
+    (is (= [] (into [] (processors/process-tables! []))))))
 
-;;; ======================== process-fields-insert-pass ========================
+;;; ======================== process-fields! ========================
 ;;;
-;;; Tuple shape: `[ln row resolved-parent-id-or-nil]`. The loader has already
-;;; (a) skipped rows whose source id is in the field id-map, and
-;;; (b) resolved each row's source `parent_id` to a target id via the field
-;;; id-map (or supplied nil for root fields). The processor remaps `table_id`
-;;; via the supplied `table-id-map` and does the SQL.
+;;; Tuple shape: `[ln row]`. Bare batches — the processor self-resolves portable
+;;; `:table_id` and `:parent_id` references via batched natural-key SELECTs and
+;;; inserts placeholder stubs for missing parents per §11c.
 
-(deftest process-fields-insert-pass-inserts-root-field-test
-  (testing "a root field row (resolved-parent-id = nil) is inserted with
-            parent_id = NULL, is_defective_duplicate = FALSE, and
-            fk_target_field_id = NULL — the §11a multi-pass design's invariants"
+(deftest process-fields-inserts-root-field-test
+  (testing "a root field (no :parent_id) is inserted with parent_id=NULL,
+            is_defective_duplicate=FALSE, fk_target_field_id=NULL"
     (mt/with-temp [:model/Database {db-id :id} {:name "fld-root-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "users"}]
-      (let [table-id-map {77 tbl-id}
-            batch        [[1 {:id 9001 :table_id 77 :name "zip"
-                              :base_type "type/Text" :database_type "text"} nil]]
-            [r]          (into [] (processors/process-fields-insert-pass! batch table-id-map))
-            row          (t2/select-one :model/Field :id (:target-id r))]
-        (is (= 9001 (:source-id r)))
+      (let [batch  [[1 {:table_id ["fld-root-db" "public" "users"]
+                        :name "zip"
+                        :base_type "type/Text"
+                        :database_type "text"}]]
+            [r]    (into [] (processors/process-fields! batch))
+            row    (t2/select-one :model/Field :id (:target-id r))]
+        (is (= ["fld-root-db" "public" "users" "zip"] (:source-id r)))
         (is (= :inserted (:status r)))
         (is (= tbl-id (:table_id row)))
         (is (= "zip" (:name row)))
         (is (nil? (:parent_id row)))
         (is (nil? (:fk_target_field_id row))
             "fk_target_field_id stays NULL during phase 3; phase 4 fills it in")
-        ;; is_defective_duplicate is stripped on read by :model/Field's hooks; query the
-        ;; raw column to verify the §11a invariant — multi-pass-by-depth must NOT use the
-        ;; defective-duplicate exemption to dodge the unique constraint.
         (is (= false
                (:is_defective_duplicate
                 (first (t2/query ["SELECT is_defective_duplicate FROM metabase_field WHERE id = ?"
                                   (:target-id r)]))))
-            "phase 3 must insert with is_defective_duplicate=FALSE (the new design invariant)")))))
+            "phase 3 must insert with is_defective_duplicate=FALSE")))))
 
-(deftest process-fields-insert-pass-inserts-nested-field-test
-  (testing "a nested field row (resolved-parent-id = int) is inserted with
-            parent_id = the resolved id"
+(deftest process-fields-inserts-nested-field-test
+  (testing "a nested field with :parent_id pointing at an existing parent inserts
+            with parent_id = the resolved target id; nfc_path stores the parent
+            ancestry"
     (mt/with-temp [:model/Database {db-id :id} {:name "fld-nested-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}
                    :model/Field {parent-id :id} {:table_id tbl-id :name "address"
                                                  :base_type "type/Structured"}]
-      (let [table-id-map {77 tbl-id}
-            batch        [[1 {:id 9002 :table_id 77 :name "zip" :parent_id 8000
-                              :base_type "type/Text" :database_type "text"}
-                           parent-id]]                              ;; <- loader-resolved
-            [r]          (into [] (processors/process-fields-insert-pass! batch table-id-map))
-            row          (t2/select-one :model/Field :id (:target-id r))]
+      (let [batch [[1 {:table_id ["fld-nested-db" "public" "events"]
+                       :name "zip"
+                       :parent_id ["fld-nested-db" "public" "events" "address"]
+                       :base_type "type/Text"
+                       :database_type "text"}]]
+            [r]   (into [] (processors/process-fields! batch))
+            row   (t2/select-one :model/Field :id (:target-id r))]
         (is (= :inserted (:status r)))
         (is (= parent-id (:parent_id row))
-            "parent_id is set to the loader-resolved target id, not the source value")))))
+            "parent_id resolves to the existing parent's int id via natural-key SELECT")
+        (is (= ["address"] (json/decode (:nfc_path
+                                         (first (t2/query ["SELECT nfc_path FROM metabase_field WHERE id = ?"
+                                                           (:target-id r)])))))
+            "nfc_path stores the parent ancestry chain (just [\"address\"] for a depth-1 nesting)")))))
 
-(deftest process-fields-insert-pass-matches-existing-root-test
+(deftest process-fields-matches-existing-root-test
   (testing "a source root field whose (target-table-id, name, parent_id=NULL) triple
-            already exists on the target produces :matched with the existing id; no insert"
-    (mt/with-temp [:model/Database {db-id :id}        {:name "fld-mr-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}       {:db_id db-id :name "t"}
-                   :model/Field    {existing-id :id}  {:table_id tbl-id :name "zip"
-                                                       :base_type "type/Text"}]
-      (let [table-id-map {77 tbl-id}
-            batch        [[1 {:id 9001 :table_id 77 :name "zip" :base_type "type/Text"} nil]]
-            [r]          (into [] (processors/process-fields-insert-pass! batch table-id-map))]
+            already exists produces :matched with the existing id; no insert"
+    (mt/with-temp [:model/Database {db-id :id}       {:name "fld-mr-db" :engine :postgres}
+                   :model/Table    {tbl-id :id}      {:db_id db-id :schema "public" :name "t"}
+                   :model/Field    {existing-id :id} {:table_id tbl-id :name "zip"
+                                                      :base_type "type/Text"}]
+      (let [batch [[1 {:table_id ["fld-mr-db" "public" "t"]
+                       :name "zip"
+                       :base_type "type/Text"}]]
+            [r]   (into [] (processors/process-fields! batch))]
         (is (= :matched (:status r)))
         (is (= existing-id (:target-id r)))))))
 
-(deftest process-fields-insert-pass-matches-existing-nested-test
-  (testing "a source nested field whose (target-table-id, name, target-parent-id) triple
-            already exists produces :matched with the existing id"
-    (mt/with-temp [:model/Database {db-id :id}        {:name "fld-mn-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}       {:db_id db-id :name "t"}
-                   :model/Field    {parent-id :id}    {:table_id tbl-id :name "address"
-                                                       :base_type "type/Structured"}
-                   :model/Field    {existing-id :id}  {:table_id tbl-id :name "zip"
-                                                       :parent_id parent-id
-                                                       :base_type "type/Text"}]
-      (let [table-id-map {77 tbl-id}
-            batch        [[1 {:id 9001 :table_id 77 :name "zip" :parent_id 8000
-                              :base_type "type/Text"}
-                           parent-id]]
-            [r]          (into [] (processors/process-fields-insert-pass! batch table-id-map))]
+(deftest process-fields-matches-existing-nested-test
+  (testing "a source nested field whose (target-table-id, name, target-parent-id)
+            triple already exists produces :matched with the existing id"
+    (mt/with-temp [:model/Database {db-id :id}       {:name "fld-mn-db" :engine :postgres}
+                   :model/Table    {tbl-id :id}      {:db_id db-id :schema "public" :name "t"}
+                   :model/Field    {parent-id :id}   {:table_id tbl-id :name "address"
+                                                      :base_type "type/Structured"}
+                   :model/Field    {existing-id :id} {:table_id tbl-id :name "zip"
+                                                      :parent_id parent-id
+                                                      :nfc_path (json/encode ["address"])
+                                                      :base_type "type/Text"}]
+      (let [batch [[1 {:table_id ["fld-mn-db" "public" "t"]
+                       :name "zip"
+                       :parent_id ["fld-mn-db" "public" "t" "address"]
+                       :base_type "type/Text"}]]
+            [r]   (into [] (processors/process-fields! batch))]
         (is (= :matched (:status r)))
         (is (= existing-id (:target-id r)))))))
 
-(deftest process-fields-insert-pass-patches-metadata-on-match-test
-  (testing "patch-on-match policy (§10c): when a matched target field exists and the
-            source row carries description / semantic_type / effective_type /
-            coercion_strategy, the existing target's columns are updated.
-            parent_id and fk_target_field_id are NEVER patched on match."
-    (mt/with-temp [:model/Database {db-id :id}      {:name "fld-patch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}     {:db_id db-id :name "t"}
-                   :model/Field    {fld-id :id}     {:table_id tbl-id :name "zip"
-                                                     :base_type "type/Text"
-                                                     :description "old"
-                                                     :semantic_type "type/Quantity"}]
-      (let [table-id-map {77 tbl-id}]
-        (into [] (processors/process-fields-insert-pass!
-                  [[1 {:id 9001 :table_id 77 :name "zip"
-                       :base_type "type/Text"
-                       :description "new desc"
-                       :semantic_type "type/ZipCode"
-                       :effective_type "type/Text"
-                       :coercion_strategy "Coercion/String->Float"}
-                    nil]]
-                  table-id-map))
-        (let [row (t2/select-one :model/Field :id fld-id)]
-          (is (= "new desc"                 (:description row)))
-          (is (= :type/ZipCode              (:semantic_type row)))
-          (is (= :type/Text                 (:effective_type row)))
-          (is (= :Coercion/String->Float    (:coercion_strategy row))))))))
+(deftest process-fields-clobbers-metadata-on-match-test
+  (testing "clobber-on-match (§11b): when the row matches an existing target, the
+            full metadata payload (description, semantic_type, effective_type,
+            coercion_strategy, base_type, database_type, plus active=true) is
+            written. parent_id and fk_target_field_id are not touched."
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-clobber-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field    {fld-id :id} {:table_id tbl-id :name "zip"
+                                                 :base_type "type/Text"
+                                                 :description "old"
+                                                 :semantic_type "type/Quantity"}]
+      (into [] (processors/process-fields!
+                [[1 {:table_id ["fld-clobber-db" "public" "t"]
+                     :name "zip"
+                     :base_type "type/Text"
+                     :description "new desc"
+                     :semantic_type "type/ZipCode"
+                     :effective_type "type/Text"
+                     :coercion_strategy "Coercion/String->Float"}]]))
+      (let [row (t2/select-one :model/Field :id fld-id)]
+        (is (= "new desc"              (:description row)))
+        (is (= :type/ZipCode           (:semantic_type row)))
+        (is (= :type/Text              (:effective_type row)))
+        (is (= :Coercion/String->Float (:coercion_strategy row)))
+        (is (= true                    (:active row)))))))
 
-(deftest process-fields-insert-pass-leaves-target-untouched-when-source-has-no-metadata-test
-  (testing "patch-on-match policy: when the source row carries none of the writable
-            metadata keys (no description, no semantic_type, etc.), the matched
-            target row's columns are left intact (no UPDATE issued)"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fld-no-patch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :name "t"}
-                   :model/Field    {fld-id :id}   {:table_id tbl-id :name "zip"
-                                                   :base_type "type/Text"
-                                                   :description "preserved"
-                                                   :semantic_type "type/ZipCode"}]
-      (let [table-id-map {77 tbl-id}]
-        (into [] (processors/process-fields-insert-pass!
-                  [[1 {:id 9001 :table_id 77 :name "zip" :base_type "type/Text"} nil]]
-                  table-id-map))
-        (let [row (t2/select-one :model/Field :id fld-id)]
-          (is (= "preserved"      (:description row)))
-          (is (= :type/ZipCode    (:semantic_type row))))))))
+(deftest process-fields-clobber-skips-cols-source-omits-test
+  (testing "when the source row omits an optional metadata key, that column on the
+            matched target is preserved (clobber writes only what the source supplies,
+            never NULL-blasts existing values)"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-no-patch-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field    {fld-id :id} {:table_id tbl-id :name "zip"
+                                                 :base_type "type/Text"
+                                                 :description "preserved"
+                                                 :semantic_type "type/ZipCode"}]
+      (into [] (processors/process-fields!
+                [[1 {:table_id ["fld-no-patch-db" "public" "t"]
+                     :name "zip"
+                     :base_type "type/Text"}]]))
+      (let [row (t2/select-one :model/Field :id fld-id)]
+        (is (= "preserved"   (:description row)))
+        (is (= :type/ZipCode (:semantic_type row)))))))
 
-(deftest process-fields-insert-pass-emits-no-target-table-when-table-id-not-mapped-test
-  (testing "if the source row's table_id has no entry in table-id-map, the row is
-            reported as :no-target-table and no SQL runs for it. The loader logs WARN
-            and skips."
-    (let [table-id-map {77 1234}
-          [r] (into [] (processors/process-fields-insert-pass!
-                        [[5 {:id 9001 :table_id 999 :name "zip" :base_type "type/Text"} nil]]
-                        table-id-map))]
-      (is (= 9001 (:source-id r)))
+(deftest process-fields-emits-no-target-table-when-table-id-doesnt-resolve-test
+  (testing "if the source row's :table_id portable triple doesn't match any target,
+            the row is reported as :no-target-table and no SQL runs for it"
+    (let [[r] (into [] (processors/process-fields!
+                        [[5 {:table_id ["no-such-db-zzz" "public" "orders"]
+                             :name "zip"
+                             :base_type "type/Text"}]]))]
+      (is (= ["no-such-db-zzz" "public" "orders" "zip"] (:source-id r)))
       (is (= :no-target-table (:status r)))
       (is (= 5 (:line r)))
       (is (string? (:detail r)))
       (is (not (contains? r :target-id))))))
 
-(deftest process-fields-insert-pass-validation-failure-throws-with-attribution-test
-  (testing "a malformed field row (missing required :base_type) throws ex-info with
-            :kind :invalid_input, the line number, and the row's source id"
+(deftest process-fields-validation-failure-throws-with-attribution-test
+  (testing "a malformed field row (missing required :base_type) throws ex-info
+            with :kind :invalid_input, the line number, and the row's portable id"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fld-validate-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :name "t"}]
-      (let [table-id-map {77 tbl-id}]
-        (try
-          (into [] (processors/process-fields-insert-pass!
-                    [[42 {:id 9001 :table_id 77 :name "zip"} nil]]   ;; missing :base_type
-                    table-id-map))
-          (is false "should have thrown")
-          (catch clojure.lang.ExceptionInfo e
-            (let [data (ex-data e)]
-              (is (= :invalid_input (:kind data)))
-              (is (= 42 (:line data)))
-              (is (= 9001 (:source-id data))))))))))
+                   :model/Table    {_ :id}      {:db_id db-id :schema "public" :name "t"}]
+      (try
+        (into [] (processors/process-fields!
+                  [[42 {:table_id ["fld-validate-db" "public" "t"]
+                        :name "zip"}]]))   ;; missing :base_type
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (= :invalid_input (:kind data)))
+            (is (= 42 (:line data)))
+            (is (= ["fld-validate-db" "public" "t" "zip"] (:source-id data)))))))))
 
-(deftest process-fields-insert-pass-preserves-input-order-test
+(deftest process-fields-preserves-input-order-test
   (testing "results are in input order regardless of which rows match, insert, or miss"
     (mt/with-temp [:model/Database {db-id :id}    {:name "fld-order-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :name "t"}
+                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {existing :id} {:table_id tbl-id :name "existing"
                                                    :base_type "type/Text"}]
-      (let [table-id-map {77 tbl-id}
-            results (into [] (processors/process-fields-insert-pass!
-                              [[1 {:id 10 :table_id 77 :name "existing"
-                                   :base_type "type/Text" :database_type "text"} nil]
-                               [2 {:id 20 :table_id 99 :name "no-tbl"
-                                   :base_type "type/Text" :database_type "text"} nil]
-                               [3 {:id 30 :table_id 77 :name "fresh-1"
-                                   :base_type "type/Text" :database_type "text"} nil]]
-                              table-id-map))]
-        (is (= [10 20 30]                                       (mapv :source-id results)))
-        (is (= [:matched :no-target-table :inserted]            (mapv :status results)))
-        (is (= existing                                         (:target-id (nth results 0))))))))
+      (let [results (into [] (processors/process-fields!
+                              [[1 {:table_id ["fld-order-db" "public" "t"]
+                                   :name "existing"
+                                   :base_type "type/Text" :database_type "text"}]
+                               [2 {:table_id ["no-such-db-zzz" "public" "t"]
+                                   :name "no-tbl"
+                                   :base_type "type/Text" :database_type "text"}]
+                               [3 {:table_id ["fld-order-db" "public" "t"]
+                                   :name "fresh-1"
+                                   :base_type "type/Text" :database_type "text"}]]))]
+        (is (= [["fld-order-db" "public" "t" "existing"]
+                ["no-such-db-zzz" "public" "t" "no-tbl"]
+                ["fld-order-db" "public" "t" "fresh-1"]]      (mapv :source-id results)))
+        (is (= [:matched :no-target-table :inserted]          (mapv :status results)))
+        (is (= existing                                       (:target-id (nth results 0))))))))
 
-(deftest process-fields-insert-pass-empty-batch-test
+(deftest process-fields-empty-batch-test
   (testing "empty input → empty output"
-    (is (= [] (into [] (processors/process-fields-insert-pass! [] {}))))))
+    (is (= [] (into [] (processors/process-fields! []))))))
 
-;;; ======================== process-fields-fk-finalize ========================
-;;;
-;;; Tuple shape: `[ln row resolved-target-id resolved-fk-target-id]`. The loader has
-;;; (a) skipped rows whose `:fk_target_field_id` is null/omitted, and
-;;; (b) resolved both the row's own source id AND its `fk_target_field_id` to target
-;;;     ids via the field id-map. Both resolved values are guaranteed non-null;
-;;;     misses are detected by the loader and hard-fail per §10 (corrupt file).
-;;;
-;;; The processor's only responsibilities: validate the row, build a single batched
-;;; UPDATE that sets fk_target_field_id on every row in the batch.
+;;; ---------- stub-path tests (§11c) ----------
 
-(deftest process-fields-fk-finalize-writes-fk-target-field-id-test
+(deftest process-fields-stub-row?-predicate-test
+  (testing "stub-row? identifies rows by the :database_type sentinel \"__stub__\""
+    (is (true?  (processors/stub-row? {:database_type "__stub__"})))
+    (is (false? (processors/stub-row? {:database_type "text"})))
+    (is (false? (processors/stub-row? {})))
+    (is (true?  (processors/stub-row? {:database_type "__stub__" :base_type :type/*}))
+        ":base_type is keywordized by :model/Field's reader; stub-row? doesn't depend on it")))
+
+(deftest process-fields-stubs-orphan-parent-test
+  (testing "a child whose :parent_id points at a parent NOT in the file (and not yet
+            in target appdb) results in a placeholder stub row for the parent —
+            active=false, base_type=type/*, database_type=__stub__, nfc_path=NULL"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-orph-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      (let [batch [[1 {:table_id ["fld-orph-db" "public" "t"]
+                       :name "zip"
+                       :parent_id ["fld-orph-db" "public" "t" "orphan-parent"]
+                       :base_type "type/Text"
+                       :database_type "text"}]]
+            [r]   (into [] (processors/process-fields! batch))
+            child-row  (t2/select-one :model/Field :id (:target-id r))
+            parent-row (t2/select-one :model/Field :table_id tbl-id :name "orphan-parent")]
+        (is (= :inserted (:status r)))
+        (is (some? parent-row) "parent stub was created")
+        (is (processors/stub-row? parent-row) "parent row is identified as a stub")
+        (is (= false (:active parent-row)) "stub is inactive")
+        (is (nil? (:parent_id parent-row)) "stub for depth-1 missing parent has parent_id=NULL")
+        (is (= (:id parent-row) (:parent_id child-row))
+            "child's parent_id points at the freshly-inserted stub")))))
+
+(deftest process-fields-stubs-then-real-row-clobbers-stub-in-same-batch-test
+  (testing "a batch containing a child BEFORE its parent — child stubs the parent,
+            then when the parent's real row is processed in the same batch, the
+            stub is matched and clobbered to active=true with the real metadata.
+            Same int id throughout — the child's :parent_id stays valid."
+    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-stub-fill-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      ;; child row first, parent second — child stubs the parent on its way through
+      (let [batch [[1 {:table_id ["fld-stub-fill-db" "public" "t"]
+                       :name "zip"
+                       :parent_id ["fld-stub-fill-db" "public" "t" "address"]
+                       :base_type "type/Text"
+                       :database_type "text"}]
+                   [2 {:table_id ["fld-stub-fill-db" "public" "t"]
+                       :name "address"
+                       :base_type "type/Structured"
+                       :database_type "json"
+                       :description "real description"}]]
+            results (into [] (processors/process-fields! batch))
+            parent-row (t2/select-one :model/Field :table_id tbl-id :name "address")]
+        (is (= [:inserted :matched] (mapv :status results))
+            "child got inserted; parent's real row matched the stub child created")
+        (is (false? (processors/stub-row? parent-row))
+            "after clobber, the parent is no longer marked as a stub")
+        (is (= true (:active parent-row))     "clobber flipped active=false to true")
+        (is (= :type/Structured (:base_type parent-row)) "base_type clobbered from type/* to real")
+        (is (= "json"          (:database_type parent-row)) "database_type clobbered from __stub__ to real")
+        (is (= "real description" (:description parent-row)))))))
+
+(deftest process-fields-stubs-three-deep-when-grandparent-missing-test
+  (testing "a child references a depth-3 parent path; both grandparent and parent
+            are missing in target → both get stubbed, grandparent first then parent"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-3deep-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      (let [batch [[1 {:table_id ["fld-3deep-db" "public" "t"]
+                       :name "zip"
+                       :parent_id ["fld-3deep-db" "public" "t" "outer" "inner"]
+                       :base_type "type/Text"
+                       :database_type "text"}]]
+            [r]   (into [] (processors/process-fields! batch))
+            grandparent (t2/select-one :model/Field :table_id tbl-id :name "outer")
+            parent      (t2/select-one :model/Field :table_id tbl-id :name "inner")
+            child       (t2/select-one :model/Field :id (:target-id r))]
+        (is (= :inserted (:status r)))
+        (is (some? grandparent) "depth-1 stub for grandparent was created")
+        (is (some? parent)      "depth-2 stub for parent was created")
+        (is (processors/stub-row? grandparent))
+        (is (processors/stub-row? parent))
+        (is (nil? (:parent_id grandparent)) "grandparent stub has parent_id=NULL (root)")
+        (is (= (:id grandparent) (:parent_id parent))
+            "parent stub's parent_id points at the grandparent stub")
+        (is (= (:id parent) (:parent_id child))
+            "child's parent_id points at the parent stub")))))
+
+(deftest process-fields-clobbers-pre-existing-stub-on-real-row-arrival-test
+  (testing "if target appdb starts with a stub from a prior import (or batch), the
+            real row's match query (no :active=true scope, §7) finds the stub,
+            and clobber flips it to active=true with real metadata"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-prior-stub-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field    {stub-id :id} {:table_id tbl-id :name "address"
+                                                  :base_type "type/*"
+                                                  :database_type "__stub__"
+                                                  :active false}]
+      (let [batch [[1 {:table_id ["fld-prior-stub-db" "public" "t"]
+                       :name "address"
+                       :base_type "type/Structured"
+                       :database_type "json"}]]
+            [r]   (into [] (processors/process-fields! batch))
+            row   (t2/select-one :model/Field :id stub-id)]
+        (is (= :matched (:status r))           "match found the inactive stub")
+        (is (= stub-id (:target-id r))         "same int id — no insert, just clobber")
+        (is (= true (:active row))             "stub flipped to active=true")
+        (is (= :type/Structured (:base_type row)) "base_type clobbered to real")
+        (is (= "json" (:database_type row))    "database_type clobbered from __stub__ to real")))))
+
+;;; ======================== process-fields-fk-resolve! ========================
+;;;
+;;; Tuple shape: `[ln row]`. Bare batches — the processor self-resolves both
+;;; the row's own portable id and its `:fk_target_field_id` portable id via
+;;; one batched natural-key SELECT, then issues a single VALUES-table UPDATE.
+
+(deftest process-fields-fk-resolve-writes-fk-target-field-id-test
   (testing "happy path: the target row's fk_target_field_id is updated to the
-            loader-resolved fk-target id"
+            resolved fk-target id (looked up by portable field id)"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fkfin-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :name "t"}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {tgt-fk :id} {:table_id tbl-id :name "fk-target"
                                                  :base_type "type/Integer"
                                                  :database_type "integer"}
                    :model/Field    {fld-id :id} {:table_id tbl-id :name "ref-field"
                                                  :base_type "type/Integer"
                                                  :database_type "integer"}]
-      (let [batch [[1 {:id 9001 :table_id 77 :name "ref-field"
+      (let [batch [[1 {:table_id ["fkfin-db" "public" "t"]
+                       :name "ref-field"
                        :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id 9999}
-                    fld-id tgt-fk]]
-            [r]   (into [] (processors/process-fields-fk-finalize! batch))]
-        (is (= {:source-id 9001 :target-id fld-id :status :updated} r))
+                       :fk_target_field_id ["fkfin-db" "public" "t" "fk-target"]}]]
+            [r]   (into [] (processors/process-fields-fk-resolve! batch))]
+        (is (= {:source-id ["fkfin-db" "public" "t" "ref-field"]
+                :target-id fld-id :status :updated}
+               r))
         (is (= tgt-fk
                (:fk_target_field_id (t2/select-one :model/Field :id fld-id))))))))
 
-(deftest process-fields-fk-finalize-only-touches-fk-target-field-id-column-test
-  (testing "the simplified phase-4 SQL (§11a) writes ONLY fk_target_field_id —
-            not parent_id, not is_defective_duplicate, not description or any other
-            metadata. This invariant is what lets phase 3 set the right values once
-            and trust them through phase 4."
+(deftest process-fields-fk-resolve-only-touches-fk-target-field-id-column-test
+  (testing "phase 4 writes ONLY fk_target_field_id — not parent_id, not metadata.
+            Phase 3 sets the right values once and trusts them through phase 4."
     (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-touch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :name "t"}
+                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {parent-id :id} {:table_id tbl-id :name "parent"
                                                     :base_type "type/Structured"
                                                     :database_type "json"}
@@ -456,15 +551,17 @@
                                                    :database_type "integer"}
                    :model/Field    {fld-id :id}   {:table_id tbl-id :name "child"
                                                    :parent_id parent-id
+                                                   :nfc_path (json/encode ["parent"])
                                                    :base_type "type/Text"
                                                    :database_type "text"
                                                    :description "untouched"
                                                    :semantic_type "type/ZipCode"}]
-      (let [batch [[1 {:id 9001 :table_id 77 :name "child"
+      (let [batch [[1 {:table_id ["fkfin-touch-db" "public" "t"]
+                       :name "child"
+                       :parent_id ["fkfin-touch-db" "public" "t" "parent"]
                        :base_type "type/Text" :database_type "text"
-                       :fk_target_field_id 9999}
-                    fld-id tgt-fk]]]
-        (into [] (processors/process-fields-fk-finalize! batch))
+                       :fk_target_field_id ["fkfin-touch-db" "public" "t" "fk-target"]}]]]
+        (into [] (processors/process-fields-fk-resolve! batch))
         (let [row (t2/select-one :model/Field :id fld-id)]
           (is (= tgt-fk            (:fk_target_field_id row)) "fk_target_field_id is set")
           (is (= parent-id         (:parent_id row))          "parent_id is preserved")
@@ -472,12 +569,11 @@
           (is (= :type/ZipCode     (:semantic_type row))      "semantic_type is preserved")
           (is (= "text"            (:database_type row))      "database_type is preserved"))))))
 
-(deftest process-fields-fk-finalize-batched-update-affects-all-rows-test
+(deftest process-fields-fk-resolve-batched-update-affects-all-rows-test
   (testing "a multi-row batch results in every row's fk_target_field_id being set
-            in a single batched UPDATE — the SQL uses a VALUES table with one
-            row per input"
+            in a single batched UPDATE via the VALUES-table pattern"
     (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-batch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :name "t"}
+                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {tgt-a :id}    {:table_id tbl-id :name "tgt-a"
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {tgt-b :id}    {:table_id tbl-id :name "tgt-b"
@@ -488,63 +584,77 @@
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {fld-3 :id}    {:table_id tbl-id :name "ref-3"
                                                    :base_type "type/Integer" :database_type "integer"}]
-      (let [batch [[1 {:id 91 :table_id 77 :name "ref-1"
+      (let [batch [[1 {:table_id ["fkfin-batch-db" "public" "t"] :name "ref-1"
                        :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id 81}
-                    fld-1 tgt-a]
-                   [2 {:id 92 :table_id 77 :name "ref-2"
+                       :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]
+                   [2 {:table_id ["fkfin-batch-db" "public" "t"] :name "ref-2"
                        :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id 82}
-                    fld-2 tgt-b]
-                   [3 {:id 93 :table_id 77 :name "ref-3"
+                       :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-b"]}]
+                   [3 {:table_id ["fkfin-batch-db" "public" "t"] :name "ref-3"
                        :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id 81}
-                    fld-3 tgt-a]]]
-        (into [] (processors/process-fields-fk-finalize! batch))
+                       :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]]]
+        (into [] (processors/process-fields-fk-resolve! batch))
         (is (= tgt-a (:fk_target_field_id (t2/select-one :model/Field :id fld-1))))
         (is (= tgt-b (:fk_target_field_id (t2/select-one :model/Field :id fld-2))))
         (is (= tgt-a (:fk_target_field_id (t2/select-one :model/Field :id fld-3))))))))
 
-(deftest process-fields-fk-finalize-validation-failure-throws-with-attribution-test
+(deftest process-fields-fk-resolve-validation-failure-throws-with-attribution-test
   (testing "a malformed row (missing required key) throws ex-info with :kind :invalid_input
-            and line attribution"
+            and the row's portable field id"
     (try
-      (into [] (processors/process-fields-fk-finalize!
-                [[42 {:id 9001 :table_id 77 :name "x"      ;; missing :base_type and :database_type
-                      :fk_target_field_id 9999}
-                  111 222]]))
+      (into [] (processors/process-fields-fk-resolve!
+                [[42 {:table_id ["fkfin-db" "public" "t"]
+                      :name "x"      ;; missing :base_type
+                      :fk_target_field_id ["fkfin-db" "public" "t" "y"]}]]))
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (let [data (ex-data e)]
           (is (= :invalid_input (:kind data)))
           (is (= 42 (:line data)))
-          (is (= 9001 (:source-id data))))))))
+          (is (= ["fkfin-db" "public" "t" "x"] (:source-id data))))))))
 
-(deftest process-fields-fk-finalize-empty-batch-test
+(deftest process-fields-fk-resolve-empty-batch-test
   (testing "empty input → empty output, no SQL"
-    (is (= [] (into [] (processors/process-fields-fk-finalize! []))))))
+    (is (= [] (into [] (processors/process-fields-fk-resolve! []))))))
 
-(deftest process-fields-fk-finalize-preserves-input-order-test
+(deftest process-fields-fk-resolve-passes-through-rows-without-fk-target-test
+  (testing "rows without :fk_target_field_id are passed through with :status :no-fk —
+            no SQL is run for them. The phase 4 batch typically arrives pre-filtered
+            by the loader, but the processor handles unfiltered batches defensively."
+    (mt/with-temp [:model/Database {db-id :id}  {:name "fkfin-no-fk-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field    {fld-id :id} {:table_id tbl-id :name "no-fk-here"
+                                                 :base_type "type/Text" :database_type "text"}]
+      (let [results (into [] (processors/process-fields-fk-resolve!
+                              [[1 {:table_id ["fkfin-no-fk-db" "public" "t"]
+                                   :name "no-fk-here"
+                                   :base_type "type/Text" :database_type "text"}]]))]
+        (is (= [{:source-id ["fkfin-no-fk-db" "public" "t" "no-fk-here"]
+                 :status :no-fk}]
+               results))
+        (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id fld-id)))
+            "no UPDATE was issued — column stays NULL")))))
+
+(deftest process-fields-fk-resolve-preserves-input-order-test
   (testing "results are in input order"
     (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-order-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :name "t"}
+                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {tgt :id}      {:table_id tbl-id :name "tgt"
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {a :id}        {:table_id tbl-id :name "a"
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {b :id}        {:table_id tbl-id :name "b"
                                                    :base_type "type/Integer" :database_type "integer"}]
-      (let [batch [[10 {:id 30 :table_id 77 :name "b"
+      (let [batch [[10 {:table_id ["fkfin-order-db" "public" "t"] :name "b"
                         :base_type "type/Integer" :database_type "integer"
-                        :fk_target_field_id 80}
-                    b tgt]
-                   [11 {:id 20 :table_id 77 :name "a"
+                        :fk_target_field_id ["fkfin-order-db" "public" "t" "tgt"]}]
+                   [11 {:table_id ["fkfin-order-db" "public" "t"] :name "a"
                         :base_type "type/Integer" :database_type "integer"
-                        :fk_target_field_id 80}
-                    a tgt]]
-            results (into [] (processors/process-fields-fk-finalize! batch))]
-        (is (= [30 20] (mapv :source-id results)))
-        (is (= [b a]   (mapv :target-id results)))))))
+                        :fk_target_field_id ["fkfin-order-db" "public" "t" "tgt"]}]]
+            results (into [] (processors/process-fields-fk-resolve! batch))]
+        (is (= [["fkfin-order-db" "public" "t" "b"]
+                ["fkfin-order-db" "public" "t" "a"]]   (mapv :source-id results)))
+        (is (= [b a]                                   (mapv :target-id results)))))))
 
 ;;; ============================ process-field-values ============================
 ;;;

@@ -6,40 +6,67 @@
 
   Shared between the file loader (`metabase.warehouses-rest.metadata-file-import`)
   and the pure batch processors (`metabase.warehouses-rest.metadata-import-core`)
-  so both agree on the per-line contract."
+  so both agree on the per-line contract.
+
+  Identifiers are **portable**: a database is identified by name; a table by
+  `[db-name schema-or-nil table-name]`; a field by `[db-name schema-or-nil
+  table-name & nfc-path leaf-name]` (length ≥ 4). The list types accept both
+  Clojure vectors (YAML parser output) and `java.util.ArrayList` (Jackson JSON
+  parser output) — Malli's `:tuple` rejects ArrayList, so the list shapes use
+  `[:fn ...]` predicates over `java.util.List`."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]))
 
+(defn- nilable-string? [x] (or (nil? x) (string? x)))
+
+(mr/def ::portable-database-id :string)
+
+(mr/def ::portable-table-id
+  [:fn {:error/message "must be a [db schema-or-nil table] tuple"}
+   (fn [x] (and (instance? java.util.List x)
+                (= 3 (.size ^java.util.List x))
+                (string? (.get ^java.util.List x 0))
+                (nilable-string? (.get ^java.util.List x 1))
+                (string? (.get ^java.util.List x 2))))])
+
+(mr/def ::portable-field-id
+  [:fn {:error/message "must be a [db schema-or-nil table & path] list of length >= 4 with string elements"}
+   (fn [x] (and (instance? java.util.List x)
+                (>= (.size ^java.util.List x) 4)
+                (string? (.get ^java.util.List x 0))
+                (nilable-string? (.get ^java.util.List x 1))
+                (every? string? (drop 2 x))))])
+
 (mr/def ::database-info
   [:map
-   [:id ::lib.schema.id/database]
    [:name :string]
    [:engine :string]])
 
 (mr/def ::table-info
   [:map
-   [:id ::lib.schema.id/table]
-   [:db_id ::lib.schema.id/database]
+   [:db_id ::portable-database-id]
    [:name :string]
    [:schema {:optional true} :string]
    [:description {:optional true} :string]])
 
 (mr/def ::field-info
   [:map
-   [:id ::lib.schema.id/field]
-   [:table_id ::lib.schema.id/table]
+   [:table_id ::portable-table-id]
    [:name :string]
-   [:parent_id {:optional true} ::lib.schema.id/field]
-   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
-   [:description {:optional true} :string]
    [:base_type :string]
+   [:parent_id {:optional true} ::portable-field-id]
+   [:fk_target_field_id {:optional true} ::portable-field-id]
+   [:description {:optional true} :string]
    [:database_type {:optional true} :string]
    [:effective_type {:optional true} :string]
    [:semantic_type {:optional true} :string]
    [:coercion_strategy {:optional true} :string]])
 
 (mr/def ::field-values-info
+  ;; NOTE: still in pre-pivot integer-id shape. Sub-project B's item 23B will
+  ;; rewrite `:field_id` to `::portable-field-id` once `GET /api/database/field-values`
+  ;; emits portable ids.
   [:map
    [:field_id ::lib.schema.id/field]
    ;; Declared as `java.util.List` rather than `[:sequential [:sequential :any]]` so the same
