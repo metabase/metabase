@@ -6,7 +6,6 @@ import * as Urls from "metabase/utils/urls";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
-import { AccessKeySection } from "./AccessKeySection";
 import { DatabaseSection } from "./DatabaseSection";
 import { SetupSection } from "./SetupSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
@@ -57,7 +56,6 @@ function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
       />
       <Stack gap="3.25rem">
         <DatabaseSection workspace={workspace} databases={databases} />
-        <AccessKeySection workspace={workspace} />
         <SetupSection workspace={workspace} />
       </Stack>
     </PageContainer>

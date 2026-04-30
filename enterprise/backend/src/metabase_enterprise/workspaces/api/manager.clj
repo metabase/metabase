@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -185,3 +186,17 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
+
+(api.macros/defendpoint :get "/:id/table-metadata/json"
+  :- [:map
+      [:status  [:= 200]]
+      [:headers [:map-of :string :string]]
+      [:body    :string]]
+  "Download the workspace's database/table metadata as a JSON file. Stub for now."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (ws/get-workspace id))
+  {:status  200
+   :headers {"Content-Type"        "application/json"
+             "Content-Disposition" "attachment; filename=\"table_metadata.json\""}
+   :body    (json/encode {})})
