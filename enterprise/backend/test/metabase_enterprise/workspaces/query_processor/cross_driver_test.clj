@@ -146,12 +146,16 @@
 
 (defn- with-remapping!
   "Insert a TableRemapping row pointing canonical -> workspace, run `body-fn`,
-   delete the row on the way out."
+   delete the row on the way out.
+
+   Nil schema (MySQL/ClickHouse) is normalized to the empty-string sentinel so the
+   row can be persisted regardless of warehouse. The QP rewriter prunes the sentinel
+   before handing the key to SQLGlot."
   [from-schema from-name to-schema to-name body-fn]
   (let [{remap-id :id} (t2/insert-returning-instance!
                         :model/TableRemapping
                         {:database_id     (mt/id)
-                         :from_schema     from-schema
+                         :from_schema     (or from-schema "")
                          :from_table_name from-name
                          :to_schema       to-schema
                          :to_table_name   to-name})]

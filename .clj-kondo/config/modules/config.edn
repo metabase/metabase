@@ -3453,9 +3453,11 @@
   enterprise/workspaces
   {:team "Graphy"
    :api  #{}
-   :uses #{driver
+   :uses #{cache
+           driver
            lib
            models
+           permissions
            premium-features
            query-processor
            sql-tools

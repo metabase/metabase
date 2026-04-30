@@ -69,6 +69,13 @@
                               :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :sqlserver
+  [_driver]
+  ;; SQL Server emits `db.schema.table` (3-part) when crossing databases. Single-DB
+  ;; queries are typically `schema.table`, but workspace remap rows must be keyed
+  ;; on the more general 3-part shape.
+  [:db :schema])
+
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db :- ::lib.schema.metadata/database]
   (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]

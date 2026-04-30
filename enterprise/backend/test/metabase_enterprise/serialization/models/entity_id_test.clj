@@ -100,6 +100,10 @@
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
+    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
+    ;; tables to workspace-isolated copies. They aren't portable across instances and
+    ;; aren't included in serdes export/import.
+    :model/TableRemapping
     :model/Secret
     :model/Session
     :model/SupportAccessGrantLog
@@ -124,7 +128,6 @@
     :model/CloudMigration
     :model/Comment
     :model/CommentReaction
-    :model/TableRemapping
     :model/Workspace
     :model/WorkspaceDatabase})
 

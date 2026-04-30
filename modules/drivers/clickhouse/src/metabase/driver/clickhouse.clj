@@ -71,6 +71,14 @@
                               :window-functions/offset          false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :clickhouse
+  [_driver]
+  ;; ClickHouse emits 2-part `db.table`. Its "database" sits at the schema AST position
+  ;; (one level above the table) — same position SQLGlot stores in `Table.db`. Per
+  ;; [[driver/qualified-name-components]] this is `:schema`, NOT `:db` (which is reserved
+  ;; for catalog-level / 3-part identifiers like BigQuery's project).
+  [:schema])
+
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 

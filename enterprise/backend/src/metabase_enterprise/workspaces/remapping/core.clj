@@ -19,7 +19,11 @@
   (enabled-for-db?* [store db-id]
     "Returns true if `db-id` has any active workspace remappings.")
   (remappings-for-db* [store db-id]
-    "Returns remappings for `db-id` as {[from-schema from-table] [to-schema to-table], ...}."))
+    "Returns remappings for `db-id` as `{[from-db from-schema from-table] [to-db to-schema to-table], ...}`.
+
+     Each tuple is 3-wide. Empty-string `\"\"` in `from-db`/`from-schema`/`to-db`/`to-schema`
+     is the sentinel for \"this driver doesn't emit this level\" and is filtered out
+     before being handed to SQLGlot."))
 
 ;;; -------------------------------------------- App-DB Implementation ---------------------------------------------
 
@@ -30,8 +34,8 @@
   (remappings-for-db* [_ db-id]
     (into {}
           (map (fn [row]
-                 [[(:from_schema row) (:from_table_name row)]
-                  [(:to_schema row) (:to_table_name row)]]))
+                 [[(:from_db row) (:from_schema row) (:from_table_name row)]
+                  [(:to_db row) (:to_schema row) (:to_table_name row)]]))
           (t2/select :model/TableRemapping :database_id db-id))))
 
 (def app-db-store
@@ -41,17 +45,25 @@
 ;;; ----------------------------------------- Map-backed Implementation --------------------------------------------
 
 (defrecord MapRemappingStore [mappings]
-  ;; mappings is {db-id {[from-schema from-table] [to-schema to-table], ...}}
+  ;; mappings is {db-id {[from-db from-schema from-table] [to-db to-schema to-table], ...}}
+  ;; Tuples may be 2-wide for back-compat with existing tests; they're widened on read.
   RemappingStore
   (enabled-for-db?* [_ db-id]
     (boolean (seq (get mappings db-id))))
   (remappings-for-db* [_ db-id]
-    (get mappings db-id {})))
+    (into {}
+          (map (fn [[from to]]
+                 (let [widen #(if (= 2 (count %)) (into [""] %) %)]
+                   [(widen from) (widen to)])))
+          (get mappings db-id {}))))
 
 (defn map-store
   "Create a remapping store backed by a plain map. For testing.
 
-   Example:
+   Example (3-tuple keys, the canonical shape):
+     (map-store {1 {[\"\" \"public\" \"orders\"] [\"\" \"mb_iso\" \"orders\"]}})
+
+   Example (2-tuple keys, auto-widened with empty `db`):
      (map-store {1 {[\"public\" \"orders\"] [\"mb_iso\" \"orders\"]}})"
   [mappings]
   (->MapRemappingStore mappings))
@@ -79,7 +91,10 @@
 (defn remappings-for-db
   "Returns a map of remappings for `db-id`:
 
-     {[from-schema from-table] [to-schema to-table], ...}
+     {[from-db from-schema from-table] [to-db to-schema to-table], ...}
+
+   Each tuple is 3-wide. Empty-string `\"\"` in `from-db`/`from-schema`/`to-db`/`to-schema`
+   is the sentinel for \"this driver doesn't emit this level.\"
 
    Returns empty map if no remappings exist."
   [db-id]

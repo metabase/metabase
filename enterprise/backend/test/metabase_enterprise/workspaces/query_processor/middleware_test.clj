@@ -157,14 +157,27 @@
 
 (deftest build-table-replacements-test
   (testing "builds replacement map with raw identifiers (SQLGlot handles quoting per dialect)"
-    (let [remappings {["public" "orders"] ["mb_iso" "orders"]
-                      ["public" "users"]  ["mb_iso" "users"]}
+    (let [remappings {["" "public" "orders"] ["" "mb_iso" "orders"]
+                      ["" "public" "users"]  ["" "mb_iso" "users"]}
           result (#'ws.middleware/build-table-replacements remappings)]
       (is (= 2 (count result)))
+      ;; Empty-string sentinels are pruned before being handed to SQLGlot.
       (is (= {:schema "mb_iso" :table "orders"}
              (get result {:schema "public" :table "orders"})))
       (is (= {:schema "mb_iso" :table "users"}
-             (get result {:schema "public" :table "users"}))))))
+             (get result {:schema "public" :table "users"})))))
+
+  (testing "3-level remappings (BigQuery-style) preserve :db"
+    (let [remappings {["proj" "ds" "orders"] ["proj" "ws_ds" "orders"]}
+          result (#'ws.middleware/build-table-replacements remappings)]
+      (is (= {:db "proj" :schema "ws_ds" :table "orders"}
+             (get result {:db "proj" :schema "ds" :table "orders"})))))
+
+  (testing "schema-less drivers (MySQL-style) prune both :db and :schema"
+    (let [remappings {["" "" "orders"] ["" "ws_db" "orders"]}
+          result (#'ws.middleware/build-table-replacements remappings)]
+      (is (= {:schema "ws_db" :table "orders"}
+             (get result {:table "orders"}))))))
 
 ;;; -------------------------- Pre-sync ordering: to-side has no :model/Table yet ----------------------------------
 ;;;
@@ -410,3 +423,133 @@
                       "checkins card keeps its canonical reference")
                   (is (not (re-find #"(?i)ws_alice" sql))
                       "the workspace schema does not appear in the non-remapped card"))))))))))
+
+;;; ====================================== Cross-cardinality SQL rewrites =========================================
+;;;
+;;; Drivers vary in how many identifier levels they emit in compiled SQL:
+;;;   - cardinality 1 (MySQL-style):    `SELECT * FROM orders`
+;;;   - cardinality 2 (Postgres-style): `SELECT * FROM public.orders`
+;;;   - cardinality 3 (BigQuery-style): `SELECT * FROM proj.ds.orders`
+;;; Phase 2 has to handle each shape. These tests exercise the rewriter directly, sidestepping
+;;; the warehouse — they verify SQLGlot accepts our `{:db, :schema, :table}` keys and emits
+;;; correct output for every cardinality.
+
+;;; These tests use a synthetic db-id and bind `*driver*` directly so we exercise the
+;;; rewriter against arbitrary dialects without triggering test-data fixtures for
+;;; warehouses we don't intend to provision (e.g. binding `*driver* :mysql` while using
+;;; `(mt/id)` would coerce mt to spin up a MySQL container).
+(def ^:private synthetic-db-id 99999)
+
+(defn- rewrite-via-phase-2-with-driver
+  "Phase 2 rewrite for an arbitrary driver and remappings, against a synthetic db-id."
+  [driver remappings sql]
+  (mt/with-premium-features #{:workspaces}
+    (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {synthetic-db-id remappings})
+              driver/*driver*                driver]
+      (let [called-with (atom nil)
+            mock-qp    (fn [query _rff] (reset! called-with query) :ok)
+            wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)]
+        (wrapped {:database synthetic-db-id :qp/compiled {:query sql}} identity)
+        (get-in @called-with [:qp/compiled :query])))))
+
+(deftest phase-2-cardinality-1-mysql-bare-table-test
+  (testing "MySQL-style: bare-table SQL with empty-string sentinels in the remapping rewrites correctly"
+    (let [rewritten (rewrite-via-phase-2-with-driver
+                     :mysql
+                     {["" "" "orders"] ["" "ws_db" "orders"]}
+                     "SELECT * FROM orders")]
+      (is (re-find #"(?i)ws_db" rewritten)
+          "the to-side schema (db-as-namespace) appears in the rewritten SQL")
+      (is (re-find #"(?i)orders" rewritten)))))
+
+(deftest phase-2-cardinality-2-postgres-schema-table-test
+  (testing "Postgres-style: schema.table SQL with the from_db sentinel pruned"
+    (let [rewritten (rewrite-via-phase-2-with-driver
+                     :postgres
+                     {["" "public" "orders"] ["" "ws_alice" "orders"]}
+                     "SELECT * FROM public.orders")]
+      (is (re-find #"(?i)ws_alice" rewritten))
+      (is (not (re-find #"(?i)public\.orders" rewritten))
+          "the canonical schema-qualified reference is gone"))))
+
+(deftest phase-2-cardinality-3-bigquery-project-dataset-table-test
+  (testing "BigQuery-style: project.dataset.table SQL preserves the project, swaps the dataset"
+    (let [rewritten (rewrite-via-phase-2-with-driver
+                     :bigquery-cloud-sdk
+                     {["proj" "ds" "orders"] ["proj" "ws_ds" "orders"]}
+                     "SELECT * FROM `proj`.`ds`.`orders`")]
+      (is (re-find #"(?i)ws_ds" rewritten)
+          "the workspace dataset appears in the rewritten SQL")
+      (is (re-find #"(?i)proj" rewritten)
+          "the project (catalog) is preserved")
+      (is (not (re-find #"`ds`\.`orders`" rewritten))
+          "the canonical dataset.table is gone"))))
+
+;;; =========== T0.1 — native-origin queries: :native :query must be rewritten ============
+;;;
+;;; For native-origin queries `:native` is populated at preprocess time. The rename in
+;;; metabase.query-processor.execute/run only sets `:native` from `:qp/compiled` when
+;;; `:native` is absent — for native-origin queries it's already set, so without explicit
+;;; rewriting of `:native` here, the original (canonical) SQL would hit the warehouse.
+
+(deftest phase-2-rewrites-native-key-test
+  (testing "Phase 2 rewrites :native :query for native-origin queries (security boundary)"
+    (mt/with-premium-features #{:workspaces}
+      (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                                {synthetic-db-id
+                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                driver/*driver*                :h2]
+        (let [called-with (atom nil)
+              mock-qp    (fn [query _rff] (reset! called-with query) :ok)
+              wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+              ;; Native-origin: both :native and :qp/compiled are populated by preprocess.
+              query      {:database    synthetic-db-id
+                          :native      {:query "SELECT * FROM PUBLIC.VENUES"}
+                          :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
+          (wrapped query identity)
+          (testing ":qp/compiled is rewritten"
+            (is (re-find #"(?i)ws_alice" (get-in @called-with [:qp/compiled :query]))))
+          (testing ":native is also rewritten — without this the warehouse sees canonical SQL"
+            (is (re-find #"(?i)ws_alice" (get-in @called-with [:native :query]))
+                "native-origin SQL must reach the warehouse with workspace identifiers")
+            (is (not (re-find #"(?i)PUBLIC\.VENUES" (get-in @called-with [:native :query])))
+                "no canonical reference survives in :native")))))))
+
+;;; =========== T0.2 — workspace remapping engages without `:workspaces` token ============
+;;;
+;;; Workspace child instances bootstrap from config.yml *before* their token is installed
+;;; (see metabase-enterprise.advanced-config.file/initialize!). A child whose remap rows
+;;; exist but whose `:workspaces` token isn't yet active must still rewrite reads —
+;;; otherwise the child silently leaks production data.
+
+(deftest phase-1-engages-without-workspaces-token-test
+  (testing "Phase 1 mutates table metadata even when :workspaces token is absent (workspace child boot)"
+    (mt/with-premium-features #{}
+      (qp.store/with-metadata-provider (mt/id)
+        (let [venues-table    (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
+              original-schema (:schema venues-table)
+              original-name   (:name venues-table)]
+          (with-remappings (mt/id) {[original-schema original-name] ["mb_iso_workspace" "remapped_venues"]}
+            (let [query (-> (lib/query (qp.store/metadata-provider) venues-table)
+                            (assoc :database (mt/id)))]
+              (#'ws.middleware/apply-workspace-remapping query)
+              (let [table-after (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))]
+                (is (= "mb_iso_workspace" (:schema table-after))
+                    "Phase 1 fires without the :workspaces token")
+                (is (= "remapped_venues" (:name table-after)))))))))))
+
+(deftest phase-2-engages-without-workspaces-token-test
+  (testing "Phase 2 rewrites SQL even when :workspaces token is absent (workspace child boot)"
+    (mt/with-premium-features #{}
+      (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                                {synthetic-db-id
+                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                driver/*driver*                :h2]
+        (let [called-with (atom nil)
+              mock-qp    (fn [query _rff] (reset! called-with query) :ok)
+              wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+              query      {:database    synthetic-db-id
+                          :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
+          (wrapped query identity)
+          (is (re-find #"(?i)ws_alice" (get-in @called-with [:qp/compiled :query]))
+              "Phase 2 must engage on a workspace child even before the :workspaces token is installed"))))))

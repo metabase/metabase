@@ -9,6 +9,7 @@
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -35,6 +36,7 @@
                                                    [:map
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/Map]]]]]]
+  (workspaces/check-not-in-workspace-mode! "Database routing")
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id router_database_id))
   (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name destinations)]))
                  "A destination database with that name already exists.")
@@ -105,6 +107,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+  (workspaces/check-not-in-workspace-mode! "Database routing")
   (let [db (t2/select-one :model/Database :id id)]
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
