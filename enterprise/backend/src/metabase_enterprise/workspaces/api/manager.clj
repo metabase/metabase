@@ -199,4 +199,18 @@
   {:status  200
    :headers {"Content-Type"        "application/json"
              "Content-Disposition" "attachment; filename=\"table_metadata.json\""}
-   :body    (json/encode {})})
+   :body    (json/encode {:databases [] :tables [] :fields []})})
+
+(api.macros/defendpoint :get "/:id/field-values/json"
+  :- [:map
+      [:status  [:= 200]]
+      [:headers [:map-of :string :string]]
+      [:body    :string]]
+  "Download the workspace's sampled field values as a JSON file. Stub for now."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (ws/get-workspace id))
+  {:status  200
+   :headers {"Content-Type"        "application/json"
+             "Content-Disposition" "attachment; filename=\"field_values.json\""}
+   :body    (json/encode {:field_values []})})

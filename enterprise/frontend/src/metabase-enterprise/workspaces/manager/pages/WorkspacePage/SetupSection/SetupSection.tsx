@@ -75,6 +75,7 @@ type DownloadConfigSectionProps = {
 function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
   const configUrl = `/api/ee/workspace-manager/${workspace.id}/config/yaml`;
   const metadataUrl = `/api/ee/workspace-manager/${workspace.id}/table-metadata/json`;
+  const fieldValuesUrl = `/api/ee/workspace-manager/${workspace.id}/field-values/json`;
 
   return (
     <Stack p="md" gap="lg" align="flex-start">
@@ -87,10 +88,23 @@ function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
         </Button>
       </Stack>
       <Stack gap="sm" align="flex-start">
-        <Text>{t`Optionally, download table metadata from this instance to skip syncing the database in the development instance:`}</Text>
-        <Button component="a" href={metadataUrl} download="table_metadata.json">
-          {t`Download table_metadata.json`}
-        </Button>
+        <Text>{t`Download table metadata to skip syncing the database in the development instance and help a coding agent understand the schema:`}</Text>
+        <Group gap="sm">
+          <Button
+            component="a"
+            href={metadataUrl}
+            download="table_metadata.json"
+          >
+            {t`Download table_metadata.json`}
+          </Button>
+          <Button
+            component="a"
+            href={fieldValuesUrl}
+            download="field_values.json"
+          >
+            {t`Download field_values.json`}
+          </Button>
+        </Group>
       </Stack>
     </Stack>
   );
