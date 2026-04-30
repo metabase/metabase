@@ -212,16 +212,22 @@
 
 (defn- checkpoint-value->double
   "Coerce a checkpoint value to a double for Prometheus gauge emission.
-   Numeric values pass through; temporal values are reported as epoch milliseconds."
+   Numeric values pass through; temporal values are reported as epoch milliseconds.
+   Logs and returns nil for values that cannot be coerced."
   ^Double [v]
   (cond
-    (nil? v)        nil
-    (number? v)     (double v)
+    (nil? v)
+    nil
+
+    (number? v)
+    (double v)
+
     (instance? java.time.temporal.Temporal v)
     (try
       (-> ^Instant (->instant v) .toEpochMilli double)
-      (catch Throwable _ nil))
-    :else           nil))
+      (catch Throwable t
+        (log/debugf t "Cannot coerce checkpoint value %s (type %s) to double" v (type v))
+        nil))))
 
 (defn checkpoint-span-attrs
   "Build a map of OTel span attributes from `source-range-params`. Returns an empty
@@ -239,15 +245,15 @@
   records the watermark on the `metabase-transforms/checkpoint-value` gauge when
   the value is a number or temporal."
   [transform-id source-range-params]
-  (let [hi-value (some-> source-range-params :hi :value)
-        field-id (:checkpoint-filter-field-id source-range-params)]
+  (let [{:keys [checkpoint-filter-field-id hi]} source-range-params
+        hi-value (:value hi)]
     (t2/update! :model/Transform
                 transform-id
                 {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})
-    (when-let [v (and field-id (checkpoint-value->double hi-value))]
+    (when-let [v (and checkpoint-filter-field-id (checkpoint-value->double hi-value))]
       (analytics/set-gauge! :metabase-transforms/checkpoint-value
                             {:transform-id (str transform-id)
-                             :field-id     (str field-id)}
+                             :field-id     (str checkpoint-filter-field-id)}
                             v))))
 
 (defn save-run-checkpoint-range!
