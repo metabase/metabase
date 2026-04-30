@@ -62,10 +62,14 @@
                          ". Run the frontend build to produce it.")
                     {:path embed-mcp-template-path}))))
 
+;; Each tool gets its own resource (URI). The registry is keyed by URI on both
+;; sides — `:uri->resource` for resource lookups, `:uri->tool` for tool lookups —
+;; so REPL re-evaluation of a registration is idempotent and there is no
+;; ambiguity about which tool a URI belongs to.
 (defonce ^:private registry
   (atom {:key->uri      {}
          :uri->resource (sorted-map)
-         :uri->tools    (sorted-map)}))
+         :uri->tool     (sorted-map)}))
 
 (mu/defn- register-ui-resource!
   [key      :- :keyword
@@ -90,8 +94,8 @@
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
-          tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
-      (swap! registry update-in [:uri->tools uri] (fnil conj []) tool))
+          tool  (assoc tool :scope scope :uri uri :_meta {:ui {:resourceUri uri}})]
+      (swap! registry assoc-in [:uri->tool uri] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
 (defn resource-scopes
@@ -100,9 +104,9 @@
   (into (sorted-set) (keep :scope) (vals (:uri->resource @registry))))
 
 (defn list-ui-tools
-  "Return the list of MCP tools corresponding to UI components"
+  "Return the list of MCP tools corresponding to UI components."
   []
-  (mapcat identity (vals (:uri->tools @registry))))
+  (vals (:uri->tool @registry)))
 
 (defn list-resources
   "Return the list of available MCP resources.
@@ -140,21 +144,27 @@
 
 ;;; registrations
 
+(defn- render-embed-iframe
+  "Render the embed-mcp.html iframe template for a UI resource. Both the
+   visualize-query and render-drill-through resources point at the same
+   stateless iframe — only the URI advertised on each tool differs."
+  [opts]
+  (let [site-url    (system/site-url)
+        session-key (:session-key opts)
+        session-id  (:session-id opts)]
+    (render-embed-mcp-template
+     {:instanceUrl    (json/encode site-url)
+      :instanceUrlRaw site-url
+      :sessionToken   (when session-key (json/encode session-key))
+      :mcpSessionId   (when session-id (json/encode session-id))})))
+
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
  "agent:visualize"
  {:name        "Visualize Query"
   :description "Interactive Metabase SDK visualization for a query"
-  :render-fn   (fn [opts]
-                 (let [site-url    (system/site-url)
-                       session-key (:session-key opts)
-                       session-id  (:session-id opts)]
-                   (render-embed-mcp-template
-                    {:instanceUrl    (json/encode site-url)
-                     :instanceUrlRaw site-url
-                     :sessionToken   (when session-key (json/encode session-key))
-                     :mcpSessionId   (when session-id (json/encode session-id))})))})
+  :render-fn   render-embed-iframe})
 
 (register-ui-tool!
  :visualize-query
@@ -163,24 +173,34 @@
   :inputSchema {:type       "object"
                 :properties {:query {:type "string" :minLength 1}}
                 :required   ["query"]}
-  :response-fn (fn [arguments]
+  :response-fn (fn [arguments _opts]
                  (if-let [encoded (:query arguments)]
                    {:content          [{:type "text" :text "Visualizing query..."}]
                     :structuredContent {:query encoded}}
                    {:content [{:type "text" :text "Missing query argument."}]
                     :isError true}))})
 
+(register-ui-resource!
+ :render-drill-through
+ "ui://metabase/render-drill-through.html"
+ "agent:visualize"
+ {:name        "Render Drill-through"
+  :description "Interactive Metabase SDK visualization for a drill-through result"
+  :render-fn   render-embed-iframe})
+
 (register-ui-tool!
- :visualize-query
+ :render-drill-through
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
-                    "Call this immediately when asked to show a drill-through result — "
-                    "no arguments needed. The query is pre-loaded from session context.")
-  :inputSchema {:type "object" :properties {} :required []}
-  :response-fn (fn [_arguments]
-                 (let [encoded-query (mcp.session/consume-drill-handle! mcp.session/*current-session-id*)]
-                   (if encoded-query
-                     {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
-                      :structuredContent {:query encoded-query}}
-                     {:content [{:type "text" :text "No pending drill-through found. Try drilling into a chart first."}]
-                      :isError true})))})
+                    "Call this immediately when asked to show a drill-through result. "
+                    "The user's message includes a `handle` UUID — pass it as the `handle` argument.")
+  :inputSchema {:type       "object"
+                :properties {:handle {:type "string" :format "uuid"
+                                      :description "Handle UUID from the user's drill-through message."}}
+                :required   ["handle"]}
+  :response-fn (fn [arguments _opts]
+                 (if-let [encoded (some-> (:handle arguments) mcp.session/read-handle)]
+                   {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
+                    :structuredContent {:query encoded}}
+                   {:content [{:type "text" :text "No drill-through found for that handle."}]
+                    :isError true}))})

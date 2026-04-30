@@ -19,6 +19,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -75,11 +76,14 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
-(def ^:dynamic *current-session-id*
-  "The MCP session ID for the current request. Bound by the tools/call handler so that
-   tool response-fns can look up session-scoped state (e.g. query handles) without the
-   session ID needing to flow through every layer of the call stack."
-  nil)
+(defn valid-id?
+  "Return true if `session-id` looks like a UUID (the format `create!` produces).
+   Format check only — authentication is handled separately by cookie or bearer token,
+   not by the session ID itself."
+  [session-id]
+  (and (string? session-id)
+       (try (UUID/fromString session-id) true
+            (catch IllegalArgumentException _ false))))
 
 (defn create!
   "Create a new MCP session. Returns a UUID string.
@@ -93,10 +97,9 @@
   [_user-id]
   (str (UUID/randomUUID)))
 
-(defn get-or-create-session-key!
-  "Ensure a `core_session` exists for this MCP session and return its (plaintext)
-   session key, HMAC-derived from the MCP session id. Auditing is skipped for these
-   sessions."
+(defn- get-or-create-embedding-session!
+  "Materialize and return the `core_session` row backing this MCP session.
+   Idempotent — repeated calls collapse to the same row in the common case."
   [session-id user-id]
   (let [session-key (derive-embedding-session-key session-id)
         key-hashed  (session/hash-session-key session-key)]
@@ -121,8 +124,14 @@
      (fn []
        {:id              (session/generate-session-id)
         :anti_csrf_token nil
-        :created_at      :%now}))
-    session-key))
+        :created_at      :%now}))))
+
+(defn get-or-create-session-key!
+  "Ensure a `core_session` exists for this MCP session and return its (plaintext)
+   session key, HMAC-derived from the MCP session id."
+  [session-id user-id]
+  (get-or-create-embedding-session! session-id user-id)
+  (derive-embedding-session-key session-id))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet
@@ -133,41 +142,48 @@
     (or (nil? owner) (= owner user-id))))
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
-;; DB-backed store for base64-encoded drill-through query payloads.
-;; The table is keyed by session_id — at most one pending drill per session.
-;; Upserted (last write wins) so a second drill overwrites the first.
+;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
+;; calls. Each row carries a fresh UUID handle that the iframe passes to the agent
+;; so the LLM never carries the encoded query.
 
-(defn store-drill-handle!
-  "Upsert the drill-through query payload for `session-id`. Last write wins."
-  [session-id encoded-query]
-  (t2/query {:insert-into   :mcp_ui_query_handle
-             :values        [{:id            session-id
-                              :encoded_query encoded-query
-                              :created_at    :%now}]
-             :on-conflict   [:id]
-             :do-update-set [:encoded_query :created_at]}))
+(methodical/defmethod t2/table-name :model/McpQueryHandle [_model] :mcp_query_handle)
 
-(defn consume-drill-handle!
-  "Retrieve and delete the drill-through query payload for `session-id`.
-   Returns nil if no pending drill exists."
-  [session-id]
-  (when-let [row (t2/select-one :mcp_ui_query_handle :id session-id)]
-    (t2/delete! :mcp_ui_query_handle :id session-id)
-    (:encoded_query row)))
+(doto :model/McpQueryHandle
+  (derive :metabase/model)
+  (derive :hook/created-at-timestamped?))
 
-(defn- delete-session-handles!
-  "Delete the drill-through query handle for `session-id`. Called on session teardown."
-  [session-id]
-  (t2/delete! :mcp_ui_query_handle :id session-id))
+(defn store-handle!
+  "Insert a new handle row binding `encoded-query` to the MCP session, and return
+   the freshly minted handle UUID. Materializes the backing `core_session` so
+   cleanup happens via cascade when the session row is reaped."
+  [session-id user-id encoded-query]
+  (let [core-session (get-or-create-embedding-session! session-id user-id)
+        handle-id    (str (UUID/randomUUID))]
+    (t2/insert! :model/McpQueryHandle
+                {:id              handle-id
+                 :mcp_session_id  session-id
+                 :core_session_id (:id core-session)
+                 :encoded_query   encoded-query})
+    handle-id))
+
+(defn read-handle
+  "Return the encoded query for `handle-id`, or nil if no row exists."
+  [handle-id]
+  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id))
 
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)
    and any associated query handles. Scoped to `user-id` so that one user cannot
-   delete another user's session."
+   delete another user's session.
+
+   Handles tied to a `core_session` are also reaped by the FK cascade when the
+   session row goes; the explicit handle-delete here covers handles whose
+   `core_session_id` was never set — e.g. handles for regular query payloads that
+   aren't backed by an MCP iframe and so never materialize a `core_session`."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session
                :where       [:and
                              [:= :key_hashed key-hashed]
                              [:= :user_id user-id]]})
-    (delete-session-handles! session-id)))
+    (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))

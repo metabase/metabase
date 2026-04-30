@@ -37,46 +37,50 @@ type DrillThroughHandler = (
 export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
-      if (isStayDrill(drillName)) {
+      if (isStayDrill(drillName) || !app) {
         await defaultNavigate();
-      } else if (app) {
-        const encodedQuery = utf8_to_b64(
-          JSON.stringify(nextCard.dataset_query),
-        );
-
-        const { instanceUrl, sessionToken, mcpSessionId } =
-          (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
-
-        if (!instanceUrl || !sessionToken || !mcpSessionId) {
-          return;
-        }
-
-        try {
-          // Store the card server-side in the MCP session. This is universal —
-          // works in all MCP clients (Claude Desktop, Cursor, VS Code).
-          // The render_drill_through tool will consume it with no LLM-visible payload.
-          await storeDrillQuery({
-            instanceUrl,
-            sessionToken,
-            mcpSessionId,
-            encodedQuery,
-          });
-
-          // Uses the same term as the tool description ("show a drill-through result")
-          // so the LLM always calls render_drill_through.
-          await app.sendMessage({
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Show me the drill-through result.",
-              },
-            ],
-          });
-        } catch {
-          // do not trigger the prompt if storing drills query fails
-        }
+        return;
       }
+
+      const { instanceUrl, sessionToken, mcpSessionId } =
+        (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+
+      if (!instanceUrl || !sessionToken || !mcpSessionId) {
+        await defaultNavigate();
+        return;
+      }
+
+      const encodedQuery = utf8_to_b64(JSON.stringify(nextCard.dataset_query));
+
+      let handle: string;
+      try {
+        // Store the card server-side in the MCP session. This is universal —
+        // works in all MCP clients (Claude Desktop, Cursor, VS Code).
+        // The handle UUID is threaded into the agent message so render_drill_through
+        // can fetch the payload without the LLM ever seeing it.
+        ({ handle } = await storeDrillQuery({
+          instanceUrl,
+          sessionToken,
+          mcpSessionId,
+          encodedQuery,
+        }));
+      } catch {
+        await defaultNavigate();
+        return;
+      }
+
+      // Uses the same term as the tool description ("show a drill-through result")
+      // so the LLM always calls render_drill_through, and includes the handle
+      // it must pass through.
+      await app.sendMessage({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Show me the drill-through result. Use handle ${handle}.`,
+          },
+        ],
+      });
     },
     [app],
   );

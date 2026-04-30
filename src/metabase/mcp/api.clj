@@ -24,8 +24,7 @@
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
-   (java.nio.charset StandardCharsets)
-   (java.util UUID)))
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
@@ -75,8 +74,7 @@
 (defn- handle-tools-call [id params session-id token-scopes]
   (let [tool-name (:name params)
         arguments (or (:arguments params) {})]
-    (binding [mcp.session/*current-session-id* session-id]
-      (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments)))))
+    (jsonrpc-response id (mcp.tools/call-tool token-scopes session-id tool-name arguments))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -163,15 +161,6 @@
                   (catch Exception _ false))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
-(defn- valid-session-id?
-  "Return true if `session-id` looks like a UUID (the format `create!` produces).
-   This is a format check only — any well-formed UUID is accepted. Authentication
-   is handled separately by cookie or bearer token, not by the session ID."
-  [session-id]
-  (and (string? session-id)
-       (try (UUID/fromString session-id) true
-            (catch IllegalArgumentException _ false))))
-
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
    `core_session` has been materialized, verifies it belongs to `user-id`."
@@ -180,7 +169,7 @@
     (str/blank? session-id)
     {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
 
-    (not (valid-session-id? session-id))
+    (not (mcp.session/valid-id? session-id))
     {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
 
     (not (mcp.session/owned-by-user? session-id user-id))
@@ -273,25 +262,6 @@
         (do (mcp.session/delete! session-id user-id)
             {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
-(defn- handle-pending-card-store
-  "Handle POST /api/mcp/ui/drills — store a base64-encoded query for the upcoming render_drill_through
-   tool call. The frontend calls this immediately after a drill-through action, before sending
-   app.sendMessage, so the tool can retrieve the query without the LLM carrying the payload."
-  [_user-id request]
-  (let [body          (:body request)
-        session-id    (:mcpSessionId body)
-        encoded-query (:encodedQuery body)]
-    (cond
-      (str/blank? session-id)
-      (json-response 400 {:error "Missing mcpSessionId"})
-
-      (not (and (string? encoded-query) (not (str/blank? encoded-query))))
-      (json-response 400 {:error "Missing or invalid encodedQuery"})
-
-      :else
-      (do (mcp.session/store-drill-handle! session-id encoded-query)
-          {:status 204 :headers {"Content-Type" "application/json"} :body ""}))))
-
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
 ;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
@@ -330,15 +300,9 @@
    Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [;; POST /ui/drills is our custom drill-store endpoint, not part of MCP protocol.
-           ;; The iframe's fetch sends Origin: null (sandboxed context).
-           ;; Bypass origin validation here as this request is always authenticated.
-           drill-request?  (and (= :post (:request-method request))
-                                (= "/ui/drills" ((some-fn :path-info :uri) request)))
-           origin-error    (when-not drill-request?
-                             (validate-origin request))
-           bearer-token    (oauth-server/extract-bearer-token request)
-           session-auth    api/*current-user-id*]
+     (let [origin-error (validate-origin request)
+           bearer-token (oauth-server/extract-bearer-token request)
+           session-auth api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    (if-let [throttle-err (check-throttle user-id)]
@@ -346,9 +310,6 @@
                      (try
                        (let [request (assoc request :token-scopes token-scopes)]
                          (cond
-                           drill-request?
-                           (respond (handle-pending-card-store user-id request))
-
                            (= :post (:request-method request))
                            (respond (handle-post user-id request))
 
