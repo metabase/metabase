@@ -57,7 +57,7 @@ export function MetricPicker({
       return;
     }
     if (item.type === "metric") {
-      await fetchMetric(item.data.id, true);
+      await fetchMetric({ id: item.data.id }, true);
     } else {
       await fetchMeasure(item.data.id, true);
     }

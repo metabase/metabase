@@ -46,7 +46,7 @@ async function loadMetricDefinition(
   metricId: MetricId,
 ): Promise<MetricDefinition> {
   const [result] = await Promise.all([
-    dispatch(metricApi.endpoints.getMetric.initiate(metricId)),
+    dispatch(metricApi.endpoints.getMetric.initiate({ id: metricId })),
     dispatch(segmentApi.endpoints.listSegments.initiate()), // Ensure segments are present in Redux before building the metadata provider
   ]);
   if (!result.data) {

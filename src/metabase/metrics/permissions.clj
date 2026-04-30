@@ -16,13 +16,13 @@
 ;;; ------------------------------------------------- Batch Lookups -------------------------------------------------
 
 (defn- batch-field-info
-  "Batch-fetch field visibility_type and table_id for a set of field IDs.
-   Returns {field-id -> {:visibility_type keyword, :table_id int}}."
+  "Batch-fetch field visibility_type, table_id, and dimension_interestingness for a set of field IDs.
+   Returns {field-id -> {:visibility_type keyword, :table_id int, :dimension_interestingness double-or-nil}}."
   [field-ids]
   (when (seq field-ids)
     (into {}
-          (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id])]))
-          (t2/select [:model/Field :id :visibility_type :table_id]
+          (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id :dimension_interestingness])]))
+          (t2/select [:model/Field :id :visibility_type :table_id :dimension_interestingness]
                      :id [:in field-ids]))))
 
 (defn- batch-table-db-ids
@@ -124,3 +124,44 @@
       (assoc metric
              :dimensions         (filterv #(contains? kept-ids (:id %)) dimensions)
              :dimension_mappings (filterv #(contains? kept-ids (:dimension-id %)) dimension_mappings)))))
+
+;;; ------------------------------------------------- Interestingness -------------------------------------------------
+
+(defn annotate-dimensions-with-interestingness
+  "Return `metric` with each `:dimensions` entry annotated with `:dimension_interestingness`
+   looked up from the dimension's underlying field. Dimensions whose underlying field cannot
+   be resolved get `nil`."
+  [{:keys [dimensions dimension_mappings] :as metric}]
+  (if (empty? dimensions)
+    metric
+    (let [dim->field-id (build-dim->field-id dimensions dimension_mappings)
+          field-info    (batch-field-info (set (vals dim->field-id)))]
+      (assoc metric
+             :dimensions
+             (mapv (fn [dim]
+                     (assoc dim :dimension_interestingness
+                            (some-> (get dim->field-id (:id dim))
+                                    field-info
+                                    :dimension_interestingness)))
+                   dimensions)))))
+
+(defn sort-dimensions-by-interestingness
+  "Return `metric` with its `:dimensions` stably sorted by `:dimension_interestingness`
+   (descending). Dimensions with a nil score are placed at the end. Assumes dimensions
+   have already been annotated via `annotate-dimensions-with-interestingness`.
+
+   Does not modify `:dimension_mappings`, which are keyed by dimension-id and not
+   iterated positionally by consumers."
+  [{:keys [dimensions] :as metric}]
+  (if (empty? dimensions)
+    metric
+    (assoc metric
+           :dimensions
+           (vec (sort-by :dimension_interestingness
+                         (fn [a b]
+                           (cond
+                             (and (nil? a) (nil? b)) 0
+                             (nil? a) 1
+                             (nil? b) -1
+                             :else (compare b a)))
+                         dimensions)))))

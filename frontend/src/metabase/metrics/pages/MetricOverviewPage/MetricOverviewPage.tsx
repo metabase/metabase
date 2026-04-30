@@ -29,7 +29,7 @@ export function MetricOverviewPage({
     error,
   } = useLoadCardWithMetadata(cardId);
   const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
-    cardId!,
+    { id: cardId!, sortDimensionsByInterestingness: true },
     { skip: cardId == null },
   );
 

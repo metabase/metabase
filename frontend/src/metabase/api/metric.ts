@@ -5,12 +5,12 @@ import type {
   FieldValue,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
+  GetMetricRequest,
   GetRemappedMetricDimensionValueRequest,
   Metric,
   MetricBreakoutValuesRequest,
   MetricBreakoutValuesResponse,
   MetricDatasetRequest,
-  MetricId,
   SearchMetricDimensionValuesRequest,
 } from "metabase-types/api";
 
@@ -35,10 +35,13 @@ export const metricApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, [MetricSchema])),
         ),
     }),
-    getMetric: builder.query<Metric, MetricId>({
-      query: (id) => ({
+    getMetric: builder.query<Metric, GetMetricRequest>({
+      query: ({ id, sortDimensionsByInterestingness }) => ({
         method: "GET",
         url: `/api/metric/${id}`,
+        params: sortDimensionsByInterestingness
+          ? { sort_dimensions_by_interestingness: true }
+          : undefined,
       }),
       providesTags: (metric) => (metric ? provideMetricTags(metric) : []),
       onQueryStarted: (_, { queryFulfilled, dispatch }) =>
