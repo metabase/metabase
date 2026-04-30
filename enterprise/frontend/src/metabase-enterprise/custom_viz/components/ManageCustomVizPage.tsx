@@ -106,7 +106,7 @@ export function ManageCustomVizPage() {
         </Flex>
 
         <Text c="text-secondary" maw="40rem">
-          {t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
+          {t`Add custom visualizations to your instance by uploading packaged plugin bundles (.tgz).`}
         </Text>
       </Stack>
 

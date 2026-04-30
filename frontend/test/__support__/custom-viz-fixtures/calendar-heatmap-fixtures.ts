@@ -59,7 +59,7 @@ export function useHeatmapPlugin() {
     let cancelled = false;
     loadCustomVizPlugin({
       id: 1,
-      resolved_commit: "dev",
+      bundle_hash: "dev",
       bundle_url: `${PLUGIN_BASE_URL}/index.js`,
       display_name: "Calendar Heatmap",
       identifier: PLUGIN_IDENTIFIER,

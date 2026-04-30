@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -9,28 +9,31 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import {
   Form,
-  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
-  FormSwitch,
-  FormTextInput,
 } from "metabase/forms";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
-import { getUrlProtocol } from "metabase/utils/formatting/url";
 import {
   useCreateCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,
-  useUpdateCustomVizPluginMutation,
+  useReplaceCustomVizPluginBundleMutation,
 } from "metabase-enterprise/api";
 
 import {
   trackCustomVizPluginCreated,
   trackCustomVizPluginUpdated,
 } from "../analytics";
+
+import {
+  BundleDropzone,
+  MAX_BUNDLE_BYTES,
+  hasAllowedExtension,
+} from "./BundleDropzone";
+import { CustomVizPluginSummary } from "./CustomVizPluginSummary";
 
 type Props = {
   params?: {
@@ -39,48 +42,25 @@ type Props = {
 };
 
 type FormState = {
-  repoUrl: string;
-  isPrivateRepo: boolean;
-  accessToken: string;
-  pinVersion: boolean;
-  pinnedVersion: string;
+  file: File | null;
 };
 
-const ALLOWED_REPO_URL_PROTOCOLS = new Set([
-  "http:",
-  "https:",
-  "git:",
-  "file:",
-]);
+const initialValues: FormState = { file: null };
 
 const validationSchema: Yup.SchemaOf<FormState> = Yup.object({
-  repoUrl: Yup.string()
-    .default("")
+  file: Yup.mixed<File>()
+    .nullable()
     .required(Errors.required)
     .test(
-      "valid-repo-url",
-      () => t`Enter a valid URL (http://, https://, or git://).`,
-      (value) => {
-        const protocol = value ? getUrlProtocol(value) : undefined;
-        return (
-          protocol !== undefined && ALLOWED_REPO_URL_PROTOCOLS.has(protocol)
-        );
-      },
+      "valid-extension",
+      () => t`Bundle must be a .tgz file produced by "npm run build".`,
+      (value) => !!value && hasAllowedExtension(value.name),
+    )
+    .test(
+      "valid-size",
+      () => t`Bundle must be smaller than 5 MB.`,
+      (value) => !!value && value.size <= MAX_BUNDLE_BYTES,
     ),
-  isPrivateRepo: Yup.boolean().default(false),
-  accessToken: Yup.string()
-    .default("")
-    .when("isPrivateRepo", {
-      is: true,
-      then: (schema) => schema.required(Errors.required),
-    }),
-  pinVersion: Yup.boolean().default(false),
-  pinnedVersion: Yup.string()
-    .default("")
-    .when("pinVersion", {
-      is: true,
-      then: (schema) => schema.required(Errors.required),
-    }),
 });
 
 export function CustomVizPage({ params }: Props) {
@@ -91,35 +71,17 @@ export function CustomVizPage({ params }: Props) {
   const isEdit = pluginId !== undefined;
 
   const [createPlugin] = useCreateCustomVizPluginMutation();
-  const [updatePlugin] = useUpdateCustomVizPluginMutation();
-
-  const initialValues = useMemo<FormState>(
-    () => ({
-      repoUrl: plugin?.repo_url ?? "",
-      isPrivateRepo: false,
-      accessToken: "",
-      pinVersion: !!plugin?.pinned_version,
-      pinnedVersion: plugin?.pinned_version ?? "",
-    }),
-    [plugin?.repo_url, plugin?.pinned_version],
-  );
+  const [replaceBundle] = useReplaceCustomVizPluginBundleMutation();
 
   const submitValues = useCallback(
     async (values: FormState) => {
-      const accessToken =
-        values.isPrivateRepo && values.accessToken
-          ? values.accessToken
-          : undefined;
-      const pinnedVersion =
-        values.pinVersion && values.pinnedVersion ? values.pinnedVersion : null;
-
+      const file = values.file;
+      if (!file) {
+        return;
+      }
       if (isEdit && plugin) {
         try {
-          await updatePlugin({
-            id: plugin.id,
-            access_token: accessToken,
-            pinned_version: pinnedVersion,
-          }).unwrap();
+          await replaceBundle({ id: plugin.id, file }).unwrap();
           trackCustomVizPluginUpdated("success");
         } catch (error) {
           trackCustomVizPluginUpdated("failure");
@@ -127,11 +89,7 @@ export function CustomVizPage({ params }: Props) {
         }
       } else {
         try {
-          await createPlugin({
-            repo_url: values.repoUrl,
-            access_token: accessToken,
-            pinned_version: pinnedVersion,
-          }).unwrap();
+          await createPlugin({ file }).unwrap();
           trackCustomVizPluginCreated("success");
         } catch (error) {
           trackCustomVizPluginCreated("failure");
@@ -140,7 +98,7 @@ export function CustomVizPage({ params }: Props) {
       }
       dispatch(push(Urls.customViz()));
     },
-    [createPlugin, updatePlugin, plugin, isEdit, dispatch],
+    [createPlugin, replaceBundle, plugin, isEdit, dispatch],
   );
 
   const handleCancel = useCallback(() => {
@@ -166,12 +124,13 @@ export function CustomVizPage({ params }: Props) {
     return null;
   }
 
-  // Wait for the plugin to load in edit mode — rendering the form before it
-  // arrives causes Formik's enableReinitialize to reset any user input once
-  // the plugin data finally arrives.
   if (isEdit && !plugin) {
     return null;
   }
+
+  const description = isEdit
+    ? t`Upload a new packaged bundle (.tgz) to replace this visualization. The bundle's manifest "name" must match the existing identifier.`
+    : t`Upload a packaged bundle (.tgz) produced by running "npm run build" in your custom-viz project.`;
 
   return (
     <SettingsPageWrapper>
@@ -183,7 +142,7 @@ export function CustomVizPage({ params }: Props) {
         </Flex>
 
         <Text c="text-secondary" maw="40rem">
-          {t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
+          {description}
         </Text>
       </Stack>
       <SettingsSection>
@@ -196,78 +155,26 @@ export function CustomVizPage({ params }: Props) {
             initialValues={initialValues}
             validationSchema={validationSchema}
             onSubmit={submitValues}
-            enableReinitialize
           >
-            {({ dirty, values }) => (
+            {({ dirty }) => (
               <Form>
                 <Stack gap="40px">
-                  <Title order={2}>
-                    {isEdit
-                      ? t`Edit visualization`
-                      : t`Add a new visualization`}
-                  </Title>
                   <Stack gap="md">
-                    <FormTextInput
-                      name="repoUrl"
-                      label={t`Repository URL`}
-                      description={t`The location of the git repository where your visualization bundle is.`}
-                      placeholder="https://github.com/user/custom-viz-plugin"
-                      disabled={isEdit}
-                      autoFocus={!isEdit}
-                      styles={{
-                        description: {
-                          color: "var(--mb-color-text-tertiary)",
-                        },
-                      }}
-                    />
-
-                    <FormCheckbox
-                      name="isPrivateRepo"
-                      label={t`This is a private repository`}
-                    />
-                    {values.isPrivateRepo && (
-                      <FormTextInput
-                        name="accessToken"
-                        label={t`Repository personal access token`}
-                        type="password"
-                        placeholder="********************"
-                        autoFocus
-                      />
+                    <Title order={2}>
+                      {isEdit ? t`Replace bundle` : t`Add a new visualization`}
+                    </Title>
+                    {isEdit && plugin && (
+                      <CustomVizPluginSummary plugin={plugin} />
                     )}
                   </Stack>
-                  <Stack gap="md">
-                    <Flex gap="sm" align="center">
-                      <FormSwitch
-                        size="sm"
-                        name="pinVersion"
-                        labelPosition="left"
-                        styles={{ label: { fontWeight: 700 } }}
-                        label={t`Pin to a specific version`}
-                      />
-                    </Flex>
-                    {values.pinVersion && (
-                      <FormTextInput
-                        required
-                        name="pinnedVersion"
-                        aria-label={t`Pinned version`}
-                        description={t`Branch, tag, or commit SHA to pin to.`}
-                        placeholder="main"
-                        autoFocus
-                        styles={{
-                          description: {
-                            color: "var(--mb-color-text-tertiary)",
-                          },
-                        }}
-                      />
-                    )}
-                  </Stack>
+                  <BundleDropzone />
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">
                     <Button variant="default" onClick={handleCancel}>
                       {t`Cancel`}
                     </Button>
                     <FormSubmitButton
-                      label={isEdit ? t`Save` : t`Add visualization`}
+                      label={isEdit ? t`Replace` : t`Add visualization`}
                       disabled={!dirty}
                       variant="filled"
                     />
