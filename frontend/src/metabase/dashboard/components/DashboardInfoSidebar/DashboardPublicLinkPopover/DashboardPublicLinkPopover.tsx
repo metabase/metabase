@@ -2,14 +2,13 @@ import {
   useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
 } from "metabase/api";
+import { PublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover/PublicLinkPopover";
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
-
-import { PublicLinkPopover } from "./PublicLinkPopover";
 
 export const DashboardPublicLinkPopover = ({
   dashboard,

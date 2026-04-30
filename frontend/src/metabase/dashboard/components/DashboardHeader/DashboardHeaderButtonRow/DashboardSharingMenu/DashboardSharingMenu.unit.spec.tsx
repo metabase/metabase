@@ -1,6 +1,6 @@
 import { screen } from "__support__/ui";
 
-import { openMenu, setupDashboardSharingMenu } from "./setup";
+import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
 describe("DashboardSharingMenu", () => {
   it("should have a 'sharing' tooltip by default", () => {

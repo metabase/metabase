@@ -1,18 +1,17 @@
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { getIsDashCardsRunning } from "metabase/dashboard/selectors";
+import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
+import { ExportPdfMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/ExportPdfMenuItem";
+import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
+import { SharingMenu } from "metabase/embedding/components/SharingMenu/SharingMenu";
+import type { DashboardSharingModalType } from "metabase/embedding/components/SharingMenu/types";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { useSelector } from "metabase/redux";
-import { Flex, Menu } from "metabase/ui";
+import { Box, Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import { useSharingModal } from "../../hooks/use-sharing-modal";
-
-import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
-import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
-import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
-import { PublicLinkModals } from "./PublicLinkModals";
-import { SharingMenu } from "./SharingMenu";
-import type { DashboardSharingModalType } from "./types";
+import { DashboardPublicLinkPopover } from "../../../DashboardInfoSidebar/DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 
 export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const { modalType, setModalType } =
@@ -50,9 +49,10 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           </>
         )}
       </SharingMenu>
-      <PublicLinkModals
-        modalType={modalType}
+      <DashboardPublicLinkPopover
         dashboard={dashboard}
+        target={<Box h="2rem" />}
+        isOpen={modalType === "dashboard-public-link"}
         onClose={() => setModalType(null)}
       />
     </Flex>

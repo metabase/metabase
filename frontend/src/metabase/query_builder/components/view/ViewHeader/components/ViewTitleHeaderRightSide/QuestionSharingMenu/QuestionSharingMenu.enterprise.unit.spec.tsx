@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { setupQuestionSharingMenu } from "./setup";
+import { setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
   describe("non-admins", () => {

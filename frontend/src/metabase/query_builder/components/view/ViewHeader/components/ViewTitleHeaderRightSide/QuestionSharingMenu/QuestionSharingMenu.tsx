@@ -2,7 +2,15 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
+import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
+import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
+import {
+  SharingButton,
+  SharingMenu,
+} from "metabase/embedding/components/SharingMenu/SharingMenu";
+import type { QuestionSharingModalType } from "metabase/embedding/components/SharingMenu/types";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -10,16 +18,10 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { useSharingModal } from "../../hooks/use-sharing-modal";
-
-import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
-import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
-import { PublicLinkModals } from "./PublicLinkModals";
-import { SharingButton, SharingMenu } from "./SharingMenu";
-import type { QuestionSharingModalType } from "./types";
+import { QuestionPublicLinkPopover } from "../../../../sidebars/QuestionInfoSidebar/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
   const dispatch = useDispatch();
@@ -77,9 +79,10 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
           tooltip={t`Public link`}
           onClick={() => setModalType("question-public-link")}
         />
-        <PublicLinkModals
-          modalType={modalType}
+        <QuestionPublicLinkPopover
           question={question}
+          target={<Box h="2rem" />}
+          isOpen={modalType === "question-public-link"}
           onClose={() => setModalType(null)}
         />
       </Flex>
@@ -97,9 +100,10 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
           onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
         />
       </SharingMenu>
-      <PublicLinkModals
-        modalType={modalType}
+      <QuestionPublicLinkPopover
         question={question}
+        target={<Box h="2rem" />}
+        isOpen={modalType === "question-public-link"}
         onClose={() => setModalType(null)}
       />
     </Flex>

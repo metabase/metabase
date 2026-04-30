@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { openMenu, setupQuestionSharingMenu } from "./setup";
+import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu", () => {
   it("should not render anything if the question is a model", async () => {

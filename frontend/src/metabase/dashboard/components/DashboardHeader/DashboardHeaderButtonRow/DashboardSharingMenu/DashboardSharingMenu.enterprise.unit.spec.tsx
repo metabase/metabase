@@ -1,7 +1,7 @@
 import { screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { openMenu, setupDashboardSharingMenu } from "./setup";
+import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
 describe("DashboardSharingMenu > Enterprise", () => {
   it("should not allow embedding instance analytics dashboard", async () => {
