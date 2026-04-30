@@ -36,7 +36,7 @@ type MetricWithCollection = ExplorationMetric & {
   collection?: MetricBaseData["collection"];
 };
 
-const METRIC_ITEM_HEIGHT = 72;
+const METRIC_ITEM_HEIGHT = 70;
 const METRIC_ITEM_GAP = 8;
 const DIMENSION_ITEM_HEIGHT = 36;
 
@@ -255,14 +255,21 @@ export function AddMetricsModal({
           <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body>
-          <TextInput
-            value={search}
-            onChange={(event) => setSearch(event.currentTarget.value)}
-            placeholder={t`Search for metrics or dimensions`}
-            leftSection={<Icon name="search" />}
-            mb="md"
-          />
-          <LoadingAndErrorWrapper loading={isFetching} error={error}>
+          <Box my="md">
+            <TextInput
+              value={search}
+              onChange={(event) => setSearch(event.currentTarget.value)}
+              placeholder={t`Search for metrics or dimensions`}
+              leftSection={<Icon name="search" />}
+            />
+          </Box>
+          <LoadingAndErrorWrapper
+            loading={isFetching}
+            error={error}
+            style={{
+              height: "28rem",
+            }}
+          >
             <Flex gap="lg" h="28rem">
               <Stack flex={1} gap="sm" mih={0}>
                 <Text fw="bold">{t`Metrics`}</Text>
@@ -275,6 +282,7 @@ export function AddMetricsModal({
               <Stack w="18rem" gap="sm" mih={0}>
                 <Text fw="bold">{t`Dimensions`}</Text>
                 <DimensionList
+                  className={S.dimensionsSection}
                   dimensions={visibleDimensions}
                   isSelected={isDimensionSelected}
                   onToggle={toggleDimension}
@@ -347,12 +355,12 @@ function MetricList({ metrics, selectedIds, onToggle }: MetricListProps) {
                 onClick={(event) => event.stopPropagation()}
                 aria-label={metric.name}
               />
-              <Stack gap={2} flex={1} mih={0}>
+              <Stack gap="xs" flex={1}>
                 <Text fw="bold" lh="1.25" lineClamp={1}>
                   {metric.name}
                 </Text>
                 {metric.description && (
-                  <Text size="sm" c="text-secondary" lineClamp={1}>
+                  <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
                     {metric.description}
                   </Text>
                 )}
@@ -369,12 +377,14 @@ interface DimensionListProps {
   dimensions: MetricDimension[];
   isSelected: (dimensionId: DimensionId) => boolean;
   onToggle: (dimension: MetricDimension) => void;
+  className?: string;
 }
 
 function DimensionList({
   dimensions,
   isSelected,
   onToggle,
+  className,
 }: DimensionListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -393,7 +403,7 @@ function DimensionList({
   }
 
   return (
-    <Box ref={parentRef} className={S.scrollContainer}>
+    <Box ref={parentRef} className={cx(className, S.scrollContainer)}>
       <Box
         role="list"
         style={{
@@ -405,11 +415,16 @@ function DimensionList({
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const dimension = dimensions[virtualRow.index];
           const selected = isSelected(dimension.id);
+          const sourceName = dimension.group?.display_name;
+
           return (
             <UnstyledButton
               key={virtualRow.key}
               role="listitem"
               aria-pressed={selected}
+              data-interestingness={
+                dimension.dimension_interestingness || "null"
+              }
               className={cx(S.dimensionChip, {
                 [S.dimensionChipSelected]: selected,
               })}
@@ -419,6 +434,7 @@ function DimensionList({
               }}
               onClick={() => onToggle(dimension)}
             >
+              {sourceName && sourceName + " - "}
               {dimension.display_name}
             </UnstyledButton>
           );

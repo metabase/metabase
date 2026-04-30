@@ -34,7 +34,7 @@ function toExplorationMetric(metric: Metric): ExplorationMetric {
 
 export function setupExplorationDataEndpoint(metrics: Metric[]) {
   fetchMock.get({
-    url: "path:/api/metric/exploration-data",
+    url: "path:/api/exploration/dimensions",
     response: (call) => {
       const q = new URL(call.url).searchParams.get("q") ?? "";
       const query = q.trim().toLowerCase();

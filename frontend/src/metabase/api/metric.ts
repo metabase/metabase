@@ -3,8 +3,6 @@ import { MetricSchema } from "metabase/schema";
 import type {
   Dataset,
   FieldValue,
-  GetExplorationDataRequest,
-  GetExplorationDataResponse,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
   GetMetricListResponse,
@@ -37,18 +35,6 @@ export const metricApi = Api.injectEndpoints({
         handleQueryFulfilled(queryFulfilled, (data) =>
           dispatch(updateMetadata(data.data, [MetricSchema])),
         ),
-    }),
-    getExplorationData: builder.query<
-      GetExplorationDataResponse,
-      GetExplorationDataRequest
-    >({
-      query: (params) => ({
-        method: "GET",
-        url: "/api/exploration/dimensions",
-        params,
-      }),
-      providesTags: (response) =>
-        provideMetricListTags(response?.metrics ?? []),
     }),
     getMetric: builder.query<Metric, MetricId>({
       query: (id) => ({
@@ -120,7 +106,6 @@ export const metricApi = Api.injectEndpoints({
 
 export const {
   useListMetricsQuery,
-  useGetExplorationDataQuery,
   useGetMetricQuery,
   useLazyGetMetricQuery,
   useGetMetricDimensionValuesQuery,

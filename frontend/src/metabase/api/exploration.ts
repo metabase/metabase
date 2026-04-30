@@ -2,13 +2,27 @@ import type {
   CreateExplorationRequest,
   Exploration,
   ExplorationId,
+  GetExplorationDataRequest,
+  GetExplorationDataResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import { idTag, invalidateTags, listTag, provideMetricListTags } from "./tags";
 
 export const explorationApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getExplorationData: builder.query<
+      GetExplorationDataResponse,
+      GetExplorationDataRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/exploration/dimensions",
+        params,
+      }),
+      providesTags: (response) =>
+        provideMetricListTags(response?.metrics ?? []),
+    }),
     getExploration: builder.query<Exploration, ExplorationId>({
       query: (id) => ({
         method: "GET",
@@ -29,5 +43,8 @@ export const explorationApi = Api.injectEndpoints({
   }),
 });
 
-export const { useGetExplorationQuery, useCreateExplorationMutation } =
-  explorationApi;
+export const {
+  useGetExplorationDataQuery,
+  useGetExplorationQuery,
+  useCreateExplorationMutation,
+} = explorationApi;

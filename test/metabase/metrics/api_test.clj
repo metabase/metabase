@@ -205,13 +205,13 @@
       (let [response   (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
             dimensions (:dimensions response)]
         (is (seq dimensions) "should have dimensions")
-        (testing "at least some dimensions have has-field-values"
-          (let [dims-with-hfv (filter :has-field-values dimensions)]
+        (testing "at least some dimensions have has_field_values"
+          (let [dims-with-hfv (filter :has_field_values dimensions)]
             (is (seq dims-with-hfv)
-                "at least some dimensions should have has-field-values")
+                "at least some dimensions should have has_field_values")
             (doseq [dim dims-with-hfv]
-              (is (#{"list" "search" "none"} (:has-field-values dim))
-                  (str "dimension " (:name dim) " has-field-values should be list, search, or none")))))))))
+              (is (#{"list" "search" "none"} (:has_field_values dim))
+                  (str "dimension " (:name dim) " has_field_values should be list, search, or none")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |

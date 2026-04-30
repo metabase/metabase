@@ -25,7 +25,7 @@
 (defn- dimension-group-names
   "Extract the set of group display-names from a seq of dimensions."
   [dims]
-  (into #{} (map #(get-in % [:group :display-name])) dims))
+  (into #{} (map #(get-in % [:group :display_name])) dims))
 
 ;;; ------------------------------------------------- Field Visibility Tests -------------------------------------------------
 
@@ -129,7 +129,7 @@
         (data-perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
         (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               dim-ids  (into #{} (map :id) (:dimensions response))
-              mapping-dim-ids (into #{} (map :dimension-id) (:dimension_mappings response))]
+              mapping-dim-ids (into #{} (map :dimension_id) (:dimension_mappings response))]
           (testing "every mapping references an existing dimension"
             (is (every? #(contains? dim-ids %) mapping-dim-ids)))
           (testing "every dimension has a mapping"
@@ -144,7 +144,7 @@
       (let [all-response (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric)))
             ;; Find a dimension from the Product group (FK-joined from Products table)
             product-dim (->> (:dimensions all-response)
-                             (filter #(= "Product" (get-in % [:group :display-name])))
+                             (filter #(= "Product" (get-in % [:group :display_name])))
                              first)]
         (when product-dim
           ;; Block access to Products table for rasta

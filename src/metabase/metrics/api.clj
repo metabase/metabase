@@ -85,16 +85,25 @@
    :has-field-values :has_field_values
    :status-message   :status_message})
 
+(def dimension-group-key-renames
+  "Map kebab-case keys for the nested :group on a dimension to snake_case."
+  {:display-name :display_name})
+
 (def dimension-mapping-key-renames
   "Map kebab-case keys carried over from JSON-stored dimension_mappings to the
    snake_case wire format used by the rest of the API."
   {:dimension-id :dimension_id
    :table-id     :table_id})
 
+(defn- snake-case-dimension [dim]
+  (cond-> (set/rename-keys dim dimension-key-renames)
+    (:group dim) (update :group set/rename-keys dimension-group-key-renames)))
+
 (defn snake-case-dimensions
-  "Rename dimension keys from kebab-case to snake_case for API responses."
+  "Rename dimension keys (and the nested :group keys) from kebab-case to
+   snake_case for API responses."
   [dims]
-  (mapv #(set/rename-keys % dimension-key-renames) (or dims [])))
+  (mapv snake-case-dimension (or dims [])))
 
 (defn snake-case-dimension-mappings
   "Rename dimension_mapping keys from kebab-case to snake_case for API responses."

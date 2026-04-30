@@ -19,9 +19,13 @@ export type MetricDimensionSource = {
 
 export type MetricDimension = {
   id: DimensionId;
+  name: string;
   display_name: string;
   effective_type: string;
   semantic_type: string | null;
+  has_field_values?: "list" | "search" | "none" | null;
+  status_message?: string | null;
+  dimension_interestingness: number | null;
   group?: MetricDimensionGroup;
   sources?: MetricDimensionSource[];
 };

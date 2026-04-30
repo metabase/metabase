@@ -5,11 +5,11 @@
 
 .timelineItem {
   width: 100%;
-  min-height: 4.5rem;
+  min-height: 4.375rem;
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.75rem;
+  padding: 1rem;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--default-border-radius);
   cursor: pointer;
