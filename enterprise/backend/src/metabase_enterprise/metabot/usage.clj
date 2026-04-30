@@ -33,6 +33,7 @@
 (def ^:private known-profile-ids
   #{"internal"
     "embedding_next"
+    "explorations"
     "nlq"
     "sql"
     "slackbot"

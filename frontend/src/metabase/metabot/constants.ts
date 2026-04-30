@@ -30,6 +30,11 @@ export const METABOT_PROFILES = {
       return t`Embedding`;
     },
   },
+  explorations: {
+    get label() {
+      return t`Explorations`;
+    },
+  },
   nlq: {
     get label() {
       return t`NLQ`;

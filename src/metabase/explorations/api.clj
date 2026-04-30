@@ -1,22 +1,16 @@
 (ns metabase.explorations.api
   "`/api/exploration` routes."
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.models.collection :as collection]
    [metabase.explorations.core :as explorations]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
-   [metabase.metrics.core :as metrics]
-   [metabase.queries.models.card :as card]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -194,73 +188,6 @@
    [:metrics          [:sequential ::ExplorationMetric]]
    [:dimension_groups [:sequential ::ExplorationDimensionGroup]]])
 
-(defn- library-metrics-collection-ids
-  "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
-  to the top of the /dimensions response."
-  []
-  (when-let [root (t2/select-one [:model/Collection :id :location]
-                                 :type collection/library-metrics-collection-type)]
-    (conj (or (collection/descendant-ids root) #{}) (:id root))))
-
-(defn- with-result-column-name [metric]
-  (assoc metric :result_column_name
-         (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric))))
-
-(defn- metric-matches-search? [metric q-lower]
-  (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
-      (some (fn [d]
-              (str/includes? (u/lower-case-en (or (:display_name d) "")) q-lower))
-            (:dimensions metric))))
-
-(defn- dimension-display-name
-  "Combination name shown in the UI for a dimension: '<group display name> - <dimension display name>'
-   when the dimension has a group, otherwise just the dimension's display name."
-  [d]
-  (let [dn        (or (:display_name d) (:name d) "")
-        group-dn  (some-> d :group :display_name)]
-    (if (str/blank? group-dn)
-      dn
-      (str group-dn " - " dn))))
-
-(defn- group-dimensions
-  "Collapse dimensions across the supplied metrics into a list of dimension groups. Dimensions that
-   share the same underlying source (per `lib-metric/same-source?`) collapse into a single
-   group. Each group exposes the user-facing combination name, a representative interestingness, and
-   the list of underlying dimension ids that the FE must echo back to `POST /api/exploration` when
-   the user starts an exploration."
-  [metrics]
-  (let [all-dims (->> (mapcat :dimensions metrics)
-                      (filter (fn [d]
-                                (let [score (:dimension_interestingness d)]
-                                  (or (nil? score)
-                                      (>= score explorations/min-interestingness))))))
-        ;; group by walking and merging into existing buckets via same-source?; within a bucket we
-        ;; dedupe by :id so a dimension that appears under several metrics is listed once.
-        buckets  (reduce (fn [acc d]
-                           (if-let [idx (some (fn [[i bucket]]
-                                                (when (some #(lib-metric/same-source? % d) bucket)
-                                                  i))
-                                              (map-indexed vector acc))]
-                             (let [bucket (acc idx)]
-                               (if (some #(= (:id %) (:id d)) bucket)
-                                 acc
-                                 (update acc idx conj d)))
-                             (conj acc [d])))
-                         []
-                         all-dims)
-        groups   (mapv (fn [bucket]
-                         (let [head   (first bucket)
-                               scores (keep :dimension_interestingness bucket)]
-                           {:name                      (dimension-display-name head)
-                            :dimension_interestingness (when (seq scores) (apply max scores))
-                            :dimensions                (vec bucket)}))
-                       buckets)]
-    (vec (sort-by (fn [g]
-                    (if-let [score (:dimension_interestingness g)]
-                      [0 (- score)]
-                      [1 0]))
-                  groups))))
-
 ;;; ----------------------------------------- endpoints -----------------------------------------
 
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
@@ -313,32 +240,7 @@
   Optional `q` filters case-insensitively across metric name and dimension display-name."
   [_route-params
    {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
-  (let [library-ids    (library-metrics-collection-ids)
-        accessible-ids (->> (t2/select [:model/Card :id]
-                                       {:where    (card/visible-metric-cards-where-clause)
-                                        :order-by [[[:case
-                                                     [:in :collection_id (or (seq library-ids) [-1])] 0
-                                                     :else 1] :asc]
-                                                   [:name :asc]]})
-                            (mapv :id))
-        hydrated       (->> accessible-ids
-                            (mapv (fn [id]
-                                    (metrics/sync-dimensions! :metadata/metric id)
-                                    (-> (t2/select-one :model/Card :id id :type "metric")
-                                        metrics/filter-dimensions-for-user
-                                        with-result-column-name)))
-                            (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))
-        filtered       (if (str/blank? q)
-                         hydrated
-                         (let [q-lower (u/lower-case-en q)]
-                           (filterv #(metric-matches-search? % q-lower) hydrated)))
-        slimmed        (mapv (fn [m]
-                               (-> m
-                                   (assoc :dimension_ids (mapv :id (:dimensions m)))
-                                   (dissoc :dimensions)))
-                             filtered)]
-    {:metrics          slimmed
-     :dimension_groups (group-dimensions filtered)}))
+  (explorations/exploration-data {:q q}))
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."

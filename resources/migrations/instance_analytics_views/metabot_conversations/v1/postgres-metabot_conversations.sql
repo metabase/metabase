@@ -24,6 +24,7 @@ SELECT
     (SELECT CASE mm.profile_id
                 WHEN 'internal'                  THEN 'Internal'
                 WHEN 'embedding_next'            THEN 'Embedding'
+                WHEN 'explorations'              THEN 'Explorations'
                 WHEN 'nlq'                       THEN 'NLQ'
                 WHEN 'sql'                       THEN 'SQL'
                 WHEN 'slackbot'                  THEN 'Slackbot'

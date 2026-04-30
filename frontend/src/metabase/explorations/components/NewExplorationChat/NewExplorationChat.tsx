@@ -7,7 +7,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { metricApi } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import type {
   ExplorationMetric,
@@ -23,7 +22,12 @@ import type {
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
 import { Box, Stack } from "metabase/ui";
-import type { MetricId } from "metabase-types/api/metric";
+import type {
+  ExplorationMetric as ApiExplorationMetric,
+  DimensionId,
+  ExplorationDimensionGroup,
+  Metric,
+} from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
 
@@ -77,45 +81,52 @@ export function NewExplorationChat({
       }
 
       try {
-        const metricIds = [
-          ...new Set(
-            messages.flatMap((message) =>
-              getMetricIdsFromToolCallResult(message.result),
-            ),
-          ),
-        ];
-        Promise.all(
-          metricIds.map((id) =>
-            dispatch(metricApi.endpoints.getMetric.initiate(id)).unwrap(),
-          ),
-        )
-          .then((metrics) => {
-            setMetrics((prev) => {
-              const prevMetricIds = new Set(prev.map((m) => m.id));
-              const metricsToAdd = metrics.filter(
-                (metric) => !prevMetricIds.has(metric.id),
-              );
-              return [...prev, ...metricsToAdd];
-            });
-            setDimensions((prev) => {
-              const prevDimensionIds = new Set(prev.map((d) => d.id));
-              const allDimensions = Array.from(
-                new Set(metrics.flatMap((metric) => metric.dimensions)),
-              );
-              const dimensionsToAdd = allDimensions.filter(
-                (dimension) => !prevDimensionIds.has(dimension.id),
-              );
-              return [...prev, ...dimensionsToAdd];
-            });
-          })
-          .catch((error) => {
-            console.error(error);
-            sendToast({
-              icon: "warning_triangle_filled",
-              iconColor: "warning",
-              message: t`Failed to add metrics to the Exploration`,
-            });
-          });
+        const newMetrics: ExplorationMetric[] = [];
+        const newDimensions: MetricDimension[] = [];
+        const seenMetricIds = new Set<number>();
+        const seenDimensionIds = new Set<DimensionId>();
+
+        for (const message of messages) {
+          const { metrics, dimension_groups } = parseSelectExplorationMetrics(
+            message.result,
+          );
+          const dimensionsById = new Map<DimensionId, MetricDimension>();
+          for (const group of dimension_groups) {
+            for (const d of group.dimensions) {
+              dimensionsById.set(d.id, d);
+            }
+          }
+          for (const m of metrics) {
+            if (seenMetricIds.has(m.id)) {
+              continue;
+            }
+            seenMetricIds.add(m.id);
+            const { dimension_ids, ...rest } = m;
+            const resolved: MetricDimension[] = [];
+            for (const id of dimension_ids) {
+              const dim = dimensionsById.get(id);
+              if (dim) {
+                resolved.push(dim);
+                if (!seenDimensionIds.has(dim.id)) {
+                  seenDimensionIds.add(dim.id);
+                  newDimensions.push(dim);
+                }
+              }
+            }
+            newMetrics.push({ ...rest, dimensions: resolved } as Metric);
+          }
+        }
+
+        setMetrics((prev) => {
+          const prevIds = new Set(prev.map((m) => m.id));
+          const additions = newMetrics.filter((m) => !prevIds.has(m.id));
+          return additions.length === 0 ? prev : [...prev, ...additions];
+        });
+        setDimensions((prev) => {
+          const prevIds = new Set(prev.map((d) => d.id));
+          const additions = newDimensions.filter((d) => !prevIds.has(d.id));
+          return additions.length === 0 ? prev : [...prev, ...additions];
+        });
       } catch (error) {
         console.error(error);
         sendToast({
@@ -125,7 +136,7 @@ export function NewExplorationChat({
         });
       }
     },
-    [dispatch, setMetrics, setDimensions, sendToast],
+    [setMetrics, setDimensions, sendToast],
   );
 
   const handleSetExplorationNameToolCallMessages = useCallback(
@@ -234,16 +245,16 @@ function isSetExplorationNameToolCallMessage(
   );
 }
 
-function getMetricIdsFromToolCallResult(result: string): MetricId[] {
+function parseSelectExplorationMetrics(result: string): {
+  metrics: ApiExplorationMetric[];
+  dimension_groups: ExplorationDimensionGroup[];
+} {
   const parsed = JSON.parse(result);
-  if (!parsed.metric_ids) {
-    throw new Error("Metric IDs not found in tool call result");
+  if (!Array.isArray(parsed?.metrics)) {
+    throw new Error("metrics not found in tool call result");
   }
-  if (!Array.isArray(parsed.metric_ids)) {
-    throw new Error("Metric IDs must be an array");
+  if (!Array.isArray(parsed?.dimension_groups)) {
+    throw new Error("dimension_groups not found in tool call result");
   }
-  if (parsed.metric_ids.some((id: number) => typeof id !== "number")) {
-    throw new Error("Metric IDs must be numbers");
-  }
-  return parsed.metric_ids;
+  return parsed;
 }
