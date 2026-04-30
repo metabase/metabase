@@ -99,12 +99,96 @@
     (is (thrown? Exception
                  (similarity.api/neighbors {:entity-type :card :entity-id "not-a-number"})))))
 
-(deftest cold-seeds-stub-test
-  (testing "Phase 3 cold-seeds returns []"
-    (is (= [] (similarity.api/cold-seeds {})))
-    (is (= [] (similarity.api/cold-seeds {:k 100})))))
+(deftest cold-seeds-empty-when-no-rows-test
+  (testing "cold-seeds returns [] when similarity_pagerank is empty"
+    (mt/with-model-cleanup [:model/SimilarityPagerank]
+      (is (= [] (similarity.api/cold-seeds {})))
+      (is (= [] (similarity.api/cold-seeds {:k 100}))))))
 
-(deftest community-of-stub-test
-  (testing "Phase 3 community-of returns nil"
-    (is (nil? (similarity.api/community-of :card 1)))
-    (is (nil? (similarity.api/community-of :dashboard 999999)))))
+(deftest community-of-nil-when-no-rows-test
+  (testing "community-of returns nil when similarity_community is empty"
+    (mt/with-model-cleanup [:model/SimilarityCommunity]
+      (is (nil? (similarity.api/community-of :card 1)))
+      (is (nil? (similarity.api/community-of :dashboard 999999))))))
+
+(defn- seed-pagerank!
+  [{:keys [scope entity-type entity-id score rank]
+    :or   {scope :card entity-type :card}}]
+  (t2/insert! :model/SimilarityPagerank
+              {:scope       scope
+               :entity_type entity-type
+               :entity_id   entity-id
+               :score       (double score)
+               :rank        rank
+               :computed_at (java.time.OffsetDateTime/now)}))
+
+(defn- seed-community!
+  [{:keys [scope entity-type entity-id community-id centrality]
+    :or   {scope :card entity-type :card centrality 0.5}}]
+  (t2/insert! :model/SimilarityCommunity
+              {:scope        scope
+               :entity_type  entity-type
+               :entity_id    entity-id
+               :community_id community-id
+               :centrality   (double centrality)
+               :computed_at  (java.time.OffsetDateTime/now)}))
+
+(deftest cold-seeds-reads-pagerank-test
+  (testing "cold-seeds returns rows ordered by rank, capped at :k"
+    (mt/with-model-cleanup [:model/SimilarityPagerank]
+      (seed-pagerank! {:entity-id 100 :score 0.05 :rank 1})
+      (seed-pagerank! {:entity-id 200 :score 0.04 :rank 2})
+      (seed-pagerank! {:entity-id 300 :score 0.03 :rank 3})
+      (let [out (similarity.api/cold-seeds {:type :card :k 2})]
+        (is (= 2 (count out)))
+        (is (= [100 200] (mapv :entity_id out)))
+        (is (= [1 2] (mapv :rank out)))))))
+
+(deftest cold-seeds-defaults-to-full-scope-test
+  (testing "absent :type reads scope='full'"
+    (mt/with-model-cleanup [:model/SimilarityPagerank]
+      (seed-pagerank! {:scope :card :entity-id 1 :score 0.1 :rank 1})
+      (seed-pagerank! {:scope :full :entity-id 2 :score 0.2 :rank 1})
+      (let [out (similarity.api/cold-seeds {:k 5})]
+        (is (= [2] (mapv :entity_id out)))))))
+
+(deftest community-of-reads-row-test
+  (testing "community-of returns scope/community-id/centrality"
+    (mt/with-model-cleanup [:model/SimilarityCommunity]
+      (seed-community! {:entity-id 42 :community-id 7 :centrality 0.8})
+      (let [out (similarity.api/community-of :card 42)]
+        (is (= :card (:scope out)))
+        (is (= 7    (:community-id out)))
+        (is (== 0.8 (:centrality out))))
+      (is (nil? (similarity.api/community-of :card 999999))))))
+
+(deftest dedupe-by-community-keeps-first-per-community-test
+  (testing "ranked candidates collapse to one representative per community"
+    (mt/with-model-cleanup [:model/SimilarityCommunity]
+      (seed-community! {:entity-id 10 :community-id 0 :centrality 0.9})
+      (seed-community! {:entity-id 11 :community-id 0 :centrality 0.5})
+      (seed-community! {:entity-id 20 :community-id 1 :centrality 0.8})
+      (let [candidates [{:to_entity_type :card :to_entity_id 10}
+                        {:to_entity_type :card :to_entity_id 11}
+                        {:to_entity_type :card :to_entity_id 20}]
+            out (similarity.api/dedupe-by-community candidates)]
+        (is (= [10 20] (mapv :to_entity_id out)))))))
+
+(deftest dedupe-by-community-passes-through-uncategorized-test
+  (testing "candidates with no community row pass through untouched"
+    (mt/with-model-cleanup [:model/SimilarityCommunity]
+      (let [candidates [{:to_entity_type :card :to_entity_id 999}
+                        {:to_entity_type :card :to_entity_id 998}]
+            out (similarity.api/dedupe-by-community candidates)]
+        (is (= candidates out))))))
+
+(deftest pagerank-percentile-test
+  (testing "percentile is 1 - (rank-1)/total within scope"
+    (mt/with-model-cleanup [:model/SimilarityPagerank]
+      (doseq [r (range 1 11)]
+        (seed-pagerank! {:entity-id r :score (- 0.2 (* r 0.01)) :rank r}))
+      (let [approx= (fn [a b] (< (Math/abs (- (double a) (double b))) 1e-9))]
+        (is (approx= 1.0 (similarity.api/pagerank-percentile-of :card :card 1)))
+        (is (approx= 0.5 (similarity.api/pagerank-percentile-of :card :card 6)))
+        (is (approx= 0.1 (similarity.api/pagerank-percentile-of :card :card 10))))
+      (is (nil? (similarity.api/pagerank-percentile-of :card :card 999))))))

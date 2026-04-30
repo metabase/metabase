@@ -92,3 +92,18 @@
   (let [{:keys [base fusion]} (views-by-phase)]
     (into (mapv #(run-view! % :batch-size batch-size) base)
           (mapv #(run-view! % :batch-size batch-size) fusion))))
+
+(defn run-everything!
+  "Composite full rebuild: views (base → fusion) then graph jobs (PageRank →
+   Louvain). Returns a vector of per-step result maps in execution order.
+
+   The `require`/`resolve` indirection on `graph.runner/run-all!` keeps this
+   namespace free of a hard reference to the graph runner so the cycle
+   `runner ↔ graph.runner` (which transitively share `models.similar-edge-
+   status`) stays compile-clean. `init.clj` always loads `graph.runner`, so
+   the resolve never returns nil at runtime."
+  [& {:keys [batch-size] :or {batch-size 500}}]
+  (require 'metabase-enterprise.similarity.graph.runner)
+  (let [graph-run-all! (resolve 'metabase-enterprise.similarity.graph.runner/run-all!)]
+    (into (run-all-views! :batch-size batch-size)
+          (graph-run-all!))))

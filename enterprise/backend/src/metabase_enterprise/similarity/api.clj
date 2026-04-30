@@ -42,6 +42,19 @@
    [:k                {:optional true} pos-int?]
    [:apply-overlay?   {:optional true} :boolean]])
 
+(mr/def ::cold-seeds-opts
+  [:map {:closed true}
+   [:type  {:optional true} ::deps.dependency-types/dependency-types]
+   [:scope {:optional true} [:enum :instance]]
+   [:k     {:optional true} pos-int?]])
+
+(mr/def ::canonical
+  [:map
+   [:entity_type ::deps.dependency-types/dependency-types]
+   [:entity_id   pos-int?]
+   [:score       number?]
+   [:rank        pos-int?]])
+
 (defn- view-clause
   "Compile the `:views` opt into a HoneySQL where-fragment."
   [views]
@@ -105,19 +118,69 @@
         views       (:views opts :ensemble)]
     (vec (load-edges (assoc opts :target-type target-type :views views) k))))
 
-(defn cold-seeds
-  "Return canonical entities for cold-start retrieval.
+(mu/defn cold-seeds :- [:sequential ::canonical]
+  "Return canonical entities by PageRank score within the requested scope.
 
-   Phase 8 wires this to `similarity_pagerank`; until then the empty list is
-   the documented cold-start fallback so Phase 4 can call this without a
-   feature check."
-  [_opts]
-  [])
+   Defaults: `:scope :instance, :k 10`. When `:type` is provided, reads the
+   per-type PageRank table (`scope = name(type)`); otherwise reads the
+   polymorphic `:full` table. Phase 9's `list_canonical_entities` Metabot
+   tool wraps this with user-context permission filtering. Empty when the
+   index hasn't been built — the documented cold-start fallback."
+  [opts :- ::cold-seeds-opts]
+  (let [{:keys [type k]
+         :or   {k 10}} opts
+        pg-scope (if type (name type) "full")]
+    (->> (t2/select :model/SimilarityPagerank
+                    {:where    (cond-> [:and [:= :scope pg-scope]]
+                                 type (conj [:= :entity_type (name type)]))
+                     :order-by [[:rank :asc]]
+                     :limit    k})
+         (mapv #(select-keys % [:entity_type :entity_id :score :rank])))))
 
 (defn community-of
-  "Return community membership of `entity-type/entity-id`, or nil if unknown.
+  "Return Louvain community membership for an entity, or nil if untyped /
+   uncomputed. Communities are per-type: `scope = name(entity-type)`. Returns
+   `{:scope :community-id :centrality}` on hit."
+  [entity-type entity-id]
+  (when-let [row (t2/select-one :model/SimilarityCommunity
+                                :scope       (name entity-type)
+                                :entity_type (name entity-type)
+                                :entity_id   entity-id)]
+    {:scope        (:scope row)
+     :community-id (:community_id row)
+     :centrality   (:centrality row)}))
 
-   Phase 8 populates `similarity_community`; nil is the documented cold-start
-   fallback."
-  [_entity-type _entity-id]
-  nil)
+(defn dedupe-by-community
+  "Filter a ranked candidate list, keeping only the first (highest-scored)
+   member per `(scope, community-id)` pair. Candidates whose target has no
+   community row pass through.
+
+   Synth doc §7 use case: collapse 'ten near-identical Q3 Revenue cards' to
+   one representative. One DB lookup per distinct `(to_entity_type,
+   to_entity_id)` — t2 caches within the request."
+  [ranked-candidates]
+  (let [seen (volatile! #{})]
+    (vec
+     (filter
+      (fn [{:keys [to_entity_type to_entity_id]}]
+        (let [comm (community-of to_entity_type to_entity_id)
+              key  (when comm [(:scope comm) (:community-id comm)])]
+          (cond
+            (nil? key)             true
+            (contains? @seen key)  false
+            :else                  (do (vswap! seen conj key) true))))
+      ranked-candidates))))
+
+(defn pagerank-percentile-of
+  "Phase 7 hook: percentile of an entity's PR score within `scope`. Returns a
+   `[0.0, 1.0]` double (1.0 = top of the distribution), or nil when the
+   entity isn't in the scope. Implementation reads the persisted `rank`
+   column and divides by row count; no live re-ranking."
+  [scope entity-type entity-id]
+  (when-let [{:keys [rank]} (t2/select-one :model/SimilarityPagerank
+                                           :scope       (name scope)
+                                           :entity_type (name entity-type)
+                                           :entity_id   entity-id)]
+    (let [total (t2/count :model/SimilarityPagerank :scope (name scope))]
+      (when (pos? total)
+        (- 1.0 (/ (double (dec rank)) (double total)))))))

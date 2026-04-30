@@ -1,0 +1,224 @@
+## Polymorphic similarity graph index — Phase 8 graph algorithms
+## Adds `similarity_pagerank` (per-scope PR scores + dense ranks) and
+## `similarity_community` (per-type Louvain partition + within-community
+## centrality). Both are full-rebuild outputs; refresh story is REPL-driven
+## until Phase 10 lands scheduling.
+## See notes/classifiers/card-sim-graph-index-phase-8-impl.md
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:00
+      author: Tyler Plude
+      comment: Create similarity_pagerank table for PageRank output (Phase 8)
+      changes:
+        - createTable:
+            tableName: similarity_pagerank
+            remarks: Per-scope PageRank scores + dense rank ordinals
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scope
+                  type: varchar(20)
+                  remarks: Graph scope (full | card | dashboard | table)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(20)
+                  remarks: Entity type for this row (matches scope for per-type runs)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: Entity primary key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: score
+                  type: double
+                  remarks: Raw PageRank score; sums to ~1.0 within scope
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rank
+                  type: int
+                  remarks: 1-based dense ordinal within scope, score-desc
+                  constraints:
+                    nullable: false
+              - column:
+                  name: computed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp the row was last (re)computed
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: similarity_pagerank
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:01
+      author: Tyler Plude
+      comment: Unique constraint preventing duplicate similarity_pagerank rows
+      changes:
+        - addUniqueConstraint:
+            tableName: similarity_pagerank
+            columnNames: scope, entity_type, entity_id
+            constraintName: idx_unique_similarity_pagerank
+      rollback:
+        - dropUniqueConstraint:
+            tableName: similarity_pagerank
+            constraintName: idx_unique_similarity_pagerank
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:02
+      author: Tyler Plude
+      comment: Index for cold-seeds queries (scope + rank)
+      changes:
+        - createIndex:
+            tableName: similarity_pagerank
+            indexName: idx_similarity_pagerank_scope_rank
+            columns:
+              - column:
+                  name: scope
+              - column:
+                  name: rank
+      rollback:
+        - dropIndex:
+            tableName: similarity_pagerank
+            indexName: idx_similarity_pagerank_scope_rank
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:03
+      author: Tyler Plude
+      comment: Index for top-N-by-score queries within scope
+      changes:
+        - createIndex:
+            tableName: similarity_pagerank
+            indexName: idx_similarity_pagerank_scope_score
+            columns:
+              - column:
+                  name: scope
+              - column:
+                  name: score
+                  descending: true
+      rollback:
+        - dropIndex:
+            tableName: similarity_pagerank
+            indexName: idx_similarity_pagerank_scope_score
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:10
+      author: Tyler Plude
+      comment: Create similarity_community table for Louvain output (Phase 8)
+      changes:
+        - createTable:
+            tableName: similarity_community
+            remarks: Per-type Louvain community membership + within-community PageRank centrality
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scope
+                  type: varchar(20)
+                  remarks: Graph scope (card | dashboard | table) - communities are per-type only
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(20)
+                  remarks: Entity type for this row (matches scope)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: Entity primary key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: community_id
+                  type: int
+                  remarks: Community ordinal assigned at compute time; NOT stable across rebuilds
+                  constraints:
+                    nullable: false
+              - column:
+                  name: centrality
+                  type: double
+                  remarks: Within-community PageRank score; identifies canonical representatives
+                  constraints:
+                    nullable: false
+              - column:
+                  name: computed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp the row was last (re)computed
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: similarity_community
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:11
+      author: Tyler Plude
+      comment: Unique constraint preventing duplicate similarity_community rows
+      changes:
+        - addUniqueConstraint:
+            tableName: similarity_community
+            columnNames: scope, entity_type, entity_id
+            constraintName: idx_unique_similarity_community
+      rollback:
+        - dropUniqueConstraint:
+            tableName: similarity_community
+            constraintName: idx_unique_similarity_community
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:12
+      author: Tyler Plude
+      comment: Index for community-membership queries (scope + community_id)
+      changes:
+        - createIndex:
+            tableName: similarity_community
+            indexName: idx_similarity_community_scope_cid
+            columns:
+              - column:
+                  name: scope
+              - column:
+                  name: community_id
+      rollback:
+        - dropIndex:
+            tableName: similarity_community
+            indexName: idx_similarity_community_scope_cid
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:13
+      author: Tyler Plude
+      comment: Index for canonical-representative queries (within-community centrality)
+      changes:
+        - createIndex:
+            tableName: similarity_community
+            indexName: idx_similarity_community_centrality
+            columns:
+              - column:
+                  name: scope
+              - column:
+                  name: community_id
+              - column:
+                  name: centrality
+                  descending: true
+      rollback:
+        - dropIndex:
+            tableName: similarity_community
+            indexName: idx_similarity_community_centrality
