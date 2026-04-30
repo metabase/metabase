@@ -10,7 +10,6 @@ import {
 } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { KBarProvider } from "kbar";
 import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
@@ -19,6 +18,7 @@ import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
+import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
@@ -331,7 +331,7 @@ function MaybeKBar({
   if (!hasKBar) {
     return children;
   }
-  return <KBarProvider>{children}</KBarProvider>;
+  return <AppKBarProvider>{children}</AppKBarProvider>;
 }
 
 function MaybeDNDProvider({

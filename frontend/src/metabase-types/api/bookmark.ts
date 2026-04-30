@@ -13,6 +13,7 @@ export const BOOKMARK_TYPES = [
   "transform",
   "document",
   "table",
+  "measure",
 ] as const;
 export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;

@@ -6,7 +6,7 @@ import { EllipsifiedCollectionPath } from "metabase/common/components/Ellipsifie
 import { Link } from "metabase/common/components/Link";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CacheableModel } from "metabase-types/api";
 
 import type { CacheableItem, UpdateTarget } from "../types";

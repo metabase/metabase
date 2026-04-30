@@ -11,7 +11,7 @@ import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/ut
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";

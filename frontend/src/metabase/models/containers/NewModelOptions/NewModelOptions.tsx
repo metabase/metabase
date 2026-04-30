@@ -13,7 +13,7 @@ import {
 } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Group } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { EducationalButton, OptionsRoot } from "./NewModelOptions.styled";
 

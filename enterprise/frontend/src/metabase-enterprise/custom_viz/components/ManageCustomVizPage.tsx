@@ -18,7 +18,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import {
   useDeleteCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,

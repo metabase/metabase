@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.nio.file Path)
+   (java.nio.file FileVisitOption Files LinkOption Path)
    (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
@@ -221,15 +221,31 @@
 (defn- should-skip-checksum? [last-checksum]
   (= skip-checksum-flag last-checksum))
 
+(defn directory-content-checksum
+  "Stable hash of the relative paths and contents of files under `root` (recursively) whose filenames
+   end with `suffix` (e.g. `.sql`). Detects renames (paths are included) and content swaps between
+   files (single hash over sorted pairs)."
+  ([root] (directory-content-checksum root ""))
+  ([^Path root suffix]
+   (with-open [stream (Files/walk root (u/varargs FileVisitOption))]
+     (->> (iterator-seq (.iterator stream))
+          (filter (fn [^Path p]
+                    (and (Files/isRegularFile p (u/varargs LinkOption))
+                         (str/ends-with? (str (.getFileName p)) suffix))))
+          (mapv (fn [^Path path]
+                  [(str (.relativize root path))
+                   (Files/readString path)]))
+          (sort-by first)
+          hash))))
+
 (defn analytics-checksum
-  "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
+  "Checksum of the serialized analytics content (collections, dashboards, cards) on the classpath.
+   Stored in the `last-analytics-checksum` setting; when it changes, `ensure-audit-db-installed!`
+   re-runs `serialization.cmd/v2-load-internal!` on boot."
   []
-  (->> ^Path (instance-analytics-plugin-dir (plugins/plugins-dir))
-       (.toFile)
-       file-seq
-       (remove fs/directory?)
-       (pmap #(hash (slurp %)))
-       (reduce +)))
+  (-> (plugins/plugins-dir)
+      instance-analytics-plugin-dir
+      directory-content-checksum))
 
 (defn- should-load-audit?
   "Should we load audit data?"
@@ -248,26 +264,36 @@
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
+  "Loads serialized audit content from the classpath if its checksum has changed.
+
+   Returns true iff loading required swapping the audit DB engine type to match the host
+   (i.e. the host is not postgres and we just rewrote the engine row from postgres back to
+   h2/mysql). The boolean tells `maybe-sync-audit-db!` whether field metadata needs to be
+   re-scanned for the new dialect — this transient swap isn't visible from outside the
+   function, which is why it has to be returned explicitly."
   [audit-db]
-  (when analytics-dir-resource
-    (ia-content->plugins (plugins/plugins-dir))
-    (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-      (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
-        (adjust-audit-db-to-source! audit-db)
-        (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
-        ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-        (let [report (log/with-no-logs
-                       (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
-                                                            {:backfill? false}
-                                                            :token-check? false
-                                                            :require-initialized-db? false))]
-          (if (not-empty (:errors report))
-            (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-            (do
-              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (audit/last-analytics-checksum! current-checksum))))
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-          (adjust-audit-db-to-host! audit-db))))))
+  (boolean
+   (when analytics-dir-resource
+     (ia-content->plugins (plugins/plugins-dir))
+     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
+       (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+         (adjust-audit-db-to-source! audit-db)
+         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
+         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+         (let [report (log/with-no-logs
+                        (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
+                                                             {:backfill? false}
+                                                             :token-check? false
+                                                             :require-initialized-db? false))]
+           (if (not-empty (:errors report))
+             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+             (do
+               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
+               (audit/last-analytics-checksum! current-checksum))))
+         (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+           (let [original-engine engine]
+             (adjust-audit-db-to-host! audit-db)
+             (not= original-engine (mdb/db-type)))))))))
 
 (defn- maybe-install-audit-db!
   []
@@ -295,6 +321,41 @@
         (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
     result))
 
+(defn- views-checksum
+  "Checksum of the `instance_analytics_views` SQL files. Stored in the `last-analytics-views-checksum`
+   setting; when it changes, `ensure-audit-db-installed!` triggers a one-shot audit DB schema sync
+   so that newly added or renamed views become discoverable without waiting for the next scheduled sync."
+  []
+  (when (io/resource "migrations/instance_analytics_views")
+    (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
+      (directory-content-checksum views-dir ".sql"))))
+
+(defn- maybe-sync-audit-db!
+  "One-shot `:scan :schema` sync of the audit DB. Fires when either trigger is true:
+     - `engine-changed?` — `maybe-load-analytics-content!` swapped the audit DB engine and
+       field metadata needs to be refreshed for the new dialect.
+     - the `instance_analytics_views` SQL files have changed since the last successful sync,
+       meaning a migration may have added a new view that isn't yet in `metabase_table`.
+   The two triggers share one sync because they both want the same operation; doing them
+   sequentially would race two parallel syncs against the same DB on a cold boot."
+  [audit-db engine-changed?]
+  (let [current      (views-checksum)
+        views-stale? (and current (not= current (audit-app.settings/last-analytics-views-checksum)))]
+    (when (or engine-changed? views-stale?)
+      (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s)"
+                 engine-changed? views-stale?)
+      (let [sync-future (future
+                          (try
+                            (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
+                            (when current
+                              (audit-app.settings/last-analytics-views-checksum! current))
+                            (log/info "Audit DB sync complete.")
+                            (catch Exception e
+                              (log/error e "Audit DB sync failed."))))]
+        (when config/is-test?
+          ;; Tests need the sync to complete before they run
+          @sync-future)))))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
   content if it is available."
@@ -306,4 +367,4 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (maybe-load-analytics-content! audit-db)))))))
+          (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))))))))
