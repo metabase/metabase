@@ -727,13 +727,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
-(def ^:private ^:dynamic *setting-up*
-  "True while [[setup!]] is initializing the registry. Guards against reentrant metric
-  emission during init — e.g. token-check error logging that fires while drivers are
-  registering can call [[inc!]], which would otherwise loop back into [[setup!]] before
-  the first call has finished. While `*setting-up*` is true the metric fns silently drop."
-  false)
-
 (defn- parse
   [x]
   (when-not (str/blank? x)
@@ -748,16 +741,14 @@
   "Start the prometheus metric collector and web-server. Port is optional, read from `MB_PROMETHEUS_SERVER_PORT`"
   ([] (setup! (parse (System/getenv "MB_PROMETHEUS_SERVER_PORT"))))
   ([port]
-   (when (and (not system) (not *setting-up*))
-     (binding [*setting-up* true]
-       ;; should this just be read from the environment?
-       (when-not port
-         (log/info "Running prometheus metrics without a webserver"))
-       (locking #'system
-         (when-not system
-           (let [sys (make-prometheus-system port "metabase-registry")]
-             (alter-var-root #'system (constantly sys))
-             (install-real-reporter!))))))))
+   (when (not system)
+     (when-not port
+       (log/info "Running prometheus metrics without a webserver"))
+     (locking #'system
+       (when-not system
+         (let [sys (make-prometheus-system port "metabase-registry")]
+           (alter-var-root #'system (constantly sys))
+           (install-real-reporter!)))))))
 
 (defn observe-initial-values
   "Observe initial values. Some values need a baseline otherwise their first observed value won't register as a
