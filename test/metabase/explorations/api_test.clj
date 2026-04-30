@@ -482,8 +482,8 @@
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
 
-(deftest exploration-mark-interesting-roundtrip-test
-  (testing "PUT /query/:id/interesting marks; DELETE clears; both reflected in /:id/queries"
+(deftest exploration-user-interestingness-roundtrip-test
+  (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
     (mt/with-temp [:model/User u {:email "mark@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (mt/user-http-request u :post 200 "exploration"
@@ -492,42 +492,48 @@
                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]})
             eid  (:id resp)
-            qid  (-> resp :threads first :queries first :id)]
-        (testing "fresh query is unmarked"
-          (let [[s] (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
-            (is (nil? (:marked_interesting_at s)))))
-        (testing "PUT sets marked_interesting_at"
-          (let [marked (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid))]
-            (is (some? (:marked_interesting_at marked)))
-            (is (= qid (:id marked)))))
-        (testing "summary list reflects the mark"
-          (let [[s] (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
-            (is (some? (:marked_interesting_at s)))))
-        (testing "DELETE clears marked_interesting_at"
-          (let [unmarked (mt/user-http-request u :delete 200 (format "exploration/query/%d/interesting" qid))]
-            (is (nil? (:marked_interesting_at unmarked)))))
-        (testing "summary list reflects the clear"
-          (let [[s] (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
-            (is (nil? (:marked_interesting_at s)))))))))
+            qid  (-> resp :threads first :queries first :id)
+            put! (fn [level]
+                   (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
+                                         {:user_interestingness level}))
+            list-one (fn []
+                       (first (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))))]
+        (testing "fresh query has nil rating"
+          (is (nil? (:user_interestingness (list-one)))))
+        (testing "PUT writes each of the three levels and the response reflects it"
+          (doseq [level [0 1 2]]
+            (let [marked (put! level)]
+              (is (= level (:user_interestingness marked)))
+              (is (= qid   (:id marked)))
+              (is (= level (:user_interestingness (list-one)))
+                  (format "summary list reflects level %d" level)))))
+        (testing "PUT overwrites a prior rating (no idempotency carve-out)"
+          (put! 2)
+          (put! 0)
+          (is (= 0 (:user_interestingness (list-one)))))
+        (testing "DELETE clears user_interestingness"
+          (let [cleared (mt/user-http-request u :delete 200 (format "exploration/query/%d/interesting" qid))]
+            (is (nil? (:user_interestingness cleared)))
+            (is (nil? (:user_interestingness (list-one))))))))))
 
-(deftest exploration-mark-interesting-is-idempotent-test
-  (testing "PUT /query/:id/interesting is a no-op when already marked — original timestamp preserved"
-    (mt/with-temp [:model/User u {:email "mark-idem@example.com"}
+(deftest exploration-user-interestingness-rejects-bad-levels-test
+  (testing "PUT /query/:id/interesting rejects values outside {0,1,2}"
+    (mt/with-temp [:model/User u {:email "mark-bad@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp     (mt/user-http-request u :post 200 "exploration"
-                                           {:name "idem"
-                                            :metrics [{:card_id (:id metric)
-                                                       :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                            :dimensions [{:dimension_id "d1"}]})
-            qid      (-> resp :threads first :queries first :id)
-            first-ts (:marked_interesting_at
-                      (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)))
-            again    (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid))]
-        (is (some? first-ts))
-        (is (= first-ts (:marked_interesting_at again))
-            "second PUT does not bump the timestamp")))))
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "bad"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            qid  (-> resp :threads first :queries first :id)]
+        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
+                              {:user_interestingness 3})
+        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
+                              {:user_interestingness -1})
+        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
+                              {})))))
 
-(deftest exploration-mark-interesting-permissions-test
+(deftest exploration-user-interestingness-permissions-test
   (testing "PUT/DELETE /query/:id/interesting enforce write-check — non-owner gets 403"
     (mt/with-temp [:model/User owner {:email "mp-owner@example.com"}
                    :model/User other {:email "mp-other@example.com"}
@@ -538,13 +544,15 @@
                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)]
-        (mt/user-http-request other :put 403 (format "exploration/query/%d/interesting" qid))
+        (mt/user-http-request other :put 403 (format "exploration/query/%d/interesting" qid)
+                              {:user_interestingness 2})
         (mt/user-http-request other :delete 403 (format "exploration/query/%d/interesting" qid))))))
 
-(deftest exploration-mark-interesting-404-test
+(deftest exploration-user-interestingness-404-test
   (testing "PUT/DELETE on a nonexistent query id returns 404"
     (mt/with-temp [:model/User u {:email "mark-404@example.com"}]
-      (mt/user-http-request u :put 404 "exploration/query/9999999/interesting")
+      (mt/user-http-request u :put 404 "exploration/query/9999999/interesting"
+                            {:user_interestingness 1})
       (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
 
 (deftest exploration-cascade-delete-test

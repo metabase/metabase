@@ -18,7 +18,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private worker-count     4)
+;; TODO the below should clearly become settings soon
+(defn- worker-count
+  "How many concurrent workers to spin up. H2 has no `FOR UPDATE SKIP LOCKED` so we'd race on
+  the claim and double-insert into `exploration_query_result` (1:1 with `exploration_query`);
+  cap at 1 there. Postgres/MySQL claim safely via SKIP LOCKED."
+  []
+  (case (mdb/db-type)
+    :h2 1
+    4))
+
 (def ^:private idle-sleep-ms    1000)
 (def ^:private error-backoff-ms 5000)
 (def ^:private join-timeout-ms  5000)
@@ -28,7 +37,8 @@
 
 (defn- claim-pending-query
   "Claim a single pending row with `FOR UPDATE SKIP LOCKED` so peer workers don't fight for it.
-  H2 doesn't support SKIP LOCKED but is single-process anyway, so we drop the lock clause there."
+  H2 doesn't support SKIP LOCKED, but we cap H2 at one worker (see `worker-count`) so dropping
+  the lock clause is safe there."
   []
   (let [skip-locked? (not= :h2 (mdb/db-type))
         q            (cond-> {:select   [:*]
@@ -119,7 +129,7 @@
   []
   (when (compare-and-set! running? false true)
     (reset! threads
-            (vec (for [i (range worker-count)]
+            (vec (for [i (range (worker-count))]
                    (doto (Thread. ^Runnable #(worker-loop i)
                                   (str "exploration-worker-" i))
                      (.setDaemon true)

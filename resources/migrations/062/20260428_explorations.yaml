@@ -557,9 +557,9 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: marked_interesting_at
-                  type: ${timestamp_type}
-                  remarks: When the owner marked this query as interesting; null = unmarked
+                  name: user_interestingness
+                  type: int
+                  remarks: Owner's interestingness rating; null = unrated, 0 = not interesting, 1 = hmm, 2 = interesting
                   constraints:
                     nullable: true
               - column:

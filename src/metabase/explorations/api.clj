@@ -179,7 +179,7 @@
    [:error_message         {:optional true} [:maybe :string]]
    [:started_at            {:optional true} [:maybe :any]]
    [:finished_at           {:optional true} [:maybe :any]]
-   [:marked_interesting_at {:optional true} [:maybe :any]]
+   [:user_interestingness  {:optional true} [:maybe [:enum 0 1 2]]]
    [:entity_id             {:optional true} [:maybe :string]]
    [:interestingness_score {:optional true} [:maybe number?]]])
 
@@ -319,7 +319,7 @@
    :exploration_query.name :exploration_query.position
    :exploration_query.status :exploration_query.error_message
    :exploration_query.started_at :exploration_query.finished_at
-   :exploration_query.marked_interesting_at
+   :exploration_query.user_interestingness
    :exploration_query.entity_id
    [:exploration_query_result.interestingness_score :interestingness_score]])
 
@@ -389,19 +389,20 @@
        :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
 
 (api.macros/defendpoint :put "/query/:id/interesting" :- ::ExplorationQuerySummary
-  "Mark an exploration query as interesting. The timestamp records when it was first marked;
-  re-marking is a no-op so the original mark time is preserved."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [q (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))]
-    (when (nil? (:marked_interesting_at q))
-      (t2/update! :model/ExplorationQuery id {:marked_interesting_at (t/offset-date-time)}))
-    (query-summary id)))
+  "Set the owner's interestingness rating on an exploration query.
+  `user_interestingness` is `0` (not interesting), `1` (hmm), or `2` (interesting)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [user_interestingness]} :- [:map [:user_interestingness [:enum 0 1 2]]]]
+  (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
+  (t2/update! :model/ExplorationQuery id {:user_interestingness user_interestingness})
+  (query-summary id))
 
 (api.macros/defendpoint :delete "/query/:id/interesting" :- ::ExplorationQuerySummary
-  "Clear the interesting mark on an exploration query."
+  "Clear the owner's interestingness rating on an exploration query."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
-  (t2/update! :model/ExplorationQuery id {:marked_interesting_at nil})
+  (t2/update! :model/ExplorationQuery id {:user_interestingness nil})
   (query-summary id))
 
 ;;; ----------------------------------------- routes -----------------------------------------
