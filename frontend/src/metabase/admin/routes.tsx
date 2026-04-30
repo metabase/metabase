@@ -17,6 +17,7 @@ import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListA
 import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
+import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -43,7 +44,6 @@ import {
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
-  EmbeddingHubAdminSettingsPage,
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";

@@ -809,9 +809,6 @@ export function createEntity(def: EntityDef): Entity {
     getIcon(_object: EntityObject) {
       return { name: "unknown" };
     },
-    getColor(_object: EntityObject): string | undefined {
-      return undefined;
-    },
     getCollection(object: EntityObject) {
       return object.collection;
     },

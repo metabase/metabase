@@ -65,6 +65,12 @@
   [request]
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
 
+(defn referer
+  "The `Referer` header from a Ring `request`, or nil. Best-effort — browsers may strip it under
+  `Referrer-Policy: no-referrer` or cross-origin restrictions."
+  [request]
+  (get-in request [:headers "referer"]))
+
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}

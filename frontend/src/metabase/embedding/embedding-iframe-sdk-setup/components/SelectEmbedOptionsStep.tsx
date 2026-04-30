@@ -345,6 +345,15 @@ const AppearanceSection = () => {
     [updateSettings],
   );
 
+  const initializeCustomTheme = useCallback(
+    (initialColors: Partial<MetabaseColors> | undefined) => {
+      updateSettings({
+        theme: initialColors ? { colors: initialColors } : undefined,
+      } satisfies Partial<typeof settings>);
+    },
+    [updateSettings],
+  );
+
   const updateThemePreset = useCallback(
     (preset: MetabaseThemePreset) => {
       updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
@@ -420,6 +429,7 @@ const AppearanceSection = () => {
             savedThemes={savedThemes ?? []}
             theme={theme}
             onThemeChange={updateThemeId}
+            onCustomSelect={initializeCustomTheme}
             onColorChange={updateColors}
             onColorReset={resetTheme}
           />

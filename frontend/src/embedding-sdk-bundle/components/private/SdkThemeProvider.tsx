@@ -6,20 +6,37 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/use-embedding-theme-override";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useSetting } from "metabase/common/hooks";
-import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
+import {
+  type MetabaseEmbeddingTheme,
+  isEmbeddingThemeV1,
+} from "metabase/embedding-sdk/theme";
 import { useSelector } from "metabase/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 interface Props {
   theme?: MetabaseEmbeddingTheme;
   children: React.ReactNode;
 }
 
+const getResolvedColorSchemeFromTheme = (
+  theme: MetabaseEmbeddingTheme | undefined,
+): ResolvedColorScheme | undefined => {
+  if (!isEmbeddingThemeV1(theme)) {
+    return undefined;
+  }
+  return theme.preset === "dark" || theme.preset === "light"
+    ? theme.preset
+    : undefined;
+};
+
 export const SdkThemeProvider = ({ theme, children }: Props) => {
   const themeOverride = useEmbeddingThemeOverride(theme);
+
+  const resolvedColorScheme = getResolvedColorSchemeFromTheme(theme);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
@@ -40,6 +57,7 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
         >
           <ThemeProvider
             theme={themeOverride}
+            resolvedColorScheme={resolvedColorScheme}
             cssVariablesSelector=".mb-wrapper"
           >
             {isInstanceToRender && <GlobalSdkCssVariables />}

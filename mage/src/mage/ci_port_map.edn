@@ -19,8 +19,8 @@
  "circleci/mariadb:latest"  3307
 
  ;; MySQL (3308–3309)
- "cimg/mysql:8.4"           3308
- "mysql:8.4"                3308
+ "cimg/mysql:8.0"           3308
+ "mysql:8.0"                3308
  "mysql:latest"             3309
 
  ;; PostgreSQL (5432–5433)

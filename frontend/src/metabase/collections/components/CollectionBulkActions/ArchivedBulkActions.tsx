@@ -83,7 +83,6 @@ export const ArchivedBulkActions = ({
           `${selected.length} items have been permanently deleted.`,
           selected.length,
         ),
-        undo: false,
         canDismiss: true,
       }),
     );

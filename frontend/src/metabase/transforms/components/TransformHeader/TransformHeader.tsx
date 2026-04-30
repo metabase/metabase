@@ -8,7 +8,7 @@ import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collect
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { StackProps } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";

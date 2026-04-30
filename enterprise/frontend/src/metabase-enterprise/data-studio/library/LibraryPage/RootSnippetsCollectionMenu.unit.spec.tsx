@@ -4,7 +4,7 @@ import { Route } from "react-router";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
-import { dataStudioArchivedSnippets } from "metabase/utils/urls";
+import { dataStudioArchivedSnippets } from "metabase/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 

@@ -11,10 +11,8 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -168,11 +166,30 @@
    - on-tool-end: Called with {:id :result} when a tool completes
    - on-data: Called with (index, {:type data-type :value data}) for each data part
    - req-slack-msg-id: The Slack message ts for the user's incoming message
-   - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response"
+   - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response
+
+   Returns the `external-id` stamped on the assistant `metabot_message` row so
+   callers can encode it into feedback button payloads for direct resolution
+   without relying on a (channel, slack_msg_id) lookup."
   [conversation-id prompt thread bot-user-id channel-id extra-history
-   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
-  (let [data-idx        (volatile! -1)
-        message         (metabot.envelope/user-message prompt)
+   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
+           request-prompt stored-msg-id team-id thread-ts]}]
+  (let [message         (metabot.envelope/user-message prompt)
+        ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
+        ;; Generated up front so it can be baked into feedback button payloads
+        ;; at the same time the assistant message is persisted.
+        external-id     (str (random-uuid))
+        ;; Persist the user message before setup so failed conversations are captured.
+        ;; `:user-id` stamps the author on the message row so participation-based
+        ;; conversation read permissions work for multi-user Slack threads.
+        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
+                                                            :channel-id      channel-id
+                                                            :slack-team-id   team-id
+                                                            :slack-thread-ts thread-ts
+                                                            :slack-msg-id    req-slack-msg-id
+                                                            :user-id         api/*current-user-id*
+                                                            :ai-proxy?       ai-proxy?)
+        data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
@@ -182,10 +199,6 @@
                           :capabilities               capabilities
                           :slack_channel_id           channel-id})
         messages        (conj (vec history) request-message)
-        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
-                                                            :channel-id   channel-id
-                                                            :slack-msg-id req-slack-msg-id
-                                                            :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))
         parts-atom      (atom [])
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
@@ -217,23 +230,34 @@
 
                                    nil)
                                  nil)))]
-    (transduce dispatch-xf (constantly nil) nil
-               (agent/run-agent-loop
-                {:messages   messages
-                 :state      {}
-                 :profile-id :slackbot
-                 :context    context}))
-    (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
-          pk        (metabot.persistence/store-message!
-                     conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
-                     :channel-id   channel-id
-                     :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                     :user-id      api/*current-user-id*
-                     :ai-proxy?   (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))]
-      (when stored-msg-id
-        (reset! stored-msg-id pk)))))
+    (try
+      (transduce dispatch-xf (constantly nil) nil
+                 (agent/run-agent-loop
+                  {:messages      messages
+                   :state         {}
+                   :profile-id    :slackbot
+                   :context       context
+                   :tracking-opts {:source     "slackbot"
+                                   :session-id conversation-id}}))
+      (finally
+        ;; Persist whatever parts we collected, even if the pipeline threw.
+        ;; Stores raw native parts (not the lossy AI-SDK-message round-trip) so
+        ;; tool-output :structured-output survives for analytics extraction.
+        (let [parts @parts-atom]
+          (when (seq parts)
+            (let [pk (metabot.persistence/store-native-parts!
+                      conversation-id "slackbot"
+                      (into [] (metabot.persistence/combine-text-parts-xf) parts)
+                      :channel-id      channel-id
+                      :slack-team-id   team-id
+                      :slack-thread-ts thread-ts
+                      :slack-msg-id    (when get-res-slack-msg-id (get-res-slack-msg-id))
+                      :user-id         api/*current-user-id*
+                      :external-id     external-id
+                      :ai-proxy?       ai-proxy?)]
+              (when stored-msg-id
+                (reset! stored-msg-id pk)))))))
+    external-id))
 
 (def ^:private viz-data-types
   "DATA part types that represent visualizations."
@@ -469,15 +493,25 @@
   (str (java.util.UUID/nameUUIDFromBytes
         (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
 
-(defn- feedback-blocks [conversation-id]
+(defn- feedback-blocks
+  "Build the feedback-button block appended to the final assistant reply.
+   `message-external-id` lets the modal handler resolve the rated
+   `metabot_message` row directly, without a `(channel, slack_msg_id)` reverse
+   lookup. Nil is tolerated for safety (e.g. callers racing persistence) but
+   the modal handler will then have to fall back to the slack_msg_id path."
+  [conversation-id message-external-id]
   [{:type     "context_actions"
     :block_id "metabot_feedback"
     :elements [{:type            "feedback_buttons"
                 :action_id       "metabot_feedback"
                 :positive_button {:text  {:type "plain_text" :text "Good"}
-                                  :value (json/encode {:conversation_id conversation-id :positive true})}
+                                  :value (json/encode {:conversation_id     conversation-id
+                                                       :message_external_id message-external-id
+                                                       :positive            true})}
                 :negative_button {:text  {:type "plain_text" :text "Bad"}
-                                  :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
+                                  :value (json/encode {:conversation_id     conversation-id
+                                                       :message_external_id message-external-id
+                                                       :positive            false})}}]}])
 
 (defn- free-limit-error-message
   [e]
@@ -522,19 +556,21 @@
     (try
       ;; Start stream early so assistant persistence has :slack_msg_id.
       (request-flush! true)
-      (let [_data-parts (make-streaming-ai-request
-                         conversation-id
-                         prompt
-                         thread
-                         bot-user-id
-                         channel-id
-                         extra-history
-                         {:on-text              on-text
-                          :on-tool-start        on-tool-start
-                          :on-tool-end          on-tool-end
-                          :on-data              on-data
-                          :req-slack-msg-id     (:ts event)
-                          :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
+      (let [message-external-id (make-streaming-ai-request
+                                 conversation-id
+                                 prompt
+                                 thread
+                                 bot-user-id
+                                 channel-id
+                                 extra-history
+                                 {:on-text              on-text
+                                  :on-tool-start        on-tool-start
+                                  :on-tool-end          on-tool-end
+                                  :on-data              on-data
+                                  :team-id              (:team_id auth-info)
+                                  :thread-ts            thread-ts
+                                  :req-slack-msg-id     (:ts event)
+                                  :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
         (request-flush! true)
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
@@ -542,7 +578,7 @@
           ;; Hold stop-stream until all viz futures finish so text + viz + controls
           ;; finalize as a single message.
           (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
-                final-blocks            (into blocks (feedback-blocks conversation-id))
+                final-blocks            (into blocks (feedback-blocks conversation-id message-external-id))
                 stop-result             (slackbot.client/stop-stream client channel stream_ts final-blocks)]
             (log/debugf "[slackbot] stop-stream finalize attempt channel=%s thread_ts=%s stream_ts=%s block_count=%d block_types=%s"
                         channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))

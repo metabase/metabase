@@ -242,15 +242,19 @@ describe("useMetabot", () => {
       });
     });
 
-    it("renames `navigateTo` to `questionPath` on agent.chart", async () => {
+    it("projects a navigate_to data_part into a chart message with questionPath", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "chart",
-            navigateTo: "/question#base64",
+            type: "data_part",
+            part: {
+              type: "navigate_to",
+              version: 1,
+              value: "/question#base64",
+            },
           } as any),
         );
       });
@@ -339,6 +343,56 @@ describe("useMetabot", () => {
         type: "text",
         message: "ok",
       });
+    });
+
+    it("keeps only the last navigate_to per turn, across multiple turns", async () => {
+      const { store } = setup({ ui: <TestMessages /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addUserMessage({
+            agentId: "omnibot",
+            id: "u1",
+            type: "text",
+            message: "first",
+          }),
+        );
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "data_part",
+            part: { type: "navigate_to", version: 1, value: "/question#1a" },
+          } as any),
+        );
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "data_part",
+            part: { type: "navigate_to", version: 1, value: "/question#1b" },
+          } as any),
+        );
+        store.dispatch(
+          metabotActions.addUserMessage({
+            agentId: "omnibot",
+            id: "u2",
+            type: "text",
+            message: "second",
+          }),
+        );
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "data_part",
+            part: { type: "navigate_to", version: 1, value: "/question#2" },
+          } as any),
+        );
+      });
+
+      const messages = await readMessages();
+      const charts = messages.filter((m) => m.type === "chart");
+      expect(charts).toHaveLength(2);
+      expect(charts[0].questionPath).toBe("/question#1b");
+      expect(charts[1].questionPath).toBe("/question#2");
     });
   });
 
@@ -431,8 +485,12 @@ describe("useMetabot", () => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "chart",
-            navigateTo: "/question#base64",
+            type: "data_part",
+            part: {
+              type: "navigate_to",
+              version: 1,
+              value: "/question#base64",
+            },
           } as any),
         );
       });
@@ -447,8 +505,12 @@ describe("useMetabot", () => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "chart",
-            navigateTo: "/question#base64",
+            type: "data_part",
+            part: {
+              type: "navigate_to",
+              version: 1,
+              value: "/question#base64",
+            },
           } as any),
         );
       });
@@ -476,10 +538,18 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
+          metabotActions.addUserMessage({
+            agentId: "omnibot",
+            id: "u1",
+            type: "text",
+            message: "first",
+          }),
+        );
+        store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "chart",
-            navigateTo: "/question#abc",
+            type: "data_part",
+            part: { type: "navigate_to", version: 1, value: "/question#abc" },
           } as any),
         );
       });
@@ -490,12 +560,21 @@ describe("useMetabot", () => {
       const capturedChart = firstChart;
       expect(capturedChart).not.toBeNull();
 
+      // Open a second turn so both navigate_tos survive the per-turn filter.
       act(() => {
+        store.dispatch(
+          metabotActions.addUserMessage({
+            agentId: "omnibot",
+            id: "u2",
+            type: "text",
+            message: "second",
+          }),
+        );
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "chart",
-            navigateTo: "/question#xyz",
+            type: "data_part",
+            part: { type: "navigate_to", version: 1, value: "/question#xyz" },
           } as any),
         );
       });

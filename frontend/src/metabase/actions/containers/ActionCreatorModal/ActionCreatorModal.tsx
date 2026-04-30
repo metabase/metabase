@@ -9,7 +9,7 @@ import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 
