@@ -21,10 +21,28 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.datasets :as mtd]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; temporary hack to run all tests against both the old :h2 and new mbql5 :h2
+;; remove this once :h2 does mbql5 by default!
+(defn- test-driver [driver thunk]
+  (when (contains? (tx.env/test-drivers) driver)
+    (testing (str "\n" driver "\n")
+      (driver/with-driver (tx/the-driver-with-test-extensions driver)
+        (thunk))
+      (when (= driver :h2)
+        (driver/with-driver (tx/the-driver-with-test-extensions :h2-mbql5)
+          (thunk))))))
+
+(use-fixtures :each (fn [f]
+                      (with-redefs [mtd/-test-driver test-driver]
+                        (f))))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
