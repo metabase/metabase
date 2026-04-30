@@ -12,6 +12,15 @@ export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
     Component: React.ComponentType<CustomVisualizationProps<TSettings>>;
   };
 
+function safeReadString(value: unknown, key: string): string {
+  try {
+    const v = (value as Record<string, unknown> | null | undefined)?.[key];
+    return v == null ? "" : String(v);
+  } catch {
+    return "";
+  }
+}
+
 class PluginErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -22,8 +31,16 @@ class PluginErrorBoundary extends React.Component<
     return { error };
   }
 
-  componentDidCatch(error: Error) {
-    console.error("[plugin] visualization render failed:", error);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // The error may be a near-membrane Red Proxy from the host realm; logging
+    // it directly prints "Proxy(Object) {}" which is useless. Pull off the
+    // primitive fields so authors see the real message + stack.
+    const message = safeReadString(error, "message");
+    const stack = safeReadString(error, "stack");
+    const componentStack = info?.componentStack ?? "";
+    console.error(
+      `[plugin] visualization render failed: ${message}\n${stack}${componentStack}`,
+    );
   }
 
   render() {

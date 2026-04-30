@@ -1,14 +1,22 @@
 import DOMPurify from "dompurify";
 
 import {
-  ALLOWED_FUNCTIONS,
+  ACTIVE_ELEMENT_GETTER,
   CREATE_ELEMENT,
+  CREATE_ELEMENT_NS,
   INSERT_ADJACENT_HTML,
   SET_ATTRIBUTE,
   SET_ATTRIBUTE_NS,
 } from "./allowlist";
 import { getFunctionName } from "./debugging";
 import { getSafeSandboxDomElement, isDomElement } from "./distortions-dom";
+
+// Flip to true to log a console.warn for every native function the sandbox
+// rejects, including its source preview and identity comparisons. Useful when
+// a plugin hits "blocked API call: …" and we need to figure out which
+// captured reference the runtime function should match against. Keep false
+// in checked-in code.
+const DIAGNOSE_BLOCKED_CALLS = false;
 
 export function makeDistortionCallback(pluginId: string) {
   return function distortionCallback(value: object): object {
@@ -37,8 +45,16 @@ export function makeDistortionCallback(pluginId: string) {
       return sanitizedSetterDistortion(pluginId, info.name, info.originalSet);
     }
 
+    if (value === ACTIVE_ELEMENT_GETTER) {
+      return activeElementDistortion(pluginId);
+    }
+
     if (value === CREATE_ELEMENT) {
       return createElementDistortion(pluginId);
+    }
+
+    if (value === CREATE_ELEMENT_NS) {
+      return createElementNSDistortion(pluginId);
     }
 
     if (value === INSERT_ADJACENT_HTML) {
@@ -53,16 +69,148 @@ export function makeDistortionCallback(pluginId: string) {
       return setAttributeNSDistortion(pluginId);
     }
 
-    if (ALLOWED_FUNCTIONS.has(value)) {
-      return value;
+    // Default-allow native functions, with a name-based blocklist for the
+    // few APIs that must never be reachable from the sandbox. Identity-based
+    // allowlisting is unreliable: near-membrane wraps host functions when
+    // crossing into the sandbox iframe, so the runtime reference often
+    // differs from what we capture in host realm. Name matching is
+    // realm-agnostic. The targeted distortions above (innerHTML, setAttribute,
+    // createElement, etc.) still work because near-membrane preserves
+    // identity for those well-known intrinsics — the hot path stays gated.
+    const name = getFunctionName(value);
+    if (BLOCKED_NATIVE_NAMES.has(name)) {
+      return function blocked() {
+        throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
+      };
     }
 
-    const name = getFunctionName(value);
-    return function blocked() {
-      throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
-    };
+    if (DIAGNOSE_BLOCKED_CALLS) {
+      // Now logs PASS-THROUGH events instead — useful when chasing why a
+      // dangerous-looking call isn't blocked. Off by default.
+      try {
+        const src = Function.prototype.toString.call(value);
+        console.warn(
+          `[plugin ${pluginId}] PASS ${name} | src=${src.slice(0, 80)}`,
+        );
+      } catch {
+        // ignore
+      }
+    }
+
+    return value;
   };
 }
+
+// Native APIs that must never be invoked from a sandboxed plugin. Matched
+// by `getFunctionName` output, which returns either a friendly name from
+// FUNCTION_NAMES (e.g. "Document.write") for host-realm refs, or the bare
+// .name property (e.g. "write") for cross-realm refs that don't match the
+// host weakmap. Both forms are listed here so blocking works regardless of
+// whether near-membrane preserved identity.
+//
+// Only blocks NATIVE functions (the isUserDefinedFunction check above lets
+// user code freely define functions of the same name). The bare-name match
+// is broad on purpose: every native function that ends up named "fetch",
+// "open", "write" in any realm is dangerous in this context.
+const BLOCKED_NATIVE_NAMES = new Set([
+  // ---- Bare names (cross-realm or unrecognized refs) ----
+
+  // Network exfiltration
+  "fetch",
+  "XMLHttpRequest",
+  "WebSocket",
+  "EventSource",
+  "sendBeacon",
+
+  // Document destruction / navigation
+  "write",
+  "writeln",
+  "open", // window.open, document.open, XMLHttpRequest.open
+  "close", // window.close, document.close
+  "execCommand",
+  "navigate",
+
+  // Cookie / session / domain
+  "get cookie",
+  "set cookie",
+  "set domain",
+
+  // Storage exfiltration
+  "get localStorage",
+  "get sessionStorage",
+  "get indexedDB",
+  "get caches",
+
+  // Hardware / device APIs
+  "get clipboard",
+  "get geolocation",
+  "get mediaDevices",
+  "get serviceWorker",
+  "get credentials",
+  "get permissions",
+  "get usb",
+  "get bluetooth",
+  "get share",
+  "share",
+  "get hid",
+  "get serial",
+  "get xr",
+  "get wakeLock",
+  "get locks",
+  "get storage",
+  "get presentation",
+
+  // Location / History — sandbox shouldn't navigate or rewrite the host
+  "assign", // location.assign
+  "reload",
+  "pushState",
+  "replaceState",
+  "go", // history.go
+  "back",
+  "forward",
+  "set href", // location.href setter
+
+  // ---- Friendly names from FUNCTION_NAMES (host-realm matches) ----
+
+  "window.fetch",
+  "window.XMLHttpRequest",
+  "window.WebSocket",
+  "window.EventSource",
+  "window.open",
+  "window.close",
+  "Window.open",
+  "Window.close",
+  "Document.write",
+  "Document.writeln",
+  "Document.open",
+  "Document.close",
+  "Document.execCommand",
+  "Document.get cookie",
+  "Document.set cookie",
+  "Document.set domain",
+  "Navigator.sendBeacon",
+  "Navigator.share",
+  "Navigator.get clipboard",
+  "Navigator.get geolocation",
+  "Navigator.get mediaDevices",
+  "Navigator.get serviceWorker",
+  "Navigator.get credentials",
+  "Navigator.get permissions",
+  "Navigator.get usb",
+  "Navigator.get bluetooth",
+  "Navigator.get share",
+  "Navigator.get presentation",
+  "Navigator.get hid",
+  "Navigator.get serial",
+  "Navigator.get xr",
+  "Navigator.get wakeLock",
+  "Navigator.get locks",
+  "Navigator.get storage",
+  "Window.get localStorage",
+  "Window.get sessionStorage",
+  "Window.get indexedDB",
+  "Window.get caches",
+]);
 
 // User-space JS functions stringify to their actual source; native built-ins
 // (`fetch`, `XMLHttpRequest`, `document.createElement`, …) stringify with the
@@ -161,6 +309,22 @@ const BLOCKED_TAGS = new Set([
   "base",
 ]);
 
+// document.activeElement crosses the membrane and would otherwise be replaced
+// with a decoy when focus is on host UI — noisy and confusing for libraries
+// (notably React) that probe activeElement during rendering. Return null when
+// the focused element is outside the plugin's subtree, so the plugin sees
+// "nothing focused inside my React tree" rather than a fake element.
+function activeElementDistortion(pluginId: string) {
+  return function activeElement(this: Document): Element | null {
+    const el = ACTIVE_ELEMENT_GETTER!.call(this) as Element | null;
+    if (!el) {
+      return null;
+    }
+    const inSandbox = el.closest(`[data-plugin-sandbox="${pluginId}"]`);
+    return inSandbox ? el : null;
+  };
+}
+
 function createElementDistortion(pluginId: string) {
   return function createElement(
     this: Document,
@@ -171,6 +335,33 @@ function createElementDistortion(pluginId: string) {
       throw new Error(`[plugin ${pluginId}] blocked createElement: ${tag}`);
     }
     return CREATE_ELEMENT.call(this, tag, options as ElementCreationOptions);
+  };
+}
+
+// Same blocklist applied to namespaced creates (SVG/MathML). React reaches
+// for createElementNS to build SVG trees — common for visualization plugins —
+// but the dangerous-tag filter (script, iframe, etc.) still applies.
+function createElementNSDistortion(pluginId: string) {
+  return function createElementNS(
+    this: Document,
+    namespaceURI: string | null,
+    qualifiedName: string,
+    options?: ElementCreationOptions,
+  ) {
+    const localName = qualifiedName.includes(":")
+      ? qualifiedName.slice(qualifiedName.indexOf(":") + 1)
+      : qualifiedName;
+    if (BLOCKED_TAGS.has(localName.toLowerCase())) {
+      throw new Error(
+        `[plugin ${pluginId}] blocked createElementNS: ${qualifiedName}`,
+      );
+    }
+    return CREATE_ELEMENT_NS.call(
+      this,
+      namespaceURI,
+      qualifiedName,
+      options as ElementCreationOptions,
+    );
   };
 }
 

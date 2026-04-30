@@ -21,7 +21,14 @@ export default defineConfig({
       formats: ["es"],
     },
     rolldownOptions: {
-      external: ["commander", "react", /^node:/],
+      external: [
+        "commander",
+        "react",
+        "react/jsx-runtime",
+        "react-dom",
+        "react-dom/client",
+        /^node:/,
+      ],
     },
   },
 });

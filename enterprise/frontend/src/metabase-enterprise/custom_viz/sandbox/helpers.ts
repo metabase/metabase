@@ -13,11 +13,32 @@ function ownFunctionsOf(
   });
 }
 
+// Walk the entire prototype chain from `start` and return the first own
+// descriptor matching `key`. Window properties like `performance` and
+// `devicePixelRatio` may live on a hidden intermediate prototype between
+// `window` and `Window.prototype` (e.g. `WindowProperties`); flat lookup
+// misses them.
+function descriptorOnChain(
+  start: object,
+  key: string,
+): PropertyDescriptor | undefined {
+  let proto: object | null = start;
+  while (proto) {
+    const d = Object.getOwnPropertyDescriptor(proto, key);
+    if (d) {
+      return d;
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return undefined;
+}
+
 export function getterFromWindowOf(key: string): object | undefined {
-  return (
-    Object.getOwnPropertyDescriptor(window, key)?.get ??
-    Object.getOwnPropertyDescriptor(Window.prototype, key)?.get
-  );
+  return descriptorOnChain(window, key)?.get;
+}
+
+export function setterFromWindowOf(key: string): object | undefined {
+  return descriptorOnChain(window, key)?.set;
 }
 
 export function allGettersOf(proto: object): object[] {
@@ -54,4 +75,17 @@ export function allClassMembersOf(
 
 export function entireClassOf(ctor: object & { prototype: object }): object[] {
   return [ctor, ...allClassMembersOf(ctor)];
+}
+
+// Walk the prototype chain (excluding Object.prototype) and gather members at
+// every level. Use when own-properties on a single prototype miss things —
+// e.g. MessageChannel#port1/port2 may be inherited rather than own getters.
+export function allInheritedMembersOf(start: object): object[] {
+  const result: object[] = [];
+  let proto: object | null = start;
+  while (proto && proto !== Object.prototype) {
+    result.push(...allMembersOf(proto));
+    proto = Object.getPrototypeOf(proto);
+  }
+  return result;
 }
