@@ -133,9 +133,6 @@ export const Questions = createEntity({
         },
         opts,
       ),
-
-    setCollectionPreview: ({ id }, collection_preview, opts) =>
-      Questions.actions.update({ id }, { collection_preview }, opts),
   },
 
   selectors: {

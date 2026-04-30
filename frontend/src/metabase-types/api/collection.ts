@@ -143,7 +143,6 @@ export interface CollectionItem {
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
-  setCollectionPreview?: (isEnabled: boolean) => void;
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
   is_remote_synced?: boolean;
