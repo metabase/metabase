@@ -370,7 +370,7 @@
           base-branch  (:base options)
           pr-env-url   (:pr-env-url options)
           pr-num       (when pr-env-url
-                         (second (re-find #"pr(\d+)" pr-env-url)))
+                         (second (re-matches #"https://pr(\d+)\.coredev\.metabase\.com/?" pr-env-url)))
           session-name (branch-to-session-name branch-name)
           config       (generate-workmux-config
                         {:bot-name    (or bot-name "autobot")

@@ -11,10 +11,10 @@ Parse as: `<branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inn
 The first token can be either a branch name OR a PR preview environment URL:
 
 - **Branch name** (e.g., `master`, `my-feature-branch`) — launches a local dev environment in a worktree (normal mode).
-- **PR preview env URL** matching `https://pr<NUMBER>.coredev.metabase.com` — launches in **remote mode**. No local backend/frontend is booted; the bot talks to the deployed preview environment instead.
+- **PR preview env URL** matching the exact pattern `https://pr<NUMBER>.coredev.metabase.com` (with optional trailing `/`) — launches in **remote mode**. No local backend/frontend is booted; the bot talks to the deployed preview environment instead. The URL must match the anchored regex `^https://pr(\d+)\.coredev\.metabase\.com/?$`; reject anything else (e.g., extra subdomains, different hosts, or paths) — do not pass it to `-autobot-go`.
 
 If the first token matches the PR-env URL pattern:
-1. Extract the PR number with a regex (the digits after `pr`).
+1. Extract the PR number from the anchored regex above (the digits after `pr`).
 2. Resolve the branch name by running `./bin/mage -bot-git-readonly gh pr view <PR_NUMBER> --json headRefName` and reading `headRefName`.
 3. Use that branch for the worktree (so the bot has access to the PR's source code).
 4. Set `PR_ENV_URL` to the matched URL.

@@ -180,3 +180,4 @@ __pycache__/
 .mcp.json
 .claude/worktrees
 .claude/scheduled_tasks.lock
+.playwright-mcp
