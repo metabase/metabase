@@ -1620,7 +1620,7 @@
 (defn- schema-tables-list
   ([db-id schema]
    (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata?]}]
+  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata? include-measures?]}]
    (when-not include-editable-data-model?
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
@@ -1646,7 +1646,8 @@
                             can-query?          (filter mi/can-query?)
                             can-write-metadata? (filter mi/can-write?))
          hydration-keys   (cond-> []
-                            (premium-features/has-feature? :transforms-basic)   (conj :transform))]
+                            (premium-features/has-feature? :transforms-basic)   (conj :transform)
+                            include-measures? (conj :measures))]
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)
        filtered-tables))))
@@ -1668,18 +1669,20 @@
   [{:keys [id schema]} :- [:map
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata]} :- [:map
-                                                                                         [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                         [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
   (api/check-404 (seq (schema-tables-list
                        id
                        schema
                        {:include-hidden?              include_hidden
                         :include-editable-data-model? include_editable_data_model
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata}))))
+                        :can-write-metadata?          can-write-metadata
+                        :include-measures?            include_measures}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -1697,15 +1700,17 @@
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata]} :- [:map
-                                                                                         [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                         [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
   (let [opts {:include-hidden?              include_hidden
               :include-editable-data-model? include_editable_data_model
               :can-query?                   can-query
-              :can-write-metadata?          can-write-metadata}]
+              :can-write-metadata?          can-write-metadata
+              :include-measures?            include_measures}]
     (api/check-404 (seq (concat (schema-tables-list id nil opts)
                                 (schema-tables-list id "" opts))))))
 

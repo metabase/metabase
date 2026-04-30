@@ -10,8 +10,8 @@ import {
 } from "metabase/documents/selectors";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
 import { useSelector } from "metabase/redux";
+import { documentWithAnchor } from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { documentWithAnchor } from "metabase/utils/urls";
 
 interface UseBlockMenusOptions {
   node: NodeViewProps["node"];

@@ -6,7 +6,7 @@ import {
   getIcon,
 } from "metabase/common/utils/icon";
 import { Anchor, Group, Icon } from "metabase/ui";
-import { modelToUrl } from "metabase/utils/urls";
+import { modelToUrl } from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";

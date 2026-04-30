@@ -29,7 +29,7 @@ import { entityForObject } from "metabase/entities/utils";
 import { connect, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
