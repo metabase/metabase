@@ -374,6 +374,26 @@
   (testing "Missing :query in body is rejected by the request schema"
     (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {})))
 
+(deftest construct-query-rejects-legacy-envelope-test
+  (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
+                "is rejected by the now-closed request schema, instead of being silently ignored. "
+                "This guards against a regression where the LLM's stale memory keeps sending the old "
+                "shape and we silently drop the extra keys.")
+    (is (=? {:specific-errors {:source_entity #(some (fn [s] (re-find #"disallowed key" s)) %)}}
+            (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                  {:query          (orders-yaml)
+                                   :source_entity  {:type "table" :id (mt/id :orders)}}))))
+  (testing "`/v2/query` fresh-query branch rejects the legacy envelope as well"
+    (is (=? {:specific-errors {:referenced_entities #(some (fn [s] (re-find #"disallowed key" s)) %)}}
+            (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                  {:query               (orders-yaml :limit 5)
+                                   :referenced_entities []}))))
+  (testing "`/v2/query` continuation_token branch rejects extra keys (closed schema)"
+    (is (=? {:specific-errors {:query #(some (fn [s] (re-find #"disallowed key" s)) %)}}
+            (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                  {:continuation_token "not-a-real-token"
+                                   :query               (orders-yaml :limit 5)})))))
+
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
     (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"

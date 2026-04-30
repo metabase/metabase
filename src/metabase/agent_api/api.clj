@@ -376,8 +376,12 @@
   FKs (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary
   `source_entity` / `referenced_entities` envelope. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference
-  (including operators, joins, expressions, multi-stage queries, and FK conventions)."
-  [:map
+  (including operators, joins, expressions, multi-stage queries, and FK conventions).
+
+  Closed map: any extra top-level keys (notably the legacy `source_entity` /
+  `referenced_entities` envelope from before the repr migration) are rejected with a 400 so
+  callers don't silently send fields the server ignores."
+  [:map {:closed true}
    [:query {:tool/description (str "A YAML string containing a Metabase MBQL 5 query in the "
                                    "canonical representations format \u2014 see the "
                                    "construct_notebook_query tool documentation for the format "
@@ -532,10 +536,14 @@
 
 (mr/def ::query-request
   "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <yaml>}`,
-  same shape as /v2/construct-query) or a `:continuation_token` from a prior response."
+  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.
+
+  Both branches are closed maps: extra top-level keys (e.g. the legacy
+  `source_entity` / `referenced_entities` envelope, or sending `:query` and
+  `:continuation_token` simultaneously) are rejected with a 400."
   [:multi {:dispatch (fn [m]
                        (if (:continuation_token m) :continuation :fresh))}
-   [:continuation [:map [:continuation_token ms/NonBlankString]]]
+   [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
 (defn- initial-page-state
