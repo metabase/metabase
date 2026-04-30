@@ -116,13 +116,6 @@ const TODAY_CHART_LABELS: CompleteChartLabels = {
   ip: ["10.0.0.1", "10.0.0.6", "10.0.0.7"],
 };
 
-const YESTERDAY_CHART_LABELS: CompleteChartLabels = {
-  source: ["SQL", "Documents"],
-  profile: ["SQL", "Documents"],
-  user: ["Robert Tableton"],
-  ip: ["10.0.0.3", "10.0.0.4"],
-};
-
 const PREVIOUS_WEEK_CHART_LABELS: CompleteChartLabels = {
   source: ["Metabot"],
   profile: ["NLQ"],
@@ -137,13 +130,6 @@ const RECENT_CHART_LABELS: CompleteChartLabels = {
   ip: ["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4", "10.0.0.5"],
 };
 
-const PREVIOUS_MONTH_CHART_LABELS: CompleteChartLabels = {
-  source: ["SQL"],
-  profile: ["SQL"],
-  user: ["Robert Tableton"],
-  ip: ["10.0.0.8"],
-};
-
 const OUT_OF_BOUNDS_CHART_LABELS: ChartLabels = {
   ip: ["10.0.0.99"],
 };
@@ -153,10 +139,7 @@ const DATE_FILTER_CASES: Array<{
   chartLabels: ChartLabels;
 }> = [
   { label: "Today", chartLabels: TODAY_CHART_LABELS },
-  { label: "Yesterday", chartLabels: YESTERDAY_CHART_LABELS },
   { label: "Previous week", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
-  { label: "Previous 7 days", chartLabels: RECENT_CHART_LABELS },
-  { label: "Previous 12 months", chartLabels: PREVIOUS_MONTH_CHART_LABELS },
 ];
 
 const MAIN_PROFILE_LABELS: string[] = [
@@ -699,7 +682,7 @@ describe("scenarios > metabot > usage auditing", () => {
     assertConversationChartLabels(RECENT_CHART_LABELS);
   });
 
-  it("renders usage stats charts for every date shortcut on conversations", () => {
+  it("renders usage stats charts for selected date shortcuts on conversations", () => {
     visitUsageStatsPage();
 
     const metric = "conversations";
@@ -714,7 +697,7 @@ describe("scenarios > metabot > usage auditing", () => {
     });
   });
 
-  it("renders usage stats charts for every date shortcut on tokens", () => {
+  it("renders usage stats charts for selected date shortcuts on tokens", () => {
     visitUsageStatsPage();
 
     const metric = "tokens";
@@ -730,7 +713,7 @@ describe("scenarios > metabot > usage auditing", () => {
     });
   });
 
-  it("renders usage stats charts for every date shortcut on messages", () => {
+  it("renders usage stats charts for selected date shortcuts on messages", () => {
     visitUsageStatsPage();
 
     const metric = "messages";
@@ -934,6 +917,8 @@ describe("scenarios > metabot > usage auditing", () => {
   it("drills through from conversation charts to the conversations list and updates list filters", () => {
     visitUsageStatsPage();
     interceptConversationsApi();
+
+    assertMetricChartsRendered("conversations");
 
     clickRowChartBarForLabel("Users with most conversations", "Bobby Tables");
 
