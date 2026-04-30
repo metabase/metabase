@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { EmbeddingDisplayOptions } from "metabase/public/lib/types";
+import type { EmbeddingDisplayOptions } from "metabase/embedding/types";
 import { Stack, Switch } from "metabase/ui";
 
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";

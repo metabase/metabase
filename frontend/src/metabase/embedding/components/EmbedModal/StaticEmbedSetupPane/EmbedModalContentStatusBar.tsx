@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import type { EmbedResourceType } from "metabase/public/lib/types";
+import type { EmbedResourceType } from "metabase/embedding/types";
 import { Button, Flex, Group, Text } from "metabase/ui";
 
 interface EmbedModalContentStatusBarProps {

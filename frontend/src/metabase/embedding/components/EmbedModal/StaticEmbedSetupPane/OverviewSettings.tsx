@@ -7,11 +7,11 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
-import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
+import { getEmbedClientCodeExampleOptions } from "metabase/embedding/lib/code";
 import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { Stack, Text } from "metabase/ui";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";

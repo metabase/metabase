@@ -5,15 +5,15 @@ import { t } from "ttag";
 
 import { Option, Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
-import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
-import { getParameterIconName } from "metabase/parameters/utils/ui";
 import type {
   EmbedResourceParameter,
   EmbedResourceType,
   EmbeddingParameterVisibility,
   EmbeddingParameters,
   EmbeddingParametersValues,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
+import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 

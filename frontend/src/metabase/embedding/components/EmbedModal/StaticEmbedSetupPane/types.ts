@@ -1,4 +1,4 @@
-import type { EmbedResourceParameter } from "metabase/public/lib/types";
+import type { EmbedResourceParameter } from "metabase/embedding/types";
 
 export type ActivePreviewPane = "preview" | "code";
 

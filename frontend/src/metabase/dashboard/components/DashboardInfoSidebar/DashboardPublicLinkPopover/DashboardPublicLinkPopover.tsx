@@ -6,7 +6,7 @@ import { PublicLinkPopover } from "metabase/embedding/components/PublicLinkPopov
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
-} from "metabase/public/lib/analytics";
+} from "metabase/embedding/lib/analytics";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 

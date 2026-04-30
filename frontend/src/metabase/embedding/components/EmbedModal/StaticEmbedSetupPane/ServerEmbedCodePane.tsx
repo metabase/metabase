@@ -1,14 +1,14 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
+import { getEmbedServerCodeExampleOptions } from "metabase/embedding/lib/code";
 import type {
   EmbedResource,
   EmbedResourceType,
   EmbeddingDisplayOptions,
   EmbeddingParametersValues,
   ServerCodeSampleConfig,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 

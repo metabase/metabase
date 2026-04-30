@@ -1,4 +1,4 @@
-import type { EmbeddingDisplayOptions } from "metabase/public/lib/types";
+import type { EmbeddingDisplayOptions } from "metabase/embedding/types";
 
 export function getDefaultDisplayOptions(
   shouldShownDownloadData: boolean,

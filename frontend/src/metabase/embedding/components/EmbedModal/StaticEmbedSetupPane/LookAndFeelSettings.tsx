@@ -8,7 +8,7 @@ import type {
   DisplayTheme,
   EmbedResourceType,
   EmbeddingDisplayOptions,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
 import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";

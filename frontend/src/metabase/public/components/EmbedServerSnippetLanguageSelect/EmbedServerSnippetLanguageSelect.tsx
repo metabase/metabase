@@ -2,7 +2,7 @@ import type { ChangeEvent } from "react";
 
 import { Option, Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
-import type { CodeSampleOption } from "metabase/public/lib/types";
+import type { CodeSampleOption } from "metabase/embedding/types";
 
 type Props = {
   languageOptions: CodeSampleOption[];

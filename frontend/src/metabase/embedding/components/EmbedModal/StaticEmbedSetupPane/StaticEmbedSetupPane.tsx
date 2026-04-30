@@ -5,12 +5,12 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
-import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
-import { trackStaticEmbedCodeCopied } from "metabase/public/lib/analytics";
-import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
-import { getIframeQueryWithoutDefaults } from "metabase/public/lib/code-templates";
-import { getSignedPreviewUrlWithoutHash } from "metabase/public/lib/embed";
+import { getPreviewParamsBySlug } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
+import { getStaticEmbedSetupPublishHandlers } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
+import { trackStaticEmbedCodeCopied } from "metabase/embedding/lib/analytics";
+import { getEmbedServerCodeExampleOptions } from "metabase/embedding/lib/code";
+import { getIframeQueryWithoutDefaults } from "metabase/embedding/lib/code-templates";
+import { getSignedPreviewUrlWithoutHash } from "metabase/embedding/lib/embed";
 import type {
   EmbedResource,
   EmbedResourceParameter,
@@ -18,7 +18,7 @@ import type {
   EmbeddingParameters,
   EmbeddingParametersValues,
   GuestEmbedResourceType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Paper, Stack, Tabs } from "metabase/ui";

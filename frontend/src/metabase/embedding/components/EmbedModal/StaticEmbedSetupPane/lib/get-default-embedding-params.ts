@@ -4,7 +4,7 @@ import type {
   EmbedResource,
   EmbedResourceParameter,
   EmbeddingParameters,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 
 export function getDefaultEmbeddingParams(
   resource: EmbedResource,

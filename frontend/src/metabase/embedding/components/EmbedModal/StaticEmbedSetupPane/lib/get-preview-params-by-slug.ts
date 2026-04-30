@@ -1,9 +1,9 @@
-import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
+import { getLockedPreviewParameters } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import type {
   EmbedResourceParameter,
   EmbeddingParameters,
   EmbeddingParametersValues,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { getParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 export function getPreviewParamsBySlug({

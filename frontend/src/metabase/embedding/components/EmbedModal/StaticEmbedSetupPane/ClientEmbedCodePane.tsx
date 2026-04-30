@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { ClientCodeSampleConfig } from "metabase/public/lib/types";
+import type { ClientCodeSampleConfig } from "metabase/embedding/types";
 
 import { CodeSample } from "./CodeSample";
 

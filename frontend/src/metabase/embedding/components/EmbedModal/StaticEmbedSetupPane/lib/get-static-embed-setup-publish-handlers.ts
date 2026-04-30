@@ -1,14 +1,14 @@
-import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
-import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
+import type { StaticEmbedSetupPaneProps } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import {
   trackStaticEmbedDiscarded,
   trackStaticEmbedPublished,
   trackStaticEmbedUnpublished,
-} from "metabase/public/lib/analytics";
+} from "metabase/embedding/lib/analytics";
+import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import type {
   EmbedResourceParameter,
   EmbeddingParameters,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 
 import { getDefaultEmbeddingParams } from "./get-default-embedding-params";
 

@@ -11,7 +11,7 @@ import { renderWithProviders } from "__support__/ui";
 import type {
   EmbedResource,
   EmbedResourceType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {

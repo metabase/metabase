@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { Modal } from "metabase/common/components/Modal";
-import { StaticEmbedSetupPane } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane";
+import { StaticEmbedSetupPane } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane";
 import type {
   EmbedResource,
   EmbedResourceParameter,
   EmbeddingParameters,
   GuestEmbedResourceType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 
 import { EmbedModalHeader } from "./EmbedModal.styled";
 
