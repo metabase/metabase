@@ -141,9 +141,6 @@ export function useLibraryCollectionTree(
     async (collectionIds: CollectionId[]) => {
       for (const id of collectionIds) {
         const key = String(id);
-        if (!loadingIds.current.has(key)) {
-          continue;
-        }
         loadingIds.current.delete(key);
       }
       await Promise.all(collectionIds.map(loadCollectionItems));

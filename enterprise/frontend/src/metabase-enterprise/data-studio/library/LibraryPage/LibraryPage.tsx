@@ -43,6 +43,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 import { TableMoreMenu } from "../tables/components/TableHeader/TableMoreMenu";
@@ -186,6 +187,7 @@ function LibraryPageContent() {
     error: metricsError,
     watchRows: watchMetricRows,
     isChildrenLoading: isMetricChildrenLoading,
+    refreshCollections: refreshMetricCollections,
   } = useLibraryCollectionTree(
     metricCollection,
     "metrics",
@@ -225,6 +227,17 @@ function LibraryPageContent() {
           node.children.some((child) => child.model !== "empty-state"),
       ),
     [combinedTree],
+  );
+
+  const getAffectedCollectionIds = useCallback(
+    ({
+      previousParentId,
+      newParentId,
+    }: {
+      previousParentId: CollectionId | null;
+      newParentId: CollectionId | null;
+    }) => _.uniq([previousParentId, newParentId]).filter(_.isNumber),
+    [],
   );
 
   const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(
@@ -332,6 +345,15 @@ function LibraryPageContent() {
             return (
               <CollectionRowMenu
                 collection={data}
+                onSave={(details) => {
+                  const affectedCollectionIds =
+                    getAffectedCollectionIds(details);
+                  if (data.type === "library-metrics") {
+                    refreshMetricCollections(affectedCollectionIds);
+                  } else {
+                    refreshTableCollections(affectedCollectionIds);
+                  }
+                }}
                 customArchiveMessage={
                   isLibraryDataCollection && children?.length
                     ? t`Archiving this collection will also unpublish the tables inside it and archive any other child items.`
@@ -345,7 +367,13 @@ function LibraryPageContent() {
         },
       },
     ],
-    [setIsPublishTableModalOpen, isRemoteSyncReadOnly, refreshTableCollections],
+    [
+      setIsPublishTableModalOpen,
+      isRemoteSyncReadOnly,
+      getAffectedCollectionIds,
+      refreshMetricCollections,
+      refreshTableCollections,
+    ],
   );
 
   const getRowHref = useCallback(

@@ -29,11 +29,16 @@ import { EditCollectionModal } from "./EditCollectionModal";
 type CollectionRowMenuProps = {
   collection: Collection;
   onChangePermissions?: (collectionId: CollectionId) => void;
+  onSave?: (details: {
+    previousParentId: CollectionId | null;
+    newParentId: CollectionId | null;
+  }) => void;
   customArchiveMessage?: string;
 };
 
 export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const { collection, onChangePermissions, customArchiveMessage } = props;
+  const { collection, onChangePermissions, onSave, customArchiveMessage } =
+    props;
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
@@ -192,6 +197,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
       {isEditModalOpen && (
         <EditCollectionModal
           collection={collection}
+          onSave={onSave}
           onClose={toggleEditModal}
         />
       )}
