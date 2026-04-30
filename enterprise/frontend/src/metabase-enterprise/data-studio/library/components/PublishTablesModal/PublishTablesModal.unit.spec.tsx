@@ -1,11 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupPublishTablesEndpoint,
   setupPublishTablesEndpointError,
   setupTableSelectionInfoEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
   BulkTableSelectionInfo,
   DatabaseId,
@@ -15,6 +18,8 @@ import type {
 import {
   createMockBulkTableInfo,
   createMockBulkTableSelectionInfo,
+  createMockCollection,
+  createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
 import { PublishTablesModal } from "./PublishTablesModal";
@@ -36,6 +41,25 @@ function setup({
 }: SetupOpts = {}) {
   const onPublish = jest.fn();
   const onClose = jest.fn();
+  const dataCollection = createMockCollection({
+    id: 10,
+    name: "Data",
+    type: "library-data",
+  });
+
+  setupEnterprisePlugins();
+  PLUGIN_LIBRARY.useGetLibraryChildCollectionByType = () =>
+    createMockCollectionItem({
+      id: dataCollection.id as number,
+      name: dataCollection.name,
+      model: "collection",
+      type: dataCollection.type,
+      can_write: true,
+      location: "/6464/",
+      here: ["table", "collection"],
+      below: ["table", "collection"],
+    });
+  setupCollectionByIdEndpoint({ collections: [dataCollection] });
 
   setupTableSelectionInfoEndpoint(selectionInfo);
   if (hasPublishError) {
