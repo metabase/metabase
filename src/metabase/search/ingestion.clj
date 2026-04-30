@@ -112,15 +112,21 @@
   "Execute all function attributes for a given spec and return computed values.
   If a function returns a map, its entries are merged directly into the result —
   this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
+
+  When a function attr declares `:provides`, the attr-key itself is not a column in
+  the index — it's a logical grouping whose `:provides` keys are the real columns.
+  In that case, on non-map results (e.g. when the function threw and `false` was
+  returned), skip writing instead of poisoning the document with an unknown column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
        (let [result (execute-function-attr attr-key attr-def record)]
-         (if (map? result)
-           (merge acc result)
-           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+         (cond
+           (map? result)                          (merge acc result)
+           (seq (search.spec/function-attr-provides attr-def)) acc
+           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))

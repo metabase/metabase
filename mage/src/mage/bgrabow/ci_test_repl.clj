@@ -144,7 +144,7 @@
 (defn- image->container-suffix
   "Derive a container name suffix from a Docker image string.
    e.g. 'circleci/mariadb:10.6' → 'mariadb-10-6'
-        'cimg/mysql:8.4'        → 'mysql-8-4'
+        'cimg/mysql:8.0'        → 'mysql-8-0'
         'pgvector/pgvector:pg17' → 'pgvector-pg17'"
   [image]
   (-> image

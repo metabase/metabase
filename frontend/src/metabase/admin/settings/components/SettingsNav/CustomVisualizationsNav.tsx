@@ -5,7 +5,7 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Flex } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { SettingsNavItem } from "./SettingsNavItem";
 

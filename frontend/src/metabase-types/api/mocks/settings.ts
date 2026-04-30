@@ -108,6 +108,7 @@ export const createMockTokenFeatures = (
   content_verification: false,
   "custom-viz": false,
   "custom-viz-available": false,
+  "data-complexity-score": false,
   embedding: false,
   embedding_sdk: false,
   embedding_simple: false,

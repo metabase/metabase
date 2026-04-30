@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";

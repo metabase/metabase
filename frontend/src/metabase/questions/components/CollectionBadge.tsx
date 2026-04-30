@@ -6,7 +6,7 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { modelToUrl } from "metabase/utils/urls/modelToUrl";
+import { modelToUrl } from "metabase/urls/modelToUrl";
 import type {
   CollectionId,
   Collection as CollectionType,

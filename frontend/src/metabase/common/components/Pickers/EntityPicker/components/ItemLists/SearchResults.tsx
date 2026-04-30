@@ -1,4 +1,3 @@
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -6,7 +5,6 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -19,7 +17,12 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
+import type {
+  OmniPickerItem,
+  OmniPickerMeasureItem,
+  OmniPickerTableItem,
+  SearchScope,
+} from "../..";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
@@ -138,6 +141,10 @@ const isTableInDb = (item: OmniPickerItem): item is OmniPickerTableItem => {
   );
 };
 
+const isMeasure = (item: OmniPickerItem): item is OmniPickerMeasureItem => {
+  return item.model === "measure";
+};
+
 const getItemText = (item: OmniPickerItem) => {
   const isTable = isTableInDb(item);
 
@@ -149,9 +156,34 @@ const getItemText = (item: OmniPickerItem) => {
     return "";
   }
 
+  if (isMeasure(item)) {
+    return item.table_display_name ?? item.table_name;
+  }
+
   return isTable
     ? `${item.database_name}${item.schema ? ` (${item.schema})` : ""}`
     : (item?.collection?.name ?? t`Our analytics`);
+};
+
+const useLocationIcon = (item: OmniPickerItem) => {
+  const getIcon = useGetIcon();
+
+  if (
+    item.model === "table" ||
+    item.model === "schema" ||
+    item.model === "database"
+  ) {
+    return null;
+  }
+
+  if (isMeasure(item)) {
+    return { name: "table" as const };
+  }
+
+  return getIcon({
+    ...item,
+    model: "collection",
+  });
 };
 
 const LocationInfo = ({
@@ -161,21 +193,12 @@ const LocationInfo = ({
   item: OmniPickerItem;
   isSelected: boolean;
 }) => {
-  const getIcon = useGetIcon();
   const itemText = getItemText(item);
+  const iconProps = useLocationIcon(item);
 
   if (!itemText) {
     return null;
   }
-
-  const iconProps = match<OmniPickerItem["model"], IconData | null>(item.model)
-    .with("table", "schema", "database", () => null)
-    .otherwise(() =>
-      getIcon({
-        ...item,
-        model: "collection",
-      }),
-    );
 
   return (
     <Flex gap="xs" align="center">
@@ -193,7 +216,7 @@ const LocationInfo = ({
 };
 
 export function SearchScopeSelector() {
-  const { setSearchScope } = useOmniPickerContext();
+  const { setSearchScope, options: pickerOptions } = useOmniPickerContext();
   const searchScope = useCurrentSearchScope();
 
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
@@ -212,6 +235,10 @@ export function SearchScopeSelector() {
         }
       : null,
   ].filter((i) => i !== null);
+
+  if (pickerOptions.disableSearchScope) {
+    return null;
+  }
 
   return (
     <Flex

@@ -18,9 +18,9 @@ import {
 } from "metabase/forms";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
 import { getUrlProtocol } from "metabase/utils/formatting/url";
-import * as Urls from "metabase/utils/urls";
 import {
   useCreateCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,

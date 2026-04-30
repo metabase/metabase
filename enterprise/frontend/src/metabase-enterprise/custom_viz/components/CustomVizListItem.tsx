@@ -13,7 +13,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import {
   useRefreshCustomVizPluginMutation,
   useUpdateCustomVizPluginMutation,

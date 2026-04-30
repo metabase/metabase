@@ -6,7 +6,7 @@ import { Timelines } from "metabase/entities/timelines";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
