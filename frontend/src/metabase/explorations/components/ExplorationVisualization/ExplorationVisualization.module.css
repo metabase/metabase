@@ -1,0 +1,5 @@
+.chart {
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}

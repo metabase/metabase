@@ -1,7 +1,9 @@
 import type {
   CreateExplorationRequest,
+  Dataset,
   Exploration,
   ExplorationId,
+  ExplorationQueryId,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
 } from "metabase-types/api";
@@ -40,6 +42,12 @@ export const explorationApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("exploration")]),
     }),
+    getExplorationQueryResult: builder.query<Dataset, ExplorationQueryId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/exploration/query/${id}`,
+      }),
+    }),
   }),
 });
 
@@ -47,4 +55,5 @@ export const {
   useGetExplorationDataQuery,
   useGetExplorationQuery,
   useCreateExplorationMutation,
+  useGetExplorationQueryResultQuery,
 } = explorationApi;

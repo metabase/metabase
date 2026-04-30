@@ -1,61 +1,72 @@
-import { t } from "ttag";
+import { useEffect, useMemo, useState } from "react";
 
 import { useGetExplorationQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Card, Group, Stack, Text } from "metabase/ui";
+import { Center, Group } from "metabase/ui";
+import type { ExplorationQueryId } from "metabase-types/api";
+
+import { ExplorationSidebar } from "../components/ExplorationSidebar";
+import { ExplorationVisualization } from "../components/ExplorationVisualization/ExplorationVisualization";
 
 interface ExplorationPageProps {
   params: { id: string };
 }
 
 export function ExplorationPage({ params }: ExplorationPageProps) {
-  const id = Number(params.id);
-  const { data: exploration, isLoading, error } = useGetExplorationQuery(id);
+  const {
+    data: exploration,
+    isLoading,
+    error,
+  } = useGetExplorationQuery(Number(params.id));
+  const [selectedQueryId, setSelectedQueryId] =
+    useState<ExplorationQueryId | null>(null);
+
+  useEffect(() => {
+    if (!exploration || selectedQueryId !== null) {
+      return;
+    }
+    if (exploration?.threads?.[0]?.queries?.[0]?.id) {
+      setSelectedQueryId(exploration.threads[0].queries[0].id);
+    }
+  }, [exploration, selectedQueryId]);
+
+  const explorationQueriesById = useMemo(() => {
+    return new Map(
+      exploration?.threads?.flatMap(
+        (thread) => thread.queries?.map((q) => [q.id, q]) ?? [],
+      ) ?? [],
+    );
+  }, [exploration]);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!exploration) {
+    return null;
+  }
 
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      {exploration && (
-        <Box p="3rem" bg="background-secondary" mih="100%">
-          <Stack maw="60rem" mx="auto" gap="lg">
-            <Text size="xl" fw="bold">
-              {exploration.name}
-            </Text>
-            {exploration.description && (
-              <Text c="text-secondary">{exploration.description}</Text>
-            )}
-            {exploration.threads?.map((thread) => (
-              <Stack key={thread.id} gap="md">
-                {thread.prompt && (
-                  <Text fs="italic" c="text-secondary">
-                    {`"${thread.prompt}"`}
-                  </Text>
-                )}
-                <Text fw="bold">{t`Generated charts`}</Text>
-                {thread.queries && thread.queries.length > 0 ? (
-                  <Stack gap="sm">
-                    {thread.queries.map((q) => (
-                      <Card key={q.id} withBorder>
-                        <Group justify="space-between">
-                          <Text fw="bold">
-                            {q.name ?? t`Chart for metric ${q.card_id}`}
-                          </Text>
-                          <Text size="sm" c="text-secondary">
-                            {!q.dimension_id
-                              ? t`No dimension`
-                              : t`Breakouts: ${q.dimension_id}`}
-                          </Text>
-                        </Group>
-                      </Card>
-                    ))}
-                  </Stack>
-                ) : (
-                  <Text c="text-secondary">{t`No charts were generated.`}</Text>
-                )}
-              </Stack>
-            ))}
-          </Stack>
-        </Box>
-      )}
-    </LoadingAndErrorWrapper>
+    <Center p="3rem" h="100%" bg="background-secondary">
+      <Group
+        h="100%"
+        w="100%"
+        maw="90rem"
+        align="flex-start"
+        wrap="nowrap"
+        gap="xl"
+      >
+        <ExplorationSidebar
+          exploration={exploration}
+          selectedQueryId={selectedQueryId}
+          setSelectedQueryId={setSelectedQueryId}
+        />
+        {selectedQueryId && explorationQueriesById.get(selectedQueryId) && (
+          <ExplorationVisualization
+            explorationQuery={explorationQueriesById.get(selectedQueryId)!}
+          />
+        )}
+      </Group>
+    </Center>
   );
 }

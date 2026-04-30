@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { createSeriesCard } from "metabase/metrics/utils/series";
 import type {
   DimensionPillBarItem,
   ExpressionDimensionItem,
@@ -18,7 +19,6 @@ import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
-  Card,
   CardId,
   Dataset,
   DatasetColumn,
@@ -469,20 +469,6 @@ export function splitByBreakout({
     })
     .filter((s) => s != null);
   return { series: breakoutSeries, activeBreakoutColorMap };
-}
-
-function createSeriesCard(
-  id: number,
-  name: string | null,
-  display: string,
-  vizSettings: VisualizationSettings,
-): Card {
-  return {
-    id,
-    name,
-    display,
-    visualization_settings: vizSettings,
-  } as Card;
 }
 
 function computeAvailableOptions(
