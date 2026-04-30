@@ -1,13 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useGetExplorationQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetExplorationQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center, Group } from "metabase/ui";
-import type { Exploration, ExplorationQueryId } from "metabase-types/api";
+import type {
+  Exploration,
+  ExplorationQuery,
+  ExplorationQueryId,
+  ExplorationThread,
+  ExplorationThreadId,
+  Timeline,
+  TimelineEvent,
+  TimelineId,
+} from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
-import { ExplorationVisualization } from "../components/ExplorationVisualization/ExplorationVisualization";
+import { ExplorationVisualization } from "../components/ExplorationVisualization";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -29,6 +42,11 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
+  const [selectedQueryId, setSelectedQueryId] =
+    useState<ExplorationQueryId | null>(null);
+  const [selectedTimelineIdsByThreadId, setSelectedTimelineIdsByThreadId] =
+    useState<Record<ExplorationThreadId, Set<TimelineId>>>({});
+
   const {
     data: exploration,
     isLoading,
@@ -40,8 +58,24 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
   useEffect(() => {
     setShouldPoll(hasUnsettledQueries(exploration));
   }, [exploration]);
-  const [selectedQueryId, setSelectedQueryId] =
-    useState<ExplorationQueryId | null>(null);
+
+  const explorationHasTimelines = useMemo(() => {
+    return exploration?.threads?.some(
+      (thread) => (thread.timelines?.length ?? 0) > 0,
+    );
+  }, [exploration]);
+
+  const { data: allTimelines = [] } = useListTimelinesQuery(
+    explorationHasTimelines
+      ? {
+          include: "events",
+        }
+      : skipToken,
+  );
+
+  const allTimelinesById: Map<TimelineId, Timeline> = useMemo(() => {
+    return new Map(allTimelines.map((timeline) => [timeline.id, timeline]));
+  }, [allTimelines]);
 
   useEffect(() => {
     if (!exploration || selectedQueryId !== null) {
@@ -52,13 +86,68 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     }
   }, [exploration, selectedQueryId]);
 
-  const explorationQueriesById = useMemo(() => {
+  const queryIdToQueryAndThread: Map<
+    ExplorationQueryId,
+    { query: ExplorationQuery; thread: ExplorationThread }
+  > = useMemo(() => {
     return new Map(
       exploration?.threads?.flatMap(
-        (thread) => thread.queries?.map((q) => [q.id, q]) ?? [],
+        (thread) =>
+          thread.queries?.map((query) => [query.id, { query, thread }]) ?? [],
       ) ?? [],
     );
   }, [exploration]);
+
+  const { query: selectedQuery, thread: selectedThread } = useMemo<{
+    query?: ExplorationQuery;
+    thread?: ExplorationThread;
+  }>(
+    () =>
+      selectedQueryId
+        ? (queryIdToQueryAndThread.get(selectedQueryId) ?? {})
+        : {},
+    [selectedQueryId, queryIdToQueryAndThread],
+  );
+
+  const availableTimelines: Timeline[] = useMemo(() => {
+    return (
+      selectedThread?.timelines
+        ?.map((timeline) => allTimelinesById.get(timeline.timeline_id))
+        .filter((timeline) => timeline !== undefined) ?? []
+    );
+  }, [selectedThread, allTimelinesById]);
+
+  const selectedTimelineIds: Set<TimelineId> = useMemo(() => {
+    if (!selectedThread) {
+      return new Set();
+    }
+    return selectedTimelineIdsByThreadId[selectedThread.id] ?? new Set();
+  }, [selectedThread, selectedTimelineIdsByThreadId]);
+
+  const timelineEvents: TimelineEvent[] = useMemo(() => {
+    return availableTimelines
+      .filter((timeline) => selectedTimelineIds.has(timeline.id))
+      .flatMap((timeline) => timeline.events ?? []);
+  }, [availableTimelines, selectedTimelineIds]);
+
+  const handleToggleTimelineId = useCallback(
+    (timelineId: TimelineId) => {
+      if (!selectedThread) {
+        return;
+      }
+      const newSelectedTimelineIds = new Set(selectedTimelineIds);
+      if (newSelectedTimelineIds.has(timelineId)) {
+        newSelectedTimelineIds.delete(timelineId);
+      } else {
+        newSelectedTimelineIds.add(timelineId);
+      }
+      setSelectedTimelineIdsByThreadId((prev) => ({
+        ...prev,
+        [selectedThread.id]: newSelectedTimelineIds,
+      }));
+    },
+    [selectedThread, selectedTimelineIds, setSelectedTimelineIdsByThreadId],
+  );
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -83,9 +172,13 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
           selectedQueryId={selectedQueryId}
           setSelectedQueryId={setSelectedQueryId}
         />
-        {selectedQueryId && explorationQueriesById.get(selectedQueryId) && (
+        {selectedQuery && (
           <ExplorationVisualization
-            explorationQuery={explorationQueriesById.get(selectedQueryId)!}
+            explorationQuery={selectedQuery}
+            availableTimelines={availableTimelines}
+            selectedTimelineIds={selectedTimelineIds}
+            onToggleTimelineId={handleToggleTimelineId}
+            timelineEvents={timelineEvents}
           />
         )}
       </Group>
