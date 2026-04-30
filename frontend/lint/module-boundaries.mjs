@@ -83,6 +83,7 @@ const elements = [
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
+    "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
