@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/common/utils/database";
 import {
   Form,
   FormErrorMessage,

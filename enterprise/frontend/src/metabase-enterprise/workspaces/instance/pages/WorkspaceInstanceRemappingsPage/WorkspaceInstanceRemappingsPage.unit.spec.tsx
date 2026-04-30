@@ -17,7 +17,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Database, Table, TableRemapping } from "metabase-types/api";
 import {
   createMockDatabase,

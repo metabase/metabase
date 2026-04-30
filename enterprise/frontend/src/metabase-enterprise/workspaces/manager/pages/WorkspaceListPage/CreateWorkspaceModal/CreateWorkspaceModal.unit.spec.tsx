@@ -7,7 +7,7 @@ import {
   setupCreateWorkspaceEndpointError,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { createMockWorkspace } from "metabase-types/api/mocks";
 
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
@@ -49,9 +49,7 @@ describe("CreateWorkspaceModal", () => {
   it("should block submission and show the required-field error when name is empty", async () => {
     setup();
 
-    expect(
-      screen.getByRole("textbox", { name: /Name/i }),
-    ).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: /Name/i })).toHaveValue("");
 
     const submit = screen.getByRole("button", { name: /Create/i });
     expect(submit).toBeDisabled();

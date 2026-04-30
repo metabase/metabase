@@ -4,7 +4,7 @@ import { Route } from "react-router";
 
 import { setupDeleteWorkspaceEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { createMockWorkspace } from "metabase-types/api/mocks";
 
 import { WorkspaceMoreMenu } from "./WorkspaceMoreMenu";
@@ -30,7 +30,9 @@ function setup() {
 
 async function openMenuAndClickDelete() {
   await userEvent.click(screen.getByRole("button"));
-  await userEvent.click(await screen.findByRole("menuitem", { name: /Delete/i }));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: /Delete/i }),
+  );
 }
 
 describe("WorkspaceMoreMenu", () => {

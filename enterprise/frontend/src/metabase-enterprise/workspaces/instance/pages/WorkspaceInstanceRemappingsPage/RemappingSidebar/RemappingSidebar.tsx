@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Center, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { FieldsSection } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/FieldsSection";
 import { InfoSection } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/InfoSection";
 import { LocationSection } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/LocationSection";

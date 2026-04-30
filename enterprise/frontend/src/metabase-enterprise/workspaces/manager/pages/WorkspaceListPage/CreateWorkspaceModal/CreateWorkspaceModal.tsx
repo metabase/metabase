@@ -11,8 +11,8 @@ import {
 } from "metabase/forms";
 import { useDispatch } from "metabase/redux";
 import { Button, Group, Modal, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
-import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 
 type CreateWorkspaceModalProps = {

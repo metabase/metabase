@@ -11,7 +11,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Database, Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -30,7 +30,11 @@ type SetupOpts = {
 function setup({
   workspace = createMockWorkspace({ id: 7, name: "Acme analytics" }),
   databases = [
-    createMockDatabase({ id: 1, name: "Postgres prod", features: ["workspace"] }),
+    createMockDatabase({
+      id: 1,
+      name: "Postgres prod",
+      features: ["workspace"],
+    }),
   ],
   withWorkspaceError = false,
 }: SetupOpts = {}) {
@@ -42,7 +46,10 @@ function setup({
   setupDatabasesEndpoints(databases);
 
   return renderWithProviders(
-    <Route path="/data-studio/workspaces/:workspaceId" component={WorkspacePage} />,
+    <Route
+      path="/data-studio/workspaces/:workspaceId"
+      component={WorkspacePage}
+    />,
     {
       withRouter: true,
       initialRoute: Urls.workspace(workspace.id),

@@ -2,7 +2,7 @@ import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { Center, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 

@@ -8,7 +8,7 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
