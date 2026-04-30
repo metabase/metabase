@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { getIsGuestEmbedRaw } from "embedding-sdk-bundle/store/selectors";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import { useLocale } from "metabase/common/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -12,10 +12,10 @@ export const useSetupContentTranslations = ({
   token: SdkEntityToken | null;
 }) => {
   const { locale } = useLocale();
-  const isGuestEmbed = useSdkSelector(getIsGuestEmbedRaw);
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   useEffect(() => {
-    if (locale !== "en" && isGuestEmbed === true && token) {
+    if (locale !== "en" && isGuestEmbed && token) {
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
     }
   }, [isGuestEmbed, locale, token]);
@@ -23,15 +23,10 @@ export const useSetupContentTranslations = ({
 
 export const useSetupAuthContentTranslations = () => {
   const { locale } = useLocale();
-  // Use the raw selector so we can distinguish "not yet known" (null) from
-  // "known to be auth embed" (false). ComponentProvider dispatches
-  // setIsGuestEmbed in a useEffect, so on the first render isGuestEmbed is
-  // still null — firing setEndpointsForAuthEmbedding then would corrupt the
-  // content translation endpoint for guest embeds (EMB-1478).
-  const isGuestEmbed = useSdkSelector(getIsGuestEmbedRaw);
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   useEffect(() => {
-    if (locale !== "en" && isGuestEmbed === false) {
+    if (locale !== "en" && !isGuestEmbed) {
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForAuthEmbedding();
     }
   }, [locale, isGuestEmbed]);
