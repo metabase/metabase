@@ -62,14 +62,16 @@
                          ". Run the frontend build to produce it.")
                     {:path embed-mcp-template-path}))))
 
-;; Each tool gets its own resource (URI). The registry is keyed by URI on both
-;; sides — `:uri->resource` for resource lookups, `:uri->tool` for tool lookups —
-;; so REPL re-evaluation of a registration is idempotent and there is no
-;; ambiguity about which tool a URI belongs to.
+;; The registry holds two indexes:
+;;   `:uri->resource` — URI is unique, one resource (iframe) per URI
+;;   `:tools`         — keyed by tool name, which is also unique. Multiple tools may
+;;                      target the same resource via :_meta.ui.resourceUri (the iframe
+;;                      doesn't care which tool delivered the payload).
+;; Both maps overwrite on re-registration so REPL reload is idempotent.
 (defonce ^:private registry
   (atom {:key->uri      {}
          :uri->resource (sorted-map)
-         :uri->tool     (sorted-map)}))
+         :tools         (sorted-map)}))
 
 (mu/defn- register-ui-resource!
   [key      :- :keyword
@@ -95,7 +97,7 @@
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
           tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
-      (swap! registry assoc-in [:uri->tool uri] tool))
+      (swap! registry assoc-in [:tools (:name tool)] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
 (defn resource-scopes
@@ -106,7 +108,7 @@
 (defn list-ui-tools
   "Return the list of MCP tools corresponding to UI components."
   []
-  (vals (:uri->tool @registry)))
+  (vals (:tools @registry)))
 
 (defn list-resources
   "Return the list of available MCP resources.
@@ -144,27 +146,21 @@
 
 ;;; registrations
 
-(defn- render-embed-iframe
-  "Render the embed-mcp.html iframe template for a UI resource. Both the
-   visualize-query and render-drill-through resources point at the same
-   stateless iframe — only the URI advertised on each tool differs."
-  [opts]
-  (let [site-url    (system/site-url)
-        session-key (:session-key opts)
-        session-id  (:session-id opts)]
-    (render-embed-mcp-template
-     {:instanceUrl    (json/encode site-url)
-      :instanceUrlRaw site-url
-      :sessionToken   (when session-key (json/encode session-key))
-      :mcpSessionId   (when session-id (json/encode session-id))})))
-
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
  "agent:visualize"
  {:name        "Visualize Query"
   :description "Interactive Metabase SDK visualization for a query"
-  :render-fn   render-embed-iframe})
+  :render-fn   (fn [opts]
+                 (let [site-url    (system/site-url)
+                       session-key (:session-key opts)
+                       session-id  (:session-id opts)]
+                   (render-embed-mcp-template
+                    {:instanceUrl    (json/encode site-url)
+                     :instanceUrlRaw site-url
+                     :sessionToken   (when session-key (json/encode session-key))
+                     :mcpSessionId   (when session-id (json/encode session-id))})))})
 
 (register-ui-tool!
  :visualize-query
@@ -180,16 +176,8 @@
                    {:content [{:type "text" :text "Missing query argument."}]
                     :isError true}))})
 
-(register-ui-resource!
- :render-drill-through
- "ui://metabase/render-drill-through.html"
- "agent:visualize"
- {:name        "Render Drill-through"
-  :description "Interactive Metabase SDK visualization for a drill-through result"
-  :render-fn   render-embed-iframe})
-
 (register-ui-tool!
- :render-drill-through
+ :visualize-query
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
                     "Call this immediately when asked to show a drill-through result. "
