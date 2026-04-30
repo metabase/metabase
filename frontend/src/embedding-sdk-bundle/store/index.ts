@@ -9,8 +9,8 @@ import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-pi
 import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
-import { sdk } from "./reducer";
-import type { SdkDispatch, SdkStore } from "./types";
+import { createSdkInitialState, sdk } from "./reducer";
+import type { SdkDispatch, SdkState, SdkStore } from "./types";
 
 export const sdkReducers = {
   ...commonReducers,
@@ -20,8 +20,9 @@ export const sdkReducers = {
   sdk,
 } as unknown as Record<string, Reducer>;
 
-export const getSdkStore = () =>
+export const getSdkStore = (sdkOverrides?: Partial<SdkState>) =>
   getStore(sdkReducers, null, {
+    sdk: createSdkInitialState(sdkOverrides),
     embed: {
       options: {
         entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,

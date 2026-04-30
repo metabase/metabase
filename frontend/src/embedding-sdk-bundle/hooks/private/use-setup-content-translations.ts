@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
@@ -12,16 +14,20 @@ export const useSetupContentTranslations = ({
   const { locale } = useLocale();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
-  if (locale !== "en" && isGuestEmbed && token) {
-    PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-  }
+  useEffect(() => {
+    if (locale !== "en" && isGuestEmbed && token) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
+    }
+  }, [isGuestEmbed, locale, token]);
 };
 
 export const useSetupAuthContentTranslations = () => {
   const { locale } = useLocale();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
-  if (locale !== "en" && !isGuestEmbed) {
-    PLUGIN_CONTENT_TRANSLATION.setEndpointsForAuthEmbedding();
-  }
+  useEffect(() => {
+    if (locale !== "en" && !isGuestEmbed) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForAuthEmbedding();
+    }
+  }, [locale, isGuestEmbed]);
 };

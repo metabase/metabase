@@ -56,7 +56,9 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 const SET_PLUGINS_READY = "sdk/SET_PLUGINS_READY";
 export const setPluginsReady = createAction<boolean>(SET_PLUGINS_READY);
 
-const initialState: SdkState = {
+export const createSdkInitialState = (
+  overrides: Partial<SdkState> = {},
+): SdkState => ({
   isGuestEmbed: null,
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
@@ -74,7 +76,10 @@ const initialState: SdkState = {
   errorComponent: null,
   fetchRefreshTokenFn: null,
   pluginsReady: false,
-};
+  ...overrides,
+});
+
+const initialState: SdkState = createSdkInitialState();
 
 export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.pending, (state) => {

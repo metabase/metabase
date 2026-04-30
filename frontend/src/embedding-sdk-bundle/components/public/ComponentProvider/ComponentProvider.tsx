@@ -106,6 +106,13 @@ export const ComponentProviderInternal = (
 
   useSdkCustomLoader();
 
+  // Initial value is seeded into the store at creation time (see outer
+  // ComponentProvider). This effect keeps the store in sync if the host
+  // app flips authConfig.isGuest at runtime without remounting.
+  useEffect(() => {
+    reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
+  }, [reduxStore, isGuestEmbed]);
+
   useEffect(() => {
     reduxStore.dispatch(setOptions({ font: fontFamily }));
   }, [reduxStore, fontFamily]);
@@ -178,8 +185,9 @@ export const ComponentProvider = memo(function ComponentProvider({
   const reduxStoreRef = useRef<SdkStore | null>(null);
 
   if (!reduxStoreRef.current) {
-    reduxStoreRef.current = props.reduxStore ?? getSdkStore();
-    reduxStoreRef.current.dispatch(setIsGuestEmbed(!!props.authConfig.isGuest));
+    reduxStoreRef.current =
+      props.reduxStore ??
+      getSdkStore({ isGuestEmbed: !!props.authConfig.isGuest });
   }
 
   return (
