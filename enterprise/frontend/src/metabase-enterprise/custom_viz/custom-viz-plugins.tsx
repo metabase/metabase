@@ -5,6 +5,7 @@ import type {
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -307,11 +308,20 @@ export async function loadCustomVizPlugin(
 
     const vizDef = factory(props);
 
-    if (!vizDef || !vizDef.VisualizationComponent) {
+    if (
+      !vizDef ||
+      typeof (vizDef as { mount?: unknown }).mount !== "function"
+    ) {
       throw new Error(
-        t`Factory must return an object with a VisualizationComponent property`,
+        t`Plugin factory must return an object with a mount function`,
       );
     }
+    const typedVizDef = vizDef as {
+      mount: (
+        container: Element,
+        initial: unknown,
+      ) => { update(p: unknown): void; unmount(): void };
+    } & Record<string, unknown>;
 
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
@@ -325,32 +335,67 @@ export async function loadCustomVizPlugin(
       height: number | null;
     }) => {
       const { resolvedColorScheme } = useColorScheme();
-      const { VisualizationComponent } = vizDef;
-      // Wrapping div is the membrane's scope marker — distortionCallback
-      // uses closest('[data-plugin-sandbox=<id>]') to decide whether a
-      // crossed-over Element belongs to this plugin or to host UI.
+      const containerRef = useRef<HTMLDivElement | null>(null);
+      const handleRef = useRef<{
+        update(p: unknown): void;
+        unmount(): void;
+      } | null>(null);
+
+      // Build new pluginProps every render (the spread on `rest` forces this);
+      // the update effect uses a ref-stored snapshot to skip update() unless
+      // shallow values actually changed.
+      const pluginProps = {
+        ...rest,
+        colorScheme: resolvedColorScheme,
+        onClick: onVisualizationClick as unknown as (
+          clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+        ) => void,
+        onHover: onHoverChange as unknown as (
+          hoverObject?: CustomVizHoverObject | null,
+        ) => void,
+      };
+
+      // Track previous props for shallow-equal comparison so the update effect
+      // only fires on a real change. Without this, destructuring `...rest` on
+      // every render would force update() every render.
+      const prevPropsRef = useRef(pluginProps);
+
+      // Mount once.
+      useEffect(() => {
+        if (!containerRef.current) {
+          return;
+        }
+        handleRef.current = typedVizDef.mount(
+          containerRef.current,
+          pluginProps,
+        );
+        prevPropsRef.current = pluginProps;
+        return () => {
+          handleRef.current?.unmount();
+          handleRef.current = null;
+        };
+        // intentional: mount once; subsequent prop changes flow through the next effect
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+
+      // Push prop changes — no dep array; runs every render and bails early via
+      // shallow-equal check to avoid spurious update() calls.
+      useEffect(() => {
+        if (!shallowEqual(prevPropsRef.current, pluginProps)) {
+          handleRef.current?.update(pluginProps);
+          prevPropsRef.current = pluginProps;
+        }
+      });
+
+      // Wrapping div is the membrane's scope marker — distortionCallback uses
+      // closest('[data-plugin-sandbox=<id>]') to decide whether a crossed-over
+      // Element belongs to this plugin or to host UI.
       return (
         <div
+          ref={containerRef}
           data-plugin-sandbox={String(plugin.id)}
           style={{ width: "100%", height: "100%" }}
-        >
-          <VisualizationComponent
-            {...rest}
-            colorScheme={resolvedColorScheme}
-            onClick={
-              onVisualizationClick as unknown as (
-                clickObject: CustomVizClickObject<
-                  Record<string, unknown>
-                > | null,
-              ) => void
-            }
-            onHover={
-              onHoverChange as unknown as (
-                hoverObject?: CustomVizHoverObject | null,
-              ) => void
-            }
-          />
-        </div>
+        />
       );
     };
 
@@ -358,12 +403,18 @@ export async function loadCustomVizPlugin(
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       Wrapper,
     ) as Visualization;
-    applyDefaultVisualizationProps(Component, vizDef, {
-      identifier,
-      getUiName: () => plugin.display_name,
-      iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
-      isDev: Boolean(plugin.dev_bundle_url),
-    });
+    applyDefaultVisualizationProps(
+      Component,
+      typedVizDef as unknown as Parameters<
+        typeof applyDefaultVisualizationProps
+      >[1],
+      {
+        identifier,
+        getUiName: () => plugin.display_name,
+        iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
+        isDev: Boolean(plugin.dev_bundle_url),
+      },
+    );
 
     // Use registerVisualization for first load; overwrite directly for updates
     // (registerVisualization throws on duplicate identifiers).

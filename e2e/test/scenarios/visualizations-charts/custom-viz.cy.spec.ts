@@ -1663,7 +1663,7 @@ describe("admin > custom visualizations", () => {
   });
 });
 
-describe("sandbox", () => {
+describe.only("sandbox", () => {
   let sandboxCardId: number;
   before(() => {
     H.restore("postgres-writable");
@@ -2037,4 +2037,155 @@ describe("sandbox", () => {
       /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // Render-time attack cases
+  //
+  // These tests use an *append* injection pattern: the malicious factory is
+  // appended AFTER the original IIFE so the last assignment to
+  // window.__customVizPlugin__ wins. The original IIFE has already run by
+  // then, which (when ?__cv_test__=1 is present) causes the fixture to capture
+  // the plugin's own React + createRoot references onto window for the evil
+  // factory to reuse.
+  //
+  // NOTE: These tests will FAIL until Task 4 (fixture rebuild) lands and
+  // exposes window.__customVizCapturedCreateRoot__ and window.__evilReact__.
+  // ---------------------------------------------------------------------------
+
+  type RenderAttackCase = {
+    name: string;
+    factorySource: string;
+    assert: () => void;
+  };
+
+  const RENDER_ATTACK_CASES: RenderAttackCase[] = [
+    {
+      name: "dangerouslySetInnerHTML <img onerror>",
+      factorySource: `
+        window.__customVizPlugin__ = function () {
+          return {
+            id: "evil",
+            getName: function () { return "Evil"; },
+            checkRenderable: function () {},
+            mount: function (container) {
+              var root = window.__customVizCapturedCreateRoot__(container);
+              root.render(
+                window.__evilReact__.createElement("div", {
+                  dangerouslySetInnerHTML: {
+                    __html: "<img src=x onerror=\\"window.__xssFired=true\\">"
+                  },
+                }),
+              );
+              return {
+                update: function () {},
+                unmount: function () { root.unmount(); },
+              };
+            },
+          };
+        };
+      `,
+      assert: () => {
+        cy.window().its("__xssFired").should("be.undefined");
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
+        );
+      },
+    },
+    {
+      name: "<a href='javascript:...'>",
+      factorySource: `
+        window.__customVizPlugin__ = function () {
+          return {
+            id: "evil",
+            getName: function () { return "Evil"; },
+            checkRenderable: function () {},
+            mount: function (container) {
+              var root = window.__customVizCapturedCreateRoot__(container);
+              root.render(
+                window.__evilReact__.createElement(
+                  "a",
+                  { href: "javascript:window.__xssFired=true", id: "evil-link" },
+                  "click me",
+                ),
+              );
+              return {
+                update: function () {},
+                unmount: function () { root.unmount(); },
+              };
+            },
+          };
+        };
+      `,
+      assert: () => {
+        cy.get("[data-plugin-sandbox] a#evil-link").click({ force: true });
+        cy.window().its("__xssFired").should("be.undefined");
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          /\[plugin \d+\] blocked setAttribute with javascript: URL: href/,
+        );
+      },
+    },
+    {
+      name: "dangerouslySetInnerHTML <iframe>",
+      factorySource: `
+        window.__customVizPlugin__ = function () {
+          return {
+            id: "evil",
+            getName: function () { return "Evil"; },
+            checkRenderable: function () {},
+            mount: function (container) {
+              var root = window.__customVizCapturedCreateRoot__(container);
+              root.render(
+                window.__evilReact__.createElement("div", {
+                  dangerouslySetInnerHTML: {
+                    __html: "<iframe src='https://evilsite.example'></iframe>"
+                  },
+                }),
+              );
+              return {
+                update: function () {},
+                unmount: function () { root.unmount(); },
+              };
+            },
+          };
+        };
+      `,
+      assert: () => {
+        cy.get("[data-plugin-sandbox] iframe").should("not.exist");
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
+        );
+      },
+    },
+  ];
+
+  it.each<RenderAttackCase>(RENDER_ATTACK_CASES)(
+    (testCase) => `blocks ${testCase.name} in plugin React`,
+    (testCase) => {
+      cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+        req.continue((res) => {
+          // Suffix the malicious factory after the original IIFE so the last
+          // assignment to window.__customVizPlugin__ wins. The original IIFE
+          // has already exposed the plugin's React + createRoot via the gated
+          // window.__customVizCapturedCreateRoot__ / window.__evilReact__
+          // capture (enabled by the ?__cv_test__=1 query param).
+          res.body = `${String(res.body)};\n` + testCase.factorySource;
+          res.send();
+        });
+      }).as("evilBundle");
+
+      cy.get<number>("@sandboxCardId").then((id) => {
+        cy.visit(`/question/${id}?__cv_test__=1`, {
+          onBeforeLoad(win) {
+            cy.spy(win.console, "log").as("consoleLog");
+            cy.spy(win.console, "error").as("consoleError");
+          },
+        });
+      });
+      cy.wait("@evilBundle");
+      testCase.assert();
+    },
+  );
 });

@@ -83,12 +83,15 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   ) => void | never;
 
   /**
-   * Component that renders the visualization.
+   * Mount the visualization into the container. Called once per visualization
+   * instance. Return a handle whose update() receives new props and unmount()
+   * tears down the React tree.
    */
-  VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
+  mount: CustomVisualizationMount<TSettings>;
 
   /**
-   * Component that renders the visualization.
+   * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
+   * Out of scope for the near-membrane hardening; stays as a plain component.
    */
   StaticVisualizationComponent?: ComponentType<
     CustomStaticVisualizationProps<TSettings>
@@ -138,6 +141,26 @@ export type CustomVisualizationProps<
 
   onHover: (hoverObject?: HoverObject | null) => void;
 };
+
+/**
+ * Handle returned by a plugin's mount call. The host calls update() to
+ * push new props (data, settings, dimensions) and unmount() on cleanup.
+ */
+export type MountHandle<TProps> = {
+  update(props: TProps): void;
+  unmount(): void;
+};
+
+/**
+ * Mount adapter signature. Plugin owns its React tree and renders into
+ * the host-provided container. All DOM writes originate sandbox-side.
+ */
+export type CustomVisualizationMount<
+  TSettings extends Record<string, unknown>,
+> = (
+  container: Element,
+  initial: CustomVisualizationProps<TSettings>,
+) => MountHandle<CustomVisualizationProps<TSettings>>;
 
 export type ColorGetter = (colorName: string) => string;
 
