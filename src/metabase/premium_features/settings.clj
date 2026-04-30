@@ -329,6 +329,10 @@
   []
   false)
 
+(define-premium-feature enable-data-complexity-score?
+  "Should we expose Data Complexity Score?"
+  :data-complexity-score)
+
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
@@ -351,6 +355,7 @@
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
    :custom-viz-available           (has-feature? :custom-viz)
+   :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)

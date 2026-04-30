@@ -1,13 +1,13 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { createDatabase } from "metabase/admin/databases/database";
+import { userApi } from "metabase/api";
+import { createDatabase } from "metabase/redux/databases";
 import {
   initializeSettings,
+  updateSetting,
   updateSettings,
-} from "metabase/admin/settings/settings";
-import { userApi } from "metabase/api";
-import { updateSetting } from "metabase/redux/settings";
+} from "metabase/redux/settings";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";

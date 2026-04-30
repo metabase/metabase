@@ -8,7 +8,7 @@ import {
 } from "metabase/collections/utils";
 import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import * as Urls from "metabase/utils/urls/collections";
+import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ROOT_COLLECTION } from "./constants";

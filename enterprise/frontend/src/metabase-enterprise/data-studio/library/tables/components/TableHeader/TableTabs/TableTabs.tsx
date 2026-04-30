@@ -8,7 +8,7 @@ import {
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 type TableTabsProps = {

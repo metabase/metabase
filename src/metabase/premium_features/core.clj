@@ -56,6 +56,7 @@
   enable-content-translation?
   enable-content-verification?
   enable-custom-viz?
+  enable-data-complexity-score?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?

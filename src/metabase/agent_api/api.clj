@@ -10,6 +10,8 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.dashboards.autoplace :as autoplace]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.core :as metabot]
@@ -18,6 +20,7 @@
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -601,6 +604,118 @@
                   json/decode+kw)]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
+
+;;; ------------------------------------------------- Create Question ------------------------------------------------
+
+(mr/def ::create-question-request
+  [:map
+   [:name                   ms/NonBlankString]
+   [:query                  ms/NonBlankString]
+   [:display                {:optional true} [:maybe :string]]
+   [:description            {:optional true} [:maybe :string]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:visualization_settings {:optional true} [:maybe :map]]])
+
+(mr/def ::create-question-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:display       :string]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:description   [:maybe :string]]])
+
+(api.macros/defendpoint :post "/v1/question" :- ::create-question-response
+  "Save a previously constructed query as a named question (card).
+
+  The `query` parameter should be a base64-encoded string returned by construct_query.
+  Optionally specify display type, description, collection, and visualization settings."
+  {:scope metabot/agent-question-create
+   :tool  {:name "create_question"
+           :description (str "Save a query as a named question in Metabase. "
+                             "Pass the base64 query string from construct_query. "
+                             "Optionally set display type (table, bar, line, pie, etc.), "
+                             "description, and target collection.")}}
+  [_route-params
+   _query-params
+   {:keys [query display description collection_id visualization_settings]
+    question-name :name}
+   :- ::create-question-request]
+  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
+        card          (queries/create-card!
+                       {:name                   question-name
+                        :dataset_query          dataset-query
+                        :display                (keyword (or display "table"))
+                        :description            description
+                        :collection_id          collection_id
+                        :visualization_settings (or visualization_settings {})}
+                       {:id api/*current-user-id*})]
+    {:id            (:id card)
+     :name          (:name card)
+     :display       (name (:display card))
+     :collection_id (:collection_id card)
+     :description   (:description card)}))
+
+;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
+
+(mr/def ::create-dashboard-request
+  [:map
+   [:name          ms/NonBlankString]
+   [:description   {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:question_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+
+(mr/def ::create-dashboard-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:description   [:maybe :string]]
+   [:dashcard_ids  [:sequential ms/PositiveInt]]])
+
+(api.macros/defendpoint :post "/v1/dashboard" :- ::create-dashboard-response
+  "Create a new dashboard, optionally populated with saved questions.
+
+  Pass `question_ids` to add existing saved questions as cards on the dashboard.
+  Cards are automatically positioned on the grid based on their display type."
+  {:scope metabot/agent-dashboard-create
+   :tool  {:name "create_dashboard"
+           :description (str "Create a dashboard in Metabase. "
+                             "Optionally pass question_ids to add saved questions as cards. "
+                             "Cards are auto-positioned on the dashboard grid.")}}
+  [_route-params
+   _query-params
+   {:keys [description collection_id question_ids]
+    dashboard-name :name}
+   :- ::create-dashboard-request]
+  (api/create-check :model/Dashboard {:collection_id collection_id})
+  (let [cards (when (seq question_ids)
+                (mapv #(api/read-check :model/Card %) question_ids))
+        dash  (t2/with-transaction [_conn]
+                (let [dash (first (t2/insert-returning-instances!
+                                   :model/Dashboard
+                                   {:name          dashboard-name
+                                    :description   description
+                                    :parameters    []
+                                    :creator_id    api/*current-user-id*
+                                    :collection_id collection_id}))]
+                  (when (seq cards)
+                    (reduce (fn [placed card]
+                              (let [display  (or (:display card) :table)
+                                    position (autoplace/get-position-for-new-dashcard placed display)]
+                                (t2/insert-returning-instance!
+                                 :model/DashboardCard
+                                 (merge position {:dashboard_id (:id dash)
+                                                  :card_id      (:id card)}))
+                                (conj placed position)))
+                            []
+                            cards))
+                  dash))]
+    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+    {:id           (:id dash)
+     :name         (:name dash)
+     :collection_id (:collection_id dash)
+     :description  (:description dash)
+     :dashcard_ids (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))}))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
