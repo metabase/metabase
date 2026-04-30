@@ -755,23 +755,22 @@
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
-  (when-not system
-    (when (.compareAndSet setting-up? false true)
-      (try
-        (let [port (prometheus-server-port)]
-          (when-not port
-            (log/info "Running prometheus metrics without a webserver"))
-          (locking #'system
-            (when-not system
-              (let [sys (make-prometheus-system port "metabase-registry")]
-                (alter-var-root #'system (constantly sys)))))
-          ;; Run outside the lock; some impls (notably search engine support checks)
-          ;; can block on token-check, and we don't want to hold #'system for the
-          ;; duration of an HTTP round-trip.
-          (when system
-            (populate-initial-labelled-metric-values! (:registry system))))
-        (finally
-          (.set setting-up? false))))))
+  (when (and (not system) (.compareAndSet setting-up? false true))
+    (try
+      (let [port (prometheus-server-port)]
+        (when-not port
+          (log/info "Running prometheus metrics without a webserver"))
+        (locking #'system
+          (when-not system
+            (let [sys (make-prometheus-system port "metabase-registry")]
+              (alter-var-root #'system (constantly sys)))))
+        ;; Run outside the lock; some impls (notably search engine support checks)
+        ;; can block on token-check, and we don't want to hold #'system for the
+        ;; duration of an HTTP round-trip.
+        (when system
+          (populate-initial-labelled-metric-values! (:registry system))))
+      (finally
+        (.set setting-up? false)))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
