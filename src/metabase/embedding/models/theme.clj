@@ -28,7 +28,7 @@
 
 (defmethod serdes/make-spec "EmbeddingTheme"
   [_model-name _opts]
-  {:copy      [:entity_id :name :settings :color_harmony]
+  {:copy      [:entity_id :name :settings]
    :skip      []
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)}})
