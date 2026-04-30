@@ -136,7 +136,7 @@
 
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
-    (with-open [conn (.getConnection mdb.connection/*application-db*)]
+    (with-open [conn (.getConnection (mdb.connection/the-application-db))]
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 

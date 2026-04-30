@@ -1852,6 +1852,11 @@
                     :model/Segment
                     :model/Transform}}
 
+  root
+  {:team "Graphy"
+   :api #{metabase.root.system}
+   :uses #{}}
+
   sample-data
   {:team "UX West"
    :api  #{metabase.sample-data.core

@@ -91,18 +91,18 @@
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   []
-  (= @(:status mdb.connection/*application-db*) ::setup-finished))
+  (= @(:status (mdb.connection/the-application-db)) ::setup-finished))
 
 (defn finish-db-setup!
   "Mark the bound Metabase DB as set up and ready."
   []
-  (reset! (:status mdb.connection/*application-db*) ::setup-finished))
+  (reset! (:status (mdb.connection/the-application-db)) ::setup-finished))
 
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
-  ^metabase.app_db.connection.ApplicationDB []
-  mdb.connection/*application-db*)
+  []
+  (mdb.connection/the-application-db))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
@@ -117,7 +117,7 @@
     ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
     ;; use the application DB object itself to lock on since that will be a different object for different application
     ;; DBs.
-    (locking mdb.connection/*application-db*
+    (locking (mdb.connection/the-application-db)
       (when-not (db-is-set-up?)
         (let [db-type       (db-type)
               data-source   (data-source)

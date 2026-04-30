@@ -1097,7 +1097,7 @@
                  (let [db-def      {:database-name "field-test-db"}
                        data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
                    (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                   (mdb/with-application-db (mdb.connection/application-db original-app-db-type data-source)
                      (load-from-h2/load-from-h2! h2-filename)
                      (testing "The defective field should still exist after loading from H2"
                        (is (= #{defective-field-id}

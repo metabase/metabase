@@ -93,10 +93,15 @@
   with [[application-db]]."
   (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
 
+(defn the-application-db
+  "Returns the application db"
+  ^ApplicationDB []
+  *application-db*)
+
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type *application-db*))
+  (.db-type (the-application-db)))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -108,12 +113,11 @@
     :h2       :h2
     :mysql    :mysql))
 
-;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source *application-db*))
+  (.data-source (the-application-db)))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -126,11 +130,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id *application-db*))
+  (.id (the-application-db)))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection *application-db* f))
+  (t2.conn/do-with-connection (the-application-db) f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 

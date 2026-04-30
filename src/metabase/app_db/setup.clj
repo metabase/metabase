@@ -212,7 +212,7 @@
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-            (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
+            (mdb.encryption/encrypt-db (:db-type (mdb.connection/the-application-db)) (:data-source (mdb.connection/the-application-db)) nil)
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
 
@@ -260,6 +260,7 @@
    create-sample-content? :- :boolean]
   (u/profile (trs "Database setup")
     (u/with-us-locale
+
       (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                 config/*disable-setting-cache*            true
                 custom-migrations/*create-sample-content* create-sample-content?]
