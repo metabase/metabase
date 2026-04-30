@@ -11,40 +11,42 @@ describe("suggestHarmonyColors", () => {
       ["off-white", "#eeeeee"],
       ["near-black", "#222222"],
     ])("returns the default palette for %s", (_label, color) => {
-      expect(suggestHarmonyColors(color, "octagonal")).toEqual(
-        DEFAULT_HARMONY_COLORS,
-      );
-      expect(suggestHarmonyColors(color, "square")).toEqual(
-        DEFAULT_HARMONY_COLORS,
-      );
+      expect(suggestHarmonyColors(color)).toEqual(DEFAULT_HARMONY_COLORS);
     });
   });
 
-  describe("octagonal", () => {
-    const result = suggestHarmonyColors(BRAND, "octagonal");
+  describe("chart colors (octagonal harmony)", () => {
+    const result = suggestHarmonyColors(BRAND);
 
     it("returns 8 chart colors", () => {
       expect(result.charts).toHaveLength(8);
     });
 
-    it("places chart colors at 45° increments starting from the brand hue", () => {
+    it("uses the brand color verbatim for chart[0]", () => {
+      expect(result.charts[0]).toBe(BRAND.toLowerCase());
+    });
+
+    it("places chart[1..7] at 45° increments from the brand hue", () => {
       const brandHue = Color(BRAND).hue();
-      result.charts.forEach((chart, i) => {
-        const expectedHue = (brandHue + i * 45 + 360) % 360;
+      result.charts.slice(1).forEach((chart, i) => {
+        const expectedHue = (brandHue + (i + 1) * 45) % 360;
         const actualHue = Color(chart).hue();
-        // Allow rounding tolerance from hex round-trip.
         expect(Math.abs(actualHue - expectedHue)).toBeLessThan(1);
       });
     });
 
-    it("preserves brand saturation and lightness across chart colors", () => {
+    it("preserves brand saturation and lightness across chart[1..7]", () => {
       const brand = Color(BRAND);
-      result.charts.forEach((chart) => {
+      result.charts.slice(1).forEach((chart) => {
         const c = Color(chart);
         expect(Math.abs(c.saturationl() - brand.saturationl())).toBeLessThan(1);
         expect(Math.abs(c.lightness() - brand.lightness())).toBeLessThan(1);
       });
     });
+  });
+
+  describe("filter and summarize (square harmony)", () => {
+    const result = suggestHarmonyColors(BRAND);
 
     it("derives filter at brand+90° and summarize at brand-90°", () => {
       const brandHue = Color(BRAND).hue();
@@ -56,45 +58,47 @@ describe("suggestHarmonyColors", () => {
       ).toBeLessThan(1);
     });
 
-    it("anchors positive and negative to fixed hues", () => {
-      expect(Color(result.positive).hue()).toBeCloseTo(130, 0);
-      expect(Color(result.negative).hue() % 360).toBeCloseTo(0, 0);
+    it("preserves brand lightness for filter and summarize", () => {
+      const brand = Color(BRAND);
+      expect(
+        Math.abs(Color(result.filter).lightness() - brand.lightness()),
+      ).toBeLessThan(1);
+      expect(
+        Math.abs(Color(result.summarize).lightness() - brand.lightness()),
+      ).toBeLessThan(1);
     });
   });
 
-  describe("square", () => {
-    const result = suggestHarmonyColors(BRAND, "square");
+  describe("positive and negative", () => {
+    const result = suggestHarmonyColors(BRAND);
 
-    it("returns 8 chart colors", () => {
-      expect(result.charts).toHaveLength(8);
+    it("anchors positive at hue 89°", () => {
+      expect(Color(result.positive).hue()).toBeCloseTo(89, 0);
     });
 
-    it("uses 4 base hues at 90° increments, each paired with a lighter variant", () => {
-      const brandHue = Color(BRAND).hue();
-      const baseChartIndices = [0, 2, 4, 6];
-      baseChartIndices.forEach((idx, hueIdx) => {
-        const expectedHue = (brandHue + hueIdx * 90 + 360) % 360;
-        expect(
-          Math.abs(Color(result.charts[idx]).hue() - expectedHue),
-        ).toBeLessThan(1);
-      });
+    it("anchors negative at hue 359°", () => {
+      const hue = Color(result.negative).hue();
+      // 359 may round to 359 or wrap close to 0 depending on hex precision.
+      expect(Math.min(Math.abs(hue - 359), Math.abs(hue + 1))).toBeLessThan(1);
     });
 
-    it("each lighter variant is lighter than its paired base", () => {
-      [0, 2, 4, 6].forEach((idx) => {
-        const base = Color(result.charts[idx]);
-        const lighter = Color(result.charts[idx + 1]);
-        expect(lighter.lightness()).toBeGreaterThan(base.lightness());
-      });
+    it("places positive and negative at lightness 50", () => {
+      expect(Color(result.positive).lightness()).toBeCloseTo(50, 0);
+      expect(Color(result.negative).lightness()).toBeCloseTo(50, 0);
+    });
+
+    it("preserves brand saturation for positive and negative", () => {
+      const brand = Color(BRAND);
+      expect(
+        Math.abs(Color(result.positive).saturationl() - brand.saturationl()),
+      ).toBeLessThan(1);
+      expect(
+        Math.abs(Color(result.negative).saturationl() - brand.saturationl()),
+      ).toBeLessThan(1);
     });
   });
 
   it("is deterministic for the same input", () => {
-    expect(suggestHarmonyColors(BRAND, "octagonal")).toEqual(
-      suggestHarmonyColors(BRAND, "octagonal"),
-    );
-    expect(suggestHarmonyColors(BRAND, "square")).toEqual(
-      suggestHarmonyColors(BRAND, "square"),
-    );
+    expect(suggestHarmonyColors(BRAND)).toEqual(suggestHarmonyColors(BRAND));
   });
 });
