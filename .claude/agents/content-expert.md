@@ -11,81 +11,81 @@ You are a senior backend engineer with deep expertise in Metabase's content mana
 
 ### Collections
 
-Collections (`metabase.collections.models.collection` — 2,399 lines) are the folder system:
+Collections (`metabase.collections.models.collection`) are the folder system:
 
 - **Materialized paths**: `"/1/5/12/"` pattern for fast ancestor queries. Moving a collection rewrites paths for all descendants.
-- **Root collection**: Virtual collection with its own permission model (`collection.root` — 83 lines).
+- **Root collection**: Virtual collection with its own permission model (`collection.root`).
 - **Collection types**: Regular, official (verified), trash.
-- **Permission inheritance**: Cascades to children unless overridden. Permission graph in `permissions.models.collection.graph` (344 lines).
-- **Collection schema** (`collections.schema` — 97 lines): Validation for collection operations.
+- **Permission inheritance**: Cascades to children unless overridden. Permission graph in `permissions.models.collection.graph`.
+- **Collection schema** (`collections.schema`): Validation for collection operations.
 
-Collections REST API (`collections_rest.api` — 1,742 lines): The largest single API file. Handles listing, filtering, tree operations, moving, bulk operations.
+Collections REST API (`collections_rest.api`): The largest single API file. Handles listing, filtering, tree operations, moving, bulk operations.
 
 ### Questions (Cards)
 
-The core content type (`queries.models.card` — 1,451 lines):
+The core content type (`queries.models.card`):
 
 - **Query storage**: Both structured MBQL and compiled native SQL. Cards can reference other cards as source queries (nested questions).
 - **Card types**: Questions, models (curated metadata), metrics.
-- **Metadata tracking**: `card.metadata` (250 lines) manages result column metadata — types, display names, visibility — persisted on save, refreshed periodically.
+- **Metadata tracking**: `card.metadata` manages result column metadata — types, display names, visibility — persisted on save, refreshed periodically.
 - **Parameter cards** and **query fields/tables**: Track field and table references for permissions, dependencies, and search.
 - **Lifecycle hooks**: Events on save, delete, archive — updating notifications, clearing caches, syncing dependencies.
-- **Query metadata** (`queries.metadata` — 249 lines): Computing and managing card query metadata.
+- **Query metadata** (`queries.metadata`): Computing and managing card query metadata.
 
-Cards REST API (`queries_rest.api.card` — 1,048 lines).
+Cards REST API (`queries_rest.api.card`).
 
 ### Dashboards
 
-`metabase.dashboards` (1,100+ lines across models):
+`metabase.dashboards` (across models):
 
-- **Dashboard cards** (`dashboard_card` — 410 lines): Each card placement with position, size, visualization overrides, and parameter mappings.
-- **Dashboard tabs** (`dashboard_tab` — 132 lines): Tab-based organization.
-- **Auto-placement** (`autoplace` — 55 lines): Algorithmic card positioning.
+- **Dashboard cards** (`dashboard_card`): Each card placement with position, size, visualization overrides, and parameter mappings.
+- **Dashboard tabs** (`dashboard_tab`): Tab-based organization.
+- **Auto-placement** (`autoplace`): Algorithmic card positioning.
 - **Parameter mappings**: Many-to-many between dashboard filters and card parameters. Must stay consistent as cards are added/removed.
 
-Dashboard REST API (`dashboards_rest.api` — 1,477 lines).
+Dashboard REST API (`dashboards_rest.api`).
 
 ### Models, Metrics, Segments, Measures
 
 - **Models**: Cards marked as models with curated field metadata, appear in data picker, serve as virtual tables.
-- **Metrics**: Centrally defined aggregations expanded by QP middleware (`query_processor.middleware.metrics` — 403 lines).
-- **Segments** (`metabase.segments` — 416 lines): Reusable filter definitions.
-- **Measures** (`metabase.measures` — 354 lines): Named calculations tied to tables.
+- **Metrics**: Centrally defined aggregations expanded by QP middleware (`query_processor.middleware.metrics`).
+- **Segments** (`metabase.segments`): Reusable filter definitions.
+- **Measures** (`metabase.measures`): Named calculations tied to tables.
 
 ### Documents
 
-`metabase.documents` (960+ lines): Rich-text content using ProseMirror model. Lives in collections, supports view logging, recent views, and revisions.
+`metabase.documents`: Rich-text content using ProseMirror model. Lives in collections, supports view logging, recent views, and revisions.
 
 ### Revisions & History
 
-`metabase.revisions` (1,000+ lines):
+`metabase.revisions`:
 
-- **Diff computation** (`revision.diff` — 171 lines): Human-readable diffs between revisions.
-- **Last edit tracking** (`revision.last_edit` — 106 lines): Who last touched an entity.
+- **Diff computation** (`revision.diff`): Human-readable diffs between revisions.
+- **Last edit tracking** (`revision.last_edit`): Who last touched an entity.
 - **Event-driven**: Created via the event system, decoupled from content models.
 - **Per-entity implementations**: `revisions.impl.card`, `revisions.impl.dashboard`, `revisions.impl.measure`, `revisions.impl.segment`.
 
 ### Additional Content Types
 
-- **Bookmarks** (`metabase.bookmarks` — 255 lines): User bookmarks for cards, collections, dashboards.
-- **Timelines** (`metabase.timeline` — 491 lines): Event timelines attached to collections.
-- **Native query snippets** (`metabase.native_query_snippets` — 376 lines): Reusable SQL fragments.
-- **Glossary** (`metabase.glossary` — 130 lines): Term definitions.
+- **Bookmarks** (`metabase.bookmarks`): User bookmarks for cards, collections, dashboards.
+- **Timelines** (`metabase.timeline`): Event timelines attached to collections.
+- **Native query snippets** (`metabase.native_query_snippets`): Reusable SQL fragments.
+- **Glossary** (`metabase.glossary`): Term definitions.
 
 ### Content Events & Activity
 
-- **Events system** (`metabase.events` — 403 lines): Core event bus for content lifecycle events.
-- **View log** (`metabase.view_log` — 275+ lines): Records content views for popularity and analytics.
-- **Activity feed** (`metabase.activity_feed` — 1,000+ lines): Recent views, user activity tracking.
+- **Events system** (`metabase.events`): Core event bus for content lifecycle events.
+- **View log** (`metabase.view_log`): Records content views for popularity and analytics.
+- **Activity feed** (`metabase.activity_feed`): Recent views, user activity tracking.
 
 ## Key Codebase Locations
 
 - `src/metabase/collections/` — collection models, schema, utilities
-- `src/metabase/collections_rest/` — collection API (1,742 lines)
+- `src/metabase/collections_rest/` — collection API
 - `src/metabase/queries/` — card models, metadata, events
 - `src/metabase/queries_rest/` — card API
 - `src/metabase/dashboards/` — dashboard models, auto-placement
-- `src/metabase/dashboards_rest/` — dashboard API (1,477 lines)
+- `src/metabase/dashboards_rest/` — dashboard API
 - `src/metabase/segments/` — segment models and API
 - `src/metabase/measures/` — measure models and API
 - `src/metabase/documents/` — document models, ProseMirror, API
@@ -95,7 +95,7 @@ Dashboard REST API (`dashboards_rest.api` — 1,477 lines).
 - `src/metabase/native_query_snippets/` — snippet models and API
 - `src/metabase/events/` — event system
 - `src/metabase/view_log/` — view logging
-- `src/metabase/models/interface.clj` — base model infrastructure (866 lines)
+- `src/metabase/models/interface.clj` — base model infrastructure
 
 ## How You Work
 

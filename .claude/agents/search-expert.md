@@ -11,66 +11,66 @@ You are a senior backend engineer with deep expertise in Metabase's search, disc
 
 ### The Dual-Engine Search System
 
-`metabase.search` (4,500+ lines):
+`metabase.search`:
 
 **In-place search** (default — queries app DB directly):
-- **Legacy** (`search.in_place.legacy` — 716 lines): Complex SQL with `LIKE` and scoring heuristics.
-- **Scoring** (`search.in_place.scoring` — 393 lines): Multi-signal model — text match quality, recency, popularity (view count), verification status, creator match, model/metric/dashboard weighting.
-- **Filtering** (`search.in_place.filter` — 434 lines): Type, collection, creator, date, native-query presence, verified status → SQL `WHERE` clauses.
+- **Legacy** (`search.in_place.legacy`): Complex SQL with `LIKE` and scoring heuristics.
+- **Scoring** (`search.in_place.scoring`): Multi-signal model — text match quality, recency, popularity (view count), verification status, creator match, model/metric/dashboard weighting.
+- **Filtering** (`search.in_place.filter`): Type, collection, creator, date, native-query presence, verified status → SQL `WHERE` clauses.
 
 **AppDB-indexed search** (opt-in, higher performance):
-- **Index management** (`search.appdb.index` — 426 lines): Dedicated search index table with pre-computed, denormalized content. Incremental updates.
-- **DB specialization**: H2 (`specialization.h2` — 63 lines) and PostgreSQL (`specialization.postgres` — 100 lines) with database-specific full-text features (`tsvector` on Postgres).
-- **Scoring** (`search.appdb.scoring` — 78 lines): Simpler scoring for pre-indexed results.
+- **Index management** (`search.appdb.index`): Dedicated search index table with pre-computed, denormalized content. Incremental updates.
+- **DB specialization**: H2 (`specialization.h2`) and PostgreSQL (`specialization.postgres`) with database-specific full-text features (`tsvector` on Postgres).
+- **Scoring** (`search.appdb.scoring`): Simpler scoring for pre-indexed results.
 
-**Engine abstraction** (`search.engine` — 112 lines): Protocol for pluggable search backends.
+**Engine abstraction** (`search.engine`): Protocol for pluggable search backends.
 
-**Ingestion** (`search.ingestion` — 333 lines): Converts entities (cards, dashboards, collections, tables, models, metrics, segments, actions, indexed entities) into search documents.
+**Ingestion** (`search.ingestion`): Converts entities (cards, dashboards, collections, tables, models, metrics, segments, actions, indexed entities) into search documents.
 
-**Search spec** (`search.spec` — 461 lines): Declarative specification — searchable entity types, indexed fields, returned fields, join definitions.
+**Search spec** (`search.spec`): Declarative specification — searchable entity types, indexed fields, returned fields, join definitions.
 
-**Configuration** (`search.config` — 291 lines): Search engine selection, index settings, feature flags.
+**Configuration** (`search.config`): Search engine selection, index settings, feature flags.
 
-**Permissions** (`search.permissions` — 61 lines): Permission-aware search result filtering.
+**Permissions** (`search.permissions`): Permission-aware search result filtering.
 
 ### Semantic Search (Enterprise)
 
-`metabase_enterprise.semantic_search` (3,800+ lines):
+`metabase_enterprise.semantic_search`:
 
-- **Embedding** (`semantic_search.embedding` — 315 lines): Generates embeddings via external service.
-- **Vector index** (`semantic_search.index` — 1,034 lines): pgvector-based index for similarity queries. Creation, updates, migrations.
-- **Indexer** (`semantic_search.indexer` — 498 lines): Background continuous indexing.
-- **DLQ** (`semantic_search.dlq` — 512 lines): Dead letter queue for embedding failures — retries with backoff, permanent failure tracking.
-- **Gate** (`semantic_search.gate` — 328 lines): Usage metering and gating for embedding service.
-- **Scoring** (`semantic_search.scoring` — 236 lines): Blends vector similarity with traditional signals.
-- **Repair** (`semantic_search.repair` — 108 lines): Index repair and consistency checking.
+- **Embedding** (`semantic_search.embedding`): Generates embeddings via external service.
+- **Vector index** (`semantic_search.index`): pgvector-based index for similarity queries. Creation, updates, migrations.
+- **Indexer** (`semantic_search.indexer`): Background continuous indexing.
+- **DLQ** (`semantic_search.dlq`): Dead letter queue for embedding failures — retries with backoff, permanent failure tracking.
+- **Gate** (`semantic_search.gate`): Usage metering and gating for embedding service.
+- **Scoring** (`semantic_search.scoring`): Blends vector similarity with traditional signals.
+- **Repair** (`semantic_search.repair`): Index repair and consistency checking.
 - **Background tasks**: Index cleanup, repair, metric collection, usage trimming.
 
 ### X-rays & Auto-analysis
 
-`metabase.xrays` (4,000+ lines):
+`metabase.xrays`:
 
-- **Automagic dashboards** (`xrays.automagic_dashboards.core` — 1,012 lines): Examines table fields, applies templates, generates complete dashboards with visualizations, filters, breakouts.
-- **Dashboard templates** (`dashboard_templates` — 473 lines): Declarative templates — which visualizations for which field types/combinations.
-- **Interesting fields** (`interesting` — 447 lines): Heuristics for analytically interesting fields — dimensions, measures, time series, categories.
-- **Comparison** (`comparison` — 318 lines): Comparative dashboards (segment vs. population).
-- **Related** (`xrays.related` — 305 lines): Related content suggestions — similar questions, dashboards using same data, related tables.
-- **Domain entities** (`domain_entities` — 340+ lines): Maps tables to domain concepts ("this looks like a Users table").
-- **Names** (`names` — 265 lines): Natural language naming for auto-generated content.
-- **Populate** (`populate` — 438 lines): Populates dashboard templates with actual data.
+- **Automagic dashboards** (`xrays.automagic_dashboards.core`): Examines table fields, applies templates, generates complete dashboards with visualizations, filters, breakouts.
+- **Dashboard templates** (`dashboard_templates`): Declarative templates — which visualizations for which field types/combinations.
+- **Interesting fields** (`interesting`): Heuristics for analytically interesting fields — dimensions, measures, time series, categories.
+- **Comparison** (`comparison`): Comparative dashboards (segment vs. population).
+- **Related** (`xrays.related`): Related content suggestions — similar questions, dashboards using same data, related tables.
+- **Domain entities** (`domain_entities`): Maps tables to domain concepts ("this looks like a Users table").
+- **Names** (`names`): Natural language naming for auto-generated content.
+- **Populate** (`populate`): Populates dashboard templates with actual data.
 
 ### Indexed Entities
 
-`metabase.indexed_entities` (460+ lines): Model index for data-level search:
+`metabase.indexed_entities`: Model index for data-level search:
 
-- **Model index** (`models.model_index` — 210 lines): Tracks indexed models, fields, and index lifecycle.
-- **Background indexing** (`task.index_values` — 136 lines): Periodic refresh from model queries.
+- **Model index** (`models.model_index`): Tracks indexed models, fields, and index lifecycle.
+- **Background indexing** (`task.index_values`): Periodic refresh from model queries.
 
 ### Activity & Recent Views
 
-- **Recent views** (`activity_feed.models.recent_views` — 633 lines): Per-user view tracking for "Recently viewed" and "Pick up where you left off."
-- **Activity feed API** (`activity_feed.api` — 278 lines): Activity and recent views endpoints.
-- **View log** (`view_log` — 275+ lines): Every view recorded for popularity signals.
+- **Recent views** (`activity_feed.models.recent_views`): Per-user view tracking for "Recently viewed" and "Pick up where you left off."
+- **Activity feed API** (`activity_feed.api`): Activity and recent views endpoints.
+- **View log** (`view_log`): Every view recorded for popularity signals.
 
 ## Key Codebase Locations
 

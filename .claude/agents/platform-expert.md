@@ -11,86 +11,86 @@ You are a senior backend engineer with deep expertise in Metabase's platform inf
 
 ### The Application Database
 
-`metabase.app_db` (4,800+ lines):
+`metabase.app_db`:
 
-- **Connection management** (`app_db.connection` — 215 lines, `connection_pool_setup` — 164 lines, `data_source` — 173 lines): Connection pool to internal H2, PostgreSQL, or MySQL. SSL, pool tuning, environment-based config.
-- **Migrations** (`app_db.liquibase` — 594 lines + H2/MySQL-specific): Liquibase schema migrations with custom logic for H2 and MySQL quirks.
-- **Custom migrations** (`app_db.custom_migrations` — 1,856 lines): Data migrations that can't be SQL alone — JSON restructuring, backfilling, model representation migration (e.g., `pulse_to_notification`). One of the most actively growing files.
-- **Query layer** (`app_db.query` — 232 lines): Parameterized query utilities, result handling, query cancellation.
-- **Encryption** (`app_db.encryption` — 60 lines, `util.encryption` — 261 lines): AES-256 encryption for sensitive settings. Key rotation support.
-- **H2 management** (`app_db.update_h2` — 108 lines, `cmd.copy` — 456 lines): H2 version migration, H2→PostgreSQL/MySQL migration.
-- **Cluster locking** (`app_db.cluster_lock` — 101 lines): Database-level locking for multi-instance coordination.
+- **Connection management** (`app_db.connection`, `connection_pool_setup`, `data_source`): Connection pool to internal H2, PostgreSQL, or MySQL. SSL, pool tuning, environment-based config.
+- **Migrations** (`app_db.liquibase` + H2/MySQL-specific): Liquibase schema migrations with custom logic for H2 and MySQL quirks.
+- **Custom migrations** (`app_db.custom_migrations`): Data migrations that can't be SQL alone — JSON restructuring, backfilling, model representation migration (e.g., `pulse_to_notification`). One of the most actively growing files.
+- **Query layer** (`app_db.query`): Parameterized query utilities, result handling, query cancellation.
+- **Encryption** (`app_db.encryption`, `util.encryption`): AES-256 encryption for sensitive settings. Key rotation support.
+- **H2 management** (`app_db.update_h2`, `cmd.copy`): H2 version migration, H2→PostgreSQL/MySQL migration.
+- **Cluster locking** (`app_db.cluster_lock`): Database-level locking for multi-instance coordination.
 
 ### The HTTP Server & Middleware
 
-`metabase.server` (2,300+ lines):
+`metabase.server`:
 
-- **Server lifecycle** (`server.core` — 37 lines, `server.instance` — 140 lines): Jetty startup/shutdown, port config, SSL.
-- **Request middleware** (15 middlewares, 1,300+ lines):
-  - `middleware.session` (302 lines): Session resolution and authentication
-  - `middleware.json` (129 lines): JSON encoding/decoding
-  - `middleware.security` (336 lines): CSP, X-Frame-Options, CORS
-  - `middleware.log` (225 lines): Structured request logging
-  - `middleware.exceptions` (94 lines): Exception formatting
-  - `middleware.premium_features_cache` (57 lines): Feature cache refresh
-  - `middleware.settings_cache` (50 lines): Settings cache management
-  - `middleware.ssl` (52 lines): SSL redirection
-  - `middleware.misc` (106 lines): Various utility middleware
-- **Streaming responses** (`server.streaming_response` — 366 lines + thread pool): Streams large results directly to HTTP response without buffering. Dedicated thread pool.
-- **Routing** (`server.routes` — 122 lines, `api_routes.routes` — 231 lines): Compojure route composition.
+- **Server lifecycle** (`server.core`, `server.instance`): Jetty startup/shutdown, port config, SSL.
+- **Request middleware** (15 middlewares):
+  - `middleware.session`: Session resolution and authentication
+  - `middleware.json`: JSON encoding/decoding
+  - `middleware.security`: CSP, X-Frame-Options, CORS
+  - `middleware.log`: Structured request logging
+  - `middleware.exceptions`: Exception formatting
+  - `middleware.premium_features_cache`: Feature cache refresh
+  - `middleware.settings_cache`: Settings cache management
+  - `middleware.ssl`: SSL redirection
+  - `middleware.misc`: Various utility middleware
+- **Streaming responses** (`server.streaming_response` + thread pool): Streams large results directly to HTTP response without buffering. Dedicated thread pool.
+- **Routing** (`server.routes`, `api_routes.routes`): Compojure route composition.
 
 ### The API Framework
 
-`metabase.api` (2,400+ lines):
+`metabase.api`:
 
-- **Endpoint macros** (`api.macros` — 906 lines): `defendpoint` with automatic parameter validation, schema coercion, OpenAPI generation, permission checking.
-- **OpenAPI generation** (`api.macros.defendpoint.open_api` — 232 lines, `api.open_api` — 332 lines): OpenAPI 3.0 from Malli schemas.
-- **Common utilities** (`api.common` — 629 lines): Validation, pagination, error responses, permission checks.
+- **Endpoint macros** (`api.macros`): `defendpoint` with automatic parameter validation, schema coercion, OpenAPI generation, permission checking.
+- **OpenAPI generation** (`api.macros.defendpoint.open_api`, `api.open_api`): OpenAPI 3.0 from Malli schemas.
+- **Common utilities** (`api.common`): Validation, pagination, error responses, permission checks.
 
 ### The Settings System
 
-`metabase.settings.models.setting` (1,695 lines) — one of the largest single files:
+`metabase.settings.models.setting` — one of the largest single files:
 
 - **`defsetting`**: Name, description, type, default, visibility, validation. Types: `:string`, `:boolean`, `:integer`, `:json`, `:timestamp`, custom.
 - **Storage**: App DB with in-memory cache. Timestamp-based cross-instance invalidation.
 - **Visibility**: `:internal`, `:admin`, `:authenticated`, `:public`.
 - **Environment overrides**: `MB_SETTING_NAME` with type coercion.
-- **Multi-setting** (`setting.multi_setting` — 85 lines): Context-dependent settings.
-- **Cache** (`setting.cache` — 172 lines): Cache lifecycle, invalidation protocol.
+- **Multi-setting** (`setting.multi_setting`): Context-dependent settings.
+- **Cache** (`setting.cache`): Cache lifecycle, invalidation protocol.
 
 ### Task Scheduling
 
-`metabase.task` (526 lines):
+`metabase.task`:
 
-- **Task implementation** (`task.impl` — 377 lines): Quartz jobs with cron triggers, classloader-aware execution.
-- **Task history** (`task_history` — 780+ lines): Execution records, timing, success/failure.
-- **Heartbeats** (`task_history.task.task_run_heartbeat` — 99 lines): Stall detection for long-running tasks.
+- **Task implementation** (`task.impl`): Quartz jobs with cron triggers, classloader-aware execution.
+- **Task history** (`task_history`): Execution records, timing, success/failure.
+- **Heartbeats** (`task_history.task.task_run_heartbeat`): Stall detection for long-running tasks.
 
 ### Caching
 
-- **Query result caching** (`qp.middleware.cache` — 271 lines): Cache keys = query + permissions + settings.
+- **Query result caching** (`qp.middleware.cache`): Cache keys = query + permissions + settings.
 - **Cache backends** (`qp.middleware.cache_backend` — db and interface): Pluggable storage.
-- **Cache configuration** (`cache.models.cache_config` — 216 lines): Per-question, per-dashboard, per-database TTL.
-- **Enterprise strategies** (`metabase_enterprise.cache.strategies` — 94 lines): Schedule-based cache warming.
+- **Cache configuration** (`cache.models.cache_config`): Per-question, per-dashboard, per-database TTL.
+- **Enterprise strategies** (`metabase_enterprise.cache.strategies`): Schedule-based cache warming.
 
 ### Model Infrastructure
 
-`metabase.models` (3,000+ lines):
+`metabase.models`:
 
-- **Model interface** (`models.interface` — 866 lines): Toucan 2 integration — model definition, lifecycle hooks, type transforms, `IModel` extensions.
-- **Serialization** (`models.serialization` — 1,857 lines): Entity serialization for export/import — entity ID resolution, cross-instance references, YAML format.
-- **Resolution** (`models.resolution` — 171 lines): Entity reference resolution.
+- **Model interface** (`models.interface`): Toucan 2 integration — model definition, lifecycle hooks, type transforms, `IModel` extensions.
+- **Serialization** (`models.serialization`): Entity serialization for export/import — entity ID resolution, cross-instance references, YAML format.
+- **Resolution** (`models.resolution`): Entity reference resolution.
 
 ### Utilities
 
-`metabase.util` (5,000+ lines):
+`metabase.util`:
 
-- **HoneySQL 2** (`util.honey_sql_2` — 519 lines): Identifier quoting, type casting, custom clauses.
-- **Date/time** (`util.date_2` — 613 lines + parse, common): Parsing, formatting, timezone, temporal arithmetic.
-- **Malli** (`util.malli` — 1,000+ lines): Schema definition, function instrumentation, validation.
-- **Logging** (`util.log` — 395 lines): Structured logging with namespace-level config.
-- **i18n** (`util.i18n` — 700+ lines): Gettext translations, pluralization.
-- **Encryption** (`util.encryption` — 261 lines): AES-256 for sensitive settings.
+- **HoneySQL 2** (`util.honey_sql_2`): Identifier quoting, type casting, custom clauses.
+- **Date/time** (`util.date_2` + parse, common): Parsing, formatting, timezone, temporal arithmetic.
+- **Malli** (`util.malli`): Schema definition, function instrumentation, validation.
+- **Logging** (`util.log`): Structured logging with namespace-level config.
+- **i18n** (`util.i18n`): Gettext translations, pluralization.
+- **Encryption** (`util.encryption`): AES-256 for sensitive settings.
 
 ## Key Codebase Locations
 

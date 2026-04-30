@@ -11,53 +11,53 @@ You are a senior backend engineer with deep expertise in Metabase's notification
 
 ### The Notification System
 
-`metabase.notification` (2,300+ lines) — the modern unified framework:
+`metabase.notification` — the modern unified framework:
 
-- **Models** (`notification.models` — 609 lines): Ties trigger condition + payload source (card, dashboard, system event) + delivery channels. Supports subscriptions.
-- **Payload execution** (`notification.payload` — 900+ lines): Executes underlying queries. Card notifications execute the card query; dashboard notifications execute all cards. Temp storage (`payload.temp_storage` — 320 lines) for large payloads.
-- **Conditions** (`notification.condition` — 60 lines): Alert-style checks — "send only if row count exceeds 1,000" or "only when goal line crossed."
-- **Send pipeline** (`notification.send` — 486 lines): Trigger → payload → condition check → channel delivery. Handles retries, error tracking, per-recipient customization.
-- **Scheduling** (`notification.task.send` — 212 lines): Quartz-based task scheduling.
-- **Seeding** (`notification.seed` — 228 lines): Default notification configurations.
+- **Models** (`notification.models`): Ties trigger condition + payload source (card, dashboard, system event) + delivery channels. Supports subscriptions.
+- **Payload execution** (`notification.payload`): Executes underlying queries. Card notifications execute the card query; dashboard notifications execute all cards. Temp storage (`payload.temp_storage`) for large payloads.
+- **Conditions** (`notification.condition`): Alert-style checks — "send only if row count exceeds 1,000" or "only when goal line crossed."
+- **Send pipeline** (`notification.send`): Trigger → payload → condition check → channel delivery. Handles retries, error tracking, per-recipient customization.
+- **Scheduling** (`notification.task.send`): Quartz-based task scheduling.
+- **Seeding** (`notification.seed`): Default notification configurations.
 
 ### The Legacy Pulse System
 
-`metabase.pulse` (2,200+ lines) — predecessor to notifications:
+`metabase.pulse` — predecessor to notifications:
 
-- **Pulse models** (`pulse.models.pulse` — 632 lines): Scheduled delivery of cards via channels. Dashboard subscriptions are pulses attached to dashboards.
-- **Pulse channels** (`pulse_channel` — 323 lines): Email and Slack with recipient lists, schedules, configuration.
-- **Sending** (`pulse.send` — 154 lines, `task.send_pulses` — 268 lines): Execution pipeline running pulses on schedule.
-- **Migration**: `app_db.custom_migrations.pulse_to_notification` (166 lines) converts legacy pulses to notifications.
+- **Pulse models** (`pulse.models.pulse`): Scheduled delivery of cards via channels. Dashboard subscriptions are pulses attached to dashboards.
+- **Pulse channels** (`pulse_channel`): Email and Slack with recipient lists, schedules, configuration.
+- **Sending** (`pulse.send`, `task.send_pulses`): Execution pipeline running pulses on schedule.
+- **Migration**: `app_db.custom_migrations.pulse_to_notification` converts legacy pulses to notifications.
 
 ### Channels & Delivery
 
-`metabase.channel` (2,800+ lines) — delivery mechanism abstractions:
+`metabase.channel` — delivery mechanism abstractions:
 
-- **Email** (`channel.impl.email` — 336 lines, `channel.email` — 363 lines): SMTP with templates, HTML rendering, inline images, CSV/XLSX attachments. Message builder (`channel.email.messages` — 438 lines).
-- **Slack** (`channel.impl.slack` — 203 lines, `channel.slack` — 332 lines): Slack API integration with file uploads for chart images, channel/user caching, token management, OAuth flow. Background cache refresh task.
-- **HTTP webhooks** (`channel.impl.http` — 111 lines): Notification payloads to arbitrary HTTP endpoints.
-- **Settings** (`channel.settings` — 332 lines): SMTP config, Slack tokens, channel configuration.
+- **Email** (`channel.impl.email`, `channel.email`): SMTP with templates, HTML rendering, inline images, CSV/XLSX attachments. Message builder (`channel.email.messages`).
+- **Slack** (`channel.impl.slack`, `channel.slack`): Slack API integration with file uploads for chart images, channel/user caching, token management, OAuth flow. Background cache refresh task.
+- **HTTP webhooks** (`channel.impl.http`): Notification payloads to arbitrary HTTP endpoints.
+- **Settings** (`channel.settings`): SMTP config, Slack tokens, channel configuration.
 
 ### The Rendering Pipeline
 
-`metabase.channel.render` (2,500+ lines) — query results to visual output:
+`metabase.channel.render` — query results to visual output:
 
-- **Body rendering** (`render.body` — 671 lines): Different visualization types — tables, bar charts, line charts, scalars, progress bars, funnels, maps — to HTML or images.
-- **Table rendering** (`render.table` — 331 lines): Result sets to styled HTML tables with column formatting, truncation, row limits.
-- **Chart rendering** (`render.js` — 440 lines): **GraalJS engine** executing the same JavaScript charting code as the browser, producing SVGs rasterized to PNGs. This is one of the most technically interesting parts.
-  - `render.js.engine` (73 lines): GraalJS context management
-  - `render.js.svg` (266 lines): SVG generation and manipulation
-  - `render.js.color` (101 lines): Color palette resolution
-- **Image handling** (`render.image_bundle` — 124 lines, `render.png` — 142 lines): Chart images for email embedding and Slack upload.
-- **Preview** (`render.preview` — 166 lines): Preview rendering for notification configuration UI.
-- **Templating** (`channel.template` — 217 lines): Handlebars-based templates for email and notification content.
-- **URLs** (`channel.urls` — 125 lines): Deep links back to questions/dashboards.
-- **Styling** (`render.style` — 182 lines): CSS and styling for rendered output.
+- **Body rendering** (`render.body`): Different visualization types — tables, bar charts, line charts, scalars, progress bars, funnels, maps — to HTML or images.
+- **Table rendering** (`render.table`): Result sets to styled HTML tables with column formatting, truncation, row limits.
+- **Chart rendering** (`render.js`): **GraalJS engine** executing the same JavaScript charting code as the browser, producing SVGs rasterized to PNGs. This is one of the most technically interesting parts.
+  - `render.js.engine`: GraalJS context management
+  - `render.js.svg`: SVG generation and manipulation
+  - `render.js.color`: Color palette resolution
+- **Image handling** (`render.image_bundle`, `render.png`): Chart images for email embedding and Slack upload.
+- **Preview** (`render.preview`): Preview rendering for notification configuration UI.
+- **Templating** (`channel.template`): Handlebars-based templates for email and notification content.
+- **URLs** (`channel.urls`): Deep links back to questions/dashboards.
+- **Styling** (`render.style`): CSS and styling for rendered output.
 
 ### Scheduling Infrastructure
 
-- **Quartz integration** (`metabase.task` — 526 lines): Task definition, trigger management, classloader-aware job execution.
-- **Task history** (`metabase.task_history` — 780+ lines): Execution records with timing, success/failure, output.
+- **Quartz integration** (`metabase.task`): Task definition, trigger management, classloader-aware job execution.
+- **Task history** (`metabase.task_history`): Execution records with timing, success/failure, output.
 
 ## Key Codebase Locations
 

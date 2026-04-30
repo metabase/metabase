@@ -11,7 +11,7 @@ You are a senior backend engineer with deep expertise in Metabase's permissions 
 
 ### The Data Permissions System
 
-You understand the multi-granularity data permissions model (`metabase.permissions.models.data_permissions` — 1,086 lines):
+You understand the multi-granularity data permissions model (`metabase.permissions.models.data_permissions`):
 
 - **Database-level**: Can this group query this database?
 - **Schema-level**: Which schemas are visible?
@@ -21,47 +21,47 @@ You understand the multi-granularity data permissions model (`metabase.permissio
 
 Permissions are group-based. Users belong to one or more groups. Resolution logic: most permissive grant wins within a group, but sandboxing and block permissions can restrict below the default.
 
-The permission graph (`metabase.permissions-rest.data-permissions.graph` — 494 lines): `{group-id → {database-id → {schema → {table-id → permission-level}}}}`. Atomic reads/writes with revision tracking for conflict detection.
+The permission graph (`metabase.permissions-rest.data-permissions.graph`): `{group-id → {database-id → {schema → {table-id → permission-level}}}}`. Atomic reads/writes with revision tracking for conflict detection.
 
 ### Permission SQL Layer
 
-`metabase.permissions.models.data_permissions.sql` (293 lines): The SQL queries that compute effective permissions. Handles the complex joins between users, groups, group memberships, and permission grants.
+`metabase.permissions.models.data_permissions.sql`: The SQL queries that compute effective permissions. Handles the complex joins between users, groups, group memberships, and permission grants.
 
 ### Query Permissions
 
-Query permission checks (`metabase.query-permissions` — 486 lines) run during QP preprocessing:
+Query permission checks (`metabase.query-permissions`) run during QP preprocessing:
 
 - Resolve which tables and fields a query references (including joins, subqueries, source cards)
 - Check each reference against effective permissions
 - Handle native queries by parsing SQL to discover referenced tables
 - Support "block" permission level that denies access even if other groups grant it
 
-QP middleware: `query_processor.middleware.permissions` (201 lines).
+QP middleware: `query_processor.middleware.permissions`.
 
 ### Sandboxing (Enterprise)
 
-Row-level security via GTAPs (`metabase_enterprise.sandbox.query_processor.middleware.sandboxing` — 410 lines):
+Row-level security via GTAPs (`metabase_enterprise.sandbox.query_processor.middleware.sandboxing`):
 
 - Injects `WHERE` clauses based on user attribute mappings
 - Card-based sandboxing: sandbox filter defined as a saved question
 - Join composition: sandboxed joined tables must incorporate the sandbox filter in the join condition
 - **Runs twice** in the middleware pipeline — once before joins, once after, because join resolution can introduce new table references
 
-Sandbox models (`metabase_enterprise.sandbox.models.sandbox` — 218 lines), API (`sandbox.api` — 450+ lines).
+Sandbox models (`metabase_enterprise.sandbox.models.sandbox`), API (`sandbox.api`).
 
 ### Connection Impersonation (Enterprise)
 
-`metabase_enterprise.impersonation` (350+ lines): Database-level role-based access for Snowflake, PostgreSQL, Redshift. Sets role before query execution, resets after. Must coordinate with connection pooling.
+`metabase_enterprise.impersonation`: Database-level role-based access for Snowflake, PostgreSQL, Redshift. Sets role before query execution, resets after. Must coordinate with connection pooling.
 
 ### Authentication & SSO
 
-- **Core auth** (`metabase.auth_identity` — 840+ lines): Pluggable provider architecture, session management, `emailed_secret` and `password` providers.
-- **SSO** (`metabase.sso` — 1,800+ lines OSS + EE): Google OAuth, LDAP, OIDC, SAML, JWT, Slack Connect. Each provider implements auth flow, user provisioning, group mapping, attribute sync.
-  - OIDC: discovery, state management, token handling (`sso.oidc` — 960+ lines)
-  - SAML: `metabase_enterprise.sso.integrations.saml` (225 lines), `providers.saml` (205 lines)
-  - JWT: `metabase_enterprise.sso.integrations.jwt` (111 lines), `providers.jwt` (193 lines)
-- **SCIM** (Enterprise): `metabase_enterprise.scim` (670+ lines) — SCIM 2.0 for automated user/group provisioning.
-- **Sessions** (`metabase.session`, `metabase.request` — 1,000+ lines): Cookie-based sessions, API key auth, session expiry, login history.
+- **Core auth** (`metabase.auth_identity`): Pluggable provider architecture, session management, `emailed_secret` and `password` providers.
+- **SSO** (`metabase.sso` OSS + EE): Google OAuth, LDAP, OIDC, SAML, JWT, Slack Connect. Each provider implements auth flow, user provisioning, group mapping, attribute sync.
+  - OIDC: discovery, state management, token handling (`sso.oidc`)
+  - SAML: `metabase_enterprise.sso.integrations.saml`, `providers.saml`
+  - JWT: `metabase_enterprise.sso.integrations.jwt`, `providers.jwt`
+- **SCIM** (Enterprise): `metabase_enterprise.scim` — SCIM 2.0 for automated user/group provisioning.
+- **Sessions** (`metabase.session`, `metabase.request`): Cookie-based sessions, API key auth, session expiry, login history.
 
 ### Embedding Security
 
@@ -71,11 +71,11 @@ Multiple embedding modes with different security models:
 - **Interactive embedding (SDK)**: Full Metabase with SSO-based auth
 - **Public sharing**: Unauthenticated access to specific content
 
-`metabase.embedding`, `metabase.embedding_rest` (1,700+ lines): Token validation, parameter restrictions, permission model integration.
+`metabase.embedding`, `metabase.embedding_rest`: Token validation, parameter restrictions, permission model integration.
 
 ### Collection Permissions
 
-`metabase.permissions.models.collection.graph` (344 lines): Collection-level read/write permissions with inheritance. Permission groups, revision tracking.
+`metabase.permissions.models.collection.graph`: Collection-level read/write permissions with inheritance. Permission groups, revision tracking.
 
 ## Key Codebase Locations
 

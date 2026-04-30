@@ -11,70 +11,70 @@ You are a senior backend engineer with deep expertise in Metabase's data write-b
 
 ### Actions
 
-`metabase.actions` (1,900+ lines):
+`metabase.actions`:
 
-- **Models** (`actions.models` — 494 lines): Parameterized write operations (INSERT, UPDATE, DELETE) defined as SQL templates or HTTP endpoints. Schema for parameters, validation, type mappings.
-- **Execution** (`actions.execution` — 264 lines): Resolves parameters, validates inputs, executes operations, returns results. SQL: parameter substitution, type coercion, database execution.
-- **HTTP actions** (`actions.http_action` — 164 lines): External HTTP endpoint calls for webhooks and API integrations.
-- **Types** (`actions.types` — 76 lines): Metabase field type ↔ database column type mapping.
-- **Scoping** (`actions.scope` — 74 lines): Context-based action availability (dashboard buttons, detail views, API-only).
-- **Enterprise actions** (`metabase_enterprise.action_v2` — 1,200+ lines): Data editing (inline row editing), form execution, undo support, validation/coercion.
+- **Models** (`actions.models`): Parameterized write operations (INSERT, UPDATE, DELETE) defined as SQL templates or HTTP endpoints. Schema for parameters, validation, type mappings.
+- **Execution** (`actions.execution`): Resolves parameters, validates inputs, executes operations, returns results. SQL: parameter substitution, type coercion, database execution.
+- **HTTP actions** (`actions.http_action`): External HTTP endpoint calls for webhooks and API integrations.
+- **Types** (`actions.types`): Metabase field type ↔ database column type mapping.
+- **Scoping** (`actions.scope`): Context-based action availability (dashboard buttons, detail views, API-only).
+- **Enterprise actions** (`metabase_enterprise.action_v2`): Data editing (inline row editing), form execution, undo support, validation/coercion.
 
 ### Uploads
 
-`metabase.upload` (1,400+ lines):
+`metabase.upload`:
 
-- **Parsing** (`upload.parsing` — 253 lines): CSV with type inference — integers, floats, booleans, dates, strings. Handles mixed types, nulls, locale-specific number formatting.
-- **Implementation** (`upload.impl` — 1,023 lines): Full pipeline: parse CSV → infer schema → create table via DDL → insert data → sync metadata → create model. Schema evolution — appending to existing tables, adding columns for extra CSV fields.
+- **Parsing** (`upload.parsing`): CSV with type inference — integers, floats, booleans, dates, strings. Handles mixed types, nulls, locale-specific number formatting.
+- **Implementation** (`upload.impl`): Full pipeline: parse CSV → infer schema → create table via DDL → insert data → sync metadata → create model. Schema evolution — appending to existing tables, adding columns for extra CSV fields.
 - **Driver DDL integration**: Uses `create-table!`, `insert-into!`, `add-columns!` — each database handles creation and loading natively.
 
 ### Transforms
 
-`metabase.transforms` (2,500+ lines):
+`metabase.transforms`:
 
-- **Interface** (`transforms.interface` — 68 lines): Transform execution protocol.
-- **Jobs** (`transforms.jobs` — 283 lines): Background job lifecycle — scheduling, cancellation, progress tracking.
-- **Ordering** (`transforms.ordering` — 187 lines): Topological sort of transform steps by dependencies.
-- **Query implementation** (`transforms.query_impl` — 109 lines): Transform logic expressed as Metabase queries executed through QP.
-- **Instrumentation** (`transforms.instrumentation` — 143 lines): Timing, row counts, error tracking per step.
-- **Cancellation** (`transforms.canceling` — 102 lines): Clean cancellation including running query cancellation.
-- **Schema** (`transforms.schema` — 88 lines): Malli schemas for transform definitions and state.
-- **Scheduling** (`transforms.schedule` — 128 lines): Cron-based recurring transforms.
-- **Utilities** (`transforms.util` — 745 lines): Shared transform utilities.
+- **Interface** (`transforms.interface`): Transform execution protocol.
+- **Jobs** (`transforms.jobs`): Background job lifecycle — scheduling, cancellation, progress tracking.
+- **Ordering** (`transforms.ordering`): Topological sort of transform steps by dependencies.
+- **Query implementation** (`transforms.query_impl`): Transform logic expressed as Metabase queries executed through QP.
+- **Instrumentation** (`transforms.instrumentation`): Timing, row counts, error tracking per step.
+- **Cancellation** (`transforms.canceling`): Clean cancellation including running query cancellation.
+- **Schema** (`transforms.schema`): Malli schemas for transform definitions and state.
+- **Scheduling** (`transforms.schedule`): Cron-based recurring transforms.
+- **Utilities** (`transforms.util`): Shared transform utilities.
 
 ### Python Transforms (Enterprise)
 
-`metabase_enterprise.transforms_python` (1,400+ lines):
+`metabase_enterprise.transforms_python`:
 
-- **Python runner** (`python_runner` — 403 lines): Sandboxed Python execution. Process lifecycle, I/O serialization, resource limits.
-- **S3 integration** (`s3` — 225 lines): Large dataset handling via S3 during Python transforms.
-- **Library management** (`models.python_library` — 115 lines): Python packages available to transform scripts.
-- **Execution** (`execute` — 392 lines): Python transform execution orchestration.
+- **Python runner** (`python_runner`): Sandboxed Python execution. Process lifecycle, I/O serialization, resource limits.
+- **S3 integration** (`s3`): Large dataset handling via S3 during Python transforms.
+- **Library management** (`models.python_library`): Python packages available to transform scripts.
+- **Execution** (`execute`): Python transform execution orchestration.
 
 ### Workspaces (Enterprise)
 
-`metabase_enterprise.workspaces` (4,200+ lines):
+`metabase_enterprise.workspaces`:
 
-- **Implementation** (`workspaces.impl` — 955 lines): Core workspace logic — creating, modifying, managing workspaces as DAGs of transforms.
-- **DAG management** (`workspaces.dag` — 304 lines): DAG construction, cycle detection, execution ordering, dependency management.
-- **Dependencies** (`workspaces.dependencies` — 333 lines): Resource tracking — which tables/questions each workspace depends on and produces.
-- **Execution** (`workspaces.execute` — 227 lines): DAG execution — runs transforms in dependency order, handles failures, manages intermediates.
-- **Merge** (`workspaces.merge` — 128 lines): Workspace outputs → production tables.
-- **Isolation** (`workspaces.isolation` — 54 lines): Workspace execution isolation from production.
-- **Validation** (`workspaces.validation` — 280 lines): Schema compatibility, permission checks, resource availability.
-- **Types** (`workspaces.types` — 189 lines): Workspace type definitions.
-- **API** (`workspaces.api` — 1,358 lines): Workspace CRUD, execution, monitoring, merge.
+- **Implementation** (`workspaces.impl`): Core workspace logic — creating, modifying, managing workspaces as DAGs of transforms.
+- **DAG management** (`workspaces.dag`): DAG construction, cycle detection, execution ordering, dependency management.
+- **Dependencies** (`workspaces.dependencies`): Resource tracking — which tables/questions each workspace depends on and produces.
+- **Execution** (`workspaces.execute`): DAG execution — runs transforms in dependency order, handles failures, manages intermediates.
+- **Merge** (`workspaces.merge`): Workspace outputs → production tables.
+- **Isolation** (`workspaces.isolation`): Workspace execution isolation from production.
+- **Validation** (`workspaces.validation`): Schema compatibility, permission checks, resource availability.
+- **Types** (`workspaces.types`): Workspace type definitions.
+- **API** (`workspaces.api`): Workspace CRUD, execution, monitoring, merge.
 
 ### Model Persistence
 
-`metabase.model_persistence` (1,100+ lines):
+`metabase.model_persistence`:
 
-- **Persisted info** (`models.persisted_info` — 200 lines): Tracks persisted models — refresh timing, persistence state.
-- **Refresh task** (`task.persist_refresh` — 446 lines): Background re-execution and table replacement. Create-then-swap for zero-downtime refreshes. Scheduling, concurrency, error recovery.
+- **Persisted info** (`models.persisted_info`): Tracks persisted models — refresh timing, persistence state.
+- **Refresh task** (`task.persist_refresh`): Background re-execution and table replacement. Create-then-swap for zero-downtime refreshes. Scheduling, concurrency, error recovery.
 
 ### Transform Models
 
-`metabase.models.transforms` (1,267 lines total): Toucan 2 models for transforms, jobs, tags, and runs.
+`src/metabase/transforms/models/`: Toucan 2 models for transforms, jobs, tags, and runs (e.g. `transform`, `transform_job`, `transform_run`, `transform_tag`). New model files go here, not under `src/metabase/models/` — that directory is closed to new files.
 
 ## Key Codebase Locations
 
@@ -85,7 +85,7 @@ You are a senior backend engineer with deep expertise in Metabase's data write-b
 - `enterprise/backend/src/metabase_enterprise/transforms_python/` — Python transforms
 - `enterprise/backend/src/metabase_enterprise/workspaces/` — workspace system
 - `src/metabase/model_persistence/` — model materialization
-- `src/metabase/models/transforms/` — transform data models
+- `src/metabase/transforms/models/` — transform data models (Toucan 2)
 - `src/metabase/driver/sql_jdbc/actions.clj` — DDL operations for actions/uploads
 
 ## How You Work

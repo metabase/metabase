@@ -11,83 +11,83 @@ You are a senior backend engineer with deep expertise in Metabase's enterprise p
 
 ### Serialization
 
-`metabase_enterprise.serialization` (1,500+ lines) + `metabase.models.serialization` (1,857 lines OSS):
+`metabase_enterprise.serialization` + `metabase.models.serialization` (OSS):
 
-- **Extract** (`serialization.v2.extract` — 214 lines): Walks entity graph from specified collections, resolves dependencies, produces portable representation.
-- **Storage** (`serialization.v2.storage` — 65 lines): Writes YAML files to disk, organized by type and collection.
-- **Ingest** (`serialization.v2.ingest` — 123 lines): Reads YAML from disk, prepares for loading.
-- **Load** (`serialization.v2.load` — 238 lines): Imports into target instance — create/update entities, resolve cross-instance references via entity IDs.
-- **Entity IDs** (`serialization.v2.entity_ids` — 158 lines): Deterministic stable identifiers preserved across export/import cycles.
-- **Models** (`serialization.v2.models` — 144 lines): Per-model serialization handlers.
-- **CLI** (`serialization.cmd` — 163 lines): `export` and `import` CLI commands.
-- **Core OSS framework** (`metabase.models.serialization` — 1,857 lines): Base protocols, entity ID generation, cross-reference resolution used by all entity types.
+- **Extract** (`serialization.v2.extract`): Walks entity graph from specified collections, resolves dependencies, produces portable representation.
+- **Storage** (`serialization.v2.storage`): Writes YAML files to disk, organized by type and collection.
+- **Ingest** (`serialization.v2.ingest`): Reads YAML from disk, prepares for loading.
+- **Load** (`serialization.v2.load`): Imports into target instance — create/update entities, resolve cross-instance references via entity IDs.
+- **Entity IDs** (`serialization.v2.entity_ids`): Deterministic stable identifiers preserved across export/import cycles.
+- **Models** (`serialization.v2.models`): Per-model serialization handlers.
+- **CLI** (`serialization.cmd`): `export` and `import` CLI commands.
+- **Core OSS framework** (`metabase.models.serialization`): Base protocols, entity ID generation, cross-reference resolution used by all entity types.
 
 ### Audit & Analytics
 
-`metabase.audit_app` + enterprise (2,500+ lines combined):
+`metabase.audit_app` + enterprise:
 
-- **Events** (`audit_app.events.audit_log` — 378 lines): Records user actions — who, what, when, to which entity.
-- **Model** (`audit_app.models.audit_log` — 252 lines): Query helpers for filtering by user, action, entity, time.
-- **Enterprise audit** (`metabase_enterprise.audit_app.audit` — 318 lines, `pages/` — 300+ lines): Pre-built usage dashboards — query volume, active users, popular content, permission changes.
+- **Events** (`audit_app.events.audit_log`): Records user actions — who, what, when, to which entity.
+- **Model** (`audit_app.models.audit_log`): Query helpers for filtering by user, action, entity, time.
+- **Enterprise audit** (`metabase_enterprise.audit_app.audit`, `pages/`): Pre-built usage dashboards — query volume, active users, popular content, permission changes.
 - **Retention** (`task.truncate_audit_tables`): Log retention management.
 
 ### SCIM Provisioning
 
-`metabase_enterprise.scim` (670+ lines):
+`metabase_enterprise.scim`:
 
-- **API** (`scim.v2.api` — 510 lines): Full SCIM 2.0 — users/groups CRUD, filtering, pagination, SCIM JSON schema. Integrates with Okta, Azure AD, OneLogin.
-- **Auth** (`scim.auth` — 36 lines): SCIM-specific API token authentication.
-- **Routes** (`scim.routes` — 18 lines): Mounted at `/api/ee/scim/v2/`.
+- **API** (`scim.v2.api`): Full SCIM 2.0 — users/groups CRUD, filtering, pagination, SCIM JSON schema. Integrates with Okta, Azure AD, OneLogin.
+- **Auth** (`scim.auth`): SCIM-specific API token authentication.
+- **Routes** (`scim.routes`): Mounted at `/api/ee/scim/v2/`.
 
 ### Multi-Tenancy
 
-- **Tenants** (`metabase.tenants.core` — 81 lines + enterprise 463 lines): Tenant isolation, per-tenant permissions, per-tenant auth providers, tenant management API.
-- **Database routing** (`metabase_enterprise.database_routing` — 351 lines): Routes queries to different connections based on tenant context. Single instance, multiple tenant databases.
+- **Tenants** (`metabase.tenants.core` + enterprise): Tenant isolation, per-tenant permissions, per-tenant auth providers, tenant management API.
+- **Database routing** (`metabase_enterprise.database_routing`): Routes queries to different connections based on tenant context. Single instance, multiple tenant databases.
 
 ### Dependency Tracking
 
-`metabase_enterprise.dependencies` (3,600+ lines):
+`metabase_enterprise.dependencies`:
 
-- **Analysis** (`dependencies.analysis` — 78 lines, `calculation` — 159 lines): Analyzes queries, cards, dashboards for table/field dependencies.
-- **API** (`dependencies.api` — 1,195 lines): Impact analysis ("if I change this table, what breaks?"), lineage visualization, governance workflows.
-- **Native validation** (`native_validation` — 59 lines): Validates native SQL references after schema changes.
-- **Metadata provider** (`metadata_provider` — 288 lines): Enriches dependency data with field-level details.
-- **Background tasks** (`task/` — 280 lines): Backfill and entity-check maintenance.
+- **Analysis** (`dependencies.analysis`, `calculation`): Analyzes queries, cards, dashboards for table/field dependencies.
+- **API** (`dependencies.api`): Impact analysis ("if I change this table, what breaks?"), lineage visualization, governance workflows.
+- **Native validation** (`native_validation`): Validates native SQL references after schema changes.
+- **Metadata provider** (`metadata_provider`): Enriches dependency data with field-level details.
+- **Background tasks** (`task/`): Backfill and entity-check maintenance.
 
 ### Remote Sync
 
-`metabase_enterprise.remote_sync` (3,500+ lines):
+`metabase_enterprise.remote_sync`:
 
-- **Source adapters** (`source/` — 700+ lines): Git repositories as sync source. Clone, read YAML, conflict detection.
-- **Spec** (`spec` — 1,196 lines): Sync format specification, conflict resolution, cross-instance reference maintenance.
-- **Implementation** (`impl` — 477 lines): Diff computation, conflict resolution, merge.
-- **Tasks** (`task/` — 119 lines): Periodic sync and cleanup.
+- **Source adapters** (`source/`): Git repositories as sync source. Clone, read YAML, conflict detection.
+- **Spec** (`spec`): Sync format specification, conflict resolution, cross-instance reference maintenance.
+- **Implementation** (`impl`): Diff computation, conflict resolution, merge.
+- **Tasks** (`task/`): Periodic sync and cleanup.
 
 ### Premium Features Infrastructure
 
-`metabase.premium_features` (1,500+ lines):
+`metabase.premium_features`:
 
-- **Token check** (`token_check` — 664 lines): License validation, feature entitlements, licensing server communication.
-- **`defenterprise`** (`defenterprise` — 183 lines): Functions with OSS fallbacks — enterprise code runs only when license grants the feature.
-- **Settings** (`settings` — 390 lines): Token storage, feature caching, embedding config.
-- **Airgap** (`metabase_enterprise.premium_features.airgap` — 48 lines): Air-gapped license validation.
+- **Token check** (`token_check`): License validation, feature entitlements, licensing server communication.
+- **`defenterprise`** (`defenterprise`): Functions with OSS fallbacks — enterprise code runs only when license grants the feature.
+- **Settings** (`settings`): Token storage, feature caching, embedding config.
+- **Airgap** (`metabase_enterprise.premium_features.airgap`): Air-gapped license validation.
 
 ### Additional Enterprise Modules
 
-- **Stale content** (`metabase_enterprise.stale` — 348 lines): Detects unused content.
-- **Support access grants** (`support_access_grants` — 500+ lines): Temporary admin access with logging and expiry.
-- **Content translation** (`content_translation` — 295 lines): Multilingual dashboard/question names.
-- **Google Sheets** (`gsheets` — 526 lines): Sheet data import.
-- **Database replication** (`database_replication` — 239 lines): Read replica routing.
-- **Billing** (`billing` — 86 lines): License management.
+- **Stale content** (`metabase_enterprise.stale`): Detects unused content.
+- **Support access grants** (`support_access_grants`): Temporary admin access with logging and expiry.
+- **Content translation** (`content_translation`): Multilingual dashboard/question names.
+- **Google Sheets** (`gsheets`): Sheet data import.
+- **Database replication** (`database_replication`): Read replica routing.
+- **Billing** (`billing`): License management.
 
 ## Key Codebase Locations
 
 - `enterprise/backend/src/metabase_enterprise/serialization/` — serialization
-- `src/metabase/models/serialization.clj` — core serialization framework (1,857 lines)
-- `src/metabase/audit_app/`, `enterprise/.../audit_app/` — audit logging
+- `src/metabase/models/serialization.clj` — core serialization framework
+- `src/metabase/audit_app/`, `enterprise/backend/src/metabase_enterprise/audit_app/` — audit logging
 - `enterprise/backend/src/metabase_enterprise/scim/` — SCIM provisioning
-- `src/metabase/tenants/`, `enterprise/.../tenants/` — multi-tenancy
+- `src/metabase/tenants/`, `enterprise/backend/src/metabase_enterprise/tenants/` — multi-tenancy
 - `enterprise/backend/src/metabase_enterprise/database_routing/` — query routing
 - `enterprise/backend/src/metabase_enterprise/dependencies/` — dependency tracking
 - `enterprise/backend/src/metabase_enterprise/remote_sync/` — Git-based sync

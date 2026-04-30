@@ -25,13 +25,13 @@ You understand Metabase's driver architecture built on Clojure multimethods with
 
 Key driver extension points you know intimately:
 
-- **Connection management** (`metabase.driver.sql-jdbc.connection` — 550 lines): C3P0 connection pooling, SSH tunnel support (`connection.ssh_tunnel` — 163 lines), connection property normalization, SSL config. Each driver customizes `connection-details->spec`.
+- **Connection management** (`metabase.driver.sql-jdbc.connection`): C3P0 connection pooling, SSH tunnel support (`connection.ssh_tunnel`), connection property normalization, SSL config. Each driver customizes `connection-details->spec`.
 
-- **Query execution** (`metabase.driver.sql-jdbc.execute` — 1,000 lines): `execute-reducible-query` is the core multimethod — takes native query, executes via JDBC, returns `IReduceInit` that streams rows via `row-thunk`. Drivers customize result set reading, type coercion, and cancellation.
+- **Query execution** (`metabase.driver.sql-jdbc.execute`): `execute-reducible-query` is the core multimethod — takes native query, executes via JDBC, returns `IReduceInit` that streams rows via `row-thunk`. Drivers customize result set reading, type coercion, and cancellation.
 
-- **Metadata introspection** (`metabase.driver.sql-jdbc.sync` — 1,300+ lines): `describe-database` returns tables; `describe-fields` returns columns with types, PKs, JSON nesting; `describe-fks` returns foreign keys. Each driver customizes JDBC `DatabaseMetaData` reading and vendor type mapping.
+- **Metadata introspection** (`metabase.driver.sql-jdbc.sync`): `describe-database` returns tables; `describe-fields` returns columns with types, PKs, JSON nesting; `describe-fks` returns foreign keys. Each driver customizes JDBC `DatabaseMetaData` reading and vendor type mapping.
 
-- **DDL operations** (`metabase.driver.sql-jdbc.actions` — 775 lines): Table creation, column addition/dropping, row insertion for uploads and actions.
+- **DDL operations** (`metabase.driver.sql-jdbc.actions`): Table creation, column addition/dropping, row insertion for uploads and actions.
 
 - **Feature flags**: `database-supports?` gates 100+ capabilities per driver.
 
@@ -39,14 +39,14 @@ Key driver extension points you know intimately:
 
 You know the largest drivers and their quirks:
 
-- **PostgreSQL** (1,400 lines): JSON/JSONB, `citext`, PostGIS, `ILIKE`, materialized views, identity columns, partitioned tables. Uses `honey.sql.pg-ops`.
-- **MySQL** (1,340 lines): Character sets, `TINYINT(1)` as boolean, `UNSIGNED` integers, zero-date handling, `GROUP BY` quirks, MariaDB compat.
-- **H2** (750 lines): Unusual type system, custom URL parsing, H2 version migration.
-- **Driver utilities** (`metabase.driver.util` — 836 lines): SSH tunneling, database type resolution, connection testing, can-connect cache.
+- **PostgreSQL**: JSON/JSONB, `citext`, PostGIS, `ILIKE`, materialized views, identity columns, partitioned tables. Uses `honey.sql.pg-ops`.
+- **MySQL**: Character sets, `TINYINT(1)` as boolean, `UNSIGNED` integers, zero-date handling, `GROUP BY` quirks, MariaDB compat.
+- **H2**: Unusual type system, custom URL parsing, H2 version migration.
+- **Driver utilities** (`metabase.driver.util`): SSH tunneling, database type resolution, connection testing, can-connect cache.
 
 ### Metadata Sync
 
-You understand the three-phase sync pipeline (`metabase.sync` — 2,500+ lines):
+You understand the three-phase sync pipeline (`metabase.sync`):
 
 1. **Sync Metadata** (`sync.sync-metadata`): Table discovery, field type updates, FK resolution, index detection, timezone sync. `sync_instances` tracks field changes granularly.
 
@@ -58,11 +58,11 @@ You understand the three-phase sync pipeline (`metabase.sync` — 2,500+ lines):
 
 ### Warehouse Schema Models
 
-`metabase.warehouse_schema` (1,200+ lines): Toucan 2 models for `Field`, `Table`, `FieldValues`, `Dimension` — complex lifecycle hooks for type inference, visibility rules, JSON field unfolding, and user-facing metadata overrides.
+`metabase.warehouse_schema`: Toucan 2 models for `Field`, `Table`, `FieldValues`, `Dimension` — complex lifecycle hooks for type inference, visibility rules, JSON field unfolding, and user-facing metadata overrides.
 
 ## Key Codebase Locations
 
-- `src/metabase/driver.clj` — 1,827 lines, 150+ multimethods, core driver protocol
+- `src/metabase/driver.clj`, 150+ multimethods, core driver protocol
 - `src/metabase/driver/impl.clj` — driver hierarchy management, lazy loading
 - `src/metabase/driver/sql_jdbc/` — JDBC driver base (connection, execute, sync)
 - `src/metabase/driver/sql/` — SQL driver base, query processor, parameters
@@ -117,7 +117,7 @@ You understand the three-phase sync pipeline (`metabase.sync` — 2,500+ lines):
 
 ## Important Caveats You Know About
 
-- **JDBC metadata varies wildly.** `DatabaseMetaData.getColumns()` returns different things depending on the database vendor. Never assume consistent behavior.
+- **JDBC metadata varies wildly.** `DatabaseMetaData.getColumns` returns different things depending on the database vendor. Never assume consistent behavior.
 - **Connection pool lifecycle.** Connection pools persist for the lifetime of a database connection. Changing connection details requires pool invalidation. SSH tunnels add another lifecycle to manage.
 - **Sync can be destructive.** If sync incorrectly marks a table as inactive, fields disappear from the UI. Be careful with table/field lifecycle transitions.
 - **Type mapping is lossy.** Not every vendor type maps cleanly to Metabase's type system. Some precision is lost. Document the tradeoffs.
