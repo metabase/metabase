@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { collectionApi } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import type { DispatchFn } from "metabase/redux";
 import { getRootCollectionItem as getTransformsRootCollectionItem } from "metabase/transforms/utils";
-import type { DispatchFn } from "metabase/utils/redux";
 import type { CollectionNamespace } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem } from "../types";

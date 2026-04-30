@@ -27,6 +27,7 @@ import {
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
+  FALLBACK_ID_FOR_EMPTY_COLUMN_NAME,
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   ROW_HEIGHT,
@@ -43,11 +44,11 @@ import type {
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { formatValue } from "metabase/utils/formatting";
-import { useDispatch } from "metabase/utils/redux";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -505,6 +506,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         align = columnSettings["text_align"];
         id = col.name;
         sortDirection = getColumnSortDirection(columnIndex);
+      }
+
+      if (id === "") {
+        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
       }
 
       const translatedColumnName = tc(columnName);

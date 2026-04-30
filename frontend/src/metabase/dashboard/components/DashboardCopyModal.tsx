@@ -9,9 +9,9 @@ import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/
 import { Collections } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { Dashboards } from "metabase/entities/dashboards";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
 import { getDashboardComplete } from "../selectors";

@@ -1,23 +1,23 @@
 import type { ReactNode } from "react";
 
-import {
-  type DataPermission,
-  DataPermissionValue,
-  type DatabaseEntityId,
-  type EntityId,
-  type PermissionSubject,
-  type SpecialGroupType,
+import type {
+  DatabaseEntityId,
+  EntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase/admin/permissions/types";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  DataPermission,
   Dataset,
   Group,
   GroupPermissions,
   GroupsPermissions,
   User,
 } from "metabase-types/api";
+import { DataPermissionValue } from "metabase-types/api";
 
 import type { PluginGroupManagersType } from "../types";
 

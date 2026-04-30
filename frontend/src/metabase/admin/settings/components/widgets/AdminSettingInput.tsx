@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
+import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -285,11 +286,7 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
   settingDetails,
   children,
 }: SetByEnvVarWrapperProps<SettingName>) {
-  if (
-    settingDetails &&
-    settingDetails?.is_env_setting &&
-    settingDetails?.env_name
-  ) {
+  if (isSettingSetFromEnvVar(settingDetails)) {
     return (
       <Box mb="lg">
         <SettingHeader

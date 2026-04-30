@@ -90,7 +90,7 @@
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
      :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
-     :entity_id])))
+     :entity_id :dimension_interestingness])))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"
@@ -742,7 +742,7 @@
                                        :database_id   (mt/id)
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+                                                       :native   {:query "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES"}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -858,7 +858,7 @@
                                        :database_id   (mt/id)
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+                                                       :native   {:query "SELECT NAME, LAST_LOGIN FROM USERS"}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))

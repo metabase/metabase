@@ -12,8 +12,8 @@ import {
   removeSuggestedCodeEdit,
   resetConversation,
 } from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { DatabaseId } from "metabase-types/api";
 
 import { useMetabotAgent } from "./use-metabot-agent";
