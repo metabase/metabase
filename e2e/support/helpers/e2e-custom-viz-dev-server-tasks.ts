@@ -20,7 +20,7 @@ async function waitForHttpOk(
         return;
       }
     } catch {
-      // not up yet, keep polling
+      console.log("Dev server not up yet, keep polling");
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
   }
