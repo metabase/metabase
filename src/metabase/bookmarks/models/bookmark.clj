@@ -31,14 +31,15 @@
   id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
   although the compound key can be inferred from it."
   [:map {:closed true}
-   [:id                               :string]
+   [:id                                  :string]
    [:type [:enum "card" "collection" "dashboard" "document"]]
-   [:item_id                          ms/PositiveInt]
-   [:name                             ms/NonBlankString]
-   [:authority_level {:optional true} [:maybe :string]]
-   [:card_type       {:optional true} [:maybe ::queries.schema/card-type]]
-   [:description     {:optional true} [:maybe :string]]
-   [:display         {:optional true} [:maybe :string]]])
+   [:item_id                             ms/PositiveInt]
+   [:name                                ms/NonBlankString]
+   [:authority_level    {:optional true} [:maybe :string]]
+   [:is_remote_synced   {:optional true} :boolean]
+   [:card_type          {:optional true} [:maybe ::queries.schema/card-type]]
+   [:description        {:optional true} [:maybe :string]]
+   [:display            {:optional true} [:maybe :string]]])
 
 (mu/defn- normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, dashboard, and document tables, but only
@@ -59,7 +60,7 @@
                             (:card_type normalized-result) (update :card_type keyword))]
     (-> normalized-result
         (select-keys [:item_id :type :name :card_type :description :display
-                      :authority_level])
+                      :authority_level :is_remote_synced])
         (assoc :id id-str))))
 
 (defn- bookmarks-union-query
@@ -118,10 +119,11 @@
                        [:dashboard.name             (mdb/qualify :model/Dashboard :name)]
                        [:dashboard.description      (mdb/qualify :model/Dashboard :description)]
                        [:dashboard.archived         (mdb/qualify :model/Dashboard :archived)]
-                       [:collection.name            (mdb/qualify :model/Collection  :name)]
-                       [:collection.authority_level (mdb/qualify :model/Collection :authority_level)]
-                       [:collection.description     (mdb/qualify :model/Collection :description)]
-                       [:collection.archived        (mdb/qualify :model/Collection :archived)]
+                       [:collection.name              (mdb/qualify :model/Collection  :name)]
+                       [:collection.authority_level   (mdb/qualify :model/Collection :authority_level)]
+                       [:collection.is_remote_synced  (mdb/qualify :model/Collection :is_remote_synced)]
+                       [:collection.description       (mdb/qualify :model/Collection :description)]
+                       [:collection.archived          (mdb/qualify :model/Collection :archived)]
                        [:document.name (mdb/qualify :model/Document :name)]
                        [:document.archived (mdb/qualify :model/Document :archived)]]
         left-joins [[:report_card :card] [:= :bookmark.card_id :card.id]

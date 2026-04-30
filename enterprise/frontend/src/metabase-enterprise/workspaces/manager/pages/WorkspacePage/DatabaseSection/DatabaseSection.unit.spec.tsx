@@ -25,9 +25,7 @@ import { DatabaseSection } from "./DatabaseSection";
 function buildSupportedDatabase(opts: Partial<Database> = {}): Database {
   return createMockDatabase({
     features: ["workspace", "schemas"],
-    tables: [
-      createMockTable({ id: 1, db_id: opts.id ?? 1, schema: "public" }),
-    ],
+    tables: [createMockTable({ id: 1, db_id: opts.id ?? 1, schema: "public" })],
     ...opts,
   });
 }
@@ -95,9 +93,7 @@ describe("DatabaseSection", () => {
       databases: [buildSupportedDatabase({ id: 1, name: "Postgres prod" })],
     });
 
-    expect(
-      screen.getByRole("button", { name: /Add database/i }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Add database/i })).toBeEnabled();
   });
 
   it("should open the create modal when Add database is clicked", async () => {
@@ -124,7 +120,9 @@ describe("DatabaseSection", () => {
     );
 
     expect(
-      await screen.findByRole("dialog", { name: /Edit database configuration/i }),
+      await screen.findByRole("dialog", {
+        name: /Edit database configuration/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -145,9 +143,7 @@ describe("DatabaseSection", () => {
       ),
     ).toHaveLength(0);
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /^Remove$/i }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /^Remove$/i }));
 
     await waitFor(() => {
       expect(

@@ -9,8 +9,8 @@ import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
+import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   canArchiveAction,

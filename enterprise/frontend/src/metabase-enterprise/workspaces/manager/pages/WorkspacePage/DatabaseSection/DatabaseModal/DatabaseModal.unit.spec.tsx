@@ -6,12 +6,7 @@ import {
   setupSchemaEndpoints,
   setupUpdateWorkspaceDatabaseEndpoint,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { Database, Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -20,10 +15,7 @@ import {
   createMockWorkspaceDatabase,
 } from "metabase-types/api/mocks";
 
-import {
-  CreateDatabaseModal,
-  UpdateDatabaseModal,
-} from "./DatabaseModal";
+import { CreateDatabaseModal, UpdateDatabaseModal } from "./DatabaseModal";
 
 function buildSupportedDatabase(opts: Partial<Database> = {}): Database {
   return createMockDatabase({
@@ -149,11 +141,15 @@ describe("CreateDatabaseModal", () => {
   it("should not allow submission without a database and at least one schema", async () => {
     setupCreate();
 
-    expect(screen.getByRole("button", { name: /Add database/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Add database/i }),
+    ).toBeDisabled();
 
     await selectDatabase("Postgres prod");
 
-    expect(screen.getByRole("button", { name: /Add database/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Add database/i }),
+    ).toBeDisabled();
   });
 
   it("should submit the selected database and schemas to the create endpoint", async () => {
@@ -162,7 +158,9 @@ describe("CreateDatabaseModal", () => {
     await selectDatabase("Postgres prod");
     await selectSchemas(["public", "events"]);
 
-    await userEvent.click(screen.getByRole("button", { name: /Add database/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add database/i }),
+    );
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);

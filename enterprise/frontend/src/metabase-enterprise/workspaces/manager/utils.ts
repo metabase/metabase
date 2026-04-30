@@ -1,4 +1,4 @@
-import { hasFeature } from "metabase/admin/databases/utils";
+import { hasFeature } from "metabase/common/utils/database";
 import type {
   Database,
   DatabaseId,

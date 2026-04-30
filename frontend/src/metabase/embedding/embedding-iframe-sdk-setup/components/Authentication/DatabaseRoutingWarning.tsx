@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import {
   dashboardUsesRoutingEnabledDatabases,
   questionUsesRoutingEnabledDatabase,
-} from "metabase/admin/databases/utils";
-import { useListDatabasesQuery } from "metabase/api";
+} from "metabase/common/utils/database";
 import type {
   EmbedResource,
   GuestEmbedResourceType,

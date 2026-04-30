@@ -106,6 +106,7 @@ export const createMockTokenFeatures = (
   cloud_custom_smtp: false,
   content_translation: false,
   content_verification: false,
+  "data-complexity-score": false,
   embedding: false,
   embedding_sdk: false,
   embedding_simple: false,

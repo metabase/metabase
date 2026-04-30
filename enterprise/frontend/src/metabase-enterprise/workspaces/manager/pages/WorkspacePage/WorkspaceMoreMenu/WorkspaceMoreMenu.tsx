@@ -5,7 +5,7 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 

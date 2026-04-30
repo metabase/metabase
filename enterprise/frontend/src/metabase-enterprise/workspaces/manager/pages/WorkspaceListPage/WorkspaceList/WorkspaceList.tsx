@@ -10,7 +10,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Workspace } from "metabase-types/api";
 
 import { COLUMN_WIDTHS } from "./constants";

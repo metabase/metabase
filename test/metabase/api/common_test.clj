@@ -9,6 +9,7 @@
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -59,6 +60,13 @@
   (testing "check that 404 is returned otherwise"
     (is (= (four-oh-four)
            (-> (my-mock-api-fn)
+               (update-in [:headers "Last-Modified"] string?)))))
+
+  (testing "check-404 can return a custom message"
+    (is (= (assoc (four-oh-four) :body "Custom not found.")
+           (-> (mock-api-fn
+                (fn [_]
+                  (api/check-404 nil (tru "Custom not found."))))
                (update-in [:headers "Last-Modified"] string?)))))
 
   (testing "let-404 should return nil if test fails"

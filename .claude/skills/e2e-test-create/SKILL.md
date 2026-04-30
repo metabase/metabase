@@ -66,91 +66,11 @@ curl -sf -X POST http://localhost:4000/api/testing/restore/default
 
 ## Phase 3 — Generate Cypress Spec
 
-### File location & naming
+Follow the Metabase Cypress conventions:
 
-Place specs in `e2e/test/scenarios/<area>/` mirroring the URL structure.
-Name: `<feature>.cy.spec.js` (NOT `.cy.spec.ts`).
+@./../_shared/cypress-conventions.md
 
-### Metabase conventions (mandatory)
-
-- **Helpers via `cy.H`**: All helpers are accessed via `const { H } = cy;` — NOT via direct imports from `e2e/support/helpers`.
-
-```js
-const { H } = cy;
-
-describe("feature name", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-});
-```
-
-- **Sample Database schema** (table/field definitions): Import from `cypress_sample_database`.
-
-```js
-import { ORDERS, ORDERS_ID, PRODUCTS } from "e2e/support/cypress_sample_database";
-```
-
-- **Instance data** (dashboard IDs, user IDs, etc.): Import from `cypress_sample_instance_data`.
-
-```js
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-```
-
-- **Selectors** (priority order):
-  1. `cy.findByText()` / `cy.findByLabelText()` / `cy.findByRole()` — from `@testing-library/cypress`
-  2. `cy.findByTestId()` — for `data-testid` attributes
-  3. `cy.get("[data-testid='...']")` — fallback
-  4. NEVER use positional selectors, CSS class names, or XPaths.
-
-- **Navigation helpers**: Use existing helpers like `H.openOrdersTable()`, `H.openNativeEditor()`,
-  `H.visitDashboard(id)`, `H.visitQuestion(id)` instead of raw `cy.visit()` chains.
-  Grep `e2e/support/helpers/` to discover what's available for your area.
-
-- **API setup over UI setup**: Use `cy.request()` or existing API helpers to set up state.
-  Only use the UI for the flow you're actually testing.
-
-- **Assertions**: Assert on visible text, URL, aria state — not DOM structure.
-
-- **Waits**: Never use `cy.wait(ms)`. Use `cy.intercept()` + `cy.wait("@alias")` for API calls,
-  or `cy.findByText().should("be.visible")` for DOM readiness.
-
-- **Isolation**: Each `it()` block must be independently runnable.
-  Don't depend on state from a previous `it()`.
-
-### Spec structure template
-
-```js
-const { H } = cy;
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { ORDERS, ORDERS_ID } from "e2e/support/cypress_sample_database";
-
-describe("area > sub-area > feature (#issue-number)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should do the primary happy-path thing", () => {
-    // test
-  });
-
-  it("should handle the edge case", () => {
-    // test
-  });
-});
-```
-
-### Intercepts
-
-When you identified API calls during code analysis, stub or wait on them:
-
-```js
-cy.intercept("POST", "/api/dataset").as("dataset");
-// ... trigger action ...
-cy.wait("@dataset");
-```
+When you identified API calls during code analysis, stub or wait on them using the intercept pattern shown above.
 
 ## Phase 4 — Validate
 
@@ -248,13 +168,10 @@ Do NOT use broad `pkill` patterns — there may be other Metabase instances on d
 The backend process started in Phase 2 will NOT be killed automatically when the Claude session ends.
 Leaving it running wastes resources and can interfere with future sessions. Always clean up.
 
-## What NOT to do
+## What NOT to do (workflow)
 
 - Do NOT use Playwright as the first step — always analyze source code first.
 - Do NOT kill the backend between phases — it stays running throughout.
 - Do NOT invent selectors you didn't find in source code or observe in the browser.
-- Do NOT hardcode database IDs — import from `cypress_sample_database` or `cypress_sample_instance_data`.
-- Do NOT use `cy.wait(1000)` or any numeric wait.
-- Do NOT create setup flows through the UI when an API helper exists.
-- Do NOT put tests in `cypress/e2e/` — Metabase uses `e2e/test/scenarios/`.
-- Do NOT import helpers directly from `e2e/support/helpers` — use `const { H } = cy;`.
+
+For convention-level "do nots" (selectors, waits, helpers, etc.), see the conventions file referenced in Phase 3.

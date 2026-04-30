@@ -10,8 +10,8 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import * as Urls from "metabase/utils/urls";
 import type { Workspace } from "metabase-types/api";
 import { createMockWorkspace } from "metabase-types/api/mocks";
 
@@ -60,9 +60,7 @@ describe("WorkspaceListPage", () => {
   it("should show the empty state when no workspaces exist", async () => {
     setup({ workspaces: [] });
 
-    expect(
-      await screen.findByText(/No workspaces yet/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No workspaces yet/i)).toBeInTheDocument();
   });
 
   it("should filter workspaces by name after debouncing the search input", async () => {
@@ -75,10 +73,7 @@ describe("WorkspaceListPage", () => {
 
     await screen.findByText("Acme analytics");
 
-    await userEvent.type(
-      screen.getByPlaceholderText("Search..."),
-      "beta",
-    );
+    await userEvent.type(screen.getByPlaceholderText("Search..."), "beta");
 
     await waitFor(
       () => {
@@ -98,14 +93,9 @@ describe("WorkspaceListPage", () => {
 
     await screen.findByText("Acme analytics");
 
-    await userEvent.type(
-      screen.getByPlaceholderText("Search..."),
-      "zzz",
-    );
+    await userEvent.type(screen.getByPlaceholderText("Search..."), "zzz");
 
-    expect(
-      await screen.findByText(/No workspaces found/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No workspaces found/i)).toBeInTheDocument();
   });
 
   it("should open the create modal when New is clicked", async () => {

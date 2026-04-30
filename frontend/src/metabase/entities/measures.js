@@ -5,7 +5,6 @@ import {
 } from "metabase/api";
 import { MeasureSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 
 import { createEntity, entityCompatibleQuery } from "./utils";
 
@@ -58,7 +57,6 @@ export const Measures = createEntity({
 
   objectSelectors: {
     getName: (measure) => measure && measure.name,
-    getColor: () => color("summarize"),
   },
 });
 

@@ -1,5 +1,4 @@
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
+import { createMockMetadata } from "__support__/metadata";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -15,8 +14,8 @@ import type {
 /**
  * Creates test metrics with dimensions of specific types for testing type predicates.
  */
-function createTestMetadata(): Metadata {
-  const metadata = new Metadata();
+function createTestMetadata() {
+  const metadata = createMockMetadata();
 
   // Create a metric with various dimension types
   const testMetric = createMockMetric({
@@ -105,10 +104,9 @@ function createTestMetadata(): Metadata {
     ],
   });
 
-  const metricInstance = new Metric(testMetric as any);
-  metricInstance.metadata = metadata;
+  // @ts-expect-error - mock metric works just as well as a real one
   metadata.metrics = {
-    [testMetric.id]: metricInstance,
+    [testMetric.id]: testMetric,
   };
 
   return metadata;
