@@ -91,4 +91,4 @@ Tell the user:
 - How to attach: `tmux attach -t <session-name>`
 - How to stop: `/autobot-stop <session-name>` (or `/autobot-stop` from inside the session)
 - How to list all sessions: `/autobot-list`
-- How to remove: `/autobot-quit <session-name>`
+- How to remove: `/autobot-kill <session-name>`

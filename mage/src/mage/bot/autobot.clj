@@ -1,5 +1,5 @@
 (ns mage.bot.autobot
-  "Unified autobot session management — launch, stop, list, quit."
+  "Unified autobot session management — launch, stop, list, kill."
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
@@ -88,7 +88,7 @@
     (zero? exit)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Self-detection (for running stop/quit from inside a session)
+;; Self-detection (for running stop/kill from inside a session)
 
 (defn- current-worktree-path
   "Return the absolute path of the git worktree the caller is currently in,
@@ -535,7 +535,7 @@
     (println (c/bold (c/green "Session stopped: ") (c/cyan session)))
     (println (c/yellow "Worktree preserved. Use /autobot to restart."))))
 
-(defn quit!
+(defn kill!
   "Tear down and remove a session.
    Works with a session name argument, or detects current session if no args."
   [{:keys [arguments]}]
