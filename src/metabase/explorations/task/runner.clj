@@ -70,7 +70,8 @@
     (when-let [row (claim-pending-query)]
       (let [started (OffsetDateTime/now)]
         (try
-          (let [qp-result (qp/process-query (qp/userland-query (:dataset_query row)))
+          (let [qp-result (qp/process-query
+                           (qp/userland-query-with-default-constraints (:dataset_query row)))
                 bytes     (serialize-result qp-result)
                 score     (safe-score row qp-result)]
             (t2/insert! :model/ExplorationQueryResult
