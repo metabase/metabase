@@ -127,3 +127,35 @@
     (let [score (:score (dim/text-structure
                          {:fingerprint {:type {:type/Text {:percent-blank 0.1 :average-length 10}}}}))]
       (is (>= score 0.7)))))
+
+;;; -------------------------------------------------- dimension-interestingness --------------------------------------------------
+
+(deftest ^:parallel dimension-interestingness-test
+  (testing "PK with no fingerprint still scores 0.0 (hard-zero gate fires regardless of fingerprint)"
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/PK}))))
+  (testing "PK with snake_case keys and no fingerprint scores 0.0"
+    (is (= 0.0 (dim/dimension-interestingness {:semantic_type :type/PK}))))
+  (testing "PK with a fingerprint also scores 0.0"
+    (is (= 0.0 (dim/dimension-interestingness
+                {:semantic-type :type/PK
+                 :fingerprint   {:global {:distinct-count 1000 :nil% 0.0}}}))))
+  (testing "structured-blob fields score 0.0 even with no fingerprint"
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/Collection})))
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/Structured}))))
+  (testing "audit temporal subtypes score 0.0 (Updated/Deletion Date/Time, not just Timestamp)"
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/UpdatedTimestamp})))
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/UpdatedDate})))
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/UpdatedTime})))
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/DeletionTimestamp})))
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/DeletionDate})))
+    (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/DeletionTime}))))
+  (testing "non-PK field with no fingerprint returns nil (insufficient data)"
+    (is (nil? (dim/dimension-interestingness {:semantic-type :type/Category})))
+    (is (nil? (dim/dimension-interestingness {})))
+    (is (nil? (dim/dimension-interestingness {:fingerprint nil}))))
+  (testing "ordinary field with fingerprint returns a numeric score"
+    (let [score (dim/dimension-interestingness
+                 {:semantic-type :type/Category
+                  :fingerprint   {:global {:distinct-count 15 :nil% 0.0}}})]
+      (is (number? score))
+      (is (pos? score)))))

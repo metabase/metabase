@@ -27,18 +27,18 @@
    - `:type/PK`: opaque row identifiers
    - `:type/Collection` / `:type/Structured`: structured blobs (JSON, XML, arrays,
      dictionaries, text-stored serialized JSON) — not groupable or aggregatable
-   - `:type/UpdatedTimestamp` / `:type/DeletionTimestamp`: audit fields that describe
-     the record, not the entity"
+   - `:type/UpdatedTemporal` / `:type/DeletionTemporal`: audit fields that describe
+     the record, not the entity (covers Date/Time/Timestamp variants)"
   [field]
   (let [semantic-type (:semantic-type field)]
     (cond
-      (nil? semantic-type)                         {:score 1.0 :reason "no semantic type"}
-      (isa? semantic-type :type/PK)                {:score 0.0 :reason "primary key"}
-      (isa? semantic-type :type/Collection)        {:score 0.0 :reason "structured blob"}
-      (isa? semantic-type :type/Structured)        {:score 0.0 :reason "structured blob"}
-      (isa? semantic-type :type/UpdatedTimestamp)  {:score 0.0 :reason "updated timestamp"}
-      (isa? semantic-type :type/DeletionTimestamp) {:score 0.0 :reason "deletion timestamp"}
-      :else                                        {:score 1.0 :reason "no type penalty"})))
+      (nil? semantic-type)                        {:score 1.0 :reason "no semantic type"}
+      (isa? semantic-type :type/PK)               {:score 0.0 :reason "primary key"}
+      (isa? semantic-type :type/Collection)       {:score 0.0 :reason "structured blob"}
+      (isa? semantic-type :type/Structured)       {:score 0.0 :reason "structured blob"}
+      (isa? semantic-type :type/UpdatedTemporal)  {:score 0.0 :reason "updated timestamp"}
+      (isa? semantic-type :type/DeletionTemporal) {:score 0.0 :reason "deletion timestamp"}
+      :else                                       {:score 1.0 :reason "no type penalty"})))
 
 (defn nullness
   "Linear penalty based on null percentage. Mostly-null fields are noise whether being
@@ -165,9 +165,8 @@
     :scores {scorer-fn {:score double, :reason string}}  ;; per-scorer breakdown
     :field  field}        ;; the input field, passed through
 
-   If any scorer with nonzero weight returns exactly 0.0, the final score is clamped
-   to at most 0.1. This lets hard signals act as effective gates regardless of what
-   other scorers return."
+   If any scorer with nonzero weight returns exactly 0.0, the final score is forced
+   to 0.0. This lets hard signals act as gates regardless of what other scorers return."
   [scorer-weight-map field]
   (let [total-weight (reduce + 0.0 (vals scorer-weight-map))
         results      (reduce-kv
@@ -183,11 +182,12 @@
                        (/ (:weighted-sum results) total-weight)
                        0.5)
         final-score  (if (:has-hard-zero? results)
-                       (min raw-score 0.1)
+                       0.0
                        raw-score)]
-    {:score  final-score
-     :scores (:scores results)
-     :field  field}))
+    {:score          final-score
+     :scores         (:scores results)
+     :has-hard-zero? (:has-hard-zero? results)
+     :field          field}))
 
 (defn compose
   "Combine multiple scorers with weights into a single scorer function.

@@ -189,7 +189,14 @@
   "Return the canonical `dimension_interestingness` score for `field`.
 
    Accepts either a raw DB-style field map with snake_case keys or a normalized
-   field map with kebab-case keys. Returns a double in [0.0, 1.0]."
+   field map with kebab-case keys. Returns a double in [0.0, 1.0], or nil when
+   the field has no fingerprint and no hard-zero gate fired (we lack the inputs
+   to score it). Hard-zero gates (e.g. `:type/PK` via `type-penalty`) always
+   produce 0.0, regardless of whether a fingerprint is present."
   [field]
-  (:score (impl/score-field canonical-dimension-weights
-                            (impl/normalize-field field))))
+  (let [normalized (impl/normalize-field field)
+        result     (impl/score-field canonical-dimension-weights normalized)]
+    (cond
+      (:has-hard-zero? result)        0.0
+      (nil? (:fingerprint normalized)) nil
+      :else                           (:score result))))

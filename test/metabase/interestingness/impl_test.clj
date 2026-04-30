@@ -60,12 +60,12 @@
                   {})]
       (is (= 0.875 (:score result)))))
 
-  (testing "hard-zero from any scorer clamps total to at most 0.1"
+  (testing "hard-zero from any scorer forces total to 0.0"
     (let [result (impl/score-field
                   {(constant-scorer 1.0 "high") 0.75
                    (constant-scorer 0.0 "gate") 0.25}
                   {})]
-      (is (<= (:score result) 0.1))))
+      (is (= 0.0 (:score result)))))
 
   (testing "empty scorer map returns 0.5"
     (is (= 0.5 (:score (impl/score-field {} {}))))))

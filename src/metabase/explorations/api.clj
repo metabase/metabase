@@ -6,6 +6,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
+   [metabase.explorations.core :as explorations]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
@@ -182,6 +184,14 @@
    [:metrics    [:sequential ::ExplorationMetric]]
    [:dimensions [:sequential :map]]])
 
+(defn- library-metrics-collection-ids
+  "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
+  to the top of the /dimensions response."
+  []
+  (when-let [root (t2/select-one [:model/Collection :id :location]
+                                 :type collection/library-metrics-collection-type)]
+    (conj (or (collection/descendant-ids root) #{}) (:id root))))
+
 (defn- with-result-column-name [metric]
   (assoc metric :result_column_name
          (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric))))
@@ -195,8 +205,11 @@
 (defn- dedupe-dimensions [metrics]
   (let [seen (volatile! #{})
         deduped (reduce (fn [acc d]
-                          (let [id (:id d)]
-                            (if (or (nil? id) (contains? @seen id))
+                          (let [id    (:id d)
+                                score (:dimension_interestingness d)]
+                            (if (or (nil? id)
+                                    (contains? @seen id)
+                                    (and (some? score) (< score explorations/min-interestingness)))
                               acc
                               (do (vswap! seen conj id)
                                   (conj acc d)))))
@@ -260,9 +273,13 @@
   Optional `q` filters case-insensitively across metric name and dimension display-name."
   [_route-params
    {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
-  (let [accessible-ids (->> (t2/select [:model/Card :id]
+  (let [library-ids    (library-metrics-collection-ids)
+        accessible-ids (->> (t2/select [:model/Card :id]
                                        {:where    (card/visible-metric-cards-where-clause)
-                                        :order-by [[:name :asc]]})
+                                        :order-by [[[:case
+                                                     [:in :collection_id (or (seq library-ids) [-1])] 0
+                                                     :else 1] :asc]
+                                                   [:name :asc]]})
                             (mapv :id))
         hydrated       (->> accessible-ids
                             (mapv (fn [id]
