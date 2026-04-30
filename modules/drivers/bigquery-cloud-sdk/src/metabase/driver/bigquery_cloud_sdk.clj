@@ -848,6 +848,13 @@
                               :workspace                        true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :bigquery-cloud-sdk
+  [_driver]
+  ;; BigQuery emits three-part identifiers: `project.dataset.table`. Project is
+  ;; connection-level identity but appears in compiled SQL, so we model it as :db.
+  ;; Dataset is :schema in :model/Table metadata.
+  [:db :schema])
+
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
   "UTC")

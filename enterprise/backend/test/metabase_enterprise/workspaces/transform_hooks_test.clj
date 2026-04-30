@@ -14,8 +14,8 @@
 (deftest resolve-transform-target-no-workspace-passthrough-test
   (testing "without a provisioned WorkspaceDatabase, target passes through unchanged"
     (with-redefs [ws/db-workspace-schema     (constantly nil)
-                  ws.table-remapping/record-remapping!
-                  (fn [& _] (throw (ex-info "record-remapping! must not be called when no workspace is active" {})))]
+                  ws.table-remapping/add-transform-target-mapping!
+                  (fn [& _] (throw (ex-info "add-transform-target-mapping! must not be called when no workspace is active" {})))]
       (let [target {:schema "public" :name "orders" :type :table}]
         (is (= target (ws.transform-hooks/resolve-transform-target 42 target)))))))
 
@@ -23,7 +23,7 @@
   (testing "with a provisioned WorkspaceDatabase, target's :schema is rewritten to the workspace output schema"
     (let [recorded (atom nil)]
       (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
-                    ws.table-remapping/record-remapping!
+                    ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id from-schema from-name to-name]
                       (reset! recorded {:db-id db-id :from-schema from-schema
                                         :from-name from-name :to-name to-name}))]
@@ -40,14 +40,14 @@
   (testing "with a workspace active, the canonical->workspace remapping is recorded"
     (let [recorded (atom nil)]
       (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
-                    ws.table-remapping/record-remapping!
+                    ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id from-schema from-name to-name]
                       (reset! recorded {:db-id db-id :from-schema from-schema
                                         :from-name from-name :to-name to-name}))]
         (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table})
         (is (= {:db-id 42 :from-schema "public" :from-name "orders" :to-name "orders"}
                @recorded)
-            "record-remapping! receives the canonical (schema, name) and the same name as to-name")))))
+            "add-transform-target-mapping! receives the canonical (schema, name) and the same name as to-name")))))
 
 (defn- with-instance-workspace-for-db!
   "Set the in-process workspace atom so that `db-workspace-schema` returns

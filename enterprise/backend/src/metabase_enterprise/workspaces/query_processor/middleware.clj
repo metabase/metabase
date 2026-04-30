@@ -73,14 +73,29 @@
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 
+(def ^:private no-level
+  "Empty-string sentinel for `from_db`/`from_schema` etc. when a driver doesn't emit
+   that level — see [[metabase-enterprise.workspaces.table-remapping]] namespace docstring."
+  "")
+
+(defn- prune-no-level
+  "Remove keys whose value is the no-level sentinel so they aren't passed to SQLGlot.
+   SQLGlot's matcher only treats absent keys as wildcards; an empty-string would be
+   matched literally and never hit anything in the AST."
+  [m]
+  (into {} (remove (fn [[_ v]] (= no-level v))) m))
+
 (defn- build-table-replacements
   "Convert remappings map into the format expected by `sql-tools/replace-names`.
-   SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers."
+   SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers.
+
+   Remapping tuples are 3-wide: `[db schema table]`. Sentinel `\"\"` levels are pruned
+   so SQLGlot treats them as wildcards rather than matching the literal empty string."
   [remappings]
   (into {}
-        (map (fn [[[from-schema from-table] [to-schema to-table]]]
-               [{:schema from-schema :table from-table}
-                {:schema to-schema :table to-table}]))
+        (map (fn [[[from-db from-schema from-table] [to-db to-schema to-table]]]
+               [(prune-no-level {:db from-db :schema from-schema :table from-table})
+                (prune-no-level {:db to-db   :schema to-schema   :table to-table})]))
         remappings))
 
 (defn- rewrite-sql
@@ -99,17 +114,28 @@
 
 (defn- remap-mbql-table-metadata!
   "Override `:schema` and `:name` on table metadata in the CachedMetadataProvider for each
-   remapping. Downstream HoneySQL compilation will read the overridden values."
+   remapping. Downstream HoneySQL compilation will read the overridden values.
+
+   Match key is `(:schema, :name)`. The `db` level isn't tracked on `:metadata/table`
+   (it's a property of the database connection, not the table), so a remapping that
+   only differs by `db` is invisible to Phase 1; Phase 2 catches it.
+
+   Schema-less drivers store nil in `:metadata/table.:schema`, while remapping rows use
+   the `\"\"` sentinel — they're treated as equal here so the match succeeds."
   [metadata-provider remappings]
-  (doseq [[[from-schema from-name] [to-schema to-name]] remappings
-          :let [candidates (lib.metadata.protocols/metadatas
-                            metadata-provider
-                            {:lib/type :metadata/table, :name #{from-name}})
-                table      (some #(when (= (:schema %) from-schema) %) candidates)]
+  (doseq [[[_from-db from-schema from-name] [_to-db to-schema to-name]] remappings
+          :let [norm              #(if (or (nil? %) (= no-level %)) ::absent %)
+                from-schema-match (norm from-schema)
+                candidates        (lib.metadata.protocols/metadatas
+                                   metadata-provider
+                                   {:lib/type :metadata/table, :name #{from-name}})
+                table             (some #(when (= (norm (:schema %)) from-schema-match) %) candidates)]
           :when table]
     (lib.metadata.protocols/store-metadata!
      metadata-provider
-     (assoc table :schema to-schema :name to-name))))
+     (assoc table
+            :schema (when-not (= no-level to-schema) to-schema)
+            :name to-name))))
 
 ;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
 

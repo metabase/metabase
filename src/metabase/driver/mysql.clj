@@ -98,6 +98,12 @@
                               :workspace                              true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :mysql
+  [_driver]
+  ;; MySQL emits bare table identifiers in compiled queries (the connection has a default DB).
+  ;; "Schema" doesn't exist; "database" exists but is not emitted as a qualifier in normal SELECTs.
+  [])
+
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.

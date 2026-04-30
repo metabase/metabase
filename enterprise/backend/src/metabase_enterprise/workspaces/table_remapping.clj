@@ -3,32 +3,142 @@
    queries from production tables to workspace tables.
 
    A remapping is a single row in the app-db `table_remapping` table, consulted by the
-   query processor middleware at query time. Two writers:
+   query processor middleware at query time.
 
-   - [[add-schema+table-mapping!]] — the primary writer. Inserts a row directly with
-     idempotent upsert semantics.
-   - [[record-remapping!]] — a thin wrapper for transform code that resolves the
-     destination schema from the database's provisioned `WorkspaceDatabase` row before
-     delegating to [[add-schema+table-mapping!]]."
+   ## Public writers
+
+   - [[add-mapping!]] — the writer. Takes `db-id` and two `::table-spec` maps
+     (`{:db, :schema, :table}`). Idempotent on the unique constraint.
+   - [[add-transform-target-mapping!]] — transform-hook integration. Called when a
+     transform target is rewritten to a workspace schema; resolves the workspace output
+     schema from the database's provisioned `WorkspaceDatabase` row and delegates to
+     [[add-mapping!]]. Used by [[metabase-enterprise.workspaces.transform-hooks]].
+
+   Callers with `:model/Database` and `:model/Table` rows can produce a `::table-spec`
+   via [[spec-for-table]] and hand it to [[add-mapping!]] directly.
+
+   ## Three-level identifiers
+
+   `:model/TableRemapping` rows have three identifier columns per side: `db`, `schema`,
+   `table_name`. They map to driver identifier hierarchies as follows:
+
+   | Driver                              | db          | schema       | table_name |
+   |-------------------------------------|-------------|--------------|------------|
+   | Postgres / Snowflake / Redshift     | \"\"        | schema       | table      |
+   | H2 / SQL Server                     | \"\"        | schema       | table      |
+   | MySQL                               | \"\"        | \"\"         | table      |
+   | ClickHouse                          | \"\"        | db-name      | table      |
+   | BigQuery                            | project     | dataset      | table      |
+   | Mongo                               | \"\"        | \"\"         | collection |
+
+   Empty string (`\"\"`) is the sentinel for \"this driver does not emit this level.\"
+   Empty string is preferred over `nil` because Postgres/MySQL/H2 treat NULL as
+   not-equal-to-NULL in unique indexes — using `\"\"` keeps the
+   `(database_id, db, schema, table_name)` unique constraint enforceable across DBs.
+   The QP rewriter filters `\"\"` out before handing keys to SQLGlot.
+
+   The driver multimethod [[metabase.driver/qualified-name-components]] returns which
+   AST identifier positions each driver emits. [[spec-for-table]] uses that to fill the
+   right slots from a `:model/Database` and `:model/Table` row."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.table-remapping]
+   [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn remap-table
-  "Given a database ID, schema name, and table name, returns the remapped [schema, table-name]
-   pair if a remapping exists, otherwise nil.
+;;; ----------------------------------------- Schemas + sentinel -----------------------------------------
 
-     (remap-table 6 \"my-schema\" \"my-table\")
-     ;; => nil                              ; no remapping
-     ;; => [\"new-schema\" \"new-table-name\"] ; remapped"
+(def ^:private no-level
+  "Sentinel string stored in `from_db` / `from_schema` / `to_db` / `to_schema` when the
+   driver does not emit that identifier level. See namespace docstring."
+  "")
+
+(defn- normalize-level
+  "Coerce a possibly-nil identifier-level value to the empty-string sentinel."
+  [v]
+  (or v no-level))
+
+(mr/def ::table-spec
+  "A driver-resolved table identifier. `:table` is required; `:schema` and `:db` default
+   to the empty-string sentinel when absent. Produced by [[spec-for-table]] and consumed
+   by [[add-mapping!]]."
+  [:map
+   [:table  :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:db     {:optional true} [:maybe :string]]])
+
+;;; ---------------------------------------- Driver-aware resolution ----------------------------------------
+
+(defn- schema-position-value
+  "Value to put in the `:schema` slot of a `::table-spec` for a Table row in `database`.
+   Most drivers use the table's own `:schema` column. ClickHouse-style drivers don't
+   have warehouse schemas — what they call \"database\" sits at the schema position in
+   compiled SQL, so we read it from `database.:name` instead."
+  [database table]
+  (case (:engine database)
+    :clickhouse (:name database)
+    (:schema table)))
+
+(defn- db-position-value
+  "Value to put in the `:db` slot of a `::table-spec` for a Table row in `database`.
+   Today only BigQuery emits a catalog-level identifier in compiled SQL — the project
+   ID, sourced from connection details.
+
+   Returns nil when the driver has no catalog level OR when a BigQuery connection
+   doesn't carry an explicit `:project-id`. Service-account-derived projects are not
+   resolved here — that lives in `bigquery.common/database-details->credential-project-id`
+   which we can't reach from this module without a circular dep. When BigQuery
+   workspace remapping lands, route through a driver multimethod instead."
+  [database]
+  (case (:engine database)
+    :bigquery-cloud-sdk (:project-id (:details database))
+    nil))
+
+(mu/defn spec-for-table :- ::table-spec
+  "Return `{:db, :schema, :table}` for `table` in `database`, populating only the
+   identifier positions the driver emits per [[metabase.driver/qualified-name-components]].
+   Absent positions are normalized to the empty-string sentinel.
+
+   `database` is a `:model/Database` row (must have `:engine`, `:name`, `:details`).
+   `table` is a `:model/Table` row (must have `:name` and `:schema`).
+
+     (spec-for-table {:engine :postgres, :name \"db\"} {:name \"orders\", :schema \"public\"})
+     ;; => {:db \"\", :schema \"public\", :table \"orders\"}
+
+     (spec-for-table {:engine :clickhouse, :name \"analytics\"} {:name \"orders\", :schema nil})
+     ;; => {:db \"\", :schema \"analytics\", :table \"orders\"}
+
+     (spec-for-table {:engine :bigquery-cloud-sdk, :details {:project-id \"p\"}}
+                     {:name \"orders\", :schema \"ds\"})
+     ;; => {:db \"p\", :schema \"ds\", :table \"orders\"}"
+  [database :- [:map [:engine :keyword]]
+   table    :- [:map [:name :string]]]
+  (let [components (set (driver/qualified-name-components (:engine database)))]
+    {:db     (normalize-level (when (:db components) (db-position-value database)))
+     :schema (normalize-level (when (:schema components) (schema-position-value database table)))
+     :table  (:name table)}))
+
+;;; -------------------------------------------- Read API --------------------------------------------
+
+(defn remap-table
+  "Returns `[to-schema to-table-name]` for the canonical `[from-schema from-table-name]`
+   pair on `database-id`, or nil if no remapping exists.
+
+   Matches by `(from_schema, from_table_name)` only — `from_db` is ignored. This is
+   correct for current production callers (workspace transforms on Postgres-family
+   drivers, where `from_db = \"\"` always) and for ClickHouse (where `from_db = \"\"`
+   too — its db-name lives in `from_schema`). It is **not yet correct for BigQuery**:
+   when BigQuery support lands, callers will need a 4-arg form that filters by `from_db`
+   so two projects with same-named datasets don't collide."
   [database-id from-schema from-table-name]
   (when-let [mapping (t2/select-one :model/TableRemapping
                                     :database_id database-id
-                                    :from_schema from-schema
+                                    :from_schema (normalize-level from-schema)
                                     :from_table_name from-table-name)]
     [(:to_schema mapping) (:to_table_name mapping)]))
 
@@ -42,6 +152,23 @@
   :feature :none
   [db-id schema table-name]
   (remap-table db-id schema table-name))
+
+(defn all-mappings-for-db
+  "Return all remappings for a given database as a map of
+   `[from-db, from-schema, from-table-name]` -> `[to-db, to-schema, to-table-name]`.
+
+   Each tuple is 3-wide so QP middleware can handle drivers across all cardinalities
+   uniformly. Empty-string sentinels in `from-db`/`to-db`/`from-schema`/`to-schema`
+   indicate \"this driver does not emit this level\" and should be dropped before being
+   handed to SQLGlot — see [[metabase-enterprise.workspaces.query-processor.middleware]]."
+  [database-id]
+  (into {}
+        (map (fn [m]
+               [[(:from_db m) (:from_schema m) (:from_table_name m)]
+                [(:to_db m) (:to_schema m) (:to_table_name m)]]))
+        (t2/select :model/TableRemapping :database_id database-id)))
+
+;;; -------------------------------------------- Write API --------------------------------------------
 
 (defn- unique-violation?
   "True if `e` or any cause is a SQL unique-constraint violation. Handles Postgres and H2
@@ -61,70 +188,83 @@
             (recur (.getCause cause))))
       :else (recur (.getCause cause)))))
 
-(defn add-schema+table-mapping!
+(mu/defn add-mapping!
   "Insert a single `table_remapping` row.
 
-   Idempotent: a duplicate insert (unique-constraint violation on the
-   `(database_id, from_schema, from_table_name)` constraint) is swallowed and the fn
-   returns nil. Makes concurrent writers race-free at the DB level — no check-then-
-   insert TOCTOU window.
+   Idempotent: a duplicate insert (unique-constraint violation on
+   `(database_id, from_db, from_schema, from_table_name)`) is swallowed and the fn
+   returns nil. Makes concurrent writers race-free at the DB level — no
+   check-then-insert TOCTOU window.
 
-     (add-schema+table-mapping! 6
-       [\"my-schema\" \"my-table\"]
-       [\"new-schema\" \"new-table-name\"])"
-  [database-id [from-schema from-table-name] [to-schema to-table-name]]
+   `from-spec` and `to-spec` are `::table-spec` maps. Nil/missing identifier levels
+   are normalized to the empty-string sentinel before insert.
+
+     (add-mapping! 6
+       {:schema \"my-schema\" :table \"my-table\"}
+       {:schema \"new-schema\" :table \"new-table-name\"})
+
+     ;; BigQuery (3-level): include :db
+     (add-mapping! 6
+       {:db \"proj\" :schema \"ds\" :table \"orders\"}
+       {:db \"proj\" :schema \"ws_ds\" :table \"orders\"})"
+  [database-id :- :int
+   from-spec   :- ::table-spec
+   to-spec     :- ::table-spec]
   (try
     (t2/insert! :model/TableRemapping
                 {:database_id     database-id
-                 :from_schema     from-schema
-                 :from_table_name from-table-name
-                 :to_schema       to-schema
-                 :to_table_name   to-table-name})
+                 :from_db         (normalize-level (:db from-spec))
+                 :from_schema     (normalize-level (:schema from-spec))
+                 :from_table_name (:table from-spec)
+                 :to_db           (normalize-level (:db to-spec))
+                 :to_schema       (normalize-level (:schema to-spec))
+                 :to_table_name   (:table to-spec)})
     (catch Exception e
       (if (unique-violation? e)
         nil
         (throw e)))))
 
-(defn remove-schema+table-mapping!
-  "Remove a table remapping by database ID and source [schema, table-name]."
-  [database-id [from-schema from-table-name]]
+(defn remove-mapping!
+  "Remove a remapping row by source `(schema, table-name)`. Matches rows where
+   `from_db = \"\"` — the only callers today are Postgres-family drivers and ClickHouse,
+   where that always holds."
+  [database-id from-schema from-table-name]
   (t2/delete! :model/TableRemapping
               :database_id database-id
-              :from_schema from-schema
+              :from_db no-level
+              :from_schema (normalize-level from-schema)
               :from_table_name from-table-name))
-
-(defn all-mappings-for-db
-  "Return all remappings for a given database as a map of
-   [from-schema, from-table-name] -> [to-schema, to-table-name]."
-  [database-id]
-  (into {}
-        (map (fn [m]
-               [[(:from_schema m) (:from_table_name m)]
-                [(:to_schema m) (:to_table_name m)]]))
-        (t2/select :model/TableRemapping :database_id database-id)))
 
 (defn clear-mappings-for-db!
   "Remove all remappings for a given database."
   [database-id]
   (t2/delete! :model/TableRemapping :database_id database-id))
 
-(defn record-remapping!
-  "Record a table remapping for a workspaced database. Resolves the destination schema
-   from the database's provisioned `WorkspaceDatabase` row, then delegates to
-   [[add-schema+table-mapping!]] (which is itself idempotent).
+(defn add-transform-target-mapping!
+  "Register a remapping for a transform target on a workspaced database. Resolves the
+   destination schema from the database's provisioned `WorkspaceDatabase` row, then
+   delegates to [[add-mapping!]] (which is itself idempotent).
+
+   Inputs come from the transform's target — `(from-schema, from-table-name)` strings
+   identifying the canonical target the transform was originally configured to write to,
+   plus `to-table-name` (typically the same name, but in the workspace schema). The
+   transform's actual write goes to `(workspace-schema, to-table-name)`; future reads
+   of the canonical pair are redirected via the QP middleware.
+
+   Today's transform path only writes 2-level remappings (schema + table). BigQuery
+   transforms will need a separate writer that resolves `:db` from the database row.
 
    Throws when the database is not workspaced (`ws/db-workspace-schema` returns nil):
-   a caller getting here in that case is a programming error — the transform path
+   a caller getting here in that case is a programming error — the transform-hook path
    should gate on [[ws/db-workspace-schema]] first."
   [db-id from-schema from-table-name to-table-name]
   (let [workspace-schema (ws/db-workspace-schema db-id)]
     (when-not workspace-schema
-      (throw (ex-info "Cannot record remapping: database is not workspaced"
+      (throw (ex-info "Cannot record transform-target remapping: database is not workspaced"
                       {:db-id db-id
                        :from-schema from-schema
                        :from-table-name from-table-name
                        :to-table-name to-table-name})))
-    (add-schema+table-mapping! db-id
-                               [from-schema from-table-name]
-                               [workspace-schema to-table-name])))
-
+    (add-mapping! db-id
+                  {:schema from-schema      :table from-table-name}
+                  {:schema workspace-schema :table to-table-name})))
