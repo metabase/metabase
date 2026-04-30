@@ -5,9 +5,10 @@
   (:require
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.table-metadata :as ws.table-metadata]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.json :as json]
+   [metabase.server.streaming-response :as server.streaming-response :refer [streaming-response]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -187,30 +188,48 @@
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
 
+(defn- workspace-db-id->schemas
+  "Build a `{database-id #{schema-name}}` map from a hydrated workspace, covering
+  every provisioned WorkspaceDatabase's input schemas plus its output schema.
+  Used to scope the table-metadata and field-values exports to just the data the
+  workspace exposes."
+  [ws]
+  (into {}
+        (keep (fn [wsd]
+                (when (= :provisioned (:status wsd))
+                  (let [schemas (cond-> (set (:input_schemas wsd))
+                                  (:output_schema wsd) (conj (:output_schema wsd)))]
+                    [(:database_id wsd) schemas]))))
+        (:databases ws)))
+
 (api.macros/defendpoint :get "/:id/table-metadata/json"
-  :- [:map
-      [:status  [:= 200]]
-      [:headers [:map-of :string :string]]
-      [:body    :string]]
-  "Download the workspace's database/table metadata as a JSON file. Stub for now."
+  :- (server.streaming-response/streaming-response-schema
+      [:map
+       [:databases [:sequential :map]]
+       [:tables    [:sequential :map]]
+       [:fields    [:sequential :map]]])
+  "Download the workspace's database/table metadata as a JSON file. Streamed —
+  rows are pulled from the database and written to the response in batches so
+  large warehouses don't have to be materialized in memory."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  {:status  200
-   :headers {"Content-Type"        "application/json"
-             "Content-Disposition" "attachment; filename=\"table_metadata.json\""}
-   :body    (json/encode {:databases [] :tables [] :fields []})})
+  (let [ws             (api/check-404 (ws/get-workspace id))
+        db-id->schemas (workspace-db-id->schemas ws)]
+    (streaming-response {:content-type "application/json; charset=utf-8"
+                         :headers      {"Content-Disposition" "attachment; filename=\"table_metadata.json\""}}
+                        [os _]
+                        (ws.table-metadata/write-table-metadata! os db-id->schemas))))
 
 (api.macros/defendpoint :get "/:id/field-values/json"
-  :- [:map
-      [:status  [:= 200]]
-      [:headers [:map-of :string :string]]
-      [:body    :string]]
-  "Download the workspace's sampled field values as a JSON file. Stub for now."
+  :- (server.streaming-response/streaming-response-schema
+      [:map [:field_values [:sequential :map]]])
+  "Download the workspace's sampled field values as a JSON file. Streamed for the
+  same reason as `/:id/table-metadata/json`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  {:status  200
-   :headers {"Content-Type"        "application/json"
-             "Content-Disposition" "attachment; filename=\"field_values.json\""}
-   :body    (json/encode {:field_values []})})
+  (let [ws             (api/check-404 (ws/get-workspace id))
+        db-id->schemas (workspace-db-id->schemas ws)]
+    (streaming-response {:content-type "application/json; charset=utf-8"
+                         :headers      {"Content-Disposition" "attachment; filename=\"field_values.json\""}}
+                        [os _]
+                        (ws.table-metadata/write-field-values! os db-id->schemas))))
