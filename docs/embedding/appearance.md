@@ -15,7 +15,7 @@ On OSS and Starter plans, embeds come with two theme presets: [light and dark](#
 
 On Pro and Enterprise plans, you can:
 
-- [Save reusable themes](#saved-themes), then pick one in the embed wizard.
+- [Save reusable themes](#embedding-themes), then pick one in the embed wizard.
 - Customize individual colors, backgrounds, fonts, and more in your embedding code. See [Advanced theming](#advanced-theming).
 
 ## Dark mode and light mode
@@ -32,7 +32,7 @@ defineMetabaseConfig({
 });
 ```
 
-## Theme
+## Embedding themes
 
 ![Embedding themes](./images/themes.png)
 
@@ -107,7 +107,7 @@ On Pro/Enterprise plan, you can configure granular appearance options, like back
 
 ![Behavior and appearance](./images/behavior-and-appearance.png)
 
-If you have a [saved theme](#saved-themes), you can pick it directly in the embed wizard. The rest of this section covers further customization on top of (or instead of) a saved theme.
+If you have a [saved theme](#embedding-themes), you can pick it directly in the embed wizard. The rest of this section covers further customization on top of (or instead of) a saved theme.
 
 Some appearance options like brand, text, and background color are configurable in the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
