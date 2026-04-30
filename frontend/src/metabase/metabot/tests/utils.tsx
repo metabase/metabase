@@ -125,6 +125,7 @@ export const lastReqBody = async (
 
 // Common mock response fixtures
 export const whoIsYourFavoriteResponse = [
+  `f:{"messageId":"mock-message-id"}`,
   `0:"You, but don't tell anyone."`,
   `2:{"type":"state","version":1,"value":{"queries":{}}}`,
   `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,

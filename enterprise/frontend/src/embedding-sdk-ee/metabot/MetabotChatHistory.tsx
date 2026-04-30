@@ -1,12 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
+import type { MetabotChatMessage } from "metabase/metabot/state";
 import { Stack } from "metabase/ui";
 
 import S from "./MetabotQuestion.module.css";
+
+const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
+  message.type === "data_part" && message.part.type === "navigate_to";
 
 export function MetabotChatHistory() {
   const metabot = useMetabotAgent();
@@ -14,7 +18,12 @@ export function MetabotChatHistory() {
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const hasMessages = messages.length > 0 || errorMessages.length > 0;
+  const chatMessages = useMemo(
+    () => messages.filter((message) => !isQuestionNavigationMessage(message)),
+    [messages],
+  );
+
+  const hasMessages = chatMessages.length > 0 || errorMessages.length > 0;
 
   // Auto-scroll to bottom when new messages are received
   useEffect(() => {
@@ -22,7 +31,7 @@ export function MetabotChatHistory() {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [messages.length, errorMessages.length, metabot.isDoingScience]);
+  }, [chatMessages.length, errorMessages.length, metabot.isDoingScience]);
 
   return (
     <Stack
@@ -35,7 +44,7 @@ export function MetabotChatHistory() {
     >
       {hasMessages ? (
         <Messages
-          messages={messages}
+          messages={chatMessages}
           errorMessages={errorMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}

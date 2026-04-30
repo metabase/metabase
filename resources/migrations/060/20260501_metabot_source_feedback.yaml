@@ -1,0 +1,136 @@
+## Persist Metabot source feedback
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.2026-05-01T10:00:00
+      author: undrfined
+      comment: Add nullable external_id column to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: external_id
+                  type: varchar(36)
+                  remarks: Stable id shared with clients and used to resolve feedback submissions
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: external_id
+
+  - changeSet:
+      id: v60.2026-05-01T10:00:01
+      author: undrfined
+      comment: Unique constraint on metabot_message.external_id for feedback lookup
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_message
+            columnNames: external_id
+            constraintName: uq_metabot_message_external_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_message
+            constraintName: uq_metabot_message_external_id
+
+  - changeSet:
+      id: v60.srcefb
+      author: undrfined
+      comment: metabot_source_feedback table
+      changes:
+        - createTable:
+            tableName: metabot_source_feedback
+            remarks: User feedback on sources used by Metabot responses
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Auto-incrementing primary key
+              - column:
+                  name: message_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabot_message
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_source_feedback_message_id
+                    deleteCascade: true
+                  remarks: FK to the Metabot message whose source was rated
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: The Metabase user who submitted the feedback. Unconstrained int so audit rows survive user deletion.
+              - column:
+                  name: source_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: ID of the source object used by the response
+              - column:
+                  name: source_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                  remarks: Type of source object, e.g. table or card
+              - column:
+                  name: positive
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  remarks: true = thumbs up, false = thumbs down
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When the feedback was submitted
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When the feedback was last updated
+      rollback:
+        - dropTable:
+            tableName: metabot_source_feedback
+
+  - changeSet:
+      id: v60.srcefu
+      author: undrfined
+      comment: Unique constraint on metabot_source_feedback source rating
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_source_feedback
+            columnNames: message_id, user_id, source_type, source_id
+            constraintName: uq_metabot_source_feedback_message_user_source
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_source_feedback
+            constraintName: uq_metabot_source_feedback_message_user_source
+
+  - changeSet:
+      id: v60.srcefm
+      author: undrfined
+      comment: Index on metabot_source_feedback.message_id
+      changes:
+        - createIndex:
+            tableName: metabot_source_feedback
+            indexName: idx_metabot_source_feedback_message_id
+            columns:
+              - column:
+                  name: message_id
+      rollback:
+        - dropIndex:
+            tableName: metabot_source_feedback
+            indexName: idx_metabot_source_feedback_message_id

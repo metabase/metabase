@@ -3,9 +3,16 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
+   [metabase.config.core :as config]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
@@ -17,3 +24,59 @@
       (http/post (str base-url "/api/v2/metabot/feedback/" token)
                  {:content-type :json
                   :body         (json/encode feedback)}))))
+
+(defn source-harbormaster-payload
+  "Build the Harbormaster payload for feedback on a source used by a Metabot response."
+  ([body message]
+   (source-harbormaster-payload body message api/*current-user-id*))
+  ([{:keys [metabot_id message_id positive source_id source_type]}
+    {:keys [conversation_id]}
+    submitter-user-id]
+   {:metabot_id        metabot_id
+    :feedback          {:message_id  message_id
+                        :positive    positive
+                        :source_id   source_id
+                        :source_type source_type}
+    :conversation_data (metabot.persistence/conversation-detail conversation_id)
+    :version           config/mb-version-info
+    :submission_time   (str (java.time.OffsetDateTime/now))
+    :submitter_user_id submitter-user-id
+    :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id submitter-user-id))}))
+
+(defn- resolve-rated-message
+  "Return the `metabot_message` row (`:id` + `:conversation_id`) identified by
+  `external-id`, plus the enclosing `:model/MetabotConversation` as `:conversation`.
+  Throws 404 if the message is missing, the conversation is missing, or the
+  current user cannot read the conversation."
+  [external-id]
+  (let [message      (t2/select-one [:model/MetabotMessage :id :conversation_id]
+                                    :external_id external-id)
+        _            (api/check-404 message)
+        conversation (t2/select-one [:model/MetabotConversation :id :user_id]
+                                    :id (:conversation_id message))
+        _            (api/check-404 conversation)
+        _            (api/check-404 (or api/*is-superuser?*
+                                        (= api/*current-user-id* (:user_id conversation))))]
+    (assoc message :conversation conversation)))
+
+(defn- upsert-source-feedback!
+  "Insert or update the `metabot_source_feedback` row for one source, message, and submitter."
+  [message-row-id submitter-user-id {:keys [positive source_id source_type]}]
+  (let [conditions  {:message_id  message-row-id
+                     :user_id     submitter-user-id
+                     :source_id   source_id
+                     :source_type source_type}
+        base-fields {:positive positive}]
+    (app-db/update-or-insert! :model/MetabotSourceFeedback
+                              conditions
+                              (fn [existing]
+                                (cond-> base-fields
+                                  existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+
+(defn persist-source-feedback!
+  "Upsert a `metabot_source_feedback` row for a source used by the rated message.
+   Returns the resolved `metabot_message` row (with its `:conversation`)."
+  [{:keys [message_id] :as body}]
+  (let [message (resolve-rated-message message_id)]
+    (upsert-source-feedback! (:id message) api/*current-user-id* body)
+    message))

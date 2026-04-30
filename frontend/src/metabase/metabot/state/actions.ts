@@ -10,6 +10,7 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getUser } from "metabase/selectors/user";
 import type {
@@ -17,6 +18,7 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
+  MetabotCodeEditorBufferContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -36,6 +38,7 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
+  MetabotAgentDataPartMessage,
   MetabotAgentEditSuggestionChatMessage,
   MetabotAgentId,
   MetabotAgentTodoListChatMessage,
@@ -53,6 +56,7 @@ export const {
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
+  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallEnd,
@@ -335,6 +339,18 @@ type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
 };
 
+const findCodeEditBuffer = (
+  context: MetabotChatContext,
+  bufferId: string,
+): MetabotCodeEditorBufferContext | undefined => {
+  const viewedBuffers = context.user_is_viewing.flatMap((item) =>
+    item.type === "code_editor" ? item.buffers : [],
+  );
+  const buffers = [...viewedBuffers, ...(context.code_editor?.buffers ?? [])];
+
+  return buffers.find((buffer) => buffer.id === bufferId);
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
@@ -350,6 +366,7 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
+      let currentMessageExternalId: string | undefined = undefined;
 
       const response = await aiStreamingQuery(
         {
@@ -362,6 +379,19 @@ export const sendAgentRequest = createAsyncThunk<
         },
         {
           onDataPart: function handleDataPart(part) {
+            const pushDataPart = (
+              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
+            ) =>
+              dispatch(
+                addAgentMessage({
+                  ...message,
+                  ...(currentMessageExternalId
+                    ? { externalId: currentMessageExternalId }
+                    : {}),
+                  agentId,
+                }),
+              );
+
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
@@ -378,6 +408,20 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+
+                if (part.value.buffer_id === "qb") {
+                  dispatch(setIsNativeEditorOpen(true));
+                }
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: {
+                    codeEditBuffer: findCodeEditBuffer(
+                      request.context,
+                      part.value.buffer_id,
+                    ),
+                  },
+                });
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
@@ -385,6 +429,7 @@ export const sendAgentRequest = createAsyncThunk<
                 if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {
                 const suggestedTransform = {
@@ -414,6 +459,15 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
               .exhaustive();
+          },
+          onStartMessagePart: function handleStartMessagePart(part) {
+            currentMessageExternalId ??= part.messageId;
+            dispatch(
+              setPendingMessageExternalId({
+                agentId,
+                externalId: currentMessageExternalId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));
