@@ -15,6 +15,7 @@
    [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
+   [metabase.analytics-interface.core :as analytics.interface]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -741,6 +742,8 @@
         (log/warn "MB_PROMETHEUS_SERVER_PORT had a value but did not parse to an integer"))
       value)))
 
+(declare install-real-reporter!)
+
 (defn setup!
   "Start the prometheus metric collector and web-server. Port is optional, read from `MB_PROMETHEUS_SERVER_PORT`"
   ([] (setup! (parse (System/getenv "MB_PROMETHEUS_SERVER_PORT"))))
@@ -753,7 +756,8 @@
        (locking #'system
          (when-not system
            (let [sys (make-prometheus-system port "metabase-registry")]
-             (alter-var-root #'system (constantly sys)))))))))
+             (alter-var-root #'system (constantly sys))
+             (install-real-reporter!))))))))
 
 (defn observe-initial-values
   "Observe initial values. Some values need a baseline otherwise their first observed value won't register as a
@@ -837,6 +841,27 @@
     (setup!))
   (when system
     (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
+
+(def ^:private real-reporter
+  "A real analytics.interface/Reporter that reports here"
+  (reify analytics.interface/Reporter
+    (-inc! [_ metric labels amount]
+      (inc! metric labels amount))
+    (-dec-gauge! [_ metric labels amount]
+      (dec! metric labels amount))
+    (-set-gauge! [_ metric labels amount]
+      ;; set! in first position hits the special form
+      (metabase.analytics.prometheus/set! metric labels amount))
+    (-observe! [_ metric labels amount]
+      (observe! metric labels amount))
+    (-clear! [_ metric]
+      (clear! metric))))
+
+(defn- install-real-reporter!
+  "Called after setup to wire up the real reporter"
+  []
+  (log/info "Installing real prometheus reporter")
+  (analytics.interface/set-reporter! real-reporter))
 
 (comment
   ;; want to see what's in the registry?
