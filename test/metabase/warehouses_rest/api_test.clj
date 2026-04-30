@@ -749,50 +749,73 @@
         (is (true? @connections-stay-open?))
         (tx/destroy-db! driver/*driver* empty-dbdef)))))
 
+;;; Helpers for portable-id assertions over /api/database/metadata responses.
+;;;
+;;; Each row's "own portable id" is `(conj parent-prefix name)`, where
+;;; parent-prefix is the row's `:parent_id` if set, else its `:table_id`.
+;;; This composes back to what `format-field-id` produces in the export.
+
+(defn- field-portable-id
+  "Compute the field's own portable id from a /metadata response row."
+  [field]
+  (conj (vec (or (:parent_id field) (:table_id field))) (:name field)))
+
+(defn- find-field
+  "Locate a field in the response by its (table-tuple + name + nfc-path-derived
+  parent-id) coordinates."
+  [fields table-id name parent-id]
+  (m/find-first #(and (= table-id (vec (:table_id %)))
+                      (= name (:name %))
+                      (= parent-id (:parent_id %)))
+                fields))
+
 (deftest databases-metadata-test
-  (testing "GET /api/database/metadata"
+  (testing "GET /api/database/metadata — emits portable identifiers"
     (mt/with-temp [:model/Database {db-id :id}    {:name "test-db" :engine :h2}
                    :model/Table    {t-id :id}     {:db_id db-id :name "my_table" :schema "PUBLIC"
                                                    :description "A test table"}
-                   :model/Field    {f1-id :id}    {:table_id t-id :name "id" :base_type :type/Integer
+                   :model/Field    {pk-id :id}    {:table_id t-id :name "id" :base_type :type/Integer
                                                    :database_type "BIGINT"
                                                    :semantic_type :type/PK}
-                   :model/Field    {f2-id :id}    {:table_id t-id :name "created_at" :base_type :type/Text
+                   :model/Field    _              {:table_id t-id :name "created_at" :base_type :type/Text
                                                    :database_type "TIMESTAMP"
                                                    :effective_type :type/DateTime
                                                    :semantic_type :type/Name
                                                    :coercion_strategy :Coercion/ISO8601->DateTime
                                                    :description "The creation time"}
-                   :model/Field    {f3-id :id}    {:table_id t-id :name "parent_id" :base_type :type/Integer
+                   :model/Field    _              {:table_id t-id :name "fk_col" :base_type :type/Integer
                                                    :database_type "BIGINT"
                                                    :semantic_type :type/FK
-                                                   :fk_target_field_id f1-id}]
-      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
-        (is (=? {:id db-id :name "test-db" :engine "h2"}
-                (m/find-first (comp #{db-id} :id) databases)))
-        (is (=? {:id t-id :db_id db-id :name "my_table" :schema "PUBLIC" :description "A test table"}
-                (m/find-first (comp #{t-id} :id) tables)))
-        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer" :database_type "BIGINT"
-                 :semantic_type "type/PK"}
-                (m/find-first (comp #{f1-id} :id) fields)))
-        (is (=? {:id                f2-id
-                 :table_id          t-id
-                 :name              "created_at"
-                 :base_type         "type/Text"
-                 :database_type     "TIMESTAMP"
-                 :effective_type    "type/DateTime"
-                 :semantic_type     "type/Name"
-                 :coercion_strategy "Coercion/ISO8601->DateTime"
-                 :description       "The creation time"}
-                (m/find-first (comp #{f2-id} :id) fields)))
-        (is (=? {:id                 f3-id
-                 :table_id           t-id
-                 :name               "parent_id"
-                 :base_type          "type/Integer"
-                 :database_type      "BIGINT"
-                 :semantic_type      "type/FK"
-                 :fk_target_field_id f1-id}
-                (m/find-first (comp #{f3-id} :id) fields)))))))
+                                                   :fk_target_field_id pk-id}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")
+            tbl-id ["test-db" "PUBLIC" "my_table"]]
+        (testing "database row carries name+engine and no integer id"
+          (is (=? {:name "test-db" :engine "h2"}
+                  (m/find-first (comp #{"test-db"} :name) databases)))
+          (is (not (contains? (m/find-first (comp #{"test-db"} :name) databases) :id))))
+        (testing "table row's :db_id is the database name; no integer ids"
+          (let [tbl (m/find-first (comp #{"my_table"} :name) tables)]
+            (is (=? {:db_id "test-db" :name "my_table" :schema "PUBLIC"
+                     :description "A test table"}
+                    tbl))
+            (is (not (contains? tbl :id)))))
+        (testing "field row's :table_id is the (db, schema, table) tuple"
+          (let [pk (find-field fields tbl-id "id" nil)]
+            (is (=? {:name "id" :base_type "type/Integer" :semantic_type "type/PK"} pk))
+            (is (= tbl-id (vec (:table_id pk))))
+            (is (not (contains? pk :id)))))
+        (testing "effective_type and coercion_strategy emitted on a field that overrides them"
+          (is (=? {:name              "created_at"
+                   :base_type         "type/Text"
+                   :effective_type    "type/DateTime"
+                   :semantic_type     "type/Name"
+                   :coercion_strategy "Coercion/ISO8601->DateTime"
+                   :description       "The creation time"}
+                  (find-field fields tbl-id "created_at" nil))))
+        (testing "fk_target_field_id is the target's portable field id"
+          (let [fk-col (find-field fields tbl-id "fk_col" nil)]
+            (is (= [(into tbl-id ["id"])] [(vec (:fk_target_field_id fk-col))])
+                "fk points at [db schema table id-leaf]")))))))
 
 (deftest databases-metadata-no-perms-test
   (testing "GET /api/database/metadata — user without data perms sees nothing"
@@ -866,13 +889,73 @@
 
 (deftest databases-metadata-excludes-audit-db-test
   (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
-    (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
-                   :model/Table    {t-id :id}  {:db_id db-id :name "audit_table" :schema "PUBLIC"}
-                   :model/Field    {f-id :id}  {:table_id t-id :name "audit_col" :base_type :type/Integer}]
+    (mt/with-temp [:model/Database _ {:name "audit-db" :engine :h2 :is_audit true}
+                   :model/Table    {t-id :id} {:db_id (t2/select-one-fn :id :model/Database :name "audit-db")
+                                               :name "audit_table" :schema "PUBLIC"}
+                   :model/Field    _ {:table_id t-id :name "audit_col" :base_type :type/Integer
+                                      :database_type "INT"}]
       (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
-        (is (nil? (m/find-first (comp #{db-id} :id) databases)))
-        (is (nil? (m/find-first (comp #{t-id}  :id) tables)))
-        (is (nil? (m/find-first (comp #{f-id}  :id) fields)))))))
+        (is (nil? (m/find-first (comp #{"audit-db"} :name) databases)))
+        (is (nil? (m/find-first #(= ["audit-db" "PUBLIC" "audit_table"] (vec (:db_id %)))
+                                tables))
+            "no table with that db_id portable prefix")
+        (is (nil? (m/find-first #(= "audit_col" (:name %))
+                                (filter #(= ["audit-db" "PUBLIC" "audit_table"] (vec (:table_id %)))
+                                        fields))))))))
+
+(deftest databases-metadata-nested-fields-portable-id-test
+  (testing "GET /api/database/metadata — nested fields encode their full path
+            (nfc_path appended with leaf name) and their parent_id resolves to
+            the parent's own portable id"
+    (mt/with-temp [:model/Database _              {:name "nest-db" :engine :h2}
+                   :model/Table    {t-id :id}     {:db_id (t2/select-one-fn :id :model/Database :name "nest-db")
+                                                   :name "events" :schema "PUBLIC"}
+                   :model/Field    _              {:table_id t-id :name "address"
+                                                   :base_type :type/Structured
+                                                   :database_type "JSON"}
+                   :model/Field    _              {:table_id t-id :name "zip" :nfc_path ["address"]
+                                                   :base_type :type/Text :database_type "VARCHAR"}
+                   :model/Field    _              {:table_id t-id :name "code"
+                                                   :nfc_path ["address" "zip"]
+                                                   :base_type :type/Text :database_type "VARCHAR"}]
+      (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")
+            tbl-id ["nest-db" "PUBLIC" "events"]
+            address (find-field fields tbl-id "address" nil)
+            zip     (find-field fields tbl-id "zip"     (into tbl-id ["address"]))
+            code    (find-field fields tbl-id "code"    (into tbl-id ["address" "zip"]))]
+        (testing "depth-1 nested field — portable id appends leaf name to nfc_path"
+          (is (some? zip))
+          (is (= (into tbl-id ["address"]) (vec (:parent_id zip))))
+          (is (= "zip" (:name zip))))
+        (testing "depth-2 nested field — parent_id resolves to the depth-1 parent's portable id"
+          (is (some? code))
+          (is (= (into tbl-id ["address" "zip"]) (vec (:parent_id code)))))
+        (testing "root field — no :parent_id key"
+          (is (some? address))
+          (is (not (contains? address :parent_id))))))))
+
+(deftest databases-metadata-fk-target-visibility-test
+  (testing "GET /api/database/metadata — when a field's fk_target points at a
+            field on a hidden table, the response omits :fk_target_field_id
+            (visibility filter applies to the JOIN)"
+    (mt/with-temp [:model/Database _              {:name "fkv-db" :engine :h2}
+                   :model/Table    {visible :id}  {:db_id (t2/select-one-fn :id :model/Database :name "fkv-db")
+                                                   :name "orders" :schema "PUBLIC"}
+                   :model/Table    {hidden :id}   {:db_id (t2/select-one-fn :id :model/Database :name "fkv-db")
+                                                   :name "users" :schema "PUBLIC"
+                                                   :visibility_type :hidden}
+                   :model/Field    {target :id}   {:table_id hidden :name "id"
+                                                   :base_type :type/Integer :database_type "BIGINT"}
+                   :model/Field    _              {:table_id visible :name "user_id"
+                                                   :base_type :type/Integer :database_type "BIGINT"
+                                                   :semantic_type :type/FK
+                                                   :fk_target_field_id target}]
+      (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")
+            user-id-field (find-field fields ["fkv-db" "PUBLIC" "orders"] "user_id" nil)]
+        (testing "the user_id field is exported (its own table is visible)"
+          (is (some? user-id-field)))
+        (testing "but its :fk_target_field_id is omitted because the target table is hidden"
+          (is (not (contains? user-id-field :fk_target_field_id))))))))
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"

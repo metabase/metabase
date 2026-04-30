@@ -560,21 +560,25 @@
   [(format-database-id db-name) schema table-name])
 
 (defn- format-field-id
-  "Portable id for a field — `[db-name schema table-name & path]`. For a nested field,
-  `nfc_path` already contains the full chain (parents + the field's own name) so it
-  becomes the path verbatim; for a non-nested field the path is `[name]`."
+  "Portable id for a field — `[db-name schema table-name & nfc-path-suffix name]`.
+  `nfc_path` stores the parent ancestry chain only (NOT the field's own name —
+  see [[metabase.lib.schema.metadata]]'s `:nfc-path` docs), so the path component
+  is `nfc_path` followed by the field's `name`. For a non-nested field
+  (nfc_path is nil or empty), the path is just `[name]`."
   [db-name schema table-name field-name nfc-path]
   (into (format-table-id db-name schema table-name)
-        (or (not-empty nfc-path) [field-name])))
+        (concat (or nfc-path []) [field-name])))
 
 (defn- format-parent-field-id
-  "Portable id of a field's parent, derived from `nfc_path`. Returns nil for a non-nested
-  field. The parent's path is `(butlast nfc-path)` — the parent row's own portable id is
-  the same vector, so this composes with [[format-field-id]] into a stable cross-reference.
-  By construction this matches what walking the integer `parent_id` chain would yield."
+  "Portable id of a field's parent, derived from `nfc_path`. Returns nil for a
+  non-nested field. `nfc_path` IS the parent ancestry chain (its last element is
+  the immediate parent's own name), so `nfc_path` becomes the path component
+  verbatim — the parent's own portable id is `[db-name schema table-name & nfc-path]`.
+  By construction this matches what [[format-field-id]] would produce for the
+  parent row in the same export."
   [db-name schema table-name nfc-path]
-  (when (next nfc-path)
-    (into (format-table-id db-name schema table-name) (butlast nfc-path))))
+  (when (seq nfc-path)
+    (into (format-table-id db-name schema table-name) nfc-path)))
 
 (defn- parse-nfc-path
   "`metabase_field.nfc_path` is stored as a JSON-encoded array of names. Field rows are
@@ -619,7 +623,10 @@
     (m/assoc-some {:table_id (format-table-id db_name table_schema table_name)
                    :name     name}
                   :parent_id          (format-parent-field-id db_name table_schema table_name nfc-path)
-                  :fk_target_field_id (when fk_name
+                  ;; require both fk_name AND fk_table_name so that a half-join
+                  ;; (fk-field passes visibility but fk-table fails, or vice versa)
+                  ;; produces NO :fk_target_field_id rather than a partially-populated id
+                  :fk_target_field_id (when (and fk_name fk_table_name)
                                         (format-field-id db_name fk_table_schema fk_table_name fk_name fk-nfc-path))
                   :description        description
                   :base_type          base_type
@@ -713,18 +720,32 @@
                        format-table-metadata)
     (.write writer ",\"fields\":")
     (write-json-array! writer
-                       (t2/reducible-query {:select    [:f.name :f.description :f.base_type :f.database_type
-                                                        :f.effective_type :f.semantic_type :f.coercion_strategy
-                                                        :f.nfc_path
-                                                        [:d.name :db_name] [:t.schema :table_schema] [:t.name :table_name]
-                                                        [:fkt.schema :fk_table_schema] [:fkt.name :fk_table_name]
-                                                        [:fkf.name :fk_name] [:fkf.nfc_path :fk_nfc_path]]
-                                            :from      [[:metabase_field :f]]
-                                            :join      [[:metabase_table :t]    [:= :f.table_id :t.id]
-                                                        [:metabase_database :d] [:= :t.db_id :d.id]]
-                                            :left-join [[:metabase_field :fkf] [:= :f.fk_target_field_id :fkf.id]
-                                                        [:metabase_table :fkt] [:= :fkf.table_id :fkt.id]]
-                                            :where     [:and db-filter t-filter f-filter]})
+                       (t2/reducible-query
+                        {:select    [:f.name :f.description :f.base_type :f.database_type
+                                     :f.effective_type :f.semantic_type :f.coercion_strategy
+                                     :f.nfc_path
+                                     [:d.name :db_name] [:t.schema :table_schema] [:t.name :table_name]
+                                     [:fkt.schema :fk_table_schema] [:fkt.name :fk_table_name]
+                                     [:fkf.name :fk_name] [:fkf.nfc_path :fk_nfc_path]]
+                         :from      [[:metabase_field :f]]
+                         :join      [[:metabase_table :t]    [:= :f.table_id :t.id]
+                                     [:metabase_database :d] [:= :t.db_id :d.id]]
+                         ;; FK target's field and table are visibility-filtered on the JOIN so
+                         ;; users can't read portable ids of fields they shouldn't see. If either
+                         ;; filter rejects, the LEFT JOIN produces NULLs and `format-field-metadata`
+                         ;; omits `:fk_target_field_id` from the response.
+                         :left-join [[:metabase_field :fkf] [:and
+                                                             [:= :f.fk_target_field_id :fkf.id]
+                                                             [:= :fkf.active true]
+                                                             [:<> :fkf.visibility_type "sensitive"]]
+                                     [:metabase_table :fkt] [:and
+                                                             [:= :fkf.table_id :fkt.id]
+                                                             [:= :fkt.active true]
+                                                             [:= :fkt.visibility_type nil]
+                                                             [:in :fkt.id
+                                                              (perms/visible-table-filter-select
+                                                               :id (perm-user-info) (perm-mapping))]]]
+                         :where     [:and db-filter t-filter f-filter]})
                        format-field-metadata)
     (.write writer "}")
     (.flush writer)))
