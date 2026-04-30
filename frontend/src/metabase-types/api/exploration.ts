@@ -1,5 +1,6 @@
 import type { CardId } from "./card";
 import type { DimensionMapping } from "./measure";
+import type { DatasetQuery } from "./query";
 import type { TimelineId } from "./timeline";
 import type { UserId } from "./user";
 
@@ -61,7 +62,7 @@ export interface ExplorationQuery {
   dimension_id: string;
   display: string | null;
   visualization_settings: Record<string, unknown> | null;
-  dataset_query: Record<string, unknown>;
+  dataset_query: DatasetQuery;
   position: number;
   entity_id: string;
   created_at: string;
