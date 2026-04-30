@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  ExplorationDimensionGroup,
   ExplorationMetric,
   Metric,
   MetricDimension,
@@ -10,18 +11,47 @@ export function setupMetricEndpoint(metric: Metric) {
   fetchMock.get(`path:/api/metric/${metric.id}`, metric);
 }
 
-function dedupeDimensions(metrics: Metric[]): MetricDimension[] {
-  const seen = new Set<string>();
-  const out: MetricDimension[] = [];
+function sourcesKey(d: MetricDimension): string {
+  return JSON.stringify(
+    (d.sources ?? []).map((s) => [s.type, s["field-id"]]).sort(),
+  );
+}
+
+function groupDimensions(metrics: Metric[]): ExplorationDimensionGroup[] {
+  const buckets = new Map<string, MetricDimension[]>();
   for (const m of metrics) {
     for (const d of m.dimensions ?? []) {
-      if (!seen.has(d.id)) {
-        seen.add(d.id);
-        out.push(d);
+      const key = sourcesKey(d);
+      const list = buckets.get(key);
+      if (list) {
+        if (!list.some((x) => x.id === d.id)) {
+          list.push(d);
+        }
+      } else {
+        buckets.set(key, [d]);
       }
     }
   }
-  return out;
+  const groups: ExplorationDimensionGroup[] = [];
+  for (const dims of buckets.values()) {
+    const head = dims[0];
+    const groupName = head.group?.display_name
+      ? `${head.group.display_name} - ${head.display_name}`
+      : head.display_name;
+    const scores = dims
+      .map((d) => d.dimension_interestingness)
+      .filter((s): s is number => s != null);
+    groups.push({
+      name: groupName,
+      dimension_interestingness: scores.length ? Math.max(...scores) : null,
+      dimensions: dims,
+    });
+  }
+  return groups.sort((a, b) => {
+    const av = a.dimension_interestingness ?? -Infinity;
+    const bv = b.dimension_interestingness ?? -Infinity;
+    return bv - av;
+  });
 }
 
 function toExplorationMetric(metric: Metric): ExplorationMetric {
@@ -49,7 +79,7 @@ export function setupExplorationDataEndpoint(metrics: Metric[]) {
           );
       return {
         metrics: filtered.map(toExplorationMetric),
-        dimensions: dedupeDimensions(filtered),
+        dimension_groups: groupDimensions(filtered),
       };
     },
   });

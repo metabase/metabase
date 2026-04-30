@@ -47,6 +47,16 @@
     (string? (:status dim)) (update :status keyword)
     (string? (:has_field_values dim)) (update :has_field_values keyword)))
 
+(defn same-source?
+  "True when two dimensions share at least one common source. Returns false if either dimension has
+   no sources. Mirrors `metabase.lib-metric.js/isSameSource` (which delegates here)."
+  [dim-a dim-b]
+  (let [sources-a (:sources dim-a)
+        sources-b (:sources dim-b)]
+    (boolean
+     (when (and (seq sources-a) (seq sources-b))
+       (perf/some (set sources-a) sources-b)))))
+
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
 (defn- orphaned-status-message

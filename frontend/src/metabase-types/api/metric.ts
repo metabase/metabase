@@ -53,9 +53,15 @@ export type GetExplorationDataRequest = {
   q?: string;
 };
 
+export type ExplorationDimensionGroup = {
+  name: string;
+  dimension_interestingness: number | null;
+  dimensions: MetricDimension[];
+};
+
 export type GetExplorationDataResponse = {
   metrics: ExplorationMetric[];
-  dimensions: MetricDimension[];
+  dimension_groups: ExplorationDimensionGroup[];
 };
 
 export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;

@@ -52,15 +52,16 @@
                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")
               metrics  (:metrics response)
-              dims     (:dimensions response)
-              dim-ids  (set (map :id dims))]
+              groups   (:dimension_groups response)
+              dim-ids  (set (mapcat #(map :id (:dimensions %)) groups))]
           (is (= 2 (count metrics)))
           (is (every? #(contains? % :dimension_ids) metrics))
           (is (every? #(not (contains? % :dimensions)) metrics))
           (is (every? #(contains? % :dimension_mappings) metrics))
-          (testing "dimensions are deduplicated by id"
-            (is (= (count dims) (count dim-ids))))
-          (testing "every metric's dimension_ids reference dimensions in the top-level list"
+          (testing "every group has a name and a non-empty dimension list"
+            (is (every? :name groups))
+            (is (every? #(seq (:dimensions %)) groups)))
+          (testing "every metric's dimension_ids appear in some group"
             (doseq [m metrics]
               (is (every? #(contains? dim-ids %) (:dimension_ids m))))))))))
 
@@ -100,7 +101,7 @@
         (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
                                              :q "zzz_no_such_thing_zzz")]
           (is (= [] (:metrics response)))
-          (is (= [] (:dimensions response))))))))
+          (is (= [] (:dimension_groups response))))))))
 
 (deftest dimensions-respects-collection-perms-test
   (testing "GET /api/exploration/dimensions excludes metrics in collections the user can't read"

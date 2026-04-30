@@ -30,6 +30,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   ExplorationMetric as ApiExplorationMetric,
   DimensionId,
+  ExplorationDimensionGroup,
   MetricBaseData,
 } from "metabase-types/api";
 
@@ -91,18 +92,47 @@ export function AddMetricsModal({
     { skip: !opened },
   );
 
-  const visibleDimensions = useMemo<MetricDimension[]>(
-    () => response?.dimensions ?? [],
+  const visibleGroups = useMemo<ExplorationDimensionGroup[]>(
+    () => response?.dimension_groups ?? [],
     [response],
   );
 
+  // One synthetic MetricDimension per group, used purely for rendering through the
+  // existing semantic-type-bucketed list. The synthetic dim's id is the group's
+  // first underlying dimension id (stable enough for keying); its display_name is
+  // the pre-built combination name; we deliberately drop `group` so the chip label
+  // doesn't double-prefix.
+  const groupRows = useMemo<MetricDimension[]>(
+    () =>
+      visibleGroups.map((g) => {
+        const head = g.dimensions[0];
+        return {
+          ...head,
+          display_name: g.name,
+          dimension_interestingness: g.dimension_interestingness,
+          group: undefined,
+        };
+      }),
+    [visibleGroups],
+  );
+
+  const groupByRowId = useMemo(() => {
+    const map = new Map<DimensionId, ExplorationDimensionGroup>();
+    visibleGroups.forEach((g, i) => {
+      map.set(groupRows[i].id, g);
+    });
+    return map;
+  }, [visibleGroups, groupRows]);
+
   const dimensionsById = useMemo(() => {
     const map = new Map<DimensionId, MetricDimension>();
-    for (const d of visibleDimensions) {
-      map.set(d.id, d);
+    for (const g of visibleGroups) {
+      for (const d of g.dimensions) {
+        map.set(d.id, d);
+      }
     }
     return map;
-  }, [visibleDimensions]);
+  }, [visibleGroups]);
 
   const rawMetrics = useMemo<MetricWithCollection[]>(
     () =>
@@ -209,20 +239,34 @@ export function AddMetricsModal({
   );
 
   const isDimensionSelected = useCallback(
-    (dimensionId: DimensionId) => selectedDimensionIds.has(dimensionId),
-    [selectedDimensionIds],
+    (dimensionId: DimensionId) => {
+      const group = groupByRowId.get(dimensionId);
+      if (!group) {
+        return selectedDimensionIds.has(dimensionId);
+      }
+      return group.dimensions.some((d) => selectedDimensionIds.has(d.id));
+    },
+    [groupByRowId, selectedDimensionIds],
   );
 
   const toggleDimension = useCallback(
     (dimension: MetricDimension) => {
-      const connected = metricsByDimension.get(dimension.id) ?? [];
-      if (selectedDimensionIds.has(dimension.id)) {
+      const group = groupByRowId.get(dimension.id);
+      const groupDims = group ? group.dimensions : [dimension];
+      const groupIds = new Set(groupDims.map((d) => d.id));
+      const groupSelected = groupDims.some((d) =>
+        selectedDimensionIds.has(d.id),
+      );
+      const connected = groupDims.flatMap(
+        (d) => metricsByDimension.get(d.id) ?? [],
+      );
+
+      if (groupSelected) {
         const nextDimensions = draftDimensions.filter(
-          (d) => d.id !== dimension.id,
+          (d) => !groupIds.has(d.id),
         );
         setDraftDimensions(nextDimensions);
         const remainingDimIds = new Set(nextDimensions.map((d) => d.id));
-        // Only drop a connected metric if none of its dimensions are still selected.
         const orphanedIds = new Set(
           connected
             .filter((m) => !m.dimensions.some((d) => remainingDimIds.has(d.id)))
@@ -232,22 +276,38 @@ export function AddMetricsModal({
           setDraftMetrics(draftMetrics.filter((m) => !orphanedIds.has(m.id)));
         }
       } else {
-        setDraftDimensions([...draftDimensions, dimension]);
+        const have = new Set(draftDimensions.map((d) => d.id));
+        const mergedDims = [...draftDimensions];
+        for (const d of groupDims) {
+          if (!have.has(d.id)) {
+            mergedDims.push(d);
+          }
+        }
+        if (mergedDims.length !== draftDimensions.length) {
+          setDraftDimensions(mergedDims);
+        }
         if (connected.length > 0) {
-          const have = new Set(draftMetrics.map((m) => m.id));
-          const merged = [...draftMetrics];
+          const haveMetrics = new Set(draftMetrics.map((m) => m.id));
+          const mergedMetrics = [...draftMetrics];
           for (const metric of connected) {
-            if (!have.has(metric.id)) {
-              merged.push(metric);
+            if (!haveMetrics.has(metric.id)) {
+              mergedMetrics.push(metric);
+              haveMetrics.add(metric.id);
             }
           }
-          if (merged.length !== draftMetrics.length) {
-            setDraftMetrics(merged);
+          if (mergedMetrics.length !== draftMetrics.length) {
+            setDraftMetrics(mergedMetrics);
           }
         }
       }
     },
-    [draftDimensions, draftMetrics, metricsByDimension, selectedDimensionIds],
+    [
+      draftDimensions,
+      draftMetrics,
+      groupByRowId,
+      metricsByDimension,
+      selectedDimensionIds,
+    ],
   );
 
   return (
@@ -287,7 +347,7 @@ export function AddMetricsModal({
                 <Text fw="bold">{t`Dimensions`}</Text>
                 <DimensionList
                   className={S.dimensionsSection}
-                  dimensions={visibleDimensions}
+                  dimensions={groupRows}
                   isSelected={isDimensionSelected}
                   onToggle={toggleDimension}
                 />

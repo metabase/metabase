@@ -67,7 +67,8 @@
      get-persisted-dimensions
      mappings-changed?
      reconcile-dimensions-and-mappings
-     resolve-dimension-to-field-id]
+     resolve-dimension-to-field-id
+     same-source?]
     [lib-metric.dimension.jvm
      compute-dimension-pairs]
     [lib-metric.metadata.provider
@@ -103,6 +104,7 @@
      (def get-persisted-dimensions "See [[lib-metric.dimension/get-persisted-dimensions]]." lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings "See [[lib-metric.dimension/get-persisted-dimension-mappings]]." lib-metric.dimension/get-persisted-dimension-mappings)
      (def resolve-dimension-to-field-id "See [[lib-metric.dimension/resolve-dimension-to-field-id]]." lib-metric.dimension/resolve-dimension-to-field-id)
+     (def same-source? "See [[lib-metric.dimension/same-source?]]." lib-metric.dimension/same-source?)
      (def database-provider-for-table "See [[lib-metric.metadata.provider/database-provider-for-table]]." lib-metric.metadata.provider/database-provider-for-table)
      (def metric-context-metadata-provider "See [[lib-metric.metadata.provider/metric-context-metadata-provider]]." lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider "See [[lib-metric.metadata.js/metadata-provider]]." lib-metric.metadata.js/metadata-provider)

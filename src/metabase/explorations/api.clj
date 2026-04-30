@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.explorations.core :as explorations]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.queries.models.card :as card]
@@ -178,11 +179,20 @@
    [:database_id          {:optional true} [:maybe ms/PositiveInt]]
    [:result_column_name   {:optional true} [:maybe :string]]])
 
-(mr/def ::DimensionsResponse
-  "Schema for GET /dimensions: metrics referencing dimensions by id, plus the deduplicated dimension list."
+(mr/def ::ExplorationDimensionGroup
+  "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that
+   refer to the same underlying source (same field/binning) so the FE can show a single user-facing
+   entry while still tracking the actual per-metric dimensions needed by `start exploration`."
   [:map
-   [:metrics    [:sequential ::ExplorationMetric]]
-   [:dimensions [:sequential :map]]])
+   [:name                       :string]
+   [:dimension_interestingness  [:maybe number?]]
+   [:dimensions                 [:sequential :map]]])
+
+(mr/def ::DimensionsResponse
+  "Schema for GET /dimensions: metrics referencing dimensions by id, plus the grouped dimension list."
+  [:map
+   [:metrics          [:sequential ::ExplorationMetric]]
+   [:dimension_groups [:sequential ::ExplorationDimensionGroup]]])
 
 (defn- library-metrics-collection-ids
   "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
@@ -202,24 +212,54 @@
               (str/includes? (u/lower-case-en (or (:display_name d) "")) q-lower))
             (:dimensions metric))))
 
-(defn- dedupe-dimensions [metrics]
-  (let [seen (volatile! #{})
-        deduped (reduce (fn [acc d]
-                          (let [id    (:id d)
-                                score (:dimension_interestingness d)]
-                            (if (or (nil? id)
-                                    (contains? @seen id)
-                                    (and (some? score) (< score explorations/min-interestingness)))
-                              acc
-                              (do (vswap! seen conj id)
-                                  (conj acc d)))))
-                        []
-                        (mapcat :dimensions metrics))]
-    (vec (sort-by (fn [d]
-                    (if-let [score (:dimension_interestingness d)]
+(defn- dimension-display-name
+  "Combination name shown in the UI for a dimension: '<group display name> - <dimension display name>'
+   when the dimension has a group, otherwise just the dimension's display name."
+  [d]
+  (let [dn        (or (:display_name d) (:name d) "")
+        group-dn  (some-> d :group :display_name)]
+    (if (str/blank? group-dn)
+      dn
+      (str group-dn " - " dn))))
+
+(defn- group-dimensions
+  "Collapse dimensions across the supplied metrics into a list of dimension groups. Dimensions that
+   share the same underlying source (per `lib-metric/same-source?`) collapse into a single
+   group. Each group exposes the user-facing combination name, a representative interestingness, and
+   the list of underlying dimension ids that the FE must echo back to `POST /api/exploration` when
+   the user starts an exploration."
+  [metrics]
+  (let [all-dims (->> (mapcat :dimensions metrics)
+                      (filter (fn [d]
+                                (let [score (:dimension_interestingness d)]
+                                  (or (nil? score)
+                                      (>= score explorations/min-interestingness))))))
+        ;; group by walking and merging into existing buckets via same-source?; within a bucket we
+        ;; dedupe by :id so a dimension that appears under several metrics is listed once.
+        buckets  (reduce (fn [acc d]
+                           (if-let [idx (some (fn [[i bucket]]
+                                                (when (some #(lib-metric/same-source? % d) bucket)
+                                                  i))
+                                              (map-indexed vector acc))]
+                             (let [bucket (acc idx)]
+                               (if (some #(= (:id %) (:id d)) bucket)
+                                 acc
+                                 (update acc idx conj d)))
+                             (conj acc [d])))
+                         []
+                         all-dims)
+        groups   (mapv (fn [bucket]
+                         (let [head   (first bucket)
+                               scores (keep :dimension_interestingness bucket)]
+                           {:name                      (dimension-display-name head)
+                            :dimension_interestingness (when (seq scores) (apply max scores))
+                            :dimensions                (vec bucket)}))
+                       buckets)]
+    (vec (sort-by (fn [g]
+                    (if-let [score (:dimension_interestingness g)]
                       [0 (- score)]
                       [1 0]))
-                  deduped))))
+                  groups))))
 
 ;;; ----------------------------------------- endpoints -----------------------------------------
 
@@ -297,8 +337,8 @@
                                    (assoc :dimension_ids (mapv :id (:dimensions m)))
                                    (dissoc :dimensions)))
                              filtered)]
-    {:metrics    slimmed
-     :dimensions (dedupe-dimensions filtered)}))
+    {:metrics          slimmed
+     :dimension_groups (group-dimensions filtered)}))
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."

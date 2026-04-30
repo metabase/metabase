@@ -970,6 +970,7 @@
            app-db
            lib
            lib-be
+           lib-metric
            metrics
            models
            queries
