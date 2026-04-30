@@ -28,3 +28,6 @@ docs/developers-guide # exclude from tech-writer ownership
 
 # @metabase/cloud-ops
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
+
+# @metabase/metabot-frontend
+frontend/src/metabase/metabot @metabase/metabot-frontend
