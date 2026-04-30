@@ -7,7 +7,14 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -102,6 +109,8 @@ export function SchemaViewer({
   isFetching,
   error,
 }: SchemaViewerProps) {
+  const { colorScheme } = useColorScheme();
+
   // ReactFlow instance and state
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     SchemaViewerFlowNode,
@@ -142,15 +151,33 @@ export function SchemaViewer({
     null,
   );
 
-  // --- Derived values -------------------------------------------------------
-
-  const { colorScheme } = useColorScheme();
-  const hasEntry = databaseId != null;
-
-  const visibleTableIds = useMemo(
-    () => new Set(nodes.map((n) => n.data.table_id as ConcreteTableId)),
-    [nodes],
-  );
+  // Stable Set: returns the same reference until the *membership* changes.
+  // Without this, dragging a node (which produces a new `nodes` array on
+  // every animation frame) would build a new Set each tick, rebuild the
+  // SchemaViewerContext value, and force every TableNode + FieldRow to
+  // re-render through `useContext` — which `memo` does NOT shield against.
+  const visibleTableIdsRef = useRef<Set<ConcreteTableId>>(new Set());
+  const visibleTableIds = useMemo(() => {
+    const prev = visibleTableIdsRef.current;
+    if (prev.size === nodes.length) {
+      let same = true;
+      for (const n of nodes) {
+        if (!prev.has(n.data.table_id as ConcreteTableId)) {
+          same = false;
+          break;
+        }
+      }
+      if (same) {
+        return prev;
+      }
+    }
+    const next = new Set<ConcreteTableId>();
+    for (const n of nodes) {
+      next.add(n.data.table_id as ConcreteTableId);
+    }
+    visibleTableIdsRef.current = next;
+    return next;
+  }, [nodes]);
 
   const selectedNodeId = useMemo(
     () =>
@@ -161,7 +188,6 @@ export function SchemaViewer({
     [nodes, selectedNodeIdIntent],
   );
 
-  // ERD response → ReactFlow node/edge shape.
   const graph = useMemo(() => {
     if (data == null) {
       return null;
@@ -178,10 +204,9 @@ export function SchemaViewer({
     [edges],
   );
 
-  // --- Hooks (sync, layout actions, edge zoom) ------------------------------
-
+  const hasDbSelected = databaseId != null;
   const { registerPendingEdgeSelection } = useGraphSync({
-    hasEntry,
+    hasDbSelected,
     error,
     isFetching,
     graph,
@@ -383,7 +408,7 @@ export function SchemaViewer({
             </Stack>
           </Panel>
         )}
-        {!hasEntry && !isFetching && error == null && (
+        {!hasDbSelected && !isFetching && error == null && (
           <Panel position="top-center">
             <Stack align="center" justify="center" pt="xl">
               <Text c="text-tertiary">{t`Pick a database to view its schema`}</Text>

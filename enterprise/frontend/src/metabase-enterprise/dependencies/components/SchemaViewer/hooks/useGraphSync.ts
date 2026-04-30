@@ -11,7 +11,7 @@ import { getNodesWithPositions, mergeWithExistingPositions } from "../utils";
 
 type UseGraphSyncArgs = {
   /** True once a databaseId has been picked — without it we render nothing. */
-  hasEntry: boolean;
+  hasDbSelected: boolean;
   /** RTK-Query error from useGetErdQuery. */
   error: unknown;
   /** RTK-Query isFetching from useGetErdQuery. */
@@ -56,7 +56,7 @@ type UseGraphSyncArgs = {
  *    camera pans to wherever they landed.
  */
 export function useGraphSync({
-  hasEntry,
+  hasDbSelected,
   error,
   isFetching,
   graph,
@@ -110,7 +110,7 @@ export function useGraphSync({
   }
 
   useEffect(() => {
-    if (!hasEntry || error != null) {
+    if (!hasDbSelected || error != null) {
       setNodes([]);
       setEdges([]);
       setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
@@ -193,7 +193,7 @@ export function useGraphSync({
       dispatchCameraFit({ type: "fitAll" });
     }
   }, [
-    hasEntry,
+    hasDbSelected,
     graph,
     error,
     isFetching,
