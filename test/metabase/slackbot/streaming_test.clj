@@ -174,7 +174,7 @@
                @posted-message))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-on-messages-test
-  (testing "store-message! receives ai-proxy? = true for metabase/ prefixed provider"
+  (testing "user + assistant persists receive ai-proxy? = true for metabase/ prefixed provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
             store-opts (atom [])]
@@ -187,6 +187,10 @@
                             metabot.persistence/store-message!
                             (fn [_conv-id _profile-id _messages & {:as opts}]
                               (swap! store-opts conj opts)
+                              nil)
+                            metabot.persistence/store-native-parts!
+                            (fn [_conv-id _profile-id _parts & {:as opts}]
+                              (swap! store-opts conj opts)
                               nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
@@ -194,13 +198,36 @@
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user + assistant store-message! calls both received ai-proxy? = true"
+            (testing "user (store-message!) + assistant (store-native-parts!) both received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}
                        {:ai-proxy? true}]
                       @store-opts)))))))))
 
+(deftest slackbot-streaming-persists-failed-conversations-test
+  (testing "User message is persisted even if setup throws after it (BOT-1279)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            stored     (promise)]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_ctx]
+            (with-redefs [metabot.persistence/store-message!
+                          (fn [_conv-id _profile-id _messages & {:as opts}]
+                            (deliver stored opts)
+                            nil)
+                          ;; Force setup to throw *after* the user message has been stored.
+                          slackbot.persistence/message-history
+                          (fn [& _] (throw (ex-info "boom" {})))]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (let [opts (deref stored 5000 ::timeout)]
+                (testing "user store-message! was called before the failure"
+                  (is (not= ::timeout opts))
+                  (is (some? (:slack-msg-id opts))))))))))))
+
 (deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
-  (testing "store-message! receives ai-proxy? = false for direct BYOK provider"
+  (testing "user + assistant persists receive ai-proxy? = false for direct BYOK provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
             store-opts (atom [])]
@@ -211,6 +238,10 @@
               (with-redefs [metabot.persistence/store-message!
                             (fn [_conv-id _profile-id _messages & {:as opts}]
                               (swap! store-opts conj opts)
+                              nil)
+                            metabot.persistence/store-native-parts!
+                            (fn [_conv-id _profile-id _parts & {:as opts}]
+                              (swap! store-opts conj opts)
                               nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
@@ -218,7 +249,7 @@
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user + assistant store-message! calls both received ai-proxy? = false"
+            (testing "user (store-message!) + assistant (store-native-parts!) both received ai-proxy? = false"
               (is (=? [{:ai-proxy? false}
                        {:ai-proxy? false}]
                       @store-opts)))))))))
