@@ -19,6 +19,15 @@ export interface UseUserKeyValueParams<T extends UserKeyValue> {
 
 export type UseUserKeyValueResult<T extends UserKeyValue> = {
   value: T["value"];
+  /**
+   * Like `value`, but reflects only the result for the current `(namespace,
+   * key)` args. While a new subscription is settling after args change,
+   * `value` "sticks" to the previous args' result (RTK Query's `data`
+   * field), which can leak stale state into consumers that read it
+   * synchronously during render. `currentValue` is `undefined` during that
+   * transition window — use it when staleness across key changes matters.
+   */
+  currentValue: T["value"] | undefined;
   setValue: (value: T["value"]) => Promise<{ data?: unknown; error?: unknown }>;
   isLoading: boolean;
   isMutating: boolean;
@@ -37,6 +46,7 @@ export function useUserKeyValue<T extends UserKeyValue>({
   const queryParams = user && !skip ? { namespace, key } : skipToken;
   const {
     data: valueFromQuery,
+    currentData: currentValueFromQuery,
     isLoading: queryIsLoading,
     error: fetchError,
   } = useGetUserKeyValueQuery(queryParams);
@@ -67,6 +77,7 @@ export function useUserKeyValue<T extends UserKeyValue>({
   // valueFromQuery for non-existing keys is "", so the default value is not returned
   return {
     value: user ? (valueFromQuery ?? defaultValue) : defaultValue,
+    currentValue: user ? currentValueFromQuery : undefined,
     setValue,
     clearValue,
     isLoading: user ? queryIsLoading : false,

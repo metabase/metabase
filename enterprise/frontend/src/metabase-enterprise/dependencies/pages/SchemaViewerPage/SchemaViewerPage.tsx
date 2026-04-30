@@ -10,7 +10,9 @@ import { useGetErdQuery } from "metabase-enterprise/api";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
-import { useRestoreSchemaViewerState } from "../../components/SchemaViewer/hooks/useRestoreSchemaViewerState";
+import { useSchemaPreferencesStore } from "../../components/SchemaViewer/hooks/useSchemaPreferencesStore";
+
+import { useRedirectToLastDatabase } from "./useRedirectToLastDatabase";
 
 type SchemaViewerPageQuery = {
   "database-id"?: string;
@@ -40,8 +42,10 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
     return ids.map((id) => Number(id) as ConcreteTableId);
   }, [rawTableIds]);
 
+  useRedirectToLastDatabase({ databaseId, schema });
+
   const { extraTableIds, addExtraTableId, contextKey, isRestoring } =
-    useRestoreSchemaViewerState({ databaseId, schema, initialTableIds });
+    useSchemaPreferencesStore({ databaseId, schema, initialTableIds });
 
   // Defer the ERD query until per-context saved prefs have resolved — without
   // this gate we'd fire two requests on every schema entry: one with empty
