@@ -59,6 +59,13 @@ const EMPTY_ROLES: TableEdgeRoles = {
   selfRefTargetFieldIds: new Set(),
 };
 
+// z-index scheme. Nodes sit above all edges so selected-edge highlighting
+// (which bumps the edge to SELECTED_EDGE_Z_INDEX) doesn't paint over node cards.
+// Both stay well below the SchemaViewer chrome (panels at 5).
+const NODE_Z_INDEX = 2;
+const EDGE_Z_INDEX_DEFAULT = 0;
+const SELECTED_EDGE_Z_INDEX = 1;
+
 function toFlowNode(
   node: ErdNode,
   roles: TableEdgeRoles,
@@ -67,6 +74,7 @@ function toFlowNode(
     id: getNodeId(node),
     type: "schemaViewerTable",
     position: { x: 0, y: 0 },
+    zIndex: NODE_Z_INDEX,
     data: {
       ...node,
       fields: sortFields(node.fields),
@@ -93,6 +101,7 @@ function toFlowEdge(edge: ErdEdge): SchemaViewerFlowEdge {
       ? `field-${edge.target_field_id}-right`
       : `field-${edge.target_field_id}`,
     type: "schemaViewerEdge",
+    zIndex: EDGE_Z_INDEX_DEFAULT,
     data: {
       relationship: edge.relationship,
     },
@@ -165,4 +174,15 @@ export function toFlowGraph(data: ErdResponse): {
   edges: SchemaViewerFlowEdge[];
 } {
   return memoizedToFlowGraph(data);
+}
+
+export function markSelectedEdge(
+  edge: SchemaViewerFlowEdge,
+): SchemaViewerFlowEdge {
+  return edge.selected
+    ? {
+        ...edge,
+        zIndex: SELECTED_EDGE_Z_INDEX,
+      }
+    : edge;
 }

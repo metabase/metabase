@@ -38,8 +38,6 @@ export function SelectedNodeInfoPanel({
 }: SelectedNodeInfoPanelProps) {
   const zoomToNodes = useZoomToNodes();
 
-  // RTK-Query dedupes with the SchemaPickerInput subscription, so this is
-  // free — we just want the database name for the panel's breadcrumbs.
   const { data: databasesResponse } = useListDatabasesQuery({
     include: "schemas",
   });
@@ -160,7 +158,7 @@ function toTableDependencyNode(
           database_type: f.database_type,
           semantic_type: f.semantic_type ?? null,
           fk_target_field_id: f.fk_target_field_id ?? null,
-        }) as unknown as Field,
+        }) as Field,
     ),
   };
   return {

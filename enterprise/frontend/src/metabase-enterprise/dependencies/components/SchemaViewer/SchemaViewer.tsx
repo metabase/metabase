@@ -47,6 +47,7 @@ import type {
   ViewportFitAction,
 } from "./types";
 import { toFlowGraph } from "./utils";
+import { markSelectedEdge } from "./utils/flow-graph";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -169,28 +170,13 @@ export function SchemaViewer({
   }, [data]);
 
   // Lift selected edges above unselected ones so the highlighted edge
-  // always renders on top of any edges that cross through it. We do this
-  // by reordering the array (selected edges last) rather than setting a
-  // high `zIndex` — high zIndex would promote the edge above the node
-  // layer in React Flow, which makes it overlap node cards. Reordering
-  // keeps the selected edge in the regular edges layer (below nodes) and
-  // simply places it later in the SVG, which is sufficient because SVG
-  // z-order is determined by DOM order.
-  const edgesForRender = useMemo(() => {
-    if (!edges.some((e) => e.selected)) {
-      return edges;
-    }
-    const unselected: SchemaViewerFlowEdge[] = [];
-    const selected: SchemaViewerFlowEdge[] = [];
-    for (const edge of edges) {
-      if (edge.selected) {
-        selected.push(edge);
-      } else {
-        unselected.push(edge);
-      }
-    }
-    return [...unselected, ...selected];
-  }, [edges]);
+  // always renders on top of any edges that cross through it. Nodes are
+  // pinned at zIndex 2 in `flow-graph.ts`, so the selected edge at zIndex 1
+  // still renders below table cards — no overlap with node bodies.
+  const edgesForRender = useMemo(
+    () => (edges.some((e) => e.selected) ? edges.map(markSelectedEdge) : edges),
+    [edges],
+  );
 
   // --- Hooks (sync, layout actions, edge zoom) ------------------------------
 
@@ -305,8 +291,6 @@ export function SchemaViewer({
     dispatchViewportFit({ type: "clear" });
   }, []);
 
-  // --- Context value (consumed by TableNode, FieldRow, …) -------------------
-
   const schemaViewerContextValue = useMemo(
     () => ({
       visibleTableIds,
@@ -323,8 +307,6 @@ export function SchemaViewer({
       handleSelectNode,
     ],
   );
-
-  // --- Render ---------------------------------------------------------------
 
   return (
     <SchemaViewerContext.Provider value={schemaViewerContextValue}>
@@ -345,11 +327,9 @@ export function SchemaViewer({
         onEdgesChange={onEdgesChange}
         onEdgeClick={handleEdgeClick}
       >
-        {/* Canvas chrome */}
         <Background />
         <MiniMap position="bottom-right" pannable zoomable />
 
-        {/* Top-left: context picker + search */}
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
             <SchemaPickerInput
@@ -361,12 +341,10 @@ export function SchemaViewer({
           </Group>
         </Panel>
 
-        {/* Top-right: app switcher */}
         <Panel position="top-right">
           <AppSwitcher className={S.appSwitcher} />
         </Panel>
 
-        {/* Bottom-left: layout controls (only when canvas has content) */}
         {nodes.length > 0 && (
           <Panel position="bottom-left">
             <Group gap="sm">
@@ -385,14 +363,12 @@ export function SchemaViewer({
           </Panel>
         )}
 
-        {/* Right side: selected-node info panel (renders its own <Panel>) */}
         <SelectedNodeInfoPanel
           nodes={nodes}
           selectedNodeId={selectedNodeId}
           onClose={handleClearSelection}
         />
 
-        {/* Status overlays */}
         {isFetching && (
           <Box className={S.centerLoader}>
             <Loader />
