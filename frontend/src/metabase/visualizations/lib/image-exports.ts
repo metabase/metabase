@@ -99,20 +99,18 @@ export interface DashboardRenderSetup {
 }
 
 export const setupDashboardForRendering = (
-  selector: string,
-  parametersNodeSelector: string,
+  dashboardRoot: HTMLElement,
+  getParametersNode: (dashboardRoot: HTMLElement) => HTMLElement | null,
 ): DashboardRenderSetup | undefined => {
-  const dashboardRoot = document.querySelector(selector);
-  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
+  const gridNode = dashboardRoot.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
-    console.warn("No dashboard content found", selector);
+    console.warn("No dashboard content found");
     return undefined;
   }
 
-  const pageHeaderParametersNode = dashboardRoot
-    ?.querySelector(parametersNodeSelector)
-    ?.cloneNode(true);
+  const pageHeaderParametersNode =
+    getParametersNode(dashboardRoot)?.cloneNode(true);
 
   let parametersHeight = 0;
   if (pageHeaderParametersNode instanceof HTMLElement) {
@@ -148,7 +146,15 @@ export const getDashboardImage = async (
   selector: string,
   parametersNodeSelector: string,
 ): Promise<string | undefined> => {
-  const setup = setupDashboardForRendering(selector, parametersNodeSelector);
+  const dashboardRoot = document.querySelector(selector);
+  if (!(dashboardRoot instanceof HTMLElement)) {
+    console.warn("No dashboard root found", selector);
+    return undefined;
+  }
+
+  const setup = setupDashboardForRendering(dashboardRoot, (root) =>
+    root.querySelector<HTMLElement>(parametersNodeSelector),
+  );
   if (!setup) {
     return undefined;
   }
