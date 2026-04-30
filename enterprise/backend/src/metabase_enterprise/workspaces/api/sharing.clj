@@ -83,9 +83,3 @@
                                                             (get fields-by-table (:id t) []))})
                                            relevant-tables)}])))
            provisioned-wsds)}))
-
-;;; ----------------------------------------------- Route handler --------------------------------------------------
-
-(def ^{:arglists '([request respond raise])} routes
-  "Unauthenticated `/api/ee/workspace-sharing` routes."
-  (api.macros/ns-handler *ns*))

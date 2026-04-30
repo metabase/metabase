@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.api.workspace-manager-test
+(ns metabase-enterprise.workspaces.api.manager-test
   "Smoke tests for the workspace-manager HTTP API.
    Behavioral logic is tested in core_test.clj — these just verify routing, auth, and
    request/response shape through the HTTP layer."

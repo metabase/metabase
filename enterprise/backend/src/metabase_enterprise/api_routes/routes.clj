@@ -137,7 +137,7 @@
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
    "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
    "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)
-   "/workspace-sharing"            (premium-handler metabase-enterprise.workspaces.api.sharing/routes :workspaces)})
+   "/workspace-sharing"            (premium-handler metabase-enterprise.workspaces.api/sharing-routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

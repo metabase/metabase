@@ -1,6 +1,6 @@
-(ns metabase-enterprise.workspaces.api.workspace-instance
+(ns metabase-enterprise.workspaces.api.instance
   "EE API endpoints for the workspace loaded on this (child) instance, served under
-   `/api/ee/workspace-instance`. Read-only — see [[metabase-enterprise.workspaces.api.workspace-manager]]
+   `/api/ee/workspace-instance`. Read-only — see [[metabase-enterprise.workspaces.api.manager]]
    for admin operations."
   (:require
    [metabase-enterprise.remote-sync.impl :as remote-sync.impl]

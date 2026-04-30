@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.api.workspace-manager
+(ns metabase-enterprise.workspaces.api.manager
   "EE API endpoints for managing workspaces (admin), served under `/api/ee/workspace-manager`.
    Validation, auth, and presentation only — all logic lives in
    [[metabase-enterprise.workspaces.core]]."
