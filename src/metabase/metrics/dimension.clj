@@ -42,7 +42,7 @@
                      (mapv (fn [d]
                              (let [fid  (resolve-fid metric d)
                                    row  (get field->row fid)]
-                               (merge d (zipmap field-cols (map row field-cols)))))
+                               (merge d (zipmap field-cols (map #(get row %) field-cols)))))
                            dims))
               metric))
           metrics)))
