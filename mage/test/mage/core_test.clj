@@ -9,7 +9,6 @@
    [mage.bot.autobot-test]
    [mage.bot.dev-env-core-test]
    [mage.bot.env-test]
-   [mage.bot.git-readonly-test]
    [mage.bot.prompt-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]

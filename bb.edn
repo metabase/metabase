@@ -781,16 +781,6 @@
              [nil "--raw" "Suppress diagnostic preamble on stderr (pure-body stdout for jq/python piping)"]]
    :task (task! (api-call/api-call! parsed))}
 
-  -bot-git-readonly
-  {:doc "Execute a git or gh command only if it's a read-only operation"
-   :examples [["./bin/mage -bot-git-readonly git log --oneline -10" "View recent commits"]
-              ["./bin/mage -bot-git-readonly git diff origin/master...HEAD" "View branch diff"]
-              ["./bin/mage -bot-git-readonly gh pr view --json title,body" "View current PR"]
-              ["./bin/mage -bot-git-readonly gh pr list" "List open PRs"]]
-   :requires [[mage.bot.git-readonly :as git-readonly]]
-   ;; Bypass task! macro — args are passed through raw to git/gh, not parsed by tools.cli
-   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}
-
   -bot-md-to-pdf
   {:doc "Convert a markdown file to PDF using md-to-pdf"
    :examples [["./bin/mage -bot-md-to-pdf report.md" "Convert report.md to report.pdf"]

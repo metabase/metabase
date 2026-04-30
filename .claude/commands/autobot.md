@@ -15,12 +15,12 @@ The first token can be either a branch name OR a PR preview environment URL:
 
 If the first token matches the PR-env URL pattern:
 1. Extract the PR number from the anchored regex above (the digits after `pr`).
-2. Resolve the branch name by running `./bin/mage -bot-git-readonly gh pr view <PR_NUMBER> --json headRefName` and reading `headRefName`.
+2. Resolve the branch name by running `gh pr view <PR_NUMBER> --json headRefName` and reading `headRefName`.
 3. Use that branch for the worktree (so the bot has access to the PR's source code).
 4. Set `PR_ENV_URL` to the matched URL.
 5. Pass `--pr-env-url <URL>` to `-autobot-go` in step 4.
 
-**Note:** PR preview environments are reachable only from the Metabase Tailscale network. If `gh pr view`, the `-bot-git-readonly` call, or the preview URL itself hangs or times out, tell the user to check their Tailscale connection.
+**Note:** PR preview environments are reachable only from the Metabase Tailscale network. If `gh pr view` or the preview URL itself hangs or times out, tell the user to check their Tailscale connection.
 
 If the next two words after the branch/URL are `from <base>`: use `<base>` as the base branch. The `from <base>` clause is the signal that autobot should **create the branch** from `<base>` if it doesn't exist. If the branch already exists, passing `from <base>` is an error (the base would be silently ignored otherwise). Pass `--base <base>` to `-autobot-go` in step 4.
 
