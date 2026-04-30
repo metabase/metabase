@@ -46,7 +46,7 @@
           (is (= [{:first_name   "Workspace"
                    :last_name    "Admin"
                    :email        "workspace@workspace.local"
-                   :password     "password1"
+                   :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
                    :is_superuser true}]
                  (-> cfg :config :users))))
         (testing "workspace entry"

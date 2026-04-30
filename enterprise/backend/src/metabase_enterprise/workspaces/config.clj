@@ -10,12 +10,15 @@
 
 (defn- user-entry
   "Build the admin user entry for the config from the workspace creator. Falls back
-   to a generic default if the creator has been deleted."
+   to a generic default if the creator has been deleted. The password is the
+   `{{env MB_WORKSPACE_USER_PASSWORD}}` placeholder so the developer instance picks
+   it up from the `MB_WORKSPACE_USER_PASSWORD` env var at boot — see
+   [[metabase-enterprise.advanced-config.file]] for the template-expansion mechanics."
   [creator]
   {:first_name   (or (:first_name creator) "Workspace")
    :last_name    (or (:last_name creator) "Admin")
    :email        (or (:email creator) "workspace@workspace.local")
-   :password     "password1"
+   :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
    :is_superuser true})
 
 (defn- database-entry [wsd db]
