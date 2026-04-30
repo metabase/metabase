@@ -9,8 +9,8 @@ export interface Undo {
   type?: string;
   action?: (() => void) | null;
   message?: ReactNode | ((undo: Undo) => ReactNode);
-  timeout?: number;
-  initialTimeout?: number;
+  timeout?: number | null;
+  initialTimeout?: number | null;
   actions?: (() => void)[];
   showProgress?: boolean;
   icon?: IconName | null;
