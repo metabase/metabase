@@ -49,6 +49,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
@@ -59,6 +60,7 @@
     :model/LoginHistory
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotFeedback
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotMessage
@@ -125,7 +127,9 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    :model/Workspace
+    :model/WorkspaceDatabase})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

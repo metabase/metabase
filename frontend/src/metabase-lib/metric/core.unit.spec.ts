@@ -1,5 +1,4 @@
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
+import { createMockMetadata } from "__support__/metadata";
 import type { JsMetricDefinition } from "metabase-types/api";
 import {
   createMockMetric,
@@ -77,14 +76,12 @@ const DIM_IDX = {
   TIME: 6, // Event Time - type/Time
 };
 
-function createSampleMetadata(): Metadata {
-  const metadata = new Metadata();
+function createSampleMetadata() {
+  const metadata = createMockMetadata();
 
-  // Add the metric to the metadata object
-  const metricInstance = new Metric(SAMPLE_METRIC as any);
-  metricInstance.metadata = metadata;
+  // @ts-expect-error - mock metric works just as well as a real one
   metadata.metrics = {
-    [SAMPLE_METRIC.id]: metricInstance,
+    [SAMPLE_METRIC.id]: SAMPLE_METRIC,
   };
 
   return metadata;

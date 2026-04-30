@@ -1,8 +1,11 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.api-keys.core :as api-keys]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,7 +15,12 @@
 
 (doto :model/Workspace
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(t2/deftransforms :model/Workspace
+  {:api_key {:in  encryption/maybe-encrypt
+             :out encryption/maybe-decrypt}})
 
 (methodical/defmethod t2/batched-hydrate [:model/Workspace :databases]
   [_model k workspaces]
@@ -67,12 +75,20 @@
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
   The param map must supply `:creator_id`. Returns the created Workspace with
-  `:databases` and `:creator` hydrated."
+  `:databases` and `:creator` hydrated.
+
+  Generates a fresh `mb_<base64>` API key (same format as
+  [[metabase.api-keys.core/generate-key]]) and stores it on the workspace row.
+  This key is emitted into the workspace's downloadable `config.yml` under the
+  static `WorkspaceApiKey` name and is intentionally not surfaced through any
+  update endpoint — to rotate it, recreate the workspace."
   [{:keys [name creator_id databases]}]
   (t2/with-transaction [_conn]
-    (let [ws-id (t2/insert-returning-pk! :model/Workspace
-                                         {:name       name
-                                          :creator_id creator_id})]
+    (let [api-key (u.secret/expose (api-keys/generate-key))
+          ws-id   (t2/insert-returning-pk! :model/Workspace
+                                           {:name       name
+                                            :creator_id creator_id
+                                            :api_key    api-key})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
                     (map #(with-workspace-database-defaults % ws-id) databases)))

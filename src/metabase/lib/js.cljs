@@ -1924,24 +1924,6 @@
   [a-query stage-number]
   (to-array (lib.core/joins a-query stage-number)))
 
-(defn ^:export rename-join
-  "Rename the join specified by `join-spec` on the given stage of `a-query` to `new-name`.
-
-  `join-spec` can be any of:
-
-  - The join clause itself (as returned by [[joins]])
-  - Its join alias (a string)
-  - Its index in the list of joins as returned by [[joins]]
-
-  If the specified join cannot be found, then `a-query` is returned with no changes.
-
-  If renaming the join to `new-name` would clash with an existing join, a suffix is appended to `new-name` to make it
-  unique.
-
-  > **Code health:** Healthy"
-  [a-query stage-number join-spec new-name]
-  (lib.core/rename-join a-query stage-number join-spec new-name))
-
 (defn ^:export remove-join
   "Remove the join specified by `join-spec` from the given stage of `a-query` at `stage-number`.
 
@@ -2061,17 +2043,6 @@
   [a-query]
   (template-tags-cljs->js (lib.core/template-tags a-query)))
 
-(defn ^:export required-native-extras
-  "Returns a JS array of the extra keys that are required for this database's native queries.
-
-  For example `:collection` name is needed for MongoDB queries.
-
-  > **Code health:** Single use. This is only intended to be called from the native query editor."
-  [database-id metadata]
-  (to-array
-   (map u/qualified-name
-        (lib.core/required-native-extras (metadataProvider database-id metadata)))))
-
 (defn ^:export has-write-permission
   "Returns whether the database targeted by `a-query` has native write permissions.
 
@@ -2140,16 +2111,6 @@
   when they are."
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
-
-(defn ^:export measure-metadata
-  "Get metadata for the Measure with `measure-id`, if it can be found.
-
-  `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
-  will be a query.
-
-  > **Code health:** Healthy."
-  [metadata-providerable measure-id]
-  (lib.metadata/measure metadata-providerable measure-id))
 
 (defn ^:export available-measures
   "Returns a JS array of opaque Measures metadata objects, that could be used as aggregations for `a-query`.
@@ -2452,16 +2413,6 @@
   [a-drill-thru pivot-type]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
-(defn ^:export with-different-table
-  "Changes an existing `a-query` to use a different source table or card.
-
-  Can be passed an integer table id or a legacy `\"card__<id>\"` string.
-
-  > **Code health:** Smelly. This leaks the `card__<id>` format and how sources work. Should be refactored into a new
-  system for handling data sources."
-  [a-query table-id]
-  (lib.core/with-different-table a-query table-id))
-
 (defn ^:export format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
@@ -2643,15 +2594,6 @@
   > **Code health:** Healthy"
   [a-query card-id card-type]
   (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
-
-(defn ^:export table-or-card-dependent-metadata
-  "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
-
-  Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
-
-  > **Code health:** Healthy"
-  [metadata-providerable table-id]
-  (clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id)))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

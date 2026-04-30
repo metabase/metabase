@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { getIcon } from "metabase/common/utils/icon";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -11,7 +12,6 @@ import type {
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
-import { getIcon } from "metabase/utils/icon";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection, CollectionId } from "metabase-types/api";
 

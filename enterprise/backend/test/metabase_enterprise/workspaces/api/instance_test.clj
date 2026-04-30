@@ -6,7 +6,6 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -18,13 +17,6 @@
     (f)))
 
 (use-fixtures :each with-premium-feature)
-
-(defn- stub-provisioner []
-  (reify provisioning/Provisioner
-    (init! [_ _ _ _]
-      {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
-    (grant! [_ _ _ _ _] nil)
-    (destroy! [_ _ _ _] nil)))
 
 (deftest remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/remappings requires superuser"
@@ -49,26 +41,27 @@
 
 (deftest current-with-workspace-test
   (testing "GET /ee/workspace-instance/current returns the loaded workspace shaped for the FE"
-    (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-      (mt/with-model-cleanup [:model/Workspace :model/TableRemapping]
-        (let [ws (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
-                                       {:name "Current Test"})]
-          (mt/user-http-request :crowberto :post 200
-                                (str "ee/workspace-manager/" (:id ws) "/database")
-                                {:database_id (mt/id) :input_schemas ["PUBLIC"]})
-          (t2/insert! :model/TableRemapping {:database_id     (mt/id)
-                                             :from_schema     "public"
-                                             :from_table_name "events"
-                                             :to_schema       "ws_alice"
-                                             :to_table_name   "events"})
-          (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")]
-            (is (= "Current Test" (:name result)))
-            (is (= 1 (:remappings_count result)))
-            (testing "databases keyed by integer db-id"
-              (let [db-entry (get (:databases result) (mt/id))]
-                (is (some? db-entry))
-                (is (= ["PUBLIC"] (:input_schemas db-entry)))
-                (is (string? (:name db-entry)))))))))))
+    ;; The `current` endpoint reads from the in-process `workspace-instance-config`
+    ;; atom populated at boot by the `:workspace` section of `config.yml` — not from
+    ;; the manager-side app DB rows. So we set the atom directly here.
+    (mt/with-model-cleanup [:model/TableRemapping]
+      (with-redefs [ws/instance-workspace (constantly
+                                           {:name      "Current Test"
+                                            :databases {(mt/id) {:input_schemas ["PUBLIC"]
+                                                                 :output_schema "ws_alice"}}})]
+        (t2/insert! :model/TableRemapping {:database_id     (mt/id)
+                                           :from_schema     "public"
+                                           :from_table_name "events"
+                                           :to_schema       "ws_alice"
+                                           :to_table_name   "events"})
+        (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")]
+          (is (= "Current Test" (:name result)))
+          (is (= 1 (:remappings_count result)))
+          (testing "databases keyed by integer db-id"
+            (let [db-entry (get (:databases result) (mt/id))]
+              (is (some? db-entry))
+              (is (= ["PUBLIC"] (:input_schemas db-entry)))
+              (is (string? (:name db-entry))))))))))
 
 (deftest current-superuser-only-test
   (testing "GET /ee/workspace-instance/current requires superuser"

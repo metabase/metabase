@@ -3,8 +3,8 @@ import { openUrl } from "metabase/redux/app";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardCard, VirtualCard } from "metabase-types/api";
@@ -20,7 +20,7 @@ export const editQuestion = createThunkAction(
       const dashboard = dashboardId != null ? dashboards[dashboardId] : null;
       const { isNative } = Lib.queryDisplayInfo(question.query());
       const finalMode = isNative ? "view" : mode;
-      const url = Urls.question(question.card(), { mode: finalMode });
+      const url = Urls.card(question.card(), { mode: finalMode });
 
       dispatch(openUrl(url));
       return { id: dashboardId, name: dashboard?.name, model: "dashboard" };

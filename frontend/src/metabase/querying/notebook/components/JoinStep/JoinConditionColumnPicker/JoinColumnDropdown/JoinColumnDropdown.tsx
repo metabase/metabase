@@ -4,7 +4,6 @@ import {
   type ColumnListItem,
   QueryColumnPicker,
 } from "metabase/common/components/QueryColumnPicker";
-import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import {
@@ -46,7 +45,7 @@ export function JoinColumnDropdown({
     isEditingExpressionInitially(expression),
   );
   const [initialExpressionClause, setInitialExpressionClause] =
-    useState<DefinedClauseName | null>(null);
+    useState<Lib.DefinedClauseName | null>(null);
 
   const { columns, columnGroups } = useMemo(() => {
     const getColumns = isLhsPicker
@@ -75,7 +74,7 @@ export function JoinColumnDropdown({
     onClose();
   };
 
-  const handleExpressionClauseSelect = (clause?: DefinedClauseName) => {
+  const handleExpressionClauseSelect = (clause?: Lib.DefinedClauseName) => {
     setInitialExpressionClause(clause ?? null);
     setIsEditingExpression(true);
   };

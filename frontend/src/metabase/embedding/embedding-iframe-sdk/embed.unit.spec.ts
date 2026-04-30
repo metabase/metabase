@@ -320,6 +320,31 @@ describe("embed.js script tag for sdk iframe embedding", () => {
         );
       });
 
+      it("should parse a stringified JSON passed to custom-context", async () => {
+        fetchMock.post("path:/mock-provider", { jwt: "refreshed-token" });
+
+        const { triggerIframeMessage } = setupGuestEmbed({
+          dashboardId: "1",
+          customContext: '{"param":"value","nested":{"a":1}}',
+        });
+
+        triggerIframeMessage({
+          type: "metabase.embed.requestGuestTokenRefresh",
+          data: { expiredToken: "any.expired.token" },
+        });
+        await flushPromises();
+
+        const call = fetchMock.callHistory.lastCall("path:/mock-provider");
+        expect(call?.options).toMatchObject({
+          method: "post",
+          body: JSON.stringify({
+            entityType: "dashboard",
+            entityId: 1,
+            customContext: { param: "value", nested: { a: 1 } },
+          }),
+        });
+      });
+
       it("sends reportAuthenticationError to iframe when provider returns HTTP error", async () => {
         fetchMock.post("path:/mock-provider", 403);
 

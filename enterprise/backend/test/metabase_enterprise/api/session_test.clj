@@ -25,6 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
@@ -75,6 +76,7 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
@@ -116,6 +118,7 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
+            :workspaces                     false
             :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 

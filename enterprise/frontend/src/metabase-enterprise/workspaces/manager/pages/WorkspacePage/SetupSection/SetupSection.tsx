@@ -1,123 +1,149 @@
 import { jt, t } from "ttag";
 
-import { Link } from "metabase/common/components/Link";
-import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { Anchor, Button, Code, Divider, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import { Anchor, Button, Code, Divider, Group, Stack, Text } from "metabase/ui";
 import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
+import type { Workspace } from "metabase-types/api";
 
-export function SetupSection() {
-  const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
-  const isAdmin = useSelector(getUserIsAdmin);
+const LOCAL_INSTANCE_URL = "http://localhost:3000";
+const CONFIG_FILE_NAME = "config.yml";
+const METADATA_DIR_NAME = ".metadata/";
+const PASSWORD_ENV_VAR = "MB_WORKSPACE_USER_PASSWORD";
 
+type SetupSectionProps = {
+  workspace: Workspace;
+};
+
+export function SetupSection({ workspace }: SetupSectionProps) {
   return (
     <TitleSection
       label={t`Set up a development instance`}
       description={t`Run a local instance backed by this workspace's data, so you can iterate on changes safely.`}
     >
-      {isRemoteSyncEnabled ? (
-        <DevInstanceInstructions />
-      ) : (
-        <RemoteSyncMissing isAdmin={isAdmin} />
-      )}
+      <DownloadConfigSection workspace={workspace} />
+      <Divider />
+      <ExportEnvVarsSection workspace={workspace} />
+      <Divider />
+      <RunInstanceSection />
+      <Divider />
+      <UsageCommentsSection workspace={workspace} />
     </TitleSection>
   );
 }
 
-type RemoteSyncMissingProps = {
-  isAdmin: boolean;
+type DownloadConfigSectionProps = {
+  workspace: Workspace;
 };
 
-function RemoteSyncMissing({ isAdmin }: RemoteSyncMissingProps) {
+function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
+  const configUrl = `/api/ee/workspace-manager/${workspace.id}/config/yaml`;
+  const metadataUrl = `/api/ee/workspace-manager/${workspace.id}/table-metadata/json`;
+  const fieldValuesUrl = `/api/ee/workspace-manager/${workspace.id}/field-values/json`;
+
   return (
-    <Stack p="md" gap="sm" align="flex-start">
-      <Text>{t`Set up remote sync to be able to pull instance data as files.`}</Text>
-      {isAdmin ? (
-        <Button variant="filled" component={Link} to={Urls.dataStudioGitSync()}>
-          {t`Set up remote sync`}
+    <Stack p="md" gap="lg" align="flex-start">
+      <Stack gap="sm" align="flex-start">
+        <Text>
+          {jt`Download the workspace's ${<Code key="cfg">{CONFIG_FILE_NAME}</Code>} file. It contains the isolated database credentials:`}
+        </Text>
+        <Button component="a" href={configUrl} download="config.yml">
+          {t`Download config.yml`}
         </Button>
-      ) : (
-        <Text c="text-secondary">{t`Ask your admin to set it up first.`}</Text>
-      )}
+      </Stack>
+      <Stack gap="sm" align="flex-start">
+        <Text>
+          {jt`Download table metadata into the ${<Code key="dir">{METADATA_DIR_NAME}</Code>} folder to skip syncing the database in the development instance and help a coding agent understand the schema:`}
+        </Text>
+        <Group gap="sm">
+          <Button
+            component="a"
+            href={metadataUrl}
+            download="table_metadata.json"
+          >
+            {t`Download table_metadata.json`}
+          </Button>
+          <Button
+            component="a"
+            href={fieldValuesUrl}
+            download="field_values.json"
+          >
+            {t`Download field_values.json`}
+          </Button>
+        </Group>
+      </Stack>
     </Stack>
   );
 }
 
-const LOCAL_INSTANCE_URL = "http://localhost:3000";
+type ExportEnvVarsSectionProps = {
+  workspace: Workspace;
+};
 
-function DevInstanceInstructions() {
-  const siteUrl = useSetting("site-url") ?? "<site-url>";
-  const remoteSyncUrl = useSetting("remote-sync-url") ?? "<remote-sync-url>";
+function ExportEnvVarsSection({ workspace }: ExportEnvVarsSectionProps) {
+  const hasCreator = workspace.creator != null;
+  const envVars = hasCreator
+    ? "MB_PREMIUM_EMBEDDING_TOKEN=\nMB_WORKSPACE_USER_PASSWORD="
+    : "MB_PREMIUM_EMBEDDING_TOKEN=";
+  const description = hasCreator
+    ? t`Export the license token and the default user password:`
+    : t`Export the license token:`;
 
   return (
-    <>
-      <Stack p="md" gap="sm">
-        <Text>{t`Pull the latest content from this instance's git repository:`}</Text>
-        <Code block>{getGitPullCommand(remoteSyncUrl)}</Code>
-      </Stack>
-      <Divider />
-      <Stack p="md" gap="sm">
-        <Text>{t`Export these environment variables:`}</Text>
-        <Code block>{getEnvFileContents()}</Code>
-      </Stack>
-      <Divider />
-      <Stack p="md" gap="sm">
-        <Text>{t`Download the workspace's config file:`}</Text>
-        <Code block>{getCurlCommand(siteUrl)}</Code>
-      </Stack>
-      <Divider />
-      <Stack p="md" gap="sm">
-        <Text>
-          {jt`Start the developer instance at ${(
-            <Anchor
-              key="url"
-              href={LOCAL_INSTANCE_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {LOCAL_INSTANCE_URL}
-            </Anchor>
-          )}:`}
-        </Text>
-        <Code block>{getDockerCommand()}</Code>
-      </Stack>
-      <Divider />
-      <Stack p="md" gap="sm">
-        <Text>
-          {t`Edit the files locally and commit your changes — then pull them into the developer instance from Admin → Settings → Remote sync.`}
-        </Text>
-      </Stack>
-    </>
+    <Stack p="md" gap="sm">
+      <Text>{description}</Text>
+      <Code block>{envVars}</Code>
+    </Stack>
   );
 }
 
-function getGitPullCommand(remoteSyncUrl: string) {
-  return `git pull ${remoteSyncUrl}`;
+function RunInstanceSection() {
+  const dockerCommand = `docker run -d -p 3000:3000 \\
+  -v $(pwd)/config.yml:/config.yml \\
+  -v $(pwd)/.metadata:/.metadata \\
+  -v $(pwd)/.git:/workspace/.git \\
+  -e MB_CONFIG_FILE_PATH=/config.yml \\
+  -e MB_REMOTE_SYNC_URL=file:///workspace/.git \\
+  -e MB_TABLE_METADATA_PATH=/.metadata/table_metadata.json \\
+  -e MB_FIELD_VALUES_PATH=/.metadata/field_values.json \\
+  -e MB_PREMIUM_EMBEDDING_TOKEN \\
+  -e MB_WORKSPACE_USER_PASSWORD \\
+  metabase/metabase-enterprise:latest`;
+
+  return (
+    <Stack p="md" gap="sm">
+      <Text>
+        {jt`In the root of the repository synced with this instance, start the developer instance at ${(
+          <Anchor
+            key="url"
+            href={LOCAL_INSTANCE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {LOCAL_INSTANCE_URL}
+          </Anchor>
+        )}.`}
+      </Text>
+      <Code block>{dockerCommand}</Code>
+    </Stack>
+  );
 }
 
-function getEnvFileContents() {
-  return [
-    "MB_PREMIUM_EMBEDDING_TOKEN=",
-    "MB_WORKSPACE_ACCESS_KEY=",
-    "MB_WORKSPACE_USER_PASSWORD=",
-  ].join("\n");
-}
+type UsageCommentsSectionProps = {
+  workspace: Workspace;
+};
 
-function getCurlCommand(siteUrl: string) {
-  return `curl "${siteUrl}/api/ee/workspace-sharing/$MB_WORKSPACE_ACCESS_KEY/config/yaml" -o config.yml`;
-}
+function UsageCommentsSection({ workspace }: UsageCommentsSectionProps) {
+  const creatorEmail = workspace.creator?.email;
 
-function getDockerCommand() {
-  return [
-    "docker run -d -p 3000:3000 \\",
-    "  -v $(pwd)/config.yml:/config.yml \\",
-    "  -v $(pwd)/.git:/workspace/.git \\",
-    "  -e MB_CONFIG_FILE_PATH=/config.yml \\",
-    "  -e MB_REMOTE_SYNC_URL=file:///workspace/.git \\",
-    "  -e MB_PREMIUM_EMBEDDING_TOKEN \\",
-    "  -e MB_WORKSPACE_USER_PASSWORD \\",
-    "  metabase/metabase-enterprise:latest",
-  ].join("\n");
+  return (
+    <Stack p="md" gap="sm">
+      {creatorEmail != null && (
+        <Text>
+          {jt`Log in with ${<Code key="email">{creatorEmail}</Code>} and the password from ${<Code key="pwd">{PASSWORD_ENV_VAR}</Code>}.`}
+        </Text>
+      )}
+      <Text>
+        {t`Edit the files locally and commit your changes — then pull them into the developer instance from the remote sync settings page.`}
+      </Text>
+    </Stack>
+  );
 }

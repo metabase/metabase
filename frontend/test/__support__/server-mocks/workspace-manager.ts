@@ -7,16 +7,10 @@ export function setupListWorkspacesEndpoint(workspaces: Workspace[]) {
 }
 
 export function setupGetWorkspaceEndpoint(workspace: Workspace) {
-  fetchMock.get(
-    `path:/api/ee/workspace-manager/${workspace.id}`,
-    workspace,
-  );
+  fetchMock.get(`path:/api/ee/workspace-manager/${workspace.id}`, workspace);
 }
 
-export function setupGetWorkspaceEndpointError(
-  id: WorkspaceId,
-  status = 500,
-) {
+export function setupGetWorkspaceEndpointError(id: WorkspaceId, status = 500) {
   fetchMock.get(`path:/api/ee/workspace-manager/${id}`, {
     status,
     body: { message: "Boom" },

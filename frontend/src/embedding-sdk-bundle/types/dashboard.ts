@@ -2,7 +2,7 @@ import type {
   MetabaseCollection,
   SdkCollectionId,
 } from "embedding-sdk-bundle/types/collection";
-import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
+import type { CreateDashboardProperties } from "metabase/common/CreateDashboard/CreateDashboardForm";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type { SdkEntityId, SdkEntityToken } from "./entity";

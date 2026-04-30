@@ -17,7 +17,8 @@
                               :user   "admin"
                               :dbname "stitchdata_incoming"}}
                    :model/Workspace {ws-id :id} {:name       "github"
-                                                 :creator_id (mt/user->id :crowberto)}
+                                                 :creator_id (mt/user->id :crowberto)
+                                                 :api_key    "mb_test_workspace_key_value"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     ws-id
                     :database_id      db-id
@@ -29,8 +30,7 @@
             crowberto (mt/fetch-user :crowberto)]
         (testing "outer shape matches config.yml (version + config block)"
           (is (= 1 (:version cfg)))
-          (is (every? #(contains? (:config cfg) %)
-                      [:databases :users :workspace])))
+          (is (= #{:databases :users :api-keys :workspace} (set (keys (:config cfg))))))
         (testing "databases entry"
           (is (= 1 (count (-> cfg :config :databases))))
           (let [db (first (-> cfg :config :databases))]
@@ -45,13 +45,19 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "user matches the workspace creator; password is the env placeholder"
+        (testing "user matches the workspace creator; password is the MB_WORKSPACE_USER_PASSWORD env-var template"
           (is (= [{:first_name   (:first_name crowberto)
                    :last_name    (:last_name crowberto)
                    :email        (:email crowberto)
                    :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
                    :is_superuser true}]
                  (-> cfg :config :users))))
+        (testing "api-keys entry uses the workspace's pre-generated key with the static WorkspaceApiKey name"
+          (is (= [{:name    "WorkspaceApiKey"
+                   :key     "mb_test_workspace_key_value"
+                   :creator (:email crowberto)
+                   :group   "admin"}]
+                 (-> cfg :config :api-keys))))
         (testing "workspace entry"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"

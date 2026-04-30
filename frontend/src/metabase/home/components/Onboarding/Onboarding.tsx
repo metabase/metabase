@@ -39,7 +39,7 @@ import {
   Title,
   rem,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import S from "./Onboarding.module.css";
 import {

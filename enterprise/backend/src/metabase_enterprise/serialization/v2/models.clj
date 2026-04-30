@@ -77,6 +77,7 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
+   "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
@@ -86,6 +87,7 @@
    "ImplicitAction"
    "LoginHistory"
    "MetabotConversation"
+   "MetabotFeedback"
    "MetabotGroupLimit"
    "MetabotInstanceLimit"
    "MetabotMessage"
@@ -130,6 +132,7 @@
    "SemanticSearchTokenTracking"
    "Session"
    "SupportAccessGrantLog"
+   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
@@ -140,4 +143,6 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Workspace"
+   "WorkspaceDatabase"])

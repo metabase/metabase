@@ -5,8 +5,10 @@
   (:require
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.table-metadata :as ws.table-metadata]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.server.streaming-response :as server.streaming-response :refer [streaming-response]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -74,7 +76,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases :sharing_key])
+          (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (update :databases #(mapv present-workspace-database %))))
 
@@ -148,27 +150,6 @@
   (present-workspace
    (ws/remove-database! id db-id)))
 
-;;; ----------------------------------------- Sharing key endpoints -----------------------------------------------
-
-(api.macros/defendpoint :post "/:id/sharing-key"
-  "Set or rotate the sharing key for a workspace. The key is a fresh UUID, distinct from
-  the developer instance's admin API key (which is supplied separately at runtime via
-  the `MB_WORKSPACE_API_KEY` env var). Returns the new key."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (let [new-key (str (random-uuid))]
-    (t2/update! :model/Workspace :id id {:sharing_key new-key})
-    {:sharing_key new-key}))
-
-(api.macros/defendpoint :delete "/:id/sharing-key"
-  "Remove the sharing key from a workspace, disabling unauthenticated access."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (t2/update! :model/Workspace :id id {:sharing_key nil})
-  {:sharing_key nil})
-
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config/yaml"
@@ -185,3 +166,49 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
+
+(defn- workspace-db-id->schemas
+  "Build a `{database-id #{schema-name}}` map from a hydrated workspace, covering
+  every provisioned WorkspaceDatabase's input schemas plus its output schema.
+  Used to scope the table-metadata and field-values exports to just the data the
+  workspace exposes."
+  [ws]
+  (into {}
+        (keep (fn [wsd]
+                (when (= :provisioned (:status wsd))
+                  (let [schemas (cond-> (set (:input_schemas wsd))
+                                  (:output_schema wsd) (conj (:output_schema wsd)))]
+                    [(:database_id wsd) schemas]))))
+        (:databases ws)))
+
+(api.macros/defendpoint :get "/:id/table-metadata/json"
+  :- (server.streaming-response/streaming-response-schema
+      [:map
+       [:databases [:sequential :map]]
+       [:tables    [:sequential :map]]
+       [:fields    [:sequential :map]]])
+  "Download the workspace's database/table metadata as a JSON file. Streamed —
+  rows are pulled from the database and written to the response in batches so
+  large warehouses don't have to be materialized in memory."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [ws             (api/check-404 (ws/get-workspace id))
+        db-id->schemas (workspace-db-id->schemas ws)]
+    (streaming-response {:content-type "application/json; charset=utf-8"
+                         :headers      {"Content-Disposition" "attachment; filename=\"table_metadata.json\""}}
+                        [os _]
+                        (ws.table-metadata/write-table-metadata! os db-id->schemas))))
+
+(api.macros/defendpoint :get "/:id/field-values/json"
+  :- (server.streaming-response/streaming-response-schema
+      [:map [:field_values [:sequential :map]]])
+  "Download the workspace's sampled field values as a JSON file. Streamed for the
+  same reason as `/:id/table-metadata/json`."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [ws             (api/check-404 (ws/get-workspace id))
+        db-id->schemas (workspace-db-id->schemas ws)]
+    (streaming-response {:content-type "application/json; charset=utf-8"
+                         :headers      {"Content-Disposition" "attachment; filename=\"field_values.json\""}}
+                        [os _]
+                        (ws.table-metadata/write-field-values! os db-id->schemas))))

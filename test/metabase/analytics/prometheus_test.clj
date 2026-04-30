@@ -287,3 +287,24 @@
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-public/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))))))
+
+(deftest ^:synchronized reentrant-setup-no-ops-test
+  (testing "metric fns no-op when called reentrantly during setup! (prevents init loop)
+    Background: a known-labels impl that emits a metric (e.g. via the token-check error
+    handler that fires during driver init) used to loop back into setup! before alter-var-root
+    completed, because the metric fns auto-init when system is nil. Guarded now by *setting-up*."
+    (let [original-system @#'prometheus/system]
+      (try
+        (alter-var-root #'prometheus/system (constantly nil))
+        (with-bindings {#'prometheus/*setting-up* true}
+          (testing "setup! no-ops while *setting-up* is bound true"
+            (is (nil? (prometheus/setup!)))
+            (is (nil? @#'prometheus/system)))
+          (testing "metric fns no-op rather than re-entering setup!"
+            (is (nil? (prometheus/inc! :metabase-token-check/attempt {:status "failure"})))
+            (is (nil? (prometheus/observe! :metabase-search/index-update-duration-ms 1)))
+            (is (nil? (prometheus/dec! :metabase-search/queue-size)))
+            (is (nil? (prometheus/set! :metabase-search/queue-size 0)))
+            (is (nil? (prometheus/clear! :metabase-token-check/attempt)))))
+        (finally
+          (alter-var-root #'prometheus/system (constantly original-system)))))))

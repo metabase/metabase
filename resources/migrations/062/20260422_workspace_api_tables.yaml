@@ -9,7 +9,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: workspace
-            remarks: A Workspace groups one or more databases with override connection details and per-database schema configuration
+            remarks: Groups one or more databases with override credentials and per-database schema config
             columns:
               - column:
                   name: id
@@ -28,7 +28,7 @@ databaseChangeLog:
               - column:
                   name: creator_id
                   type: int
-                  remarks: The user who created this Workspace; null if that user was deleted
+                  remarks: User who created this workspace
                   constraints:
                     nullable: true
               - column:
@@ -45,6 +45,19 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: api_key
+                  type: text
+                  remarks: Encrypted API key emitted into the workspace's config.yml
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID for serialization purposes
+                  constraints:
+                    nullable: true
+                    unique: true
 
   - changeSet:
       id: v62.2026-04-22T12:00:01
@@ -53,7 +66,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: workspace_database
-            remarks: Associates a Workspace with a Database, including override credentials and schema configuration
+            remarks: Associates a workspace with a database, with override credentials and schema config
             columns:
               - column:
                   name: id
@@ -72,13 +85,13 @@ databaseChangeLog:
               - column:
                   name: database_id
                   type: int
-                  remarks: The underlying metabase_database this row configures
+                  remarks: The underlying database this row configures
                   constraints:
                     nullable: false
               - column:
                   name: database_details
                   type: ${text.type}
-                  remarks: JSON-encoded override connection details (e.g. user, password) used for this workspace
+                  remarks: JSON-encoded override connection details
                   constraints:
                     nullable: false
               - column:
@@ -90,14 +103,14 @@ databaseChangeLog:
               - column:
                   name: input_schemas
                   type: ${text.type}
-                  remarks: JSON array of schema names that participate as inputs for this workspace
+                  remarks: JSON array of input schema names
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(20)
                   defaultValue: unprovisioned
-                  remarks: Provisioning state of this workspace database (unprovisioned/provisioning/provisioned/unprovisioning)
+                  remarks: Provisioning state
                   constraints:
                     nullable: false
               - column:
@@ -114,6 +127,13 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID for serialization purposes
+                  constraints:
+                    nullable: true
+                    unique: true
 
   - changeSet:
       id: v62.2026-04-22T12:00:02
@@ -131,6 +151,16 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-04-22T12:00:03
       author: eric
+      comment: Unique constraint on workspace_database (workspace_id, database_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_database
+            constraintName: idx_unique_workspace_database
+            columnNames: workspace_id, database_id
+
+  - changeSet:
+      id: v62.2026-04-22T12:00:04
+      author: eric
       comment: FK workspace_database.workspace_id -> workspace.id (cascade on delete)
       changes:
         - addForeignKeyConstraint:
@@ -141,14 +171,8 @@ databaseChangeLog:
             constraintName: fk_workspace_database_workspace_id
             deleteCascade: true
 
-  ## RESTRICT (not CASCADE) on workspace_database.database_id: deleting a metabase_database
-  ## with active workspace_database rows must fail at the DB level so warehouse schemas/users
-  ## aren't silently orphaned. An enterprise pre-delete hook on :model/Database does the
-  ## cleanup (refuse with 409 for non-:unprovisioned rows, delete :unprovisioned rows
-  ## explicitly); the FK is the last-line-of-defense for paths that skip the hook.
-
   - changeSet:
-      id: v62.2026-04-22T12:00:04
+      id: v62.2026-04-22T12:00:05
       author: eric
       comment: FK workspace_database.database_id -> metabase_database.id (restrict on delete)
       changes:
@@ -159,16 +183,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_database_database_id
             onDelete: RESTRICT
-
-  - changeSet:
-      id: v62.2026-04-22T12:00:05
-      author: eric
-      comment: Unique constraint on workspace_database (workspace_id, database_id)
-      changes:
-        - addUniqueConstraint:
-            tableName: workspace_database
-            constraintName: idx_unique_workspace_database
-            columnNames: workspace_id, database_id
 
   - changeSet:
       id: v62.2026-04-22T12:00:06

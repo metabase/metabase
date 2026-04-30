@@ -104,34 +104,6 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspace_id),
         ]),
     }),
-    setWorkspaceSharingKey: builder.mutation<
-      { sharing_key: string },
-      WorkspaceId
-    >({
-      query: (workspace_id) => ({
-        method: "POST",
-        url: `/api/ee/workspace-manager/${workspace_id}/sharing-key`,
-      }),
-      invalidatesTags: (_, error, workspace_id) =>
-        invalidateTags(error, [
-          listTag("workspace"),
-          idTag("workspace", workspace_id),
-        ]),
-    }),
-    deleteWorkspaceSharingKey: builder.mutation<
-      { sharing_key: null },
-      WorkspaceId
-    >({
-      query: (workspace_id) => ({
-        method: "DELETE",
-        url: `/api/ee/workspace-manager/${workspace_id}/sharing-key`,
-      }),
-      invalidatesTags: (_, error, workspace_id) =>
-        invalidateTags(error, [
-          listTag("workspace"),
-          idTag("workspace", workspace_id),
-        ]),
-    }),
   }),
 });
 
@@ -144,6 +116,4 @@ export const {
   useCreateWorkspaceDatabaseMutation,
   useUpdateWorkspaceDatabaseMutation,
   useDeleteWorkspaceDatabaseMutation,
-  useSetWorkspaceSharingKeyMutation,
-  useDeleteWorkspaceSharingKeyMutation,
 } = workspaceManagerApi;
