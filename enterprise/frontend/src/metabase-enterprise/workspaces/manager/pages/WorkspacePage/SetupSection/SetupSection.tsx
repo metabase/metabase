@@ -1,18 +1,12 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Anchor, Button, Code, Divider, Group, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
 import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
 import type { Workspace } from "metabase-types/api";
 
 const LOCAL_INSTANCE_URL = "http://localhost:3000";
 const CONFIG_FILE_NAME = "config.yml";
 const METADATA_DIR_NAME = ".metadata/";
-const ENV_FILE_NAME = ".env";
 const PASSWORD_ENV_VAR = "MB_WORKSPACE_USER_PASSWORD";
 
 type SetupSectionProps = {
@@ -25,8 +19,6 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       label={t`Set up a development instance`}
       description={t`Run a local instance backed by this workspace's data, so you can iterate on changes safely.`}
     >
-      <RemoteSyncSection />
-      <Divider />
       <DownloadConfigSection workspace={workspace} />
       <Divider />
       <ExportEnvVarsSection workspace={workspace} />
@@ -35,38 +27,6 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <Divider />
       <UsageCommentsSection workspace={workspace} />
     </TitleSection>
-  );
-}
-
-function RemoteSyncSection() {
-  const isAdmin = useSelector(getUserIsAdmin);
-  const isRemoteSyncEnabled = !!useSetting("remote-sync-enabled");
-  const remoteSyncUrl = useSetting("remote-sync-url");
-
-  if (!isRemoteSyncEnabled || remoteSyncUrl == null) {
-    return (
-      <Stack p="md" gap="sm">
-        <Text>{t`Set up remote sync to be able to pull instance data as files:`}</Text>
-        {isAdmin && (
-          <Group>
-            <Button
-              component={Link}
-              to={Urls.adminRemoteSync()}
-              variant="filled"
-            >
-              {t`Set up remote sync`}
-            </Button>
-          </Group>
-        )}
-      </Stack>
-    );
-  }
-
-  return (
-    <Stack p="md" gap="sm">
-      <Text>{t`Clone the workspace repository:`}</Text>
-      <Code block>{remoteSyncUrl}</Code>
-    </Stack>
   );
 }
 
@@ -110,9 +70,6 @@ function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
           </Button>
         </Group>
       </Stack>
-      <Text>
-        {jt`Make sure ${<Code key="cfg">{CONFIG_FILE_NAME}</Code>} and ${<Code key="dir">{METADATA_DIR_NAME}</Code>} are gitignored — they contain sensitive information.`}
-      </Text>
     </Stack>
   );
 }
@@ -123,24 +80,17 @@ type ExportEnvVarsSectionProps = {
 
 function ExportEnvVarsSection({ workspace }: ExportEnvVarsSectionProps) {
   const hasCreator = workspace.creator != null;
-  const licenseTokenEnv = "MB_PREMIUM_EMBEDDING_TOKEN=";
-  const userPasswordEnv = "MB_WORKSPACE_USER_PASSWORD=";
+  const envVars = hasCreator
+    ? "MB_PREMIUM_EMBEDDING_TOKEN=\nMB_WORKSPACE_USER_PASSWORD="
+    : "MB_PREMIUM_EMBEDDING_TOKEN=";
+  const description = hasCreator
+    ? t`Export the license token and the default user password:`
+    : t`Export the license token:`;
 
   return (
-    <Stack p="md" gap="lg">
-      <Stack gap="sm">
-        <Text>{t`Export the license token as an environment variable:`}</Text>
-        <Code block>{licenseTokenEnv}</Code>
-      </Stack>
-      {hasCreator && (
-        <Stack gap="sm">
-          <Text>{t`Export a password for the default user — this lets the development instance skip the setup process:`}</Text>
-          <Code block>{userPasswordEnv}</Code>
-        </Stack>
-      )}
-      <Text>
-        {jt`If you store these in a ${<Code key="env">{ENV_FILE_NAME}</Code>} file, make sure it's gitignored too — it contains sensitive information.`}
-      </Text>
+    <Stack p="md" gap="sm">
+      <Text>{description}</Text>
+      <Code block>{envVars}</Code>
     </Stack>
   );
 }
@@ -161,7 +111,7 @@ function RunInstanceSection() {
   return (
     <Stack p="md" gap="sm">
       <Text>
-        {jt`In the repository root, start the developer instance at ${(
+        {jt`In the root of the repository synced with this instance, start the developer instance at ${(
           <Anchor
             key="url"
             href={LOCAL_INSTANCE_URL}
