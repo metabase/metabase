@@ -9,7 +9,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: workspace
-            remarks: A Workspace groups one or more databases with override connection details and per-database schema configuration
+            remarks: Groups one or more databases with override credentials and per-database schema config
             columns:
               - column:
                   name: id
@@ -28,7 +28,7 @@ databaseChangeLog:
               - column:
                   name: creator_id
                   type: int
-                  remarks: The user who created this Workspace; null if that user was deleted
+                  remarks: User who created this workspace
                   constraints:
                     nullable: true
               - column:
@@ -46,9 +46,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: api_key
+                  type: text
+                  remarks: Encrypted API key emitted into the workspace's config.yml
+                  constraints:
+                    nullable: true
+              - column:
                   name: entity_id
                   type: char(21)
-                  remarks: Random NanoID tag for unique identity. Workspaces aren't serialized, but entity_id is populated anyway so the model behaves like the rest of the codebase.
+                  remarks: Random NanoID for serialization purposes
                   constraints:
                     nullable: true
                     unique: true
@@ -60,7 +66,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: workspace_database
-            remarks: Associates a Workspace with a Database, including override credentials and schema configuration
+            remarks: Associates a workspace with a database, with override credentials and schema config
             columns:
               - column:
                   name: id
@@ -79,13 +85,13 @@ databaseChangeLog:
               - column:
                   name: database_id
                   type: int
-                  remarks: The underlying metabase_database this row configures
+                  remarks: The underlying database this row configures
                   constraints:
                     nullable: false
               - column:
                   name: database_details
                   type: ${text.type}
-                  remarks: JSON-encoded override connection details (e.g. user, password) used for this workspace
+                  remarks: JSON-encoded override connection details
                   constraints:
                     nullable: false
               - column:
@@ -97,14 +103,14 @@ databaseChangeLog:
               - column:
                   name: input_schemas
                   type: ${text.type}
-                  remarks: JSON array of schema names that participate as inputs for this workspace
+                  remarks: JSON array of input schema names
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(20)
                   defaultValue: unprovisioned
-                  remarks: Provisioning state of this workspace database (unprovisioned/provisioning/provisioned/unprovisioning)
+                  remarks: Provisioning state
                   constraints:
                     nullable: false
               - column:
@@ -124,7 +130,7 @@ databaseChangeLog:
               - column:
                   name: entity_id
                   type: char(21)
-                  remarks: Random NanoID tag for unique identity. WorkspaceDatabase isn't serialized, but entity_id is populated anyway so the model behaves like the rest of the codebase.
+                  remarks: Random NanoID for serialization purposes
                   constraints:
                     nullable: true
                     unique: true

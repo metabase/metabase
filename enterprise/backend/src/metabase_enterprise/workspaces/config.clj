@@ -8,6 +8,11 @@
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
+(def ^:private api-key-name
+  "The static name used for the workspace's API key in the emitted config — the
+  developer instance looks it up by this name to recover the key."
+  "WorkspaceApiKey")
+
 (defn- user-entry
   "Admin user entry derived from the workspace creator. Returns nil when the creator
    has been deleted or has no email — without a real identity to bind the user to,
@@ -21,6 +26,15 @@
      :email        email
      :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
      :is_superuser true}))
+
+(defn- api-key-entry
+  "API-keys entry. Skipped when the workspace has no api_key or no creator email."
+  [creator api-key]
+  (when (and api-key (:email creator))
+    {:name    api-key-name
+     :key     api-key
+     :creator (:email creator)
+     :group   "admin"}))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
@@ -62,12 +76,14 @@
             pairs     (for [wsd wsds
                             :let [db (get dbs-by-id (:database_id wsd))]]
                         [wsd db])
-            user      (user-entry creator)]
+            user      (user-entry creator)
+            api-key   (api-key-entry creator (:api_key ws))]
         {:version 1
          :config  (cond-> {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
                            :workspace {:name      (:name ws)
                                        :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
-                    user (assoc :users [user]))}))))
+                    user    (assoc :users [user])
+                    api-key (assoc :api-keys [api-key]))}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

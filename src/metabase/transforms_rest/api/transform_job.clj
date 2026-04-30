@@ -181,7 +181,7 @@
   "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual run of transform job" job-id)
-  (api/write-check (t2/select-one :model/TransformJob :id job-id))
+  (api/read-check (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
      (transforms.core/run-job! job-id {:run-method :manual
