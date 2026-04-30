@@ -47,6 +47,7 @@ export interface CreateCollectionProperties {
 
 export interface CreateCollectionFormOwnProps {
   collectionId?: Collection["id"]; // can be used by `getInitialCollectionId`
+  initialCollectionId?: Collection["id"];
   onSubmit: (collection: CreateCollectionProperties) => void;
   onCancel?: () => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
@@ -74,10 +75,9 @@ function mapStateToProps(
   props: CreateCollectionFormOwnProps,
 ): CreateCollectionFormStateProps {
   return {
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
+    initialCollectionId:
+      props.initialCollectionId ??
+      Collections.selectors.getInitialCollectionId(state, props),
   };
 }
 

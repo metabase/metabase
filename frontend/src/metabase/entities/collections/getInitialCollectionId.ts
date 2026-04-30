@@ -53,12 +53,7 @@ const getInitialCollectionId = createSelector(
     byCollectionUrlId,
     byCollectionQueryParameter, // used by new model flow
   ],
-  (collections, personalCollectionId, collectionIdProp, ...collectionIds) => {
-    if (collectionIdProp !== undefined) {
-      // Always use collectionId prop if it's defined
-      return canonicalCollectionId(collectionIdProp);
-    }
-
+  (collections, personalCollectionId, ...collectionIds) => {
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
     const validCollectionIds = collectionIds
       .filter(

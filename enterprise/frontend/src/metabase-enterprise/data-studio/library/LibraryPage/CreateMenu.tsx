@@ -66,6 +66,7 @@ export const CreateMenu = ({
               id: "collection",
               props: {
                 collectionId: dataCollectionId,
+                initialCollectionId: dataCollectionId,
                 pickerOptions: libraryCollectionPickerOptions,
                 showAuthorityLevelPicker: false,
                 visitOnCreate: false,
