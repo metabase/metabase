@@ -6,8 +6,8 @@ import {
   EntityListItem,
 } from "metabase/data-studio/common/components/EntityList";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
+import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
@@ -27,7 +27,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
         items={segments}
         title={t`Segments`}
         emptyState={{
-          icon: "segment2",
+          icon: "segment",
           title: t`No segments yet`,
           message: t`Create a segment to filter rows in this table.`,
         }}
@@ -49,7 +49,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
             key={segment.id}
             name={segment.name}
             description={segment.definition_description}
-            icon="segment2"
+            icon="segment"
             href={Urls.dataStudioPublishedTableSegment(table.id, segment.id)}
           />
         )}

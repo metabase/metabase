@@ -12,7 +12,9 @@
   metabase-provider?
   provider-and-model->provider]
  [metabase.metabot.scope
+  agent-dashboard-create
   agent-metric-read
+  agent-question-create
   agent-query-construct
   agent-query-execute
   agent-search

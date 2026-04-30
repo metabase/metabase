@@ -2,16 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { AccordionList } from "metabase/common/components/AccordionList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import type {
-  DimensionListItem,
-  DimensionSection,
-  MetricGroup,
-} from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/types";
-import { getMetricGroups } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/utils";
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
-import { getDimensionIcon } from "metabase/metrics/utils/dimensions";
 import {
   Badge,
   Box,
@@ -32,7 +24,9 @@ import type { SourceColorMap } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";
 
 import S from "./FilterPopover.module.css";
-import { filterDisplayGroupsBySearch } from "./utils";
+import { MetricGroupFilterSectionList } from "./MetricGroupFilterSectionList";
+import type { DimensionListItem, MetricGroup, SegmentListItem } from "./types";
+import { filterDisplayGroupsBySearch, getMetricGroups } from "./utils";
 
 const LIST_WIDTH = "20rem";
 const FILTER_WIDTH = "24rem";
@@ -96,6 +90,22 @@ export function FilterPopoverContent({
     [navState, definitionSources, onFilterApplied, onSourceDefinitionChange],
   );
 
+  const handleSegmentSelect = useCallback(
+    (item: SegmentListItem) => {
+      const selected = definitionSources[item.definitionIndex];
+      if (!selected) {
+        return;
+      }
+      const newDefinition = LibMetric.addSegmentFilter(
+        selected.definition,
+        item.segment,
+      );
+      onSourceDefinitionChange(selected, newDefinition);
+      onFilterApplied();
+    },
+    [definitionSources, onFilterApplied, onSourceDefinitionChange],
+  );
+
   const toggleExpanded = useCallback((id: number) => {
     setExpandedItems((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
@@ -105,6 +115,7 @@ export function FilterPopoverContent({
   const isSearching = filteredDisplayGroups !== null;
   const visibleGroups = isSearching ? filteredDisplayGroups : displayGroups;
   const hasNoResults = isSearching && visibleGroups.length === 0;
+  const hasAnySegments = displayGroups.some((group) => group.hasSegments);
   const showMetricHeaders = definitionSources.length > 1;
 
   if (navState.view === "filter") {
@@ -142,7 +153,9 @@ export function FilterPopoverContent({
         {hasNoResults ? (
           <Box p="xl">
             <Text c="text-secondary" ta="center">
-              {t`No dimensions found`}
+              {hasAnySegments
+                ? t`No dimensions or segments found`
+                : t`No dimensions found`}
             </Text>
           </Box>
         ) : showMetricHeaders ? (
@@ -152,42 +165,17 @@ export function FilterPopoverContent({
             collapsible={!isSearching}
             onToggleExpanded={toggleExpanded}
             onDimensionSelect={handleDimensionSelect}
+            onSegmentSelect={handleSegmentSelect}
           />
         ) : (
-          <DimensionList
+          <MetricGroupFilterSectionList
             sections={visibleGroups[0]?.sections ?? []}
-            onSelect={handleDimensionSelect}
+            onDimensionSelect={handleDimensionSelect}
+            onSegmentSelect={handleSegmentSelect}
           />
         )}
       </Box>
     </>
-  );
-}
-
-function DimensionList({
-  sections,
-  onSelect,
-}: {
-  sections: DimensionSection[];
-  onSelect: (item: DimensionListItem) => void;
-}) {
-  const renderItemIcon = useCallback((item: DimensionListItem) => {
-    const icon = getDimensionIcon(item.dimension);
-    return <Icon name={icon} size={16} />;
-  }, []);
-
-  return (
-    <AccordionList<DimensionListItem, DimensionSection>
-      className={S.dimensionList}
-      sections={sections}
-      onChange={onSelect}
-      renderItemName={(item) => item.name}
-      renderItemIcon={renderItemIcon}
-      width="100%"
-      maxHeight={Infinity}
-      searchable={false}
-      alwaysExpanded
-    />
   );
 }
 
@@ -197,28 +185,30 @@ function MetricGroupList({
   collapsible,
   onToggleExpanded,
   onDimensionSelect,
+  onSegmentSelect,
 }: {
   groups: MetricGroup[];
   expandedItems: number[];
   collapsible: boolean;
   onToggleExpanded: (id: number) => void;
   onDimensionSelect: (item: DimensionListItem) => void;
+  onSegmentSelect: (item: SegmentListItem) => void;
 }) {
   return (
     <Box>
       {groups.map((group) => {
         const isExpanded = !collapsible || expandedItems.includes(group.id);
-        const hasDimensions = group.sections.some(
+        const hasItems = group.sections.some(
           (section) => section.items && section.items.length > 0,
         );
-        const showDimensions = isExpanded && hasDimensions;
+        const showItems = isExpanded && hasItems;
 
         return (
           <Box key={group.id} className={S.accordionItem}>
             {collapsible ? (
               <UnstyledButton
                 className={cx(S.accordionControl, {
-                  [S.accordionControlExpanded]: showDimensions,
+                  [S.accordionControlExpanded]: showItems,
                 })}
                 onClick={() => onToggleExpanded(group.id)}
                 w="100%"
@@ -246,7 +236,7 @@ function MetricGroupList({
             ) : (
               <Box
                 className={cx(S.accordionHeader, {
-                  [S.accordionHeaderExpanded]: showDimensions,
+                  [S.accordionHeaderExpanded]: showItems,
                 })}
                 px="md"
               >
@@ -260,11 +250,12 @@ function MetricGroupList({
                 </Flex>
               </Box>
             )}
-            {showDimensions && (
+            {showItems && (
               <Box pb="sm">
-                <DimensionList
+                <MetricGroupFilterSectionList
                   sections={group.sections}
-                  onSelect={onDimensionSelect}
+                  onDimensionSelect={onDimensionSelect}
+                  onSegmentSelect={onSegmentSelect}
                 />
               </Box>
             )}

@@ -19,11 +19,11 @@ import { AddToDashSelectDashModal } from "metabase/query_builder/components/AddT
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
+import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Button, Group, Icon, Menu } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -114,7 +114,6 @@ function MetricToolbarButtons({
         <Button
           component={ForwardRefLink}
           to={Urls.exploreMetric(card.id)}
-          target="_blank"
           leftSection={<Icon name="external" />}
           data-testid="explore-link"
         >

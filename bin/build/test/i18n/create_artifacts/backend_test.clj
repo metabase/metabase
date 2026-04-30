@@ -2,11 +2,12 @@
   (:require
    [clojure.edn :as edn]
    [clojure.test :refer :all]
+   [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.test-common :as test-common]))
 
 (deftest edn-test
-  (#'backend/write-edn-file! test-common/po-contents "/tmp/out.edn")
+  (#'backend/write-edn-file! test-common/po-contents #{} "/tmp/out.edn")
   (is (= {:headers
           {"MIME-Version"              "1.0"
            "Content-Type"              "text/plain; charset=UTF-8"
@@ -28,7 +29,7 @@
   (testing "messages present in any .clj and .cljc files are detected as backend messages"
     #_{:clj-kondo/ignore [:equals-true]}
     (are [source-references expected] (= expected
-                                         (@#'backend/backend-message? {:source-references source-references}))
+                                         (i18n/backend-message? {:source-references source-references}))
       ;; Simple .clj and .cljc files with and without line numbers
       ["test.clj"]                                                                  true
       ["test.clj:123"]                                                              true

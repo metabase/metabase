@@ -10,8 +10,8 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/redux";
 import { Button } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
 

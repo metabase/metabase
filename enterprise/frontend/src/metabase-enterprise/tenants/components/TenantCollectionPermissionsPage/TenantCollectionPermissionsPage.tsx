@@ -29,8 +29,8 @@ import type {
 import { assertNumericId } from "metabase/admin/permissions/types";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { connect } from "metabase/utils/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {

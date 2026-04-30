@@ -6,10 +6,10 @@ import {
   PLUGIN_REPLACEMENT,
   PLUGIN_UPLOAD_MANAGEMENT,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
-import { useSelector } from "metabase/utils/redux";
 
 import { AnalyticsExportStatus } from "../AnalyticsExportStatus";
 import { DatabaseStatus } from "../DatabaseStatus";

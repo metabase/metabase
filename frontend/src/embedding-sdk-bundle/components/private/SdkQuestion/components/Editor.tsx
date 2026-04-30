@@ -7,10 +7,10 @@ import {
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
