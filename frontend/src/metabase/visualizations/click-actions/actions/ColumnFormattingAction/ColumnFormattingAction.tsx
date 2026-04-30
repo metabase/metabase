@@ -13,8 +13,6 @@ import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import S from "./ColumnFormattingAction.module.css";
-
 export const POPOVER_TEST_ID = "column-formatting-settings";
 
 export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
@@ -69,7 +67,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <Box className={S.popoverRoot} pt="lg" mah={600}>
+      <Box pt="lg" mah={600} style={{ overflowY: "auto" }}>
         <ChartSettingsWidget
           {...extraProps}
           id={id}
