@@ -35,8 +35,7 @@
      (map? m)  (into (serialization-sorted-map path)
                      (for [[k v] m]
                        [k (serialization-deep-sort v (conj path k))]))
-     (and (sequential? m)
-          (map? (first m))) (mapv #(serialization-deep-sort % path) m)
+     (sequential? m) (mapv #(serialization-deep-sort % path) m)
      :else                  m)))
 
 (defn yaml-content
