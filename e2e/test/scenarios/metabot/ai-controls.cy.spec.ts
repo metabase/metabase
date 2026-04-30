@@ -124,7 +124,7 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByRole("heading", { name: "Customization", level: 1 }).should(
         "be.visible",
       );
-      cy.findByLabelText("Metabot's name")
+      cy.findByLabelText("AI agent's name")
         .should("be.visible")
         .clear()
         .type("HAL 9000");
@@ -134,7 +134,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       // Reload and verify persistence
       cy.reload();
-      cy.findByLabelText("Metabot's name").should("have.value", "HAL 9000");
+      cy.findByLabelText("AI agent's name").should("have.value", "HAL 9000");
     });
 
     it("should upload a custom Metabot icon and show the illustrations section", () => {
@@ -142,7 +142,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.visit("/admin/metabot/1/customization");
 
-      H.main().findByText("Metabot's icon").should("be.visible");
+      H.main().findByText("AI agent's icon").should("be.visible");
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
         "be.visible",
       );
@@ -262,11 +262,11 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.visit("/admin/metabot/1/system-prompts/metabot-chat");
 
       cy.findByRole("heading", {
-        name: "Metabot chat prompt instructions",
+        name: "AI chat prompt instructions",
         level: 1,
       }).should("be.visible");
 
-      cy.findByRole("textbox", { name: /Metabot chat prompt instructions/ })
+      cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
         .should("be.visible")
         .click()
         .type("Be concise and helpful.");
@@ -276,7 +276,7 @@ describe("AI Controls > Metabot access and customization", () => {
       // Reload and verify persistence
       cy.reload();
       cy.findByRole("textbox", {
-        name: /Metabot chat prompt instructions/,
+        name: /AI chat prompt instructions/,
       }).should("contain.value", "Be concise and helpful.");
     });
 

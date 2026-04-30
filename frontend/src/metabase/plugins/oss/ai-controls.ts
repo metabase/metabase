@@ -1,15 +1,15 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export type AiControlsPlugin = {
   isEnabled: boolean;
   getAiControlsRoutes: () => ReactNode;
-  AiControlsNavItems: ComponentType | null;
+  getAiControlsNavItems: () => ReactNode;
 };
 
 const getDefaultPluginAiControls = (): AiControlsPlugin => ({
   isEnabled: false,
   getAiControlsRoutes: () => null,
-  AiControlsNavItems: null,
+  getAiControlsNavItems: () => null,
 });
 
 export const PLUGIN_AI_CONTROLS = getDefaultPluginAiControls();

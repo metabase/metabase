@@ -39,4 +39,3 @@ System prompts can only influence Metabot's behavior, not its access. A prompt c
 - [AI controls](./usage-controls.md)
 - [AI customization](./customization.md)
 - [Metabot](./metabot.md)
-

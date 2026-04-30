@@ -37,7 +37,7 @@
 
       (test-supported-versions :h2 {:major 2 :minor 1 :patch 214})
       (test-supported-versions :postgres {:major 14 :minor 0 :patch 0})
-      (test-supported-versions :mysql {:major 8 :minor 4 :patch 0})
+      (test-supported-versions :mysql {:major 8 :minor 0 :patch 0})
       (test-supported-versions :mariadb {:major 10 :minor 6 :patch 0}))))
 
 (deftest parse-db-version-test
