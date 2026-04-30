@@ -7,6 +7,7 @@ import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
 } from "metabase/collections/schemas";
+import type { EntityType } from "metabase/collections/utils";
 import type {
   EntityPickerOptions,
   OmniPickerItem,
@@ -106,6 +107,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
               <FormCollectionPicker
                 name="parent_id"
                 title={t`Parent collection`}
+                entityType={getPickerEntityType(collection.type)}
                 collectionPickerModalProps={{
                   options: pickerOptions,
                   isDisabledItem: shouldDisableItem,
@@ -129,6 +131,20 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
       </FormProvider>
     </Modal>
   );
+}
+
+function getPickerEntityType(
+  collectionType: Collection["type"] | CollectionItem["type"],
+): EntityType | undefined {
+  if (collectionType === "library-data") {
+    return "table";
+  }
+
+  if (collectionType === "library-metrics") {
+    return "metric";
+  }
+
+  return undefined;
 }
 
 const pickerOptions: EntityPickerOptions = {
