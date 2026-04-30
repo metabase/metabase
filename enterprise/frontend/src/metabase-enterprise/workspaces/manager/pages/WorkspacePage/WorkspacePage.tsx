@@ -8,7 +8,7 @@ import type { Database, Workspace } from "metabase-types/api";
 
 import { ApiKeySection } from "./ApiKeySection";
 import { DatabaseSection } from "./DatabaseSection";
-import { SetupSection } from "./SetupSection";
+import { RemoteSyncSection } from "./RemoteSyncSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceMoreMenu } from "./WorkspaceMoreMenu";
 
@@ -57,8 +57,8 @@ function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
       />
       <Stack gap="3.25rem">
         <DatabaseSection workspace={workspace} databases={databases} />
+        <RemoteSyncSection />
         <ApiKeySection workspace={workspace} />
-        <SetupSection workspace={workspace} />
       </Stack>
     </PageContainer>
   );

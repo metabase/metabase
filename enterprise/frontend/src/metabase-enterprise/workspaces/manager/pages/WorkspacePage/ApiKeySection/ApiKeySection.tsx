@@ -1,8 +1,16 @@
+import { useClipboard } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Box, Button, Divider, Group, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Icon,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 import {
   useDeleteWorkspaceSharingKeyMutation,
   useSetWorkspaceSharingKeyMutation,
@@ -18,7 +26,7 @@ export function ApiKeySection({ workspace }: ApiKeySectionProps) {
   return (
     <TitleSection
       label={t`API key`}
-      description={t`Create an API key for coding agents to be able to access this workspace.`}
+      description={t`Create an API key to be able to access workspace configuration without a user session.`}
     >
       {workspace.sharing_key == null ? (
         <CreateApiKeySection workspaceId={workspace.id} />
@@ -64,6 +72,11 @@ function ManageApiKeySection({
   const [setSharingKey] = useSetWorkspaceSharingKeyMutation();
   const [deleteSharingKey] = useDeleteWorkspaceSharingKeyMutation();
   const { modalContent, show } = useConfirmation();
+  const clipboard = useClipboard({ timeout: 2000 });
+
+  const handleCopy = () => {
+    clipboard.copy(sharingKey);
+  };
 
   const handleRegenerate = () => {
     show({
@@ -91,16 +104,36 @@ function ManageApiKeySection({
 
   return (
     <>
-      <Stack p="md" gap="sm">
-        <CopyTextInput value={sharingKey} readOnly maw="22.5rem" />
-      </Stack>
-      <Divider />
-      <Stack p="md" gap="sm">
-        <Group>
-          <Button onClick={handleRegenerate}>{t`Regenerate API key`}</Button>
-          <Button onClick={handleDelete}>{t`Delete API key`}</Button>
-        </Group>
-      </Stack>
+      <Group p="md" gap="sm" wrap="nowrap" align="center">
+        <TextInput value={sharingKey} readOnly maw="22.5rem" flex={1} />
+        <Tooltip label={clipboard.copied ? t`Copied` : t`Copy`}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Copy`}
+            onClick={handleCopy}
+          >
+            <Icon name={clipboard.copied ? "check" : "copy"} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t`Regenerate API key`}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Regenerate API key`}
+            onClick={handleRegenerate}
+          >
+            <Icon name="pencil" />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t`Delete API key`}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Delete API key`}
+            onClick={handleDelete}
+          >
+            <Icon name="trash" />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
       {modalContent}
     </>
   );
