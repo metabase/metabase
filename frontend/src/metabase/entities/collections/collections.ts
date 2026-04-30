@@ -28,7 +28,6 @@ import type {
 import { createEntity, entityCompatibleQuery, undo } from "../utils";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
-import getInitialCollectionId from "./getInitialCollectionId";
 import { getCollectionType } from "./utils";
 
 const listCollectionsTree = (
@@ -142,7 +141,6 @@ export const Collections = createEntity({
           collectionFilter,
         ),
     ),
-    getInitialCollectionId,
   },
 
   getAnalyticsMetadata(
