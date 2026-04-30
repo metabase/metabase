@@ -89,6 +89,12 @@
         (reset! side-effect true))
       (is @side-effect))))
 
+(deftest add-span-attrs!-disabled-is-noop-test
+  (testing "add-span-attrs! returns nil when the trace group is disabled"
+    ;; Tracing not initialized, so group-enabled? returns false
+    (tracing/shutdown-groups!)
+    (is (nil? (tracing/add-span-attrs! :tasks {:transform/incremental true})))))
+
 (deftest inject-trace-level-into-mdc-test
   (testing "inject-trace-id-into-mdc! sets trace_level in MDC from cached setting"
     (try

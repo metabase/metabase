@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.test :as mt]
-   [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
@@ -64,11 +63,6 @@
       (is (= 9 (:transform/checkpoint-field-id attrs)))
       (is (string? (:transform/checkpoint-hi attrs)))
       (is (re-find #"2024-01-16" (:transform/checkpoint-hi attrs))))))
-
-(deftest add-span-attrs!-no-op-when-disabled-test
-  (testing "add-span-attrs! is a no-op when the trace group is disabled"
-    (tracing/shutdown-groups!)
-    (is (nil? (tracing/add-span-attrs! :tasks {:transform/incremental true})))))
 
 (deftest save-watermark!-emits-checkpoint-gauge-test
   (mt/with-prometheus-system! [_ system]
