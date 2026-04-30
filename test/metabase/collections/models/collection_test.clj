@@ -63,6 +63,29 @@
     (is (-> trash :name i18n/localized-string?)
         "Trash name must be a localized string")))
 
+(deftest ^:parallel library-collection-names-localized-test
+  (testing "maybe-localize-system-collection-name overrides names for system library collections"
+    (testing "Library root gets canonical name regardless of DB value"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-collection-type
+                     :entity_id @#'collection/library-entity-id})]
+        (is (= "Library" (str (:name result))))))
+    (testing "Data gets canonical name"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-data-collection-type
+                     :entity_id @#'collection/library-data-entity-id})]
+        (is (= "Data" (str (:name result))))))
+    (testing "Metrics gets canonical name"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-metrics-collection-type
+                     :entity_id @#'collection/library-metrics-entity-id})]
+        (is (= "Metrics" (str (:name result)))))))
+  (testing "User-created subcollections keep their custom names"
+    (let [result (collection/maybe-localize-system-collection-name
+                  {:name "My Custom Folder" :type collection/library-data-collection-type
+                   :entity_id "some-random-entity-id"})]
+      (is (= "My Custom Folder" (:name result))))))
+
 (deftest personal-collection-with-ui-details-test
   (testing "With personal_owner"
     (is (= {:personal_owner_id (mt/user->id :lucky)

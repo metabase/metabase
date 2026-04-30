@@ -163,6 +163,48 @@
                       (format "Published table should be visible with data permissions even without collection access (engine=%s)"
                               engine)))))))))))
 
+(deftest library-scoped-search-test
+  (mt/with-premium-features #{:library}
+    (let [search-term (random-name)]
+      (mt/with-temp
+        [:model/Collection {lib-id :id}          {:name "Library" :type collection/library-collection-type :location "/"}
+         :model/Collection {data-coll :id}       {:name "Data"
+                                                  :type collection/library-data-collection-type
+                                                  :location (collection/location-path lib-id)}
+         :model/Collection {metrics-coll :id}    {:name "Metrics"
+                                                  :type collection/library-metrics-collection-type
+                                                  :location (collection/location-path lib-id)}
+         :model/Collection {data-sub :id}        {:name "Data Sub"
+                                                  :type collection/library-data-collection-type
+                                                  :location (collection/location-path lib-id data-coll)}
+         :model/Table      {pub-table :id}       {:name          (str search-term " Published Table")
+                                                  :is_published  true
+                                                  :collection_id data-coll}
+         :model/Table      {sub-table :id}       {:name          (str search-term " Sub Table")
+                                                  :is_published  true
+                                                  :collection_id data-sub}
+         :model/Card       {metric :id}          {:name          (str search-term " My Metric")
+                                                  :type          :metric
+                                                  :collection_id metrics-coll}
+         :model/Collection {outside-coll :id}    {:name "Outside" :location "/"}
+         :model/Card       {outside-card :id}    {:name          (str search-term " Outside Card")
+                                                  :collection_id outside-coll}]
+        (search/reindex! {:async? false :in-place? true})
+        (doseq [engine ["in-place" "appdb"]]
+          (testing (str "with engine " engine)
+            (let [results    (mt/user-http-request :crowberto :get 200 "search"
+                                                   :q search-term
+                                                   :collection lib-id
+                                                   :search_engine engine)
+                  result-ids (set (map :id (:data results)))]
+              (testing "published tables in library subcollections are included"
+                (is (contains? result-ids pub-table))
+                (is (contains? result-ids sub-table)))
+              (testing "metrics in library subcollections are included"
+                (is (contains? result-ids metric)))
+              (testing "items outside the library are excluded"
+                (is (not (contains? result-ids outside-card)))))))))))
+
 (deftest unpublished-table-visible-with-data-perms-test
   (testing "Unpublished tables are discoverable when the user has data/query permissions"
     (let [search-term (random-name)
@@ -182,3 +224,40 @@
                                     (into #{}))]
                 (is (contains? result-ids unpub-table)
                     (format "Unpublished table should be visible with data permissions (engine=%s)" engine))))))))))
+
+(deftest no-access-library-subcollection-hidden-from-search-test
+  (mt/with-premium-features #{:library}
+    (testing "Items in library subcollections the user can't access are hidden from search"
+      (let [search-term (random-name)]
+        (mt/with-temp
+          [:model/Collection {metrics-coll :id}   {:name     "Metrics"
+                                                   :type     collection/library-metrics-collection-type
+                                                   :location "/"}
+           :model/Collection {accessible :id}     {:name     "Accessible Sub"
+                                                   :type     collection/library-metrics-collection-type
+                                                   :location (collection/location-path metrics-coll)}
+           :model/Collection {no-access :id}      {:name     "No Access Sub"
+                                                   :type     collection/library-metrics-collection-type
+                                                   :location (collection/location-path metrics-coll)}
+           :model/Card       {visible-metric :id} {:name          (str search-term " Visible Metric")
+                                                   :type          :metric
+                                                   :collection_id accessible}
+           :model/Card       {hidden-metric :id}  {:name          (str search-term " Hidden Metric")
+                                                   :type          :metric
+                                                   :collection_id no-access}]
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (perms/grant-collection-read-permissions! (perms/all-users-group) metrics-coll)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) accessible)
+            (perms/revoke-collection-permissions! (perms/all-users-group) no-access)
+            (search/reindex! {:async? false :in-place? true})
+            (doseq [engine ["in-place" "appdb"]]
+              (testing (str "with engine " engine)
+                (let [result-ids (->> (mt/user-http-request :rasta :get 200 "search"
+                                                            :q search-term :search_engine engine)
+                                      :data
+                                      (map :id)
+                                      (into #{}))]
+                  (testing "metric in accessible subcollection is visible"
+                    (is (contains? result-ids visible-metric)))
+                  (testing "metric in no-access subcollection is hidden"
+                    (is (not (contains? result-ids hidden-metric)))))))))))))

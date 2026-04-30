@@ -145,6 +145,22 @@
                      :id            (:id table)}
                     (t2/select-one :model/Table :id (:id table))))))))))
 
+(deftest archive-metrics-subcollection-goes-to-trash-test
+  (mt/with-premium-features #{:library}
+    (mt/as-admin
+      (mt/with-temp [:model/Collection archive-me {:name "Metrics subcoll"
+                                                   :type collection/library-metrics-collection-type}
+                     :model/Card       metric     {:collection_id (:id archive-me)
+                                                   :type          :metric}]
+        (collection/archive-collection! archive-me)
+        (testing "the collection is archived"
+          (is (true? (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))))
+        (testing "the metric inside is archived"
+          (is (true? (t2/select-one-fn :archived :model/Card :id (:id metric)))))
+        (testing "the metric stays in its original collection (not unpublished/ejected)"
+          (is (= (:id archive-me)
+                 (t2/select-one-fn :collection_id :model/Card :id (:id metric)))))))))
+
 (deftest disallow-cross-type-collection-nesting-test
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection data-parent    {:name "Data Parent"    :type collection/library-data-collection-type}
