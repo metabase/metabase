@@ -34,6 +34,25 @@
   [tuples _db-id]
   tuples)
 
+(defenterprise expand-schema-names-with-workspace
+  "Augment a list of `:schema-names` with workspace-isolation schemas
+  (`to_schema` values) for any remap whose `from_schema` appears in the input.
+  Lets sync's FK fetch reach the warehouse tables that physically back canonical
+  Tables on a workspace child. OSS fallback is identity."
+  metabase-enterprise.workspaces.table-remapping
+  [schema-names _db-id]
+  schema-names)
+
+(defenterprise rewrite-fk-result-canonical
+  "Translate workspace-side identifiers in a `describe-fks` result back to canonical
+  names. When sync redirects FK lookups to the workspace warehouse table, the
+  returned rows reference workspace-side `(schema, name)` on both sides; app-db's
+  view needs them in canonical terms so subsequent FK resolution finds the
+  matching `:model/Table`. OSS fallback is identity (no rewriting)."
+  metabase-enterprise.workspaces.table-remapping
+  [rows _db-id]
+  rows)
+
 (defn- effective-schema+name
   "Pair used when querying the driver for a Table's fields. Lets workspace mode
   redirect to the isolated warehouse table while the app-db row keeps its
@@ -146,24 +165,41 @@
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
   If the driver doesn't support [[metabase.driver/describe-fks]] it uses [[driver/describe-table-fks]] instead.
-  This will be deprecated in "
+  This will be deprecated in
+
+  In workspace mode, expands `:schema-names` to include workspace-isolation schemas so
+  the warehouse driver finds FKs on the physical tables that back canonical Tables, then
+  back-translates workspace-side identifiers in the result so the rows match canonical
+  Table rows in app-db."
   [database :- i/DatabaseInstance & {:as args}]
   (log-if-error "fk-metadata"
-    (let [driver (driver.u/database->driver database)]
+    (let [driver        (driver.u/database->driver database)
+          db-id         (:id database)
+          expanded-args (cond-> args
+                          (:schema-names args)
+                          (update :schema-names expand-schema-names-with-workspace db-id))]
       (when (driver.u/supports? driver :metadata/key-constraints database)
         (let [describe-fks-fn (if (driver.u/supports? driver :describe-fks database)
                                 driver/describe-fks
                                 ;; In version 52 we'll remove [[driver/describe-table-fks]]
                                 ;; and we'll just use [[driver/describe-fks]] here
-                                describe-fks-using-describe-table-fks)]
-          (cond->> (describe-fks-fn driver database args)
+                                describe-fks-using-describe-table-fks)
+              ;; Realize the driver result so we can back-translate it as a batch (the
+              ;; EE impl builds a per-DB lookup map once per call).
+              raw-rows       (vec (describe-fks-fn driver database expanded-args))
+              rewritten-rows (rewrite-fk-result-canonical raw-rows db-id)]
+          (cond->> rewritten-rows
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
             (mu.fn/instrument-ns? *ns*)
             (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
-  "Get information about the indexes belonging to `table`."
+  "Get information about the indexes belonging to `table`. In workspace mode,
+  redirects to the isolated warehouse table so describe-table-indexes asks the
+  warehouse about the physical table that backs this canonical Table row."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "index-metadata"
-    (driver/describe-table-indexes (driver.u/database->driver database) database table)))
+    (let [[eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
+          effective-table       (assoc table :schema eff-schema :name eff-name)]
+      (driver/describe-table-indexes (driver.u/database->driver database) database effective-table))))

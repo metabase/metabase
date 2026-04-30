@@ -472,3 +472,110 @@
                "canonical Table row exists")
            (is (not (contains? created-pairs ["ws_dev_1898" "dev_1898_orders"]))
                "workspace-side Table row is filtered out and never persisted")))))))
+
+;;; -------------------------- expand-schema-names-with-workspace --------------------------
+
+(deftest expand-schema-names-no-rows-test
+  (testing "without remap rows, schema-names pass through unchanged"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (is (= ["public" "analytics"]
+              (fetch-metadata/expand-schema-names-with-workspace
+               ["public" "analytics"] (mt/id))))))))
+
+(deftest expand-schema-names-adds-workspace-schemas-test
+  (testing "input schemas with active remappings get their to-side schema added"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (let [expanded (fetch-metadata/expand-schema-names-with-workspace
+                       ["public" "analytics"] (mt/id))]
+         (is (= #{"public" "analytics" "ws_alice"} (set expanded))
+             "ws_alice is appended; analytics (no remap) untouched"))))))
+
+(deftest expand-schema-names-no-duplicates-test
+  (testing "expansion does not introduce duplicates if to-schema is already in input"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (let [expanded (fetch-metadata/expand-schema-names-with-workspace
+                       ["public" "ws_alice"] (mt/id))]
+         (is (= 2 (count expanded)) "no duplicate ws_alice")
+         (is (= #{"public" "ws_alice"} (set expanded))))))))
+
+;;; -------------------------- rewrite-fk-result-canonical --------------------------
+
+(deftest rewrite-fk-no-remappings-test
+  (testing "without remap rows, rows pass through unchanged"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (let [rows [{:fk-table-schema "public" :fk-table-name "orders" :fk-column-name "user_id"
+                    :pk-table-schema "public" :pk-table-name "users"  :pk-column-name "id"}]]
+         (is (= rows (fetch-metadata/rewrite-fk-result-canonical rows (mt/id)))))))))
+
+(deftest rewrite-fk-translates-both-sides-test
+  (testing "FK row referencing workspace identifiers on both ends gets translated"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "users"}
+        {:schema "ws_alice" :table "users"})
+       (let [workspace-row {:fk-table-schema "ws_alice" :fk-table-name "orders" :fk-column-name "user_id"
+                            :pk-table-schema "ws_alice" :pk-table-name "users"  :pk-column-name "id"}
+             [out]         (fetch-metadata/rewrite-fk-result-canonical [workspace-row] (mt/id))]
+         (is (= "public" (:fk-table-schema out)))
+         (is (= "orders" (:fk-table-name out)))
+         (is (= "public" (:pk-table-schema out)))
+         (is (= "users"  (:pk-table-name out))))))))
+
+(deftest rewrite-fk-leaves-non-remapped-targets-alone-test
+  (testing "FK to a canonical-only table (no remap) passes through; remapped end is rewritten"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (let [row   {:fk-table-schema "ws_alice" :fk-table-name "orders" :fk-column-name "audit_id"
+                    :pk-table-schema "audit"    :pk-table-name "events" :pk-column-name "id"}
+             [out] (fetch-metadata/rewrite-fk-result-canonical [row] (mt/id))]
+         (is (= "public" (:fk-table-schema out))
+             "remapped fk-side is back-translated")
+         (is (= "orders" (:fk-table-name out)))
+         (is (= "audit"  (:pk-table-schema out))
+             "non-remapped pk-side passes through unchanged")
+         (is (= "events" (:pk-table-name out))))))))
+
+(deftest rewrite-fk-self-referential-test
+  (testing "self-referential FK within a remapped table is translated on both sides"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "employees"}
+        {:schema "ws_alice" :table "employees"})
+       (let [row   {:fk-table-schema "ws_alice" :fk-table-name "employees" :fk-column-name "manager_id"
+                    :pk-table-schema "ws_alice" :pk-table-name "employees" :pk-column-name "id"}
+             [out] (fetch-metadata/rewrite-fk-result-canonical [row] (mt/id))]
+         (is (= "public" (:fk-table-schema out)))
+         (is (= "public" (:pk-table-schema out)))
+         (is (= "employees" (:fk-table-name out)))
+         (is (= "employees" (:pk-table-name out))))))))

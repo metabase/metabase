@@ -190,6 +190,51 @@
       tuples
       (into #{} (remove (fn [t] (contains? to-pairs [(:schema t) (:name t)]))) tuples))))
 
+(defenterprise expand-schema-names-with-workspace
+  "Enterprise impl: augment a `:schema-names` list with `to_schema` values for
+   any active remap row whose `from_schema` matches one of the input schemas.
+   Lets sync's FK fetch reach the workspace-isolated warehouse tables that
+   physically back canonical Tables on a workspace child."
+  :feature :none
+  [schema-names db-id]
+  (if (empty? schema-names)
+    schema-names
+    (let [from->to (into {}
+                         (map (fn [[[_from-db from-schema _from-name]
+                                    [_to-db to-schema _to-name]]]
+                                [from-schema to-schema]))
+                         (all-mappings-for-db db-id))
+          extras   (into #{} (keep from->to) schema-names)]
+      (vec (distinct (concat schema-names extras))))))
+
+(defenterprise rewrite-fk-result-canonical
+  "Enterprise impl: walk an FK-result collection, rewriting workspace-side
+   `(schema, name)` pairs back to canonical `(from_schema, from_table_name)`
+   on both fk-side and pk-side. Rows whose pairs don't match any active
+   `to_*` tuple pass through unchanged — used for FKs to non-remapped tables
+   and for the legacy `describe-table-fks` fallback whose fk-side is already
+   canonical."
+  :feature :none
+  [rows db-id]
+  (let [to->from (into {}
+                       (map (fn [[[_from-db from-schema from-name]
+                                  [_to-db to-schema to-name]]]
+                              [[to-schema to-name] [from-schema from-name]]))
+                       (all-mappings-for-db db-id))]
+    (if (empty? to->from)
+      rows
+      (mapv (fn [row]
+              (let [fk-key [(:fk-table-schema row) (:fk-table-name row)]
+                    pk-key [(:pk-table-schema row) (:pk-table-name row)]]
+                (cond-> row
+                  (contains? to->from fk-key)
+                  (assoc :fk-table-schema (first (to->from fk-key))
+                         :fk-table-name   (second (to->from fk-key)))
+                  (contains? to->from pk-key)
+                  (assoc :pk-table-schema (first (to->from pk-key))
+                         :pk-table-name   (second (to->from pk-key))))))
+            rows))))
+
 ;;; -------------------------------------------- Write API --------------------------------------------
 
 (defn- unique-violation?
