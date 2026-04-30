@@ -14,16 +14,18 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:workspaces} (f))))
 
-(defn- clean-db-fixture
+(defn- clean-db-fixture!
   "Run `f` with mappings cleared before and after so tests don't leak state."
   [db-id f]
   (ws.table-remapping/clear-mappings-for-db! db-id)
   (try (f)
        (finally (ws.table-remapping/clear-mappings-for-db! db-id))))
 
-(defn- with-provisioned-workspace-db
+(defn- with-provisioned-workspace-db!
   "Set the in-process workspace atom so `db-workspace-schema` returns
    `output-schema` for `db-id`, run `f`, clear the atom on the way out."
   [db-id output-schema f]
@@ -36,13 +38,13 @@
       (ws/clear-instance-workspace!))))
 
 (deftest remap-table-returns-nil-when-no-mapping-test
-  (clean-db-fixture
+  (clean-db-fixture!
    (mt/id)
    (fn []
      (is (nil? (ws.table-remapping/remap-table (mt/id) "nope_schema" "nope_table"))))))
 
 (deftest add-then-remap-table-test
-  (clean-db-fixture
+  (clean-db-fixture!
    (mt/id)
    (fn []
      (ws.table-remapping/add-mapping!
@@ -53,7 +55,7 @@
             (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))
 
 (deftest all-mappings-for-db-test
-  (clean-db-fixture
+  (clean-db-fixture!
    (mt/id)
    (fn []
      (ws.table-remapping/add-mapping!
@@ -65,7 +67,7 @@
             (ws.table-remapping/all-mappings-for-db (mt/id)))))))
 
 (deftest remove-mapping!-test
-  (clean-db-fixture
+  (clean-db-fixture!
    (mt/id)
    (fn []
      (ws.table-remapping/add-mapping!
@@ -74,7 +76,7 @@
      (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))
 
 (deftest clear-mappings-for-db!-test
-  (clean-db-fixture
+  (clean-db-fixture!
    (mt/id)
    (fn []
      (ws.table-remapping/add-mapping!
@@ -86,7 +88,7 @@
 
 (deftest add-mapping!-is-idempotent-test
   (testing "duplicate inserts swallow the SQLSTATE 23505 unique-constraint violation"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (ws.table-remapping/add-mapping!
@@ -102,10 +104,10 @@
 
 (deftest add-transform-target-mapping!-writes-app-db-test
   (testing "add-transform-target-mapping! writes the app-db cache using the workspace's output schema as the to-schema"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
-       (with-provisioned-workspace-db
+       (with-provisioned-workspace-db!
          (mt/id) "ws_fresh"
          (fn []
            (ws.table-remapping/add-transform-target-mapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
@@ -114,10 +116,10 @@
 
 (deftest add-transform-target-mapping!-is-idempotent-test
   (testing "calling add-transform-target-mapping! twice leaves the app-db with a single row (no duplicate-key explosion)"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
-       (with-provisioned-workspace-db
+       (with-provisioned-workspace-db!
          (mt/id) "ws_idem"
          (fn []
            (ws.table-remapping/add-transform-target-mapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
@@ -128,7 +130,7 @@
 (deftest workspace-remap-schema+name-redirects-sync-fetch-test
   (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"
     (let [db-id (mt/id)]
-      (clean-db-fixture
+      (clean-db-fixture!
        db-id
        (fn []
          (is (nil? (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
@@ -144,7 +146,7 @@
   (testing "sync/fetch-metadata/table-fields-metadata asks the driver about the remapped warehouse table"
     (let [db-id          (mt/id)
           describe-calls (atom [])]
-      (clean-db-fixture
+      (clean-db-fixture!
        db-id
        (fn []
          (ws.table-remapping/add-mapping! db-id
@@ -183,7 +185,7 @@
   (testing "throws with a clear error when db is not workspaced (db-workspace-schema returns nil)"
     ;; Defensive: ensure no provisioned WorkspaceDatabase row leaks in from another test.
     (t2/delete! :model/WorkspaceDatabase :database_id (mt/id) :status :provisioned)
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (let [ex (try
@@ -206,7 +208,7 @@
 
 (deftest remap-table-works-without-to-side-model-table-test
   (testing "remap-table returns the [to-schema to-table-name] pair even when no :model/Table exists for it"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (let [to-schema "ws_unsynced"
@@ -222,7 +224,7 @@
 
 (deftest workspace-remap-schema+name-works-without-to-side-model-table-test
   (testing "the sync hook returns [to-schema to-table-name] even when no :model/Table exists for it"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (let [to-schema "ws_unsynced"
@@ -238,7 +240,7 @@
 
 (deftest all-mappings-for-db-works-without-to-side-model-tables-test
   (testing "all-mappings-for-db returns rows whose to-side has no :model/Table yet"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (ws.table-remapping/add-mapping! (mt/id) {:schema "PUBLIC" :table "ORDERS"}   {:schema "ws_unsynced" :table "orders_copy"})
@@ -258,11 +260,11 @@
 
 (deftest spec-for-table-h2-test
   (testing "H2 (default test driver) populates :schema only"
-    (let [database (t2/select-one :model/Database :id (mt/id))
-          table    (t2/select-one :model/Table :id (mt/id :orders))
-          {:keys [db schema table] :as spec} (ws.table-remapping/spec-for-table database table)]
-      (is (= "" db) "db slot is the empty-string sentinel for non-catalog drivers")
-      (is (= "PUBLIC" schema))
+    (let [database  (t2/select-one :model/Database :id (mt/id))
+          table-row (t2/select-one :model/Table :id (mt/id :orders))
+          spec      (ws.table-remapping/spec-for-table database table-row)]
+      (is (= "" (:db spec)) "db slot is the empty-string sentinel for non-catalog drivers")
+      (is (= "PUBLIC" (:schema spec)))
       (is (= "ORDERS" (:table spec))))))
 
 (deftest spec-for-table-mysql-engine-test
@@ -346,7 +348,7 @@
 
 (deftest cache-invalidation-on-insert-test
   (testing "inserting a TableRemapping bumps cache_config.invalidated_at for the database"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (with-database-cache-config!
@@ -363,7 +365,7 @@
 
 (deftest cache-invalidation-on-delete-test
   (testing "deleting a TableRemapping bumps cache_config.invalidated_at for the database"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (with-database-cache-config!
@@ -374,7 +376,7 @@
             {:schema "PUBLIC" :table "ORDERS"}
             {:schema "ws_schema" :table "orders_copy"})
            (let [post-insert (cache-config-invalidated-at (mt/id))]
-             (Thread/sleep 10) ; ensure timestamp clock advances
+             (Thread/sleep (long 10)) ; ensure timestamp clock advances
              (ws.table-remapping/remove-mapping! (mt/id) "PUBLIC" "ORDERS")
              (let [post-delete (cache-config-invalidated-at (mt/id))]
                (is (t/after? post-delete post-insert)
@@ -382,7 +384,7 @@
 
 (deftest cache-invalidation-only-affects-target-database-test
   (testing "inserting a remap on db A doesn't invalidate db B's cache config"
-    (clean-db-fixture
+    (clean-db-fixture!
      (mt/id)
      (fn []
        (let [other-db-id 999999]

@@ -3403,7 +3403,8 @@
   enterprise/workspaces
   {:team "Graphy"
    :api  #{}
-   :uses #{driver
+   :uses #{cache
+           driver
            lib
            models
            premium-features
