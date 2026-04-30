@@ -13,6 +13,7 @@
    [metabase-enterprise.similarity.models.similar-edge-status]
    [metabase-enterprise.similarity.models.similarity-community]
    [metabase-enterprise.similarity.models.similarity-pagerank]
+   [metabase-enterprise.similarity.overlay]
    [metabase-enterprise.similarity.runner]
    [metabase-enterprise.similarity.scorer]
    [metabase-enterprise.similarity.util]

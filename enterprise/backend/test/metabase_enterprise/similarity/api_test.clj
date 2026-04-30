@@ -72,6 +72,8 @@
 
 (deftest ^:sequential views-override-reads-base-rows-test
   (testing ":views override returns raw view rows instead of ensemble"
+    ;; Overlay+dedup off: this test fences the load-edges path (view
+    ;; selection + score precision), not the Phase 7 post-processing.
     (mt/with-model-cleanup [:model/Card :model/SimilarEdge]
       (mt/with-temp [:model/Card {src :id} {}
                      :model/Card {peer :id} {}]
@@ -80,13 +82,15 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "default :ensemble surfaces the ensemble row"
             (let [[row] (similarity.api/neighbors
-                         {:entity-type :card :entity-id src :k 5})]
+                         {:entity-type :card :entity-id src :k 5
+                          :apply-overlay? false :dedupe-by-community? false})]
               (is (= :ensemble (:view row)))
               (is (== 0.99 (:score row)))))
           (testing ":views override surfaces just the requested view"
             (let [[row] (similarity.api/neighbors
                          {:entity-type :card :entity-id src
-                          :views #{:co-dashboard} :k 5})]
+                          :views #{:co-dashboard} :k 5
+                          :apply-overlay? false :dedupe-by-community? false})]
               (is (= :co-dashboard (:view row)))
               (is (== 0.5 (:score row))))))))))
 
@@ -192,3 +196,194 @@
         (is (approx= 0.5 (similarity.api/pagerank-percentile-of :card :card 6)))
         (is (approx= 0.1 (similarity.api/pagerank-percentile-of :card :card 10))))
       (is (nil? (similarity.api/pagerank-percentile-of :card :card 999))))))
+
+;; ----------------------------------------------------------------------------
+;; Phase 7 — neighbors cascade (overlay + dedupe-by-community)
+;; ----------------------------------------------------------------------------
+
+(defn- insert-verified-card-review!
+  [card-id]
+  (t2/insert! :model/ModerationReview
+              {:moderated_item_id   card-id
+               :moderated_item_type "card"
+               :moderator_id        (mt/user->id :crowberto)
+               :status              "verified"
+               :most_recent         true
+               :text                "ok"}))
+
+(deftest ^:sequential dedupe-by-community-batched-parity-test
+  (testing "batched dedupe-by-community matches the per-row semantics"
+    (mt/with-model-cleanup [:model/SimilarityCommunity]
+      (seed-community! {:entity-id 10 :community-id 0})
+      (seed-community! {:entity-id 11 :community-id 0})
+      (seed-community! {:entity-id 12 :community-id 0})
+      (seed-community! {:entity-id 20 :community-id 1})
+      (seed-community! {:entity-id 21 :community-id 1})
+      (let [candidates (mapv #(hash-map :to_entity_type :card :to_entity_id %)
+                             [10 11 12 20 21])
+            out        (similarity.api/dedupe-by-community candidates)]
+        (testing "first member of each community wins; cross-community survivors preserved"
+          (is (= [10 20] (mapv :to_entity_id out))))))))
+
+(deftest ^:sequential dedupe-by-community-empty-input-test
+  (testing "empty input returns [] without DB hits"
+    ;; with-redefs on t2/select would catch a stray query; not bothering — the
+    ;; empty contract is the load-bearing fence.
+    (is (= [] (similarity.api/dedupe-by-community [])))
+    (is (= [] (similarity.api/dedupe-by-community nil)))))
+
+(deftest ^:sequential neighbors-defaults-apply-overlay-and-dedup-test
+  (testing "default flags: dedup collapses near-clones; rows carry overlay decoration"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge
+                            :model/SimilarityCommunity :model/SimilarityPagerank]
+      (mt/with-temp [:model/Card {src :id}     {}
+                     :model/Card {clone-a :id} {}
+                     :model/Card {clone-b :id} {}
+                     :model/Card {clone-c :id} {}]
+        ;; Three near-clones in one community → dedup keeps one.
+        (seed-community! {:entity-id clone-a :community-id 0})
+        (seed-community! {:entity-id clone-b :community-id 0})
+        (seed-community! {:entity-id clone-c :community-id 0})
+        (seed-edge! {:from src :to clone-a :score 0.95})
+        (seed-edge! {:from src :to clone-b :score 0.92})
+        (seed-edge! {:from src :to clone-c :score 0.90})
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [out (similarity.api/neighbors {:entity-type :card :entity-id src :k 5})]
+            (testing "exactly one survivor"
+              (is (= 1 (count out))))
+            (testing "row carries fused_score and overlay_multiplier"
+              (is (number? (:fused_score (first out))))
+              (is (number? (:overlay_multiplier (first out)))))))))))
+
+(deftest ^:sequential neighbors-overlay-and-dedup-off-regression-fence-test
+  (testing "both flags off: returns raw load-edges output, no overlay decoration"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge
+                            :model/SimilarityCommunity]
+      (mt/with-temp [:model/Card {src :id}    {}
+                     :model/Card {hi :id}     {}
+                     :model/Card {mid :id}    {}
+                     :model/Card {lo :id}     {}]
+        (seed-community! {:entity-id hi :community-id 0})
+        (seed-community! {:entity-id mid :community-id 0})
+        (seed-edge! {:from src :to hi  :score 0.9})
+        (seed-edge! {:from src :to mid :score 0.5})
+        (seed-edge! {:from src :to lo  :score 0.1})
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [out (similarity.api/neighbors
+                     {:entity-type :card :entity-id src :k 5
+                      :apply-overlay? false :dedupe-by-community? false})]
+            (is (= [hi mid lo] (mapv :to_entity_id out)))
+            (is (= [0.9 0.5 0.1] (mapv :score out)))
+            (is (every? #(not (contains? % :fused_score)) out))
+            (is (every? #(not (contains? % :overlay_multiplier)) out))))))))
+
+(deftest ^:sequential neighbors-overlay-on-dedup-off-test
+  (testing ":apply-overlay? true, :dedupe-by-community? false — near-clones survive, ranked by overlay"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/ModerationReview
+                            :model/SimilarityCommunity :model/SimilarityPagerank]
+      (mt/with-temp [:model/Card {src :id}        {}
+                     :model/Card {clone-a :id}    {}
+                     :model/Card {clone-b :id}    {}
+                     :model/Card {verified-id :id} {}]
+        (insert-verified-card-review! verified-id)
+        (seed-community! {:entity-id clone-a     :community-id 0})
+        (seed-community! {:entity-id clone-b     :community-id 0})
+        (seed-community! {:entity-id verified-id :community-id 0})
+        (seed-edge! {:from src :to clone-a     :score 0.95})
+        (seed-edge! {:from src :to clone-b     :score 0.92})
+        (seed-edge! {:from src :to verified-id :score 0.50})
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [out (similarity.api/neighbors
+                     {:entity-type :card :entity-id src :k 5
+                      :apply-overlay? true :dedupe-by-community? false})]
+            (is (= 3 (count out)))
+            (is (every? #(contains? % :fused_score) out))
+            (is (every? #(contains? % :overlay_multiplier) out))))))))
+
+(deftest ^:sequential neighbors-overlay-off-dedup-on-test
+  (testing ":apply-overlay? false, :dedupe-by-community? true — dedup by raw fused score"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/SimilarityCommunity]
+      (mt/with-temp [:model/Card {src :id} {}
+                     :model/Card {a :id}   {}
+                     :model/Card {b :id}   {}
+                     :model/Card {c :id}   {}]
+        (seed-community! {:entity-id a :community-id 0})
+        (seed-community! {:entity-id b :community-id 0})
+        (seed-community! {:entity-id c :community-id 1})
+        (seed-edge! {:from src :to a :score 0.9})
+        (seed-edge! {:from src :to b :score 0.7})
+        (seed-edge! {:from src :to c :score 0.5})
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [out (similarity.api/neighbors
+                     {:entity-type :card :entity-id src :k 5
+                      :apply-overlay? false :dedupe-by-community? true})]
+            (is (= [a c] (mapv :to_entity_id out)))
+            (is (every? #(not (contains? % :fused_score)) out))))))))
+
+(deftest ^:sequential neighbors-order-matters-fence-test
+  (testing "overlay runs before dedup — verified card with lower fused score wins its community"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge :model/ModerationReview
+                            :model/SimilarityCommunity :model/SimilarityPagerank]
+      (mt/with-temp [:model/Card {src :id}        {}
+                     :model/Card {unverified :id} {}
+                     :model/Card {verified :id}   {}]
+        (insert-verified-card-review! verified)
+        (seed-community! {:entity-id unverified :community-id 0})
+        (seed-community! {:entity-id verified   :community-id 0})
+        (seed-edge! {:from src :to unverified :score 0.80})
+        (seed-edge! {:from src :to verified   :score 0.65})
+        (mt/with-current-user (mt/user->id :crowberto)
+          (testing "overlay-on + dedup-on: verified wins despite lower fused score"
+            (let [out (similarity.api/neighbors
+                       {:entity-type :card :entity-id src :k 5})]
+              (is (= [verified] (mapv :to_entity_id out)))))
+          (testing "overlay-off + dedup-on: unverified wins on raw fused score"
+            (let [out (similarity.api/neighbors
+                       {:entity-type :card :entity-id src :k 5
+                        :apply-overlay? false})]
+              (is (= [unverified] (mapv :to_entity_id out))))))))))
+
+(deftest ^:sequential neighbors-overfetch-coefficient-test
+  (testing "load-edges is called with c · k rows for over-fetch headroom"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge]
+      (mt/with-temp [:model/Card {src :id} {}]
+        (let [observed (atom nil)
+              orig     @#'similarity.api/load-edges]
+          (with-redefs [similarity.api/load-edges
+                        (fn [opts limit]
+                          (reset! observed limit)
+                          (orig opts limit))]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (similarity.api/neighbors {:entity-type :card :entity-id src :k 20})
+              (is (= 60 @observed))
+              (similarity.api/neighbors {:entity-type :card :entity-id src :k 7})
+              (is (= 21 @observed)))))))))
+
+(deftest ^:sequential neighbors-k-warn-fence-test
+  (testing "k > max-supported-k is honored but logged; no exception"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge]
+      (mt/with-temp [:model/Card {src :id} {}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          ;; Empty index, so the result is []; the test fences that the call
+          ;; itself succeeds and produces a vector.
+          (is (vector? (similarity.api/neighbors
+                        {:entity-type :card :entity-id src :k 30}))))))))
+
+(deftest ^:sequential neighbors-schema-decorates-only-when-overlay-applies-test
+  (testing "::neighbor :fused_score / :overlay_multiplier are optional"
+    (mt/with-model-cleanup [:model/Card :model/SimilarEdge]
+      (mt/with-temp [:model/Card {src :id}  {}
+                     :model/Card {peer :id} {}]
+        (seed-edge! {:from src :to peer :score 0.5})
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [decorated (first (similarity.api/neighbors
+                                  {:entity-type :card :entity-id src :k 5}))
+                bare      (first (similarity.api/neighbors
+                                  {:entity-type :card :entity-id src :k 5
+                                   :apply-overlay? false}))]
+            ;; Decorated path: optional fields populated.
+            (is (number? (:fused_score decorated)))
+            (is (number? (:overlay_multiplier decorated)))
+            ;; Bare path: optional fields absent.
+            (is (not (contains? bare :fused_score)))
+            (is (not (contains? bare :overlay_multiplier)))))))))
