@@ -33,10 +33,10 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
-import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { useGetMetabotConversationQuery } from "../../api";
