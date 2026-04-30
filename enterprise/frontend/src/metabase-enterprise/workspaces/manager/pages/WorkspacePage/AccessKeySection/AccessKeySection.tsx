@@ -53,7 +53,7 @@ function CreateAccessKeySection({ workspaceId }: CreateAccessKeySectionProps) {
 
   return (
     <Box p="md">
-      <Button variant="filled" loading={isLoading} onClick={handleCreate}>
+      <Button loading={isLoading} onClick={handleCreate}>
         {t`Create access key`}
       </Button>
     </Box>

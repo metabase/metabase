@@ -25,12 +25,10 @@
                     :output_schema    "mb_isolation_github"
                     :input_schemas    ["raw_github"]
                     :status           :provisioned}]
-      (let [cfg       (config/build-workspace-config ws-id)
-            crowberto (mt/fetch-user :crowberto)]
+      (let [cfg (config/build-workspace-config ws-id)]
         (testing "outer shape matches config.yml (version + config block)"
           (is (= 1 (:version cfg)))
-          (is (every? #(contains? (:config cfg) %)
-                      [:databases :users :workspace])))
+          (is (= #{:databases :workspace} (set (keys (:config cfg))))))
         (testing "databases entry"
           (is (= 1 (count (-> cfg :config :databases))))
           (let [db (first (-> cfg :config :databases))]
@@ -45,13 +43,6 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "user matches the workspace creator; password is the env placeholder"
-          (is (= [{:first_name   (:first_name crowberto)
-                   :last_name    (:last_name crowberto)
-                   :email        (:email crowberto)
-                   :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
-                   :is_superuser true}]
-                 (-> cfg :config :users))))
         (testing "workspace entry"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
@@ -89,13 +80,6 @@
            #"not :provisioned"
            (config/build-workspace-config ws-id))))))
 
-(deftest build-workspace-config-omits-user-without-creator-test
-  (testing "When the workspace has no creator, the users section is dropped (no throw)"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Creatorless"}]
-      (let [cfg (config/build-workspace-config ws-id)]
-        (is (some? cfg))
-        (is (not (contains? (:config cfg) :users)))))))
-
 (deftest build-workspace-config-empty-workspace-test
   (testing "A workspace with no databases still produces the version+config outer shape"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
@@ -104,8 +88,7 @@
         (is (= 1 (:version cfg)))
         (is (= "Empty" (-> cfg :config :workspace :name)))
         (is (= [] (-> cfg :config :databases)))
-        (is (= {} (-> cfg :config :workspace :databases)))
-        (is (= 1 (count (-> cfg :config :users))))))))
+        (is (= {} (-> cfg :config :workspace :databases)))))))
 
 (deftest build-workspace-config-missing-workspace-returns-nil-test
   (testing "A missing workspace returns nil"

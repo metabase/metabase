@@ -58,7 +58,7 @@ function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
       <Stack gap="3.25rem">
         <DatabaseSection workspace={workspace} databases={databases} />
         <AccessKeySection workspace={workspace} />
-        <SetupSection />
+        <SetupSection workspace={workspace} />
       </Stack>
     </PageContainer>
   );
