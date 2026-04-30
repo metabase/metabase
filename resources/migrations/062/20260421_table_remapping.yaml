@@ -101,3 +101,103 @@ databaseChangeLog:
             columns:
               - column:
                   name: database_id
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:00
+      author: bcm
+      comment: Add from_db column for multi-level driver support (BigQuery project, ClickHouse db, schema-less drivers)
+      changes:
+        - addColumn:
+            tableName: table_remapping
+            columns:
+              - column:
+                  name: from_db
+                  type: varchar(254)
+                  remarks: Source database/project (top-level identifier; e.g. BigQuery project, ClickHouse db). Empty string when driver does not emit this level.
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:01
+      author: bcm
+      comment: Add to_db column for multi-level driver support
+      changes:
+        - addColumn:
+            tableName: table_remapping
+            columns:
+              - column:
+                  name: to_db
+                  type: varchar(254)
+                  remarks: Target database/project (top-level identifier). Empty string when driver does not emit this level.
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:02
+      author: bcm
+      comment: Default from_schema to empty-string sentinel for schema-less drivers
+      changes:
+        - addDefaultValue:
+            tableName: table_remapping
+            columnName: from_schema
+            defaultValue: ""
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:03
+      author: bcm
+      comment: Default to_schema to empty-string sentinel for schema-less drivers
+      changes:
+        - addDefaultValue:
+            tableName: table_remapping
+            columnName: to_schema
+            defaultValue: ""
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:04
+      author: bcm
+      comment: Drop old source-side unique constraint to widen with from_db
+      changes:
+        - dropUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+      rollback:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_schema, from_table_name
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:05
+      author: bcm
+      comment: Drop old target-side unique constraint to widen with to_db
+      changes:
+        - dropUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+      rollback:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_schema, to_table_name
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:06
+      author: bcm
+      comment: Add widened source-side unique constraint including from_db (3-level/BigQuery, db-qualified/ClickHouse)
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:07
+      author: bcm
+      comment: Add widened target-side unique constraint including to_db
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_db, to_schema, to_table_name

@@ -368,6 +368,32 @@
 
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
+(defmulti qualified-name-components
+  "Which **AST identifier positions** does this driver populate when referencing a table?
+  Returns an ordered subset of `#{:db :schema}`. The `:table` position is always implicit.
+
+  These positions correspond to SQLGlot's `Table.catalog` (`:db`) and `Table.db`
+  (`:schema`) AST fields — *not* warehouse vocabulary. A warehouse calling its top
+  level \"database\" (e.g. ClickHouse) does **not** use the `:db` position here unless
+  it emits a 3-part `catalog.schema.table` identifier; it uses `:schema` because that's
+  the AST position holding the level above the table.
+
+  Concrete mapping:
+  - 1-level (`SELECT * FROM t`):           `[]`           — MySQL, Mongo
+  - 2-level (`SELECT * FROM s.t`):         `[:schema]`    — Postgres, Snowflake, ClickHouse, H2
+  - 3-level (`SELECT * FROM c.s.t`):       `[:db :schema]` — BigQuery (project.dataset.table)
+
+  Used by workspace table remapping to decide:
+  - which columns to populate when storing a `:model/TableRemapping` row
+  - which AST positions to match against during query rewriting
+
+  Defaults to `[:schema]` (Postgres-style)."
+  {:added "0.57.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod qualified-name-components ::driver [_driver] [:schema])
+
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/key-constraints
   but not :describe-fks. Results should match the [[metabase.sync.interface/FKMetadata]] schema."

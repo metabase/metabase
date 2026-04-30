@@ -506,13 +506,15 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     columns = replacements.get("columns") or []  # List of [key, value] pairs
 
     # Convert list-of-pairs to lookup dicts for O(1) matching
-    # Tables: (schema, table) -> new_name
+    # Tables: (db, schema, table) -> new_name. `db` is the catalog (BigQuery project,
+    # ClickHouse database, etc). Keys with no :db default to None for back-compat.
     table_map = {}
     for item in tables:
         key, new_name = item
+        db = key.get("db")          # may be None
         schema = key.get("schema")  # may be None
         table = key["table"]
-        table_map[(schema, table)] = new_name
+        table_map[(db, schema, table)] = new_name
 
     # Columns: (schema, table, column) -> new_name
     column_map = {}
@@ -528,14 +530,19 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     def rename_fn(node):
         # Schema rename (appears in Table.db)
         if isinstance(node, exp.Table):
-            # Capture original values BEFORE any modifications (important for lookup)
+            # Capture original values BEFORE any modifications (important for lookup).
+            # SQLGlot stores 3-part identifiers as catalog.db.this -> catalog=BigQuery
+            # project / ClickHouse db, db=schema, this=table.
+            original_db = node.catalog or None
             original_schema = node.db
             original_table = node.name
             # Preserve original quoting status for renamed identifiers.
             # Some Table nodes have non-Identifier children (e.g., ExplodingGenerateSeries,
             # Anonymous) that lack a `quoted` attribute — default to False for those.
             db_node = node.args.get("db")
+            catalog_node = node.args.get("catalog")
             original_schema_quoted = db_node.quoted if isinstance(db_node, exp.Identifier) else False
+            original_db_quoted = catalog_node.quoted if isinstance(catalog_node, exp.Identifier) else False
             original_table_quoted = node.this.quoted if isinstance(node.this, exp.Identifier) else False
 
             # Rename schema if present
@@ -544,12 +551,24 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
                 node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
 
-            # Rename table - try exact match first (with original schema), then without schema
-            new_table = (table_map.get((original_schema, original_table)) or
-                         table_map.get((None, original_table)))
+            # Rename table - try most-specific match first, falling back to less-qualified keys.
+            # Order: (db, schema, table), (None, schema, table), (None, None, table).
+            # This lets a remapping omit :db when it doesn't matter (Postgres-style),
+            # and still match a 3-part SQL reference, while a remapping that does include :db
+            # only matches references that have the matching catalog.
+            new_table = (table_map.get((original_db, original_schema, original_table)) or
+                         table_map.get((None, original_schema, original_table)) or
+                         table_map.get((None, None, original_table)))
             if new_table:
                 if isinstance(new_table, dict):
-                    # New format: {schema: x, table: y}
+                    # New format: {db?, schema?, table?}
+                    if new_table.get("db"):
+                        raw_db, was_quoted = unquote_identifier(new_table["db"], dialect)
+                        db_quoted = original_db_quoted or was_quoted or needs_quoting(raw_db, dialect)
+                        node.set("catalog", exp.Identifier(this=raw_db, quoted=db_quoted))
+                    elif "db" in new_table and new_table["db"] is None:
+                        # Explicitly clear the catalog (database/project) qualifier.
+                        node.set("catalog", None)
                     if new_table.get("schema"):
                         # When injecting a new schema, quote if it contains special characters
                         raw_schema, was_quoted = unquote_identifier(new_table["schema"], dialect)

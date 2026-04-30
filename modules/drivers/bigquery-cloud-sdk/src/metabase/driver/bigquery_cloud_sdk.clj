@@ -848,6 +848,13 @@
                               :workspace                        true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :bigquery-cloud-sdk
+  [_driver]
+  ;; BigQuery emits three-part identifiers in compiled SQL: `project.dataset.table`.
+  ;; Project is connection-level identity but it appears in the AST as `Table.catalog`,
+  ;; so we model it as `:db`. Dataset sits at SQLGlot's `Table.db` position, our `:schema`.
+  [:db :schema])
+
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
   "UTC")

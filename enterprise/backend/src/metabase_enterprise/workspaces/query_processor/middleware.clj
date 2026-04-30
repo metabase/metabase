@@ -63,24 +63,42 @@
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.sql-tools.core :as sql-tools]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 
+(def ^:private no-level
+  "Empty-string sentinel for `from_db`/`from_schema` etc. when a driver doesn't emit
+   that level — see [[metabase-enterprise.workspaces.table-remapping]] namespace docstring."
+  "")
+
+(defn- prune-no-level
+  "Remove keys whose value is the no-level sentinel so they aren't passed to SQLGlot.
+   SQLGlot's matcher only treats absent keys as wildcards; an empty-string would be
+   matched literally and never hit anything in the AST."
+  [m]
+  (into {} (remove (fn [[_ v]] (= no-level v))) m))
+
 (defn- build-table-replacements
   "Convert remappings map into the format expected by `sql-tools/replace-names`.
-   SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers."
+   SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers.
+
+   Remapping tuples are 3-wide: `[db schema table]`. Sentinel `\"\"` levels are pruned
+   so SQLGlot treats them as wildcards rather than matching the literal empty string."
   [remappings]
   (into {}
-        (map (fn [[[from-schema from-table] [to-schema to-table]]]
-               [{:schema from-schema :table from-table}
-                {:schema to-schema :table to-table}]))
+        (map (fn [[[from-db from-schema from-table] [to-db to-schema to-table]]]
+               [(prune-no-level {:db from-db :schema from-schema :table from-table})
+                (prune-no-level {:db to-db   :schema to-schema   :table to-table})]))
         remappings))
 
 (defn- rewrite-sql
@@ -99,17 +117,28 @@
 
 (defn- remap-mbql-table-metadata!
   "Override `:schema` and `:name` on table metadata in the CachedMetadataProvider for each
-   remapping. Downstream HoneySQL compilation will read the overridden values."
+   remapping. Downstream HoneySQL compilation will read the overridden values.
+
+   Match key is `(:schema, :name)`. The `db` level isn't tracked on `:metadata/table`
+   (it's a property of the database connection, not the table), so a remapping that
+   only differs by `db` is invisible to Phase 1; Phase 2 catches it.
+
+   Schema-less drivers store nil in `:metadata/table.:schema`, while remapping rows use
+   the `\"\"` sentinel — they're treated as equal here so the match succeeds."
   [metadata-provider remappings]
-  (doseq [[[from-schema from-name] [to-schema to-name]] remappings
-          :let [candidates (lib.metadata.protocols/metadatas
-                            metadata-provider
-                            {:lib/type :metadata/table, :name #{from-name}})
-                table      (some #(when (= (:schema %) from-schema) %) candidates)]
+  (doseq [[[_from-db from-schema from-name] [_to-db to-schema to-name]] remappings
+          :let [norm              #(if (or (nil? %) (= no-level %)) ::absent %)
+                from-schema-match (norm from-schema)
+                candidates        (lib.metadata.protocols/metadatas
+                                   metadata-provider
+                                   {:lib/type :metadata/table, :name #{from-name}})
+                table             (some #(when (= (norm (:schema %)) from-schema-match) %) candidates)]
           :when table]
     (lib.metadata.protocols/store-metadata!
      metadata-provider
-     (assoc table :schema to-schema :name to-name))))
+     (assoc table
+            :schema (when-not (= no-level to-schema) to-schema)
+            :name to-name))))
 
 ;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
 
@@ -128,8 +157,18 @@
    those decisions would be made against canonical names, which is invisible bug-bait. With
    Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
 
-   Native queries are intentionally untouched here — see the namespace docstring for why."
-  :feature :workspaces
+   Native queries are intentionally untouched here — see the namespace docstring for why.
+
+   ## Why `:feature :none` and not `:feature :workspaces`
+
+   Workspace child instances bootstrap from `config.yml` *before* their token is installed
+   (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
+   exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
+   the child silently leaks production data. The same rationale documented on
+   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
+   if remap rows exist, isolation must engage regardless of token state. The internal
+   `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
+  :feature :none
   [{db-id :database, mp :lib/metadata, :as query}]
   (if-not (ws.remapping/enabled-for-db? db-id)
     query
@@ -160,7 +199,11 @@
 
    Parses that SQL via `sql-tools/replace-names` (SQLGlot via GraalPy), walks the AST, and
    rewrites every `from` schema/table reference to its `to` counterpart. Re-emits. Touches
-   both `:qp/compiled` and `:qp/compiled-inline`.
+   `:qp/compiled`, `:qp/compiled-inline`, AND `:native` — the last one matters for
+   native-origin queries, where `:native` is populated at preprocess and the
+   compiled→native rename in `metabase.query-processor.execute/run` is a no-op.
+   Without rewriting `:native`, native-origin SQL would hit the warehouse with canonical
+   identifiers.
 
    Runs unconditionally for queries against remapped databases — MBQL-origin and native-origin
    alike. This is the only place native SQL is rewritten.
@@ -170,12 +213,37 @@
    fallback to the original SQL — a silent pass-through would breach workspace isolation.
 
    Short-circuits when `enabled-for-db?` is false (no remappings) or
-   `ws.remapping/*skip-remapping?*` is bound true."
-  :feature :workspaces
+   `ws.remapping/*skip-remapping?*` is bound true.
+
+   ## Why `:feature :none` and not `:feature :workspaces`
+
+   See the rationale on [[apply-workspace-remapping]]. Same answer: workspace children
+   must rewrite reads even when the `:workspaces` token isn't active (boot sequence,
+   token expiry, etc.). The internal `(enabled-for-db? db-id)` is the gate."
+  :feature :none
   [qp]
   (fn [{:keys [database] :as query} rff]
-    (if-not (ws.remapping/enabled-for-db? database)
+    (cond
+      (not (ws.remapping/enabled-for-db? database))
       (qp query rff)
+
+      ;; Tier B fail-closed: workspace remap is incompatible with DB routing
+      ;; (which swaps the destination connection — see GHY-3484 audit conflict
+      ;; notes) and connection impersonation (which binds a warehouse role that
+      ;; almost certainly lacks GRANT on workspace schemas).
+      (qp.middleware.enterprise/currently-db-routed?)
+      (throw (ex-info "Database routing is incompatible with workspace table remapping"
+                      {:type qp.error-type/qp :database-id database}))
+
+      ;; impersonation-enforced-for-db? throws when no current user is bound
+      ;; (sync/transform contexts). Skip the check there; impersonation can't
+      ;; engage without a user.
+      (and api/*current-user-id*
+           (perms/impersonation-enforced-for-db? {:id database}))
+      (throw (ex-info "Connection impersonation is incompatible with workspace table remapping"
+                      {:type qp.error-type/qp :database-id database}))
+
+      :else
       (let [remappings (ws.remapping/remappings-for-db database)]
         (if (empty? remappings)
           (qp query rff)
@@ -187,5 +255,12 @@
                           (update :qp/compiled rewrite)
 
                           (:qp/compiled-inline query)
-                          (update :qp/compiled-inline rewrite))]
+                          (update :qp/compiled-inline rewrite)
+
+                          ;; Native-origin queries have `:native` populated at preprocess,
+                          ;; before this middleware runs. The `(not (:native query)) (assoc
+                          ;; :native ...)` rename in `qp.execute/run` is a no-op for them, so
+                          ;; without this branch the original native SQL hits the warehouse.
+                          (:native query)
+                          (update :native rewrite))]
             (qp query rff)))))))

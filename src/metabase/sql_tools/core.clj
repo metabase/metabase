@@ -20,25 +20,29 @@
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (mr/def ::table-spec
-  "Schema for table identifier used in replacements."
+  "Schema for table identifier used in replacements. `:db` is the top-level qualifier for
+  drivers that emit one (BigQuery project, ClickHouse database)."
   [:map
    [:table :string]
-   [:schema {:optional true} [:maybe :string]]])
+   [:schema {:optional true} [:maybe :string]]
+   [:db {:optional true} [:maybe :string]]])
 
 (mr/def ::column-spec
   "Schema for column identifier used in replacements."
   [:map
    [:column :string]
    [:table {:optional true} [:maybe :string]]
-   [:schema {:optional true} [:maybe :string]]])
+   [:schema {:optional true} [:maybe :string]]
+   [:db {:optional true} [:maybe :string]]])
 
 (mr/def ::table-replacement-value
-  "Schema for table replacement target - can be a string or a map with schema/table."
+  "Schema for table replacement target - can be a string or a map with schema/table/db."
   [:or
    :string
    [:map
     [:schema {:optional true} [:maybe :string]]
-    [:table {:optional true} [:maybe :string]]]])
+    [:table {:optional true} [:maybe :string]]
+    [:db {:optional true} [:maybe :string]]]])
 
 (mr/def ::replacements
   "Schema for replace-names replacements map."
