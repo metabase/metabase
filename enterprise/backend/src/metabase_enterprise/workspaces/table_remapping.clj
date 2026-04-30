@@ -127,4 +127,3 @@
     (add-schema+table-mapping! db-id
                                [from-schema from-table-name]
                                [workspace-schema to-table-name])))
-
