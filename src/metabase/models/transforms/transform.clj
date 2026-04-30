@@ -230,15 +230,18 @@
                  {:email (:owner_email transform)}))))))
 
 (t2/define-after-insert :model/Transform [transform]
-  (events/publish-event! :event/create-transform {:object transform})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/create-transform {:object transform}))
   transform)
 
 (t2/define-after-update :model/Transform [transform]
-  (events/publish-event! :event/update-transform {:object transform})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
-  (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 

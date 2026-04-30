@@ -98,7 +98,8 @@
   (sync-document-cards-collection! id collection_id
                                    :archived archived
                                    :archived-directly archived_directly)
-  (events/publish-event! :event/document-update {:object instance})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/document-update {:object instance}))
   instance)
 
 (t2/define-after-select :model/Document
