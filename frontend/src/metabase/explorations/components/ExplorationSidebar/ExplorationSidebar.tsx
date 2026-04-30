@@ -94,7 +94,13 @@ function ExplorationQueryRow({
 
   if (errorMessage) {
     return (
-      <Tooltip label={errorMessage} multiline maw="20rem" position="right">
+      <Tooltip
+        className={S.errorTooltip}
+        label={errorMessage}
+        multiline
+        maw="20rem"
+        position="right"
+      >
         {row}
       </Tooltip>
     );

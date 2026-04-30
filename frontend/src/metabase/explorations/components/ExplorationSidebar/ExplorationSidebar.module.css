@@ -2,6 +2,10 @@
   overflow-y: auto;
 }
 
+.errorTooltip {
+  overflow-wrap: break-word;
+}
+
 .queryRow {
   display: flex;
   align-items: center;
