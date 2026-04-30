@@ -10,9 +10,10 @@ import type {
 
 export type MiniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below" | "display" | "collection"
+  "id" | "name" | "model" | "here" | "below" | "display" | "collection" | "type"
 > & {
   id: CollectionItem["id"] | CollectionId;
+  sourceCollectionId?: CollectionItem["id"] | CollectionId;
   /** When set, CollectionItemList only shows children whose type matches */
   childTypeFilter?: NonNullable<CollectionType>;
 };

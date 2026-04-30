@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";
-import type { SchemaName } from "metabase-types/api";
+import type { CollectionType, SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
 
@@ -137,7 +137,9 @@ async function getCollectionPathFromValue(
 
   const collection = table?.collection ?? card?.collection;
 
-  const location = collection?.effective_location ?? collection?.location;
+  const location = isLibrarySectionType(collection?.type)
+    ? collection?.location
+    : (collection?.effective_location ?? collection?.location);
 
   if (!location) {
     return [getOurAnalytics()];
@@ -178,6 +180,35 @@ async function getCollectionPathFromValue(
     );
 
     if (!nextItem) {
+      if (
+        collectionId === libraryCollection?.id &&
+        isLibrarySectionType(collection?.type)
+      ) {
+        const promotedItem = collectionItems.data.find(
+          (item) =>
+            item.model === "collection" &&
+            item.id === collectionIds[i + 2] &&
+            item.type === collection.type,
+        );
+
+        locationPath.push(
+          getSyntheticLibrarySectionItem(libraryCollection, collection.type),
+        );
+
+        if (promotedItem) {
+          locationPath.push({
+            id: promotedItem.id,
+            name: promotedItem.name,
+            model: "collection",
+            here: promotedItem.here,
+            below: promotedItem.below,
+            type: promotedItem.type,
+          });
+          i += 1;
+          continue;
+        }
+      }
+
       break;
     }
 
@@ -187,10 +218,33 @@ async function getCollectionPathFromValue(
       model: "collection",
       here: nextItem.here,
       below: nextItem.below,
+      type: nextItem.type,
     });
   }
 
   return locationPath;
+}
+
+function isLibrarySectionType(
+  type: CollectionType | null | undefined,
+): type is "library-data" | "library-metrics" {
+  return type === "library-data" || type === "library-metrics";
+}
+
+function getSyntheticLibrarySectionItem(
+  libraryCollection: MiniPickerCollectionItem,
+  type: "library-data" | "library-metrics",
+): MiniPickerCollectionItem {
+  return {
+    id: `${type}-${libraryCollection.id}`,
+    sourceCollectionId: libraryCollection.id,
+    name: type === "library-data" ? t`Data` : t`Metrics`,
+    model: "collection",
+    type,
+    here: [],
+    below: getOurAnalytics().below,
+    childTypeFilter: type,
+  };
 }
 
 // not a factory

@@ -14,7 +14,14 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { Database, RecentItem, SearchResult } from "metabase-types/api";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type {
+  Collection,
+  CollectionItem,
+  Database,
+  RecentItem,
+  SearchResult,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -318,9 +325,23 @@ export type SetupOpts = Partial<EntityPickerModalProps> & {
   recentItems?: RecentItem[];
   searchResults?: SearchResult[];
   databases?: Database[];
+  additionalCollections?: Collection[];
+  additionalCollectionItemEndpoints?: Array<{
+    collection: Pick<Collection, "id">;
+    collectionItems: CollectionItem[];
+  }>;
+  libraryCollection?: Collection;
+  libraryCollectionItems?: CollectionItem[];
 };
 
-export const setup = async ({ databases, ...rest }: SetupOpts = {}) => {
+export const setup = async ({
+  additionalCollections = [],
+  additionalCollectionItemEndpoints = [],
+  databases,
+  libraryCollection,
+  libraryCollectionItems,
+  ...rest
+}: SetupOpts = {}) => {
   process.env.OVERSCAN = "20"; // for VirtualizedList overscan
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints(mockRecentItems, [
@@ -330,16 +351,38 @@ export const setup = async ({ databases, ...rest }: SetupOpts = {}) => {
 
   setupDatabasesEndpoints(databases ?? mockDatabases);
 
+  PLUGIN_LIBRARY.useGetLibraryCollection = () => ({
+    data: libraryCollection,
+    isLoading: false,
+  });
+
   // Setup collections
   setupCollectionsEndpoints({
-    collections: [collection1, collection2, nestedCollection],
+    collections: [
+      collection1,
+      collection2,
+      nestedCollection,
+      ...additionalCollections,
+    ],
     rootCollection,
   });
 
   // Setup collection by ID endpoints
   setupCollectionByIdEndpoint({
-    collections: [collection1, collection2, nestedCollection],
+    collections: [
+      collection1,
+      collection2,
+      nestedCollection,
+      ...additionalCollections,
+    ],
   });
+
+  if (libraryCollection && libraryCollectionItems) {
+    setupCollectionItemsEndpoint({
+      collection: libraryCollection,
+      collectionItems: libraryCollectionItems,
+    });
+  }
 
   // Setup collection items endpoints for the tree structure
   setupRootCollectionItemsEndpoint({
@@ -360,6 +403,10 @@ export const setup = async ({ databases, ...rest }: SetupOpts = {}) => {
     collection: nestedCollection,
     collectionItems: nestedCollectionItems,
   });
+
+  for (const endpoint of additionalCollectionItemEndpoints) {
+    setupCollectionItemsEndpoint(endpoint);
+  }
 
   fetchMock.get("path:/api/search", mockSearchResults);
   fetchMock.get("path:/api/user/recipients", { data: [] });

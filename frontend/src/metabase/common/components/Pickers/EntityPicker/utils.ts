@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { type IconData, getIcon } from "metabase/common/utils/icon";
@@ -320,3 +321,43 @@ export const isInRecentsOrSearch = (path: OmniPickerItem[]) => {
     path[0] && (path[0].id === "recents" || path[0].id === "search-results")
   );
 };
+
+export const librarySectionTypes = ["library-data", "library-metrics"] as const;
+
+export type LibrarySectionType = (typeof librarySectionTypes)[number];
+
+export function isLibrarySectionType(
+  type: CollectionType | null | undefined,
+): type is LibrarySectionType {
+  return librarySectionTypes.some((sectionType) => sectionType === type);
+}
+
+export function getLibrarySectionName(type: LibrarySectionType) {
+  switch (type) {
+    case "library-data":
+      return t`Data`;
+    case "library-metrics":
+      return t`Metrics`;
+  }
+}
+
+export function getSyntheticLibrarySectionItem({
+  libraryCollection,
+  type,
+}: {
+  libraryCollection: OmniPickerCollectionItem;
+  type: LibrarySectionType;
+}): OmniPickerCollectionItem {
+  return {
+    id: `${type}-${libraryCollection.id}`,
+    sourceCollectionId: libraryCollection.id,
+    name: getLibrarySectionName(type),
+    model: "collection",
+    type,
+    can_write: false,
+    location: "/",
+    here: [],
+    below: allCollectionModels,
+    childTypeFilter: type,
+  };
+}

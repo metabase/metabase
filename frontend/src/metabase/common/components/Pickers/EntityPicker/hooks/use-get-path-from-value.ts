@@ -31,7 +31,12 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import { getCollectionItemsOptions, validCollectionModels } from "../utils";
+import {
+  getCollectionItemsOptions,
+  getSyntheticLibrarySectionItem,
+  isLibrarySectionType,
+  validCollectionModels,
+} from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
 const allCollectionModels = Array.from(validCollectionModels);
@@ -381,7 +386,9 @@ async function getCollectionPathFromValue({
         }),
       ).unwrap();
 
-  const location = collection?.effective_location ?? collection?.location;
+  const location = isLibrarySectionType(collection?.type)
+    ? collection?.location
+    : (collection?.effective_location ?? collection?.location);
 
   const locationPath = [rootCollectionItem];
 
@@ -425,6 +432,7 @@ async function getCollectionPathFromValue({
         id: libraryCollection.id,
         name: libraryCollection.name,
         model: "collection",
+        type: libraryCollection.type,
         below: allCollectionModels,
       });
     } else if (isInPersonalCollection && personalCollection) {
@@ -489,6 +497,51 @@ async function getCollectionPathFromValue({
     );
 
     if (!nextItem) {
+      if (
+        isInLibrary &&
+        libraryCollection &&
+        collectionId === libraryCollection.id &&
+        isLibrarySectionType(collection?.type)
+      ) {
+        const promotedItem = collectionItems.data.find(
+          (item) =>
+            item.model === "collection" &&
+            item.id === collectionIds[i + 2] &&
+            item.type === collection.type,
+        );
+
+        locationPath.push(
+          getSyntheticLibrarySectionItem({
+            libraryCollection: {
+              id: libraryCollection.id,
+              name: libraryCollection.name,
+              model: "collection",
+              type: libraryCollection.type,
+              can_write: libraryCollection.can_write,
+              here: libraryCollection.here,
+              below: libraryCollection.below,
+              location: libraryCollection.location,
+            },
+            type: collection.type,
+          }),
+        );
+
+        if (promotedItem) {
+          locationPath.push({
+            id: promotedItem.id,
+            name: promotedItem.name,
+            model: "collection",
+            namespace: promotedItem.namespace,
+            can_write: promotedItem.can_write,
+            here: promotedItem.here,
+            below: promotedItem.below,
+            type: promotedItem.type,
+          });
+          i += 1;
+          continue;
+        }
+      }
+
       break;
     }
 
@@ -500,6 +553,7 @@ async function getCollectionPathFromValue({
       can_write: nextItem.can_write,
       here: nextItem.here,
       below: nextItem.below,
+      type: nextItem.type,
     });
   }
 

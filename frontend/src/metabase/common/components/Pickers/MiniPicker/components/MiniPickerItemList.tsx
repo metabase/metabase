@@ -250,16 +250,17 @@ function LibraryRootItemList({
                     model: "collection",
                     id: collection.id,
                     name: collection.name,
+                    type: collection.type,
                   },
                 ]);
               } else {
-                // Synthetic folder — navigate into the library root,
-                // filtering to only show children matching this section's type
                 setPath([
                   {
                     model: "collection",
-                    id: libraryCollectionId,
+                    id: `${section.type}-${libraryCollectionId}`,
+                    sourceCollectionId: libraryCollectionId,
                     name: section.name,
+                    type: section.type,
                     childTypeFilter: section.type,
                   },
                 ]);
@@ -384,7 +385,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
-    id: parent.id === null ? "root" : parent.id,
+    id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
     include_can_run_adhoc_query: true,
   });
 
@@ -420,6 +421,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
                     model: item.model,
                     id: item.id,
                     name: item.name,
+                    type: item.type,
                   },
                 ]);
               } else {
