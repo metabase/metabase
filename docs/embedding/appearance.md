@@ -44,7 +44,7 @@ You can save a theme to reuse across embeds so you don't have to copy color valu
 
 Go to **Admin settings > Embedding > Themes**.
 
-Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well).
+Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well, including removing theme like you can any other custom theme).
 
 From the Themes tab, you can:
 
