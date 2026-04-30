@@ -289,6 +289,26 @@
         (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
   api/generic-204-no-content)
 
+(api.macros/defendpoint :post "/source-feedback" :- :nil
+  "Persist Metabot source feedback locally and proxy it to Harbormaster."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:metabot_id   ms/PositiveInt]
+            [:message_id   ms/NonBlankString]
+            [:source_id    ms/PositiveInt]
+            [:source_type  [:enum "table" "card"]]
+            [:positive     :boolean]]]
+  (metabot.config/check-metabot-enabled!)
+  (let [message (metabot.feedback/persist-source-feedback! body)]
+    (try
+      (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                      (metabot.feedback/source-harbormaster-payload body message))
+                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
+      (catch Exception e
+        (log/error "Failed to submit source feedback to Harbormaster: " (ex-message e)))))
+  api/generic-204-no-content)
+
 (def ^:private metabot-provider-schema
   (into [:enum] metabot.settings/supported-metabot-providers))
 

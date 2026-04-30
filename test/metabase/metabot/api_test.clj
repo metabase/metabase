@@ -556,7 +556,15 @@
              (mt/client :post 401 "metabot/feedback"
                         {:metabot_id 1
                          :message_id "x"
-                         :positive   true}))))))
+                         :positive   true}))))
+    (testing "/source-feedback"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/source-feedback"
+                        {:metabot_id  1
+                         :message_id  "x"
+                         :source_id   1
+                         :source_type "table"
+                         :positive    true}))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
