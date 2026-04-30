@@ -3080,6 +3080,7 @@
               permissions
               premium-features
               settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
