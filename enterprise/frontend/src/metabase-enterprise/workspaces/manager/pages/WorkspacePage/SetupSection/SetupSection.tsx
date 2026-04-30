@@ -11,6 +11,7 @@ import type { Workspace } from "metabase-types/api";
 
 const LOCAL_INSTANCE_URL = "http://localhost:3000";
 const CONFIG_FILE_NAME = "config.yml";
+const PASSWORD_ENV_VAR = "MB_WORKSPACE_USER_PASSWORD";
 
 type SetupSectionProps = {
   workspace: Workspace;
@@ -26,21 +27,21 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <Divider />
       <DownloadConfigSection workspace={workspace} />
       <Divider />
-      <ExportLicenseSection />
+      <ExportEnvVarsSection />
       <Divider />
       <RunInstanceSection />
       <Divider />
-      <CommitChangesSection />
+      <UsageCommentsSection workspace={workspace} />
     </TitleSection>
   );
 }
 
 function RemoteSyncSection() {
-  const isRemoteSyncEnabled = !!useSetting("remote-sync-enabled");
   const isAdmin = useSelector(getUserIsAdmin);
-  const remoteSyncUrl = useSetting("remote-sync-url") ?? "";
+  const isRemoteSyncEnabled = !!useSetting("remote-sync-enabled");
+  const remoteSyncUrl = useSetting("remote-sync-url");
 
-  if (!isRemoteSyncEnabled) {
+  if (!isRemoteSyncEnabled || remoteSyncUrl == null) {
     return (
       <Stack p="md" gap="sm">
         <Text>{t`Set up remote sync to be able to pull instance data as files:`}</Text>
@@ -95,13 +96,20 @@ function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
   );
 }
 
-function ExportLicenseSection() {
-  const envFileContents = "MB_PREMIUM_EMBEDDING_TOKEN=";
+function ExportEnvVarsSection() {
+  const licenseTokenEnv = "MB_PREMIUM_EMBEDDING_TOKEN=";
+  const userPasswordEnv = "MB_WORKSPACE_USER_PASSWORD=";
 
   return (
-    <Stack p="md" gap="sm">
-      <Text>{t`Export your license token as an environment variable:`}</Text>
-      <Code block>{envFileContents}</Code>
+    <Stack p="md" gap="lg">
+      <Stack gap="sm">
+        <Text>{t`Export the license token as an environment variable:`}</Text>
+        <Code block>{licenseTokenEnv}</Code>
+      </Stack>
+      <Stack gap="sm">
+        <Text>{t`Export a password for the default user — this lets the development instance skip the setup process:`}</Text>
+        <Code block>{userPasswordEnv}</Code>
+      </Stack>
     </Stack>
   );
 }
@@ -120,6 +128,7 @@ java -jar metabase.jar`;
   -e MB_REMOTE_SYNC_URL=file:///workspace/.git \\
   -e MB_TABLE_METADATA_PATH=/table_metadata.json \\
   -e MB_PREMIUM_EMBEDDING_TOKEN \\
+  -e MB_WORKSPACE_USER_PASSWORD \\
   metabase/metabase-enterprise:latest`;
 
   return (
@@ -144,12 +153,27 @@ java -jar metabase.jar`;
   );
 }
 
-function CommitChangesSection() {
+type UsageCommentsSectionProps = {
+  workspace: Workspace;
+};
+
+function UsageCommentsSection({ workspace }: UsageCommentsSectionProps) {
+  const creatorEmail = workspace.creator?.email;
+
   return (
-    <Stack p="md" gap="sm">
-      <Text>
-        {t`Edit the files locally and commit your changes — then pull them into the developer instance from the remote sync settings page.`}
-      </Text>
+    <Stack p="md" gap="lg">
+      {creatorEmail != null && (
+        <Stack gap="sm">
+          <Text>
+            {jt`Log in with ${<Code key="email">{creatorEmail}</Code>} and the password from ${<Code key="pwd">{PASSWORD_ENV_VAR}</Code>}.`}
+          </Text>
+        </Stack>
+      )}
+      <Stack gap="sm">
+        <Text>
+          {t`Edit the files locally and commit your changes — then pull them into the developer instance from the remote sync settings page.`}
+        </Text>
+      </Stack>
     </Stack>
   );
 }
