@@ -9,6 +9,7 @@ For each affected area, evaluate:
 - **Empty states**: Reasonable display when there's no data
 - **Keyboard navigation**: Tab through interactive elements, correct focus management
 - **Responsive behavior**: Works at different viewport sizes
+- **Light vs. dark mode**: Verify usability in both themes — contrast, legibility, icon/border visibility, no hard-coded colors that break in one mode
 
 ### Evidence gathering
 
