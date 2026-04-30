@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
@@ -75,7 +76,9 @@
   (when-not (.compareAndSet api-scoring-running? false true)
     (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
   (try
-    (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
+    (complexity/complexity-scores
+     (assoc (synonym-source/complexity-scores-opts)
+            :metabot-scope (metabot-scope/internal-metabot-scope)))
     (finally
       (.set api-scoring-running? false))))
 

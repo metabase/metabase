@@ -168,9 +168,20 @@
         identifier    (parent-method driver clause)]
     (if-not (driver-api/json-field? stored-field)
       identifier
-      (if (or (::sql.qp/forced-alias opts)
-              (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
+      (cond
+        (or (::sql.qp/forced-alias opts)
+            (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
         (keyword (driver-api/qp.add.source-alias opts))
+
+        ;; The field is referenced through a join (source-table is a join-alias
+        ;; string). The join target is compiled as a subquery that already
+        ;; projects this nfc column with JSON extraction applied — reference the
+        ;; projected column directly instead of re-applying extraction, which
+        ;; would derive the wrong column name through nested projections. (#73198)
+        (string? (driver-api/qp.add.source-table opts))
+        identifier
+
+        :else
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)

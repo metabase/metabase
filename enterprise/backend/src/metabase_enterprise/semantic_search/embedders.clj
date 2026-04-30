@@ -166,9 +166,15 @@
   "Return the embedding model metadata for the *active* search index, not the current configuration.
   Returns nil when the index is unreachable, not yet initialized, or the feature is disabled.
   Use this instead of [[metabase-enterprise.semantic-search.env/get-configured-embedding-model]] when
-  you need to know what model the index is *actually* serving — not just what the settings say."
+  you need to know what model the index is *actually* serving — not just what the settings say.
+
+  The returned map matches the shape produced by the synonym-axis settings in
+  [[metabase-enterprise.data-complexity-score.synonym-source]] so downstream consumers (Snowplow
+  payload, response :meta, scoring fingerprint) see one consistent embedding-model shape regardless
+  of whether the search-index path or a configured provider is in use."
   []
   (when-let [{:keys [model]} (try-active-index-state)]
     (when model
-      {:provider   (:provider model)
-       :model-name (:model-name model)})))
+      {:provider         (:provider model)
+       :model-name       (:model-name model)
+       :model-dimensions (:vector-dimensions model)})))
