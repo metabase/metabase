@@ -423,7 +423,23 @@ export const CardEmbedComponent = memo(
           data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
-          <CardEmbedLoadingState />
+          <Box
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
+          >
+            <Box className={styles.questionHeader}>
+              <Flex align="center" justify="space-between" gap="0.5rem">
+                <Box className={styles.titleContainer}>
+                  <Text size="md" c="text-primary" fw={700}>
+                    {t`Loading question...`}
+                  </Text>
+                </Box>
+              </Flex>
+            </Box>
+
+            <CardEmbedLoadingState />
+          </Box>
         </NodeViewWrapper>
       );
     }
