@@ -107,10 +107,6 @@ export const ComponentProviderInternal = (
   useSdkCustomLoader();
 
   useEffect(() => {
-    reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
-  }, [reduxStore, isGuestEmbed]);
-
-  useEffect(() => {
     reduxStore.dispatch(setOptions({ font: fontFamily }));
   }, [reduxStore, fontFamily]);
 
@@ -183,6 +179,7 @@ export const ComponentProvider = memo(function ComponentProvider({
 
   if (!reduxStoreRef.current) {
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
+    reduxStoreRef.current.dispatch(setIsGuestEmbed(!!props.authConfig.isGuest));
   }
 
   return (

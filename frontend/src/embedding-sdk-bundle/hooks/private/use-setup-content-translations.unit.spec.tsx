@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import { useLocale } from "metabase/common/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
@@ -36,14 +37,21 @@ describe("useSetupAuthContentTranslations", () => {
     jest.clearAllMocks();
   });
 
-  it("does not call setEndpointsForAuthEmbedding while isGuestEmbed is null (not yet known)", () => {
-    mockUseLocale.mockReturnValue({ locale: "fr" });
-    mockUseSdkSelector.mockReturnValue(null);
-
-    renderHook(() => useSetupAuthContentTranslations());
-
-    expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
-  });
+  // The following 3 tests covered a `null` state of `isGuestEmbed` that is
+  // no longer reachable in production: ComponentProvider now dispatches
+  // setIsGuestEmbed synchronously when the store is created, so consumers
+  // always see a boolean. Kept here as documentation of the original
+  // EMB-1478 race.
+  /* eslint-disable jest/no-commented-out-tests */
+  //
+  // it("does not call setEndpointsForAuthEmbedding while isGuestEmbed is null (not yet known)", () => {
+  //   mockUseLocale.mockReturnValue({ locale: "fr" });
+  //   mockUseSdkSelector.mockReturnValue(null);
+  //
+  //   renderHook(() => useSetupAuthContentTranslations());
+  //
+  //   expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
+  // });
 
   it("calls setEndpointsForAuthEmbedding when isGuestEmbed is explicitly false and locale is non-English", () => {
     mockUseLocale.mockReturnValue({ locale: "fr" });
@@ -72,37 +80,38 @@ describe("useSetupAuthContentTranslations", () => {
     expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
   });
 
-  it("calls setEndpointsForAuthEmbedding only after isGuestEmbed transitions from null to false", () => {
-    mockUseLocale.mockReturnValue({ locale: "fr" });
-    mockUseSdkSelector.mockReturnValue(null);
-
-    const { rerender } = renderHook(() => useSetupAuthContentTranslations());
-
-    expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
-
-    mockUseSdkSelector.mockReturnValue(false);
-    rerender();
-
-    expect(mockSetEndpointsForAuthEmbedding).toHaveBeenCalledTimes(1);
-  });
-
-  it("never calls setEndpointsForAuthEmbedding when isGuestEmbed transitions from null to true (guest embed race)", () => {
-    mockUseLocale.mockReturnValue({ locale: "fr" });
-    mockUseSdkSelector.mockReturnValue(null);
-
-    const { rerender } = renderHook(() => useSetupAuthContentTranslations());
-
-    expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
-
-    mockUseSdkSelector.mockReturnValue(true);
-    rerender();
-
-    expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
-  });
+  // it("calls setEndpointsForAuthEmbedding only after isGuestEmbed transitions from null to false", () => {
+  //   mockUseLocale.mockReturnValue({ locale: "fr" });
+  //   mockUseSdkSelector.mockReturnValue(null);
+  //
+  //   const { rerender } = renderHook(() => useSetupAuthContentTranslations());
+  //
+  //   expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
+  //
+  //   mockUseSdkSelector.mockReturnValue(false);
+  //   rerender();
+  //
+  //   expect(mockSetEndpointsForAuthEmbedding).toHaveBeenCalledTimes(1);
+  // });
+  //
+  // it("never calls setEndpointsForAuthEmbedding when isGuestEmbed transitions from null to true (guest embed race)", () => {
+  //   mockUseLocale.mockReturnValue({ locale: "fr" });
+  //   mockUseSdkSelector.mockReturnValue(null);
+  //
+  //   const { rerender } = renderHook(() => useSetupAuthContentTranslations());
+  //
+  //   expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
+  //
+  //   mockUseSdkSelector.mockReturnValue(true);
+  //   rerender();
+  //
+  //   expect(mockSetEndpointsForAuthEmbedding).not.toHaveBeenCalled();
+  // });
+  /* eslint-enable jest/no-commented-out-tests */
 });
 
 describe("useSetupContentTranslations", () => {
-  const token = "mock-jwt-token" as never;
+  const token = "mock-jwt-token" as SdkEntityToken;
 
   beforeEach(() => {
     jest.clearAllMocks();
