@@ -30,12 +30,13 @@
        (driver.conn/with-write-connection
          (log/info "Executing transform" id "with target" (pr-str target)
                    (when (driver.conn/write-connection-requested?) " using write connection"))
-         (tracing/with-span :tasks "task.transform.query" {:transform/id          id
-                                                           :transform/target-type (name (keyword (:type target)))
-                                                           :transform/incremental (= :table-incremental (keyword (:type target)))
-                                                           :transform/first-run   (transforms-base.u/first-incremental-run? transform)
-                                                           :db/id                 (:id db)
-                                                           :db/engine             (name driver)}
+         (tracing/with-span :tasks "task.transform.query"
+           {:transform/id          id
+            :transform/target-type (name (keyword (:type target)))
+            :transform/incremental (= :table-incremental (keyword (:type target)))
+            :transform/first-run   (transforms-base.u/first-incremental-run? transform)
+            :db/id                 (:id db)
+            :db/engine             (name driver)}
            (let [conn-spec         (driver/connection-spec driver db)
                  transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
                  _exec-result
