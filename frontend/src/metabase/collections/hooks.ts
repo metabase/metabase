@@ -22,6 +22,12 @@ export type UseInitialCollectionIdProps = {
   params?: { collectionId?: Collection["id"]; slug?: string };
 };
 
+// Collections are loaded into two places during the entity-system → RTK migration:
+// the legacy `state.entities.collections` slice via `Collections.actions.fetch`,
+// `Collections.load` HOC, etc.) and the RTK Query cache (via `useGetCollectionQuery`).
+// We read from both so this hook works regardless of which path loaded the collection.
+//
+// TODO: Once collections are exclusively RTK-loaded, the entity-state branch can be dropped.
 function selectCollectionFromCache(
   state: State,
   id: Collection["id"],
@@ -41,78 +47,74 @@ function selectCollectionFromCache(
   return undefined;
 }
 
+// Picks the collection ID a "create new X" form should default to, given a set of route/prop hints.
+//
+// TODO: Once collections are exclusively RTK-loaded, this can become a wrapper around `useGetCollectionQuery`
+// with explicit loading states.
 export function useInitialCollectionId({
   collectionId,
   location,
   params,
 }: UseInitialCollectionIdProps = {}): CollectionId | null {
-  const personalCollectionId = useSelector(getUserPersonalCollectionId);
+  const fromCollectionId = useSelector((state) =>
+    collectionId != null
+      ? selectCollectionFromCache(state, collectionId)
+      : undefined,
+  );
 
-  const propId = collectionId ?? undefined;
-  const navParamId = params?.collectionId ?? undefined;
-  const urlSlugId =
+  const fromNavParam = useSelector((state) =>
+    params?.collectionId != null
+      ? selectCollectionFromCache(state, params.collectionId)
+      : undefined,
+  );
+
+  const idFromSlug =
     params?.slug && location && Urls.isCollectionPath(location.pathname)
       ? Urls.extractCollectionId(params.slug)
       : undefined;
-  const queryParamId = location?.query?.collectionId as
+  const fromSlug = useSelector((state) =>
+    idFromSlug != null
+      ? selectCollectionFromCache(state, idFromSlug)
+      : undefined,
+  );
+
+  const idFromQuery = location?.query?.collectionId as
     | Collection["id"]
     | undefined;
+  const fromQuery = useSelector((state) =>
+    idFromQuery != null
+      ? selectCollectionFromCache(state, idFromQuery)
+      : undefined,
+  );
 
-  const byPropCollection = useSelector((state) =>
-    propId != null ? selectCollectionFromCache(state, propId) : undefined,
-  );
-  const byNavParamCollection = useSelector((state) =>
-    navParamId != null
-      ? selectCollectionFromCache(state, navParamId)
-      : undefined,
-  );
-  const byUrlSlugCollection = useSelector((state) =>
-    urlSlugId != null ? selectCollectionFromCache(state, urlSlugId) : undefined,
-  );
-  const byQueryParamCollection = useSelector((state) =>
-    queryParamId != null
-      ? selectCollectionFromCache(state, queryParamId)
-      : undefined,
-  );
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const rootCollection = useSelector((state) =>
-    selectCollectionFromCache(state, "root"),
+    selectCollectionFromCache(state, ROOT_COLLECTION.id),
   );
 
   return useMemo(() => {
-    const candidates: Array<
-      [Collection["id"] | undefined, Collection | undefined]
-    > = [
-      [propId, byPropCollection],
-      [navParamId, byNavParamCollection],
-      [urlSlugId, byUrlSlugCollection],
-      [queryParamId, byQueryParamCollection],
+    const candidates = [
+      fromCollectionId,
+      fromNavParam,
+      fromSlug,
+      fromQuery,
+      rootCollection,
     ];
 
-    for (const [id, collection] of candidates) {
-      if (id == null || collection == null) {
-        continue;
-      }
-      if (isRootTrashCollection(collection)) {
+    for (const collection of candidates) {
+      if (collection == null || isRootTrashCollection(collection)) {
         continue;
       }
       if (collection.can_write && !isLibraryCollection(collection)) {
-        return canonicalCollectionId(id);
+        return canonicalCollectionId(collection.id);
       }
-    }
-
-    if (rootCollection?.can_write) {
-      return canonicalCollectionId(ROOT_COLLECTION.id);
     }
     return canonicalCollectionId(personalCollectionId);
   }, [
-    propId,
-    navParamId,
-    urlSlugId,
-    queryParamId,
-    byPropCollection,
-    byNavParamCollection,
-    byUrlSlugCollection,
-    byQueryParamCollection,
+    fromCollectionId,
+    fromNavParam,
+    fromSlug,
+    fromQuery,
     rootCollection,
     personalCollectionId,
   ]);
