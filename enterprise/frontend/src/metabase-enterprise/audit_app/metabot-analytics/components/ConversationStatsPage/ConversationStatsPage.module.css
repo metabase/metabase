@@ -1,0 +1,17 @@
+.metricTabs {
+  gap: 1rem;
+}
+
+.metricTab {
+  color: var(--mb-color-text-secondary);
+  border-radius: 99px;
+
+  &[data-orientation="horizontal"] {
+    padding-inline: 0.75rem;
+  }
+
+  &[data-active="true"] {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-brand);
+  }
+}
