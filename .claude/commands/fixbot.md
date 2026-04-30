@@ -2,28 +2,39 @@ You are the orchestrator for the fixbot workflow. Fixbot fixes a Linear issue, r
 
 ## Steps
 
-### 1. Gather context
+### 1. Generate per-run directory
 
-If `.bot/fixbot/discover/result.env` does NOT exist, run `/fixbot-discover $ARGUMENTS` first.
+Generate a timestamp in `YYYYMMDD-HHMMSS` format. If you know the current wall-clock time, construct it directly. Otherwise run `./bin/mage -bot-timestamp`. Do NOT use `date` directly.
+
+Set:
+- `TIMESTAMP=<YYYYMMDD-HHMMSS>`
+- `OUTPUT_DIR=.bot/fixbot/<TIMESTAMP>`
+
+Every file this run writes — including discover artifacts — lives under `<OUTPUT_DIR>/`. There must be **no shared paths across runs**, so multiple `/fixbot` invocations in the same repo do not collide.
+
+### 2. Gather context
+
+If `<OUTPUT_DIR>/config.env` does NOT exist, run `/fixbot-discover $ARGUMENTS --output-dir <OUTPUT_DIR>` first. (Discover writes its artifacts directly into `<OUTPUT_DIR>/`, never in a shared location.)
 
 Then read:
-- `.bot/fixbot/discover/result.env` — extract `ISSUE_ID`, `BRANCH_NAME`, `APP_DB`, `TIMESTAMP`
-- `.bot/fixbot/discover/linear-context.txt` — the full Linear issue content (LINEAR_CONTEXT)
+- `<OUTPUT_DIR>/config.env` — extract `ISSUE_ID`, `BRANCH_NAME`, `APP_DB`
+- `<OUTPUT_DIR>/linear-context.txt` — the full Linear issue content (LINEAR_CONTEXT)
 
-### 2. Generate agent prompt
+### 3. Generate agent prompt
 
-Reference the discover-dir file directly via `--set-from-file` — no need to copy it into `<TIMESTAMP>/tmp/` or shell-escape it:
+Reference the discover-dir file directly via `--set-from-file` — no need to copy it or shell-escape it:
 
 ```
 ./bin/mage -bot-generate-prompt \
   --template dev/bot/fixbot-agent.md \
-  --output .bot/fixbot/<TIMESTAMP>/prompt.md \
+  --output <OUTPUT_DIR>/prompt.md \
   --set "ISSUE_ID=<ISSUE_ID>" \
   --set "BRANCH_NAME=<branch-name>" \
   --set "APP_DB=<postgres|mysql|mariadb>" \
-  --set-from-file "LINEAR_CONTEXT=.bot/fixbot/discover/linear-context.txt"
+  --set "OUTPUT_DIR=<OUTPUT_DIR>" \
+  --set-from-file "LINEAR_CONTEXT=<OUTPUT_DIR>/linear-context.txt"
 ```
 
-### 3. Execute
+### 4. Execute
 
-Read the generated `.bot/fixbot/<TIMESTAMP>/prompt.md` and follow its instructions (Phases 1–4) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.
+Read the generated `<OUTPUT_DIR>/prompt.md` and follow its instructions (Phases 1–4) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.
