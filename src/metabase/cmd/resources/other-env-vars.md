@@ -400,6 +400,15 @@ Path of the "plugins" directory, which is used to store the Metabase database dr
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
+### `MB_PROMETHEUS_SERVER_PORT`
+
+Type: integer<br>
+Default: `null`
+
+Port used by Metabase to expose Prometheus metrics. When set, Metabase starts a Prometheus metrics web server on the specified port that Prometheus can scrape.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
+
 ### `MB_QP_CACHE_BACKEND`
 
 Type: string<br>
