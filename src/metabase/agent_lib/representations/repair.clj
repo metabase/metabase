@@ -1723,6 +1723,160 @@
                  mp import-resolver export-resolver))))
 
 ;;; ============================================================
+;;; Pass 3.5 -- auto-wire `source-field-join-alias` for implicit joins through an explicitly
+;;; joined table.
+;;;
+;;; Trigger: a field clause `["field" {opts} <portable-fk>]` whose target table is reachable
+;;; from **exactly one** explicit join's source table via **exactly one** FK, and which the
+;;; basic implicit-join pass (Pass 4) cannot handle (target not reachable from `source-table`,
+;;; or LLM clearly intended to hop through the join).
+;;;
+;;; This is the moral equivalent of Pass 4 but the FK-bearing column lives on a joined table
+;;; rather than on `source-table`. We refuse to second-guess any clause that already carries
+;;; one of `source-field` / `source-field-name` / `source-field-join-alias` / `join-alias`.
+;;;
+;;; Conservative on purpose - per `repr-deletion-followups.md`, repair is opt-in: we fill in
+;;; the unambiguous cases and bail loudly on ambiguity rather than guessing. The companion
+;;; multi-stage `source-field-name` repair is *not* implemented here (it would require
+;;; resolving a previous-stage's returned-columns from inside repair, which is structurally
+;;; awkward and prone to silent corruption); see `repr-deletion-followups.md` for the
+;;; deferred-with-rationale entry.
+;;;
+;;; Like Pass 4: walks `stages[0]` only, skips descent into the `\"joins\"` subtree (those
+;;; field clauses already need `join-alias`), no-op when source-table or any join's
+;;; source-table can't be resolved.
+;;; ============================================================
+
+(defn- explicit-join-source-tables
+  "For each entry in a stage's `\"joins\"` vector, return
+  `[{:alias <string>, :source-table-id <int>} …]`. Skips joins without a usable alias or whose
+  `source-table` portable FK can't be resolved - they don't participate in repair, but the
+  resolver will surface the structural error itself."
+  [import-resolver joins]
+  (vec (for [j     joins
+             :let  [a   (get j "alias")
+                    stf (get-in j ["stages" 0 "source-table"])
+                    tid (try-resolve-source-table-id import-resolver stf)]
+             :when (and (string? a) (seq a) tid)]
+         {:alias a :source-table-id tid})))
+
+(defn- candidates-via-explicit-join
+  "Find every `(join-alias, source-field-id)` pair through which `target-table-id` is reachable
+  from one of the explicit joins on the stage. Returns a vector (possibly empty) of
+  `{:alias <string>, :source-field-id <int>}`.
+
+  An entry is included iff the joined table has **exactly one** outbound FK to
+  `target-table-id`. Multiple FKs from the same joined table are intentionally NOT collapsed
+  into a single candidate - we can't tell which one the LLM meant, so we leave that join out
+  of the candidate list (it'll either be unambiguous through some *other* join or fail loud
+  below)."
+  [mp joined-tables target-table-id]
+  (vec (for [{:keys [alias source-table-id]} joined-tables
+             :let [outbound  (resolve.mp/outbound-fks-from-table mp source-table-id)
+                   matching  (filter #(= target-table-id (:target-table-id %)) outbound)]
+             :when (= 1 (count matching))]
+         {:alias            alias
+          :source-field-id  (:source-field-id (first matching))})))
+
+(defn- maybe-fill-source-field-join-alias
+  "Given a field clause known to lack all four disambiguators, the resolved source-table-id of
+  the stage, the resolved joined-table list, and the FK map for the stage's own source-table,
+  decide whether to fill in `source-field-join-alias` (and the accompanying portable
+  `source-field`).
+
+  We only intervene when the basic implicit-join (Pass 4) would NOT handle the clause,
+  i.e. the target is not the source-table itself and not reachable through `source-table`'s
+  outbound FKs. Otherwise we leave the clause for Pass 4 - which has clearer error messages
+  and is the canonical path for the common case.
+
+  Throws `:ambiguous-fk-via-join` (an `:agent-error?`) when the target is reachable from
+  multiple distinct join aliases. Returns the (possibly-augmented) clause otherwise."
+  [clause mp import-resolver export-resolver source-table-id outbound-from-source-by-target joined-tables]
+  (let [opts (nth clause 1)
+        fk   (nth clause 2)]
+    (if (or (contains? opts "source-field")
+            (contains? opts "source-field-name")
+            (contains? opts "source-field-join-alias")
+            (contains? opts "join-alias"))
+      clause
+      (let [target-table-id (try-resolve-field-target-table-id mp import-resolver fk)]
+        (cond
+          (nil? target-table-id)              clause
+          (= target-table-id source-table-id) clause
+          ;; Pass 4 can handle this one - leave it alone.
+          (seq (get outbound-from-source-by-target target-table-id)) clause
+
+          :else
+          (let [cands (candidates-via-explicit-join mp joined-tables target-table-id)]
+            (case (count cands)
+              ;; No explicit join provides a single-FK route either - let Pass 4 raise its
+              ;; own `:no-fk-path` error with its current wording.
+              0 clause
+              1 (let [{:keys [alias source-field-id]} (first cands)
+                      src-fk (export-source-field-portable export-resolver source-field-id)]
+                  (if src-fk
+                    (assoc clause 1 (assoc opts
+                                           "source-field"            src-fk
+                                           "source-field-join-alias" alias))
+                    clause))
+              (let [aliases (mapv :alias cands)
+                    portables (mapv (fn [{:keys [source-field-id]}]
+                                      (export-source-field-portable export-resolver source-field-id))
+                                    cands)]
+                (throw (ex-info (tru "Field {0} is reachable from {1} explicit joins ({2}). Specify :source-field-join-alias explicitly. Candidate aliases: {3}"
+                                     (display-portable fk)
+                                     (count cands)
+                                     (str/join ", " (map pr-str aliases))
+                                     (str/join ", " (map display-portable portables)))
+                                {:status-code  400
+                                 :error        :ambiguous-fk-via-join
+                                 :agent-error? true
+                                 :field        fk
+                                 :target-table target-table-id
+                                 :candidates   (mapv (fn [c p] {:alias (:alias c) :source-field p})
+                                                     cands portables)}))))))))))
+
+(defn- resolve-source-field-join-alias-in-stage
+  [stage mp import-resolver export-resolver]
+  (let [source-table-fk (get stage "source-table")
+        source-table-id (try-resolve-source-table-id import-resolver source-table-fk)
+        joins           (get stage "joins")]
+    (if-not (and source-table-id (vector? joins) (seq joins))
+      stage
+      (let [outbound          (resolve.mp/outbound-fks-from-table mp source-table-id)
+            outbound-by-target (group-by :target-table-id outbound)
+            joined-tables     (explicit-join-source-tables import-resolver joins)
+            ;; As in Pass 4, do not descend into `joins:` subtree - clauses inside an explicit
+            ;; join carry `join-alias` and have their own resolution context.
+            stage'            (dissoc stage "joins")
+            walked            (walk/postwalk
+                               (fn [node]
+                                 (if (field-clause? node)
+                                   (maybe-fill-source-field-join-alias
+                                    node mp import-resolver export-resolver
+                                    source-table-id outbound-by-target joined-tables)
+                                   node))
+                               stage')]
+        (assoc walked "joins" joins)))))
+
+(defn- resolve-source-field-join-alias*
+  "Top-level pass: fill in `source-field-join-alias` (+ accompanying `source-field`) on
+  `stages[0]` field clauses whose target is reachable through exactly one explicit join. See
+  the section header above for the full contract.
+
+  Runs *before* [[resolve-implicit-joins*]] so that any clause it augments is already
+  disambiguated by the time Pass 4 sees it (Pass 4 leaves clauses with any of the four
+  disambiguators alone). Best-effort: any failure to resolve `source-table` or a joined
+  table's `source-table` simply skips the pass."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
+    query
+    (let [import-resolver (resolve.mp/import-resolver mp content-store)
+          export-resolver (resolve.mp/export-resolver mp)]
+      (update-in query ["stages" 0] resolve-source-field-join-alias-in-stage
+                 mp import-resolver export-resolver))))
+
+;;; ============================================================
 ;;; Pass 4 -- infer base-type / effective-type on cross-stage field references
 ;;;
 ;;; A cross-stage field reference looks like `["field" {opts} "<column-name>"]` where the
@@ -2176,6 +2330,14 @@
     3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
        stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
        aggregation clause and `base-type`/`effective-type` on the ref's options;
+    3.7. auto-wire `source-field-join-alias` (and the accompanying portable `source-field`)
+       on field clauses whose target table is reachable through **exactly one** explicit
+       join on the stage via a single unambiguous FK on the joined table. Skips clauses
+       that already carry any of `source-field` / `source-field-name` /
+       `source-field-join-alias` / `join-alias`. Raises `:ambiguous-fk-via-join` (an
+       `:agent-error?`) when the target is reachable from multiple distinct join aliases.
+       Runs *before* the basic implicit-join pass so the latter sees an already-
+       disambiguated clause.
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution);
     5. infer `base-type` / `effective-type` on cross-stage field references
@@ -2218,6 +2380,7 @@
        rewrite-order-by-inline-aggs*
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*
+       (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
        (infer-cross-stage-field-types* mp content-store)
        (infer-source-card-field-types* mp content-store)

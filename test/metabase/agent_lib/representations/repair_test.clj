@@ -59,6 +59,43 @@
                {:id 200 :name "ID"       :table-id 20 :base-type :type/Integer}
                {:id 201 :name "CATEGORY" :table-id 20 :base-type :type/Text}]}))
 
+(def ^:private mp-via-join
+  "3-table MP with a hop-through-PRODUCTS shape:
+     ORDERS  (no FK to CATEGORIES)
+     PRODUCTS → CATEGORIES via PRODUCTS.CATEGORY_ID
+     CATEGORIES.NAME
+   ORDERS → PRODUCTS exists too (so the prompt's PRODUCTS join makes sense). Used to exercise
+   Pass 3.5 (`source-field-join-alias` auto-fill)."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"     :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS"   :schema "PUBLIC" :db-id 1}
+               {:id 40 :name "CATEGORIES" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "PRODUCT_ID"  :table-id 10 :base-type :type/Integer :fk-target-field-id 200}
+               {:id 200 :name "ID"          :table-id 20 :base-type :type/Integer}
+               {:id 202 :name "CATEGORY_ID" :table-id 20 :base-type :type/Integer :fk-target-field-id 400}
+               {:id 400 :name "ID"          :table-id 40 :base-type :type/Integer}
+               {:id 401 :name "NAME"        :table-id 40 :base-type :type/Text}]}))
+
+(def ^:private mp-via-two-joins
+  "Variant of `mp-via-join` where TWO different joined tables (PRODUCTS and PRODUCTS_ALT) each
+   reach CATEGORIES via a single FK. Used to exercise the `:ambiguous-fk-via-join` error
+   path."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"       :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS"     :schema "PUBLIC" :db-id 1}
+               {:id 21 :name "PRODUCTS_ALT" :schema "PUBLIC" :db-id 1}
+               {:id 40 :name "CATEGORIES"   :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 200 :name "ID"          :table-id 20 :base-type :type/Integer}
+               {:id 202 :name "CATEGORY_ID" :table-id 20 :base-type :type/Integer :fk-target-field-id 400}
+               {:id 210 :name "ID"          :table-id 21 :base-type :type/Integer}
+               {:id 212 :name "CATEGORY_ID" :table-id 21 :base-type :type/Integer :fk-target-field-id 400}
+               {:id 400 :name "ID"          :table-id 40 :base-type :type/Integer}
+               {:id 401 :name "NAME"        :table-id 40 :base-type :type/Text}]}))
+
 ;;; ============================================================
 ;;; Pass 1 - insert `{}` options on clauses
 ;;; ============================================================
@@ -1470,6 +1507,141 @@
     ;; trivial-mp has only a Database, no tables. Source-table resolution fails silently.
     (let [out (repair/repair trivial-mp base-query)]
       (is (= {} (get-in out ["stages" 0 "breakout" 0 1]))))))
+
+;;; ============================================================
+;;; Pass 3.5 - `source-field-join-alias` auto-wiring through an explicit join (step 12, partial)
+;;; ============================================================
+
+(def ^:private join-base-query
+  "LLM-style query: source-table=ORDERS, explicit join of PRODUCTS as `P`, breakout on
+  CATEGORIES.NAME (which is reachable from PRODUCTS via PRODUCTS.CATEGORY_ID, but NOT from
+  ORDERS)."
+  {"lib/type" "mbql/query"
+   "database" "Sample"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "joins"        [{"alias"      "P"
+                                 "strategy"   "left-join"
+                                 "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                                 "conditions" [["=" {}
+                                                ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                ["field" {"join-alias" "P"}
+                                                 ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]
+                "aggregation"  [["count" {}]]
+                "breakout"     [["field" {}
+                                 ["Sample" "PUBLIC" "CATEGORIES" "NAME"]]]}]})
+
+(deftest source-field-join-alias-happy-path-test
+  (testing (str "a field whose target is reachable through exactly one explicit join via a "
+                "single FK gets both `source-field-join-alias` and the matching portable "
+                "`source-field` filled in")
+    (let [out (repair/repair mp-via-join join-base-query)
+          field-opts (get-in out ["stages" 0 "breakout" 0 1])]
+      (is (= "P" (get field-opts "source-field-join-alias")))
+      (is (= ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY_ID"]
+             (get field-opts "source-field"))))))
+
+(deftest source-field-join-alias-idempotent-test
+  (testing "running repair twice produces the same query (Pass 3.5 is idempotent)"
+    (let [once  (repair/repair mp-via-join join-base-query)
+          twice (repair/repair mp-via-join once)]
+      (is (= once twice)))))
+
+(deftest source-field-join-alias-preserves-existing-disambiguators-test
+  (testing "if the clause already carries `source-field-join-alias`, leave it alone"
+    (let [q (assoc-in join-base-query ["stages" 0 "breakout" 0 1]
+                      {"source-field-join-alias" "P"
+                       "source-field"            ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY_ID"]})
+          out (repair/repair mp-via-join q)]
+      (is (= {"source-field-join-alias" "P"
+              "source-field"            ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY_ID"]}
+             (get-in out ["stages" 0 "breakout" 0 1])))))
+  (testing "if the clause has `source-field-name` (multi-stage variant), leave it alone"
+    (let [q (assoc-in join-base-query ["stages" 0 "breakout" 0 1]
+                      {"source-field-name" "PRODUCT_ID"})
+          out (repair/repair mp-via-join q)]
+      (is (= {"source-field-name" "PRODUCT_ID"}
+             (get-in out ["stages" 0 "breakout" 0 1]))))))
+
+(deftest source-field-join-alias-defers-to-pass-4-when-source-table-can-reach-target-test
+  (testing (str "if the field's target is reachable directly from `source-table`, Pass 3.5 "
+                "backs off and lets the basic implicit-join pass (Pass 4) handle it - we get "
+                "a plain `source-field`, NOT `source-field-join-alias`")
+    ;; mp-fks: ORDERS → PRODUCTS directly. Reuse `base-query` (breakout on PRODUCTS.CATEGORY).
+    (let [q (assoc-in base-query ["stages" 0 "joins"]
+                      [{"alias"      "P"
+                        "strategy"   "left-join"
+                        "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                        "conditions" [["=" {}
+                                       ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                       ["field" {"join-alias" "P"}
+                                        ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}])
+          out  (repair/repair mp-fks q)
+          opts (get-in out ["stages" 0 "breakout" 0 1])]
+      (is (= ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"] (get opts "source-field")))
+      (is (not (contains? opts "source-field-join-alias"))))))
+
+(deftest source-field-join-alias-no-op-when-no-joins-test
+  (testing "when the stage has no `joins:`, Pass 3.5 doesn't touch anything; Pass 4 reports as usual"
+    ;; CATEGORIES isn't reachable from ORDERS - no joins available either - so Pass 4 raises
+    ;; :no-fk-path. We're asserting Pass 3.5 didn't get in the way.
+    (try
+      (repair/repair mp-via-join {"lib/type" "mbql/query"
+                                  "database" "Sample"
+                                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                               "aggregation"  [["count" {}]]
+                                               "breakout"     [["field" {}
+                                                                ["Sample" "PUBLIC"
+                                                                 "CATEGORIES" "NAME"]]]}]})
+      (is false "expected throw from Pass 4")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :no-fk-path (:error (ex-data e))))))))
+
+(deftest source-field-join-alias-ambiguous-error-test
+  (testing "raises :ambiguous-fk-via-join when the target is reachable through multiple distinct join aliases"
+    (let [q (assoc-in join-base-query ["stages" 0 "joins"]
+                      [{"alias"      "P"
+                        "strategy"   "left-join"
+                        "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                        "conditions" [["=" {}
+                                       ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
+                                       ["field" {"join-alias" "P"}
+                                        ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}
+                       {"alias"      "PA"
+                        "strategy"   "left-join"
+                        "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" ["Sample" "PUBLIC" "PRODUCTS_ALT"]}]
+                        "conditions" [["=" {}
+                                       ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
+                                       ["field" {"join-alias" "PA"}
+                                        ["Sample" "PUBLIC" "PRODUCTS_ALT" "ID"]]]]}])]
+      (try
+        (repair/repair mp-via-two-joins q)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :ambiguous-fk-via-join (:error d)))
+            (is (true? (:agent-error? d)))
+            (is (= 2 (count (:candidates d))))
+            (let [aliases (set (map :alias (:candidates d)))]
+              (is (contains? aliases "P"))
+              (is (contains? aliases "PA")))))))))
+
+(deftest source-field-join-alias-skips-joins-subtree-test
+  (testing (str "a field clause inside an explicit join's `conditions:` is NOT touched - those "
+                "clauses live in the join's own resolution context")
+    (let [out (repair/repair mp-via-join join-base-query)
+          ;; The condition LHS sits on ORDERS.PRODUCT_ID (no extra disambiguator needed); the
+          ;; condition RHS already has `join-alias`. Neither should pick up
+          ;; `source-field-join-alias`.
+          lhs (get-in out ["stages" 0 "joins" 0 "conditions" 0 2 1])
+          rhs (get-in out ["stages" 0 "joins" 0 "conditions" 0 3 1])]
+      (is (not (contains? lhs "source-field-join-alias")))
+      (is (not (contains? rhs "source-field-join-alias"))))))
 
 ;;; ============================================================
 ;;; Pass 4 -- cross-stage field-type inference (repr-plan step 8)
