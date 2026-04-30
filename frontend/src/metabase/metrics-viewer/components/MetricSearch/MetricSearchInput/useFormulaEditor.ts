@@ -18,7 +18,6 @@ import {
 } from "../../../utils/source-ids";
 import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
 import {
-  ENTITY_SEPARATOR,
   type MetricNameMap,
   applyTrackedDefinitions,
   buildFullTextWithIdentities,
@@ -26,6 +25,7 @@ import {
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
+  planMetricInsertion,
   removeUnmatchedParens,
 } from "../utils";
 
@@ -177,6 +177,10 @@ export function useFormulaEditor({
         formulaEntitiesRef.current,
         metricNamesRef.current,
       );
+
+    const requestedCaret = pendingCaretPositionRef.current;
+    const shouldOpenDropdown = requestedCaret == null;
+
     setTextAtFocus(fullText);
     setIsFocused(true);
     setEditText(fullText);
@@ -191,10 +195,11 @@ export function useFormulaEditor({
       const view = editorRef.current?.view;
       if (view) {
         const docLen = view.state.doc.length;
-        const requested = pendingCaretPositionRef.current;
         pendingCaretPositionRef.current = null;
         const caretPos =
-          requested != null ? Math.min(Math.max(requested, 0), docLen) : docLen;
+          requestedCaret != null
+            ? Math.min(Math.max(requestedCaret, 0), docLen)
+            : docLen;
         const identities = identitiesFromEntries(initialIdentities);
         view.dispatch({
           selection: EditorSelection.cursor(caretPos),
@@ -204,6 +209,10 @@ export function useFormulaEditor({
         const coords = view.coordsAtPos(caretPos);
         if (coords) {
           setAnchorRect({ left: coords.left, top: coords.bottom });
+        }
+        if (shouldOpenDropdown) {
+          setCurrentWord("");
+          setIsOpen(true);
         }
       }
     }, 0);
@@ -384,42 +393,31 @@ export function useFormulaEditor({
         return;
       }
 
-      const textBeforeWord = docText.slice(0, start).trimEnd();
-      const lastChar = textBeforeWord[textBeforeWord.length - 1];
-      const NO_COMMA_CHARS = new Set(["+", "-", "*", "/", "(", ","]);
-      const needsComma =
-        textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
-
-      let insertText: string;
-      let replaceFrom: number;
-      let newCursorPos: number;
-      if (needsComma) {
-        insertText = ENTITY_SEPARATOR + metricName;
-        replaceFrom = textBeforeWord.length;
-        newCursorPos = replaceFrom + insertText.length;
-      } else {
-        insertText = metricName;
-        replaceFrom = start;
-        newCursorPos = start + metricName.length;
-      }
+      const {
+        insertText,
+        replaceFrom,
+        replaceTo,
+        newCursorPos,
+        metricFrom,
+        metricTo,
+        isAtEndOfFormula,
+      } = planMetricInsertion({
+        docText,
+        wordStart: start,
+        wordEnd: end,
+        metricName,
+      });
 
       const sourceId =
         metric.sourceType === "metric"
           ? createMetricSourceId(metric.id)
           : createMeasureSourceId(metric.id);
 
-      // Positions are in post-change document coordinates — metricIdentityField
-      // processes addMetricIdentity effects after mapping existing ranges through changes.
-      const metricFrom = needsComma
-        ? replaceFrom + ENTITY_SEPARATOR.length
-        : replaceFrom;
-      const metricTo = metricFrom + metricName.length;
-
       // Dispatch through the view (not setEditText) — the value-prop sync
       // in @uiw/react-codemirror does a full doc replacement that destroys
       // all RangeSet-tracked identities.
       view.dispatch({
-        changes: { from: replaceFrom, to: end, insert: insertText },
+        changes: { from: replaceFrom, to: replaceTo, insert: insertText },
         selection: EditorSelection.cursor(newCursorPos),
         effects: addMetricIdentity.of({
           from: metricFrom,
@@ -435,9 +433,20 @@ export function useFormulaEditor({
       setCurrentWord("");
       setIsOpen(false);
 
-      // Return focus to the editor after dropdown closes
       setTimeout(() => {
-        editorRef.current?.view?.focus();
+        const view = editorRef.current?.view;
+        if (!view) {
+          return;
+        }
+        // Return focus to the editor after the dropdown item click stole it
+        view.focus();
+        if (isAtEndOfFormula) {
+          const coords = view.coordsAtPos(newCursorPos);
+          if (coords) {
+            setAnchorRect({ left: coords.left, top: coords.bottom });
+          }
+          setIsOpen(true);
+        }
       }, 0);
     },
     [editorRef, metricNamesRef, handleAddMetric],

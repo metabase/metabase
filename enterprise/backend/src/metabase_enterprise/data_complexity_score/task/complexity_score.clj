@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -21,7 +22,7 @@
 (def ^:private job-key     (jobs/key "metabase.task.data-complexity-score.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
-(defn- current-fingerprint
+(defn current-fingerprint
   "String capturing everything that changes the meaning of an emitted score.
 
   Mirrors the Snowplow `formula_version` + `parameters` fields. `weights` is included so re-tuning
@@ -57,12 +58,17 @@
       (let [result (complexity/complexity-scores
                     (assoc (synonym-source/complexity-scores-opts)
                            :metabot-scope (metabot-scope/internal-metabot-scope)))]
-        (if (::complexity/snowplow-published? (meta result))
-          (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
-          (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
+        (try
+          (data-complexity-score/record-score! claim-fingerprint result)
+          (if (::complexity/snowplow-published? (meta result))
+            (settings/data-complexity-scoring-last-fingerprint! claim-fingerprint)
+            (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
+          (catch Throwable t
+            (log/warn t "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries")))
         result)
       (catch Throwable t
-        (log/warn t "Data Complexity Score run failed")))
+        (log/warn t "Data Complexity Score run failed")
+        nil))
     (log/debug "Data Complexity Score run skipped — data-complexity-scoring-enabled is off")))
 
 ;; Long enough that any realistic scoring run finishes well inside it, short enough that a crashed

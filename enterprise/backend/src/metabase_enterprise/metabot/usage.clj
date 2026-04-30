@@ -15,11 +15,42 @@
 
 (set! *warn-on-reflection* true)
 
+;; Keep these in sync with the CASE branches in:
+;;   resources/migrations/instance_analytics_views/ai_usage_log/v1/{h2,mysql,postgres}-ai_usage_log.sql
+;;   resources/migrations/instance_analytics_views/metabot_conversations/v1/{h2,mysql,postgres}-metabot_conversations.sql
+;; When adding a value here, add it to those six SQL files too so users see a nicer name in ai analytics.
+(def ^:private known-sources
+  #{"metabot_agent"
+    "document_generate_content"
+    "example_question_generation_batch"
+    "slack"
+    "slackbot"
+    "oss-sql-gen"
+    "sql-gen"
+    "unknown"
+    "user-intent-classification"})
+
+(def ^:private known-profile-ids
+  #{"internal"
+    "embedding_next"
+    "nlq"
+    "sql"
+    "slackbot"
+    "transforms_codegen"
+    "document-generate-content"})
+
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."
   :feature :none
   [{:keys [source model prompt-tokens completion-tokens
            user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
+  (when-not (contains? known-sources source)
+    (throw (ex-info (str "Unknown ai_usage_log source " (pr-str source))
+                    {:source source})))
+  (when-let [pid (some-> profile-id name)]
+    (when-not (contains? known-profile-ids pid)
+      (throw (ex-info (str "Unknown ai_usage_log profile-id " (pr-str pid))
+                      {:profile-id pid}))))
   (when-not (= "user-intent-classification" source)
     (try
       (let [total-tokens (+ prompt-tokens completion-tokens)]
