@@ -179,6 +179,7 @@
    [:error_message         {:optional true} [:maybe :string]]
    [:started_at            {:optional true} [:maybe :any]]
    [:finished_at           {:optional true} [:maybe :any]]
+   [:marked_interesting_at {:optional true} [:maybe :any]]
    [:entity_id             {:optional true} [:maybe :string]]
    [:interestingness_score {:optional true} [:maybe number?]]])
 
@@ -309,6 +310,27 @@
   (let [expl (api/read-check (get-exploration-or-404 id))]
     (hydrate-exploration expl)))
 
+(def ^:private query-summary-columns
+  "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the
+  result blob, joins `interestingness_score` from `exploration_query_result`."
+  [:exploration_query.id :exploration_query.exploration_thread_id
+   :exploration_query.card_id :exploration_query.segment_id
+   :exploration_query.dimension_id
+   :exploration_query.name :exploration_query.position
+   :exploration_query.status :exploration_query.error_message
+   :exploration_query.started_at :exploration_query.finished_at
+   :exploration_query.marked_interesting_at
+   :exploration_query.entity_id
+   [:exploration_query_result.interestingness_score :interestingness_score]])
+
+(defn- query-summary
+  "Fetch a single `::ExplorationQuerySummary` row by `exploration_query.id`."
+  [query-id]
+  (t2/select-one (into [:model/ExplorationQuery] query-summary-columns)
+                 {:left-join [:exploration_query_result
+                              [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
+                  :where     [:= :exploration_query.id query-id]}))
+
 (api.macros/defendpoint :get "/:id/queries" :- [:sequential ::ExplorationQuerySummary]
   "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
   intended for the frontend to poll while pending queries finish. The `interestingness_score`
@@ -316,15 +338,7 @@
   second roundtrip; pending or errored queries get `nil`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check (get-exploration-or-404 id))
-  (t2/select [:model/ExplorationQuery
-              :exploration_query.id :exploration_query.exploration_thread_id
-              :exploration_query.card_id :exploration_query.segment_id
-              :exploration_query.dimension_id
-              :exploration_query.name :exploration_query.position
-              :exploration_query.status :exploration_query.error_message
-              :exploration_query.started_at :exploration_query.finished_at
-              :exploration_query.entity_id
-              [:exploration_query_result.interestingness_score :interestingness_score]]
+  (t2/select (into [:model/ExplorationQuery] query-summary-columns)
              {:left-join [:exploration_thread
                           [:= :exploration_query.exploration_thread_id :exploration_thread.id]
                           :exploration_query_result
@@ -373,6 +387,22 @@
 
       {:status 409
        :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
+
+(api.macros/defendpoint :put "/query/:id/interesting" :- ::ExplorationQuerySummary
+  "Mark an exploration query as interesting. The timestamp records when it was first marked;
+  re-marking is a no-op so the original mark time is preserved."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [q (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))]
+    (when (nil? (:marked_interesting_at q))
+      (t2/update! :model/ExplorationQuery id {:marked_interesting_at (t/offset-date-time)}))
+    (query-summary id)))
+
+(api.macros/defendpoint :delete "/query/:id/interesting" :- ::ExplorationQuerySummary
+  "Clear the interesting mark on an exploration query."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
+  (t2/update! :model/ExplorationQuery id {:marked_interesting_at nil})
+  (query-summary id))
 
 ;;; ----------------------------------------- routes -----------------------------------------
 

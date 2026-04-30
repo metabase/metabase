@@ -557,6 +557,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: marked_interesting_at
+                  type: ${timestamp_type}
+                  remarks: When the owner marked this query as interesting; null = unmarked
+                  constraints:
+                    nullable: true
+              - column:
                   name: entity_id
                   type: char(21)
                   remarks: NanoID for serdes
