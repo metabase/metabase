@@ -207,6 +207,29 @@
           extras   (into #{} (keep from->to) schema-names)]
       (vec (distinct (concat schema-names extras))))))
 
+(defenterprise inject-workspace-canonical-tuples
+  "Enterprise impl: augment a `describe-database` result with synthetic
+   canonical-side `(from_schema, from_table_name)` tuples for every active
+   remap row. Without this, `sync-tables-and-database!` would diff app-db's
+   canonical Table rows against a `describe-database` result that excludes
+   them (the canonical name only exists virtually, backed by the workspace
+   warehouse table). The diff would then retire those rows on every sync.
+
+   Adds one synthetic tuple per remap row, whether or not the canonical
+   tuple is already present (`into` deduplicates; tuples are equal by value).
+   Tuples carry only `:schema` and `:name` -- the only fields the
+   `sync-tables-and-database!` diff keys on."
+  :feature :none
+  [tuples db-id]
+  (let [mappings (all-mappings-for-db db-id)]
+    (if (empty? mappings)
+      tuples
+      (let [synthetic (into #{}
+                            (map (fn [[[_from-db from-schema from-name] _]]
+                                   {:schema from-schema :name from-name}))
+                            mappings)]
+        (into tuples synthetic)))))
+
 (defenterprise rewrite-fk-result-canonical
   "Enterprise impl: walk an FK-result collection, rewriting workspace-side
    `(schema, name)` pairs back to canonical `(from_schema, from_table_name)`

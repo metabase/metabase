@@ -43,6 +43,16 @@
   [schema-names _db-id]
   schema-names)
 
+(defenterprise inject-workspace-canonical-tuples
+  "Augment a `describe-database` result with synthetic canonical-side tuples for
+  any `from_*` remap row whose to-side is materialized in the warehouse. The
+  canonical name doesn't physically exist on a workspace child (only the
+  isolation-schema copy does), so without this it'd be diffed against app-db's
+  Table rows and silently retired. OSS fallback is identity."
+  metabase-enterprise.workspaces.table-remapping
+  [tuples _db-id]
+  tuples)
+
 (defenterprise rewrite-fk-result-canonical
   "Translate workspace-side identifiers in a `describe-fks` result back to canonical
   names. When sync redirects FK lookups to the workspace warehouse table, the

@@ -579,3 +579,69 @@
          (is (= "public" (:pk-table-schema out)))
          (is (= "employees" (:fk-table-name out)))
          (is (= "employees" (:pk-table-name out))))))))
+
+;;; -------------------------- inject-workspace-canonical-tuples --------------------------
+
+(deftest inject-canonical-tuples-no-rows-test
+  (testing "without remap rows, tuples pass through unchanged"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (let [tuples #{{:schema "public" :name "orders"}}]
+         (is (= tuples (fetch-metadata/inject-workspace-canonical-tuples tuples (mt/id)))))))))
+
+(deftest inject-canonical-tuples-adds-from-side-test
+  (testing "for each remap row, the from-side tuple is added so the diff doesn't retire the canonical Table"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "my_transform_output"}
+        {:schema "ws_alice" :table "my_transform_output"})
+       ;; Simulating describe-database AFTER filter-workspace-side-tables ran:
+       ;; only canonical input schema is present, no workspace-side tuples.
+       (let [tuples   #{{:schema "public" :name "src"}}
+             injected (fetch-metadata/inject-workspace-canonical-tuples tuples (mt/id))]
+         (is (contains? injected {:schema "public" :name "src"})
+             "non-remapped canonical tuple still present")
+         (is (contains? injected {:schema "public" :name "my_transform_output"})
+             "synthetic canonical tuple injected for the remapped table"))))))
+
+(deftest inject-canonical-tuples-deduplicates-test
+  (testing "if the canonical tuple is already present (e.g. before the workspace transform was wired up), no duplication"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (ws.table-remapping/add-mapping!
+        (mt/id)
+        {:schema "public" :table "orders"}
+        {:schema "ws_alice" :table "orders"})
+       (let [tuples   #{{:schema "public" :name "orders"}}
+             injected (fetch-metadata/inject-workspace-canonical-tuples tuples (mt/id))]
+         (is (= 1 (count injected)) "set semantics dedupe by value"))))))
+
+(deftest sync-does-not-retire-canonical-tables-with-active-remappings-test
+  (testing "Canonical Table rows whose physical backing is in the isolation schema must not be retired
+            on a sync where describe-database doesn't surface the canonical name."
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (mt/with-temp [:model/Table _ {:db_id  (mt/id)
+                                      :schema "public"
+                                      :name   "ws_canonical_keep"
+                                      :active true}]
+         (ws.table-remapping/add-mapping!
+          (mt/id)
+          {:schema "public"   :table "ws_canonical_keep"}
+          {:schema "ws_alice" :table "ws_canonical_keep"})
+         ;; describe-database returns ONLY the workspace-side tuple (which DEV-1898
+         ;; will filter out) and an unrelated canonical table. The canonical
+         ;; ws_canonical_keep does not physically exist on the warehouse.
+         (let [fake-metadata {:tables #{{:schema "public"   :name "unrelated_table"}
+                                        {:schema "ws_alice" :name "ws_canonical_keep"}}}]
+           (with-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
+             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
+         (let [{:keys [active]} (t2/select-one [:model/Table :active] :db_id (mt/id) :name "ws_canonical_keep")]
+           (is (true? active)
+               "canonical Table row with an active remap stays active across syncs")))))))
