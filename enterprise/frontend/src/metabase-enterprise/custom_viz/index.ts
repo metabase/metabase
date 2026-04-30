@@ -4,6 +4,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { CustomVizDevPage } from "./components/CustomVizDevPage";
+import { CustomVizEmptyState } from "./components/CustomVizEmptyState";
 import { CustomVizPage } from "./components/CustomVizPage";
 import { ManageCustomVizPage } from "./components/ManageCustomVizPage";
 import {
@@ -23,6 +24,7 @@ export function initializePlugin() {
       ManageCustomVizPage,
       CustomVizPage,
       CustomVizDevPage,
+      CustomVizEmptyState,
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,
