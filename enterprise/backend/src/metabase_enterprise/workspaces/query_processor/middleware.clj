@@ -154,8 +154,18 @@
    those decisions would be made against canonical names, which is invisible bug-bait. With
    Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
 
-   Native queries are intentionally untouched here — see the namespace docstring for why."
-  :feature :workspaces
+   Native queries are intentionally untouched here — see the namespace docstring for why.
+
+   ## Why `:feature :none` and not `:feature :workspaces`
+
+   Workspace child instances bootstrap from `config.yml` *before* their token is installed
+   (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
+   exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
+   the child silently leaks production data. The same rationale documented on
+   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
+   if remap rows exist, isolation must engage regardless of token state. The internal
+   `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
+  :feature :none
   [{db-id :database, mp :lib/metadata, :as query}]
   (if-not (ws.remapping/enabled-for-db? db-id)
     query
@@ -186,7 +196,11 @@
 
    Parses that SQL via `sql-tools/replace-names` (SQLGlot via GraalPy), walks the AST, and
    rewrites every `from` schema/table reference to its `to` counterpart. Re-emits. Touches
-   both `:qp/compiled` and `:qp/compiled-inline`.
+   `:qp/compiled`, `:qp/compiled-inline`, AND `:native` — the last one matters for
+   native-origin queries, where `:native` is populated at preprocess and the
+   compiled→native rename in `metabase.query-processor.execute/run` is a no-op.
+   Without rewriting `:native`, native-origin SQL would hit the warehouse with canonical
+   identifiers.
 
    Runs unconditionally for queries against remapped databases — MBQL-origin and native-origin
    alike. This is the only place native SQL is rewritten.
@@ -196,8 +210,14 @@
    fallback to the original SQL — a silent pass-through would breach workspace isolation.
 
    Short-circuits when `enabled-for-db?` is false (no remappings) or
-   `ws.remapping/*skip-remapping?*` is bound true."
-  :feature :workspaces
+   `ws.remapping/*skip-remapping?*` is bound true.
+
+   ## Why `:feature :none` and not `:feature :workspaces`
+
+   See the rationale on [[apply-workspace-remapping]]. Same answer: workspace children
+   must rewrite reads even when the `:workspaces` token isn't active (boot sequence,
+   token expiry, etc.). The internal `(enabled-for-db? db-id)` is the gate."
+  :feature :none
   [qp]
   (fn [{:keys [database] :as query} rff]
     (if-not (ws.remapping/enabled-for-db? database)
@@ -213,5 +233,12 @@
                           (update :qp/compiled rewrite)
 
                           (:qp/compiled-inline query)
-                          (update :qp/compiled-inline rewrite))]
+                          (update :qp/compiled-inline rewrite)
+
+                          ;; Native-origin queries have `:native` populated at preprocess,
+                          ;; before this middleware runs. The `(not (:native query)) (assoc
+                          ;; :native ...)` rename in `qp.execute/run` is a no-op for them, so
+                          ;; without this branch the original native SQL hits the warehouse.
+                          (:native query)
+                          (update :native rewrite))]
             (qp query rff)))))))

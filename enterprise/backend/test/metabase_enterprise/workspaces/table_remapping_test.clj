@@ -133,7 +133,9 @@
        (fn []
          (is (nil? (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
              "without a remapping, the hook returns nil so sync queries the logical table")
-         (ws.table-remapping/add-schema+table-mapping! db-id ["PUBLIC" "ORDERS"] ["mb_iso_ws" "orders_copy"])
+         (ws.table-remapping/add-mapping! db-id
+                                          {:schema "PUBLIC"     :table "ORDERS"}
+                                          {:schema "mb_iso_ws"  :table "orders_copy"})
          (is (= ["mb_iso_ws" "orders_copy"]
                 (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
              "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
@@ -145,7 +147,9 @@
       (clean-db-fixture
        db-id
        (fn []
-         (ws.table-remapping/add-schema+table-mapping! db-id ["PUBLIC" "ORDERS"] ["mb_iso_ws" "orders_copy"])
+         (ws.table-remapping/add-mapping! db-id
+                                          {:schema "PUBLIC"    :table "ORDERS"}
+                                          {:schema "mb_iso_ws" :table "orders_copy"})
          (with-redefs [driver/describe-fields
                        (fn [_driver _db & {:keys [table-names schema-names]}]
                          (swap! describe-calls conj {:path         :describe-fields
@@ -209,7 +213,9 @@
              to-table  "orders_workspace_copy"]
          (testing "precondition: no :model/Table row exists for the to-side"
            (is (nil? (t2/select-one :model/Table :db_id (mt/id) :schema to-schema :name to-table))))
-         (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "ORDERS"] [to-schema to-table])
+         (ws.table-remapping/add-mapping! (mt/id)
+                                          {:schema "PUBLIC"   :table "ORDERS"}
+                                          {:schema to-schema  :table to-table})
          (is (= [to-schema to-table]
                 (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))
              "remap-table operates on strings only — no :model/Table lookup on the to-side"))))))
@@ -223,7 +229,9 @@
              to-table  "orders_workspace_copy"]
          (is (nil? (t2/select-one :model/Table :db_id (mt/id) :schema to-schema :name to-table))
              "precondition: no :model/Table row exists for the to-side")
-         (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "ORDERS"] [to-schema to-table])
+         (ws.table-remapping/add-mapping! (mt/id)
+                                          {:schema "PUBLIC"   :table "ORDERS"}
+                                          {:schema to-schema  :table to-table})
          (is (= [to-schema to-table]
                 (ws.table-remapping/workspace-remap-schema+name (mt/id) "PUBLIC" "ORDERS"))
              "sync hook returns the remap pair regardless of to-side sync state"))))))
@@ -233,9 +241,9 @@
     (clean-db-fixture
      (mt/id)
      (fn []
-       (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "ORDERS"]    ["ws_unsynced" "orders_copy"])
-       (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "PEOPLE"]    ["ws_unsynced" "people_copy"])
-       (ws.table-remapping/add-schema+table-mapping! (mt/id) ["PUBLIC" "PRODUCTS"]  ["ws_unsynced" "products_copy"])
+       (ws.table-remapping/add-mapping! (mt/id) {:schema "PUBLIC" :table "ORDERS"}   {:schema "ws_unsynced" :table "orders_copy"})
+       (ws.table-remapping/add-mapping! (mt/id) {:schema "PUBLIC" :table "PEOPLE"}   {:schema "ws_unsynced" :table "people_copy"})
+       (ws.table-remapping/add-mapping! (mt/id) {:schema "PUBLIC" :table "PRODUCTS"} {:schema "ws_unsynced" :table "products_copy"})
        (let [mappings (ws.table-remapping/all-mappings-for-db (mt/id))]
          (is (= {["" "PUBLIC" "ORDERS"]   ["" "ws_unsynced" "orders_copy"]
                  ["" "PUBLIC" "PEOPLE"]   ["" "ws_unsynced" "people_copy"]
@@ -265,34 +273,47 @@
       (is (= "" db))
       (is (= "" schema)))))
 
+;; The clickhouse / bigquery `spec-for-table` tests below exercise the per-driver branches
+;; of `schema-position-value` / `db-position-value`. They require the driver to be loaded —
+;; not for warehouse interaction, but because `(driver/qualified-name-components engine)`
+;; triggers driver lazy-load via `dispatch-on-initialized-driver`. Skipped when the driver
+;; isn't on the test classpath.
+
+(defn- driver-loadable? [engine]
+  (try (driver/the-initialized-driver engine) true
+       (catch Throwable _ false)))
+
 (deftest spec-for-table-clickhouse-engine-test
-  (testing "ClickHouse fills :schema with the database name (driver emits db.table)"
-    (let [database (assoc (t2/select-one :model/Database :id (mt/id)) :engine :clickhouse)
-          table    (t2/select-one :model/Table :id (mt/id :orders))
-          {:keys [db schema]} (ws.table-remapping/spec-for-table database table)]
-      (is (= "" db) "no catalog level on ClickHouse")
-      (is (= (:name database) schema)
-          "schema-position filled from database.:name on schema-less drivers"))))
+  (when (driver-loadable? :clickhouse)
+    (testing "ClickHouse fills :schema with the database name (driver emits db.table)"
+      (let [database (assoc (t2/select-one :model/Database :id (mt/id)) :engine :clickhouse)
+            table    (t2/select-one :model/Table :id (mt/id :orders))
+            {:keys [db schema]} (ws.table-remapping/spec-for-table database table)]
+        (is (= "" db) "no catalog level on ClickHouse")
+        (is (= (:name database) schema)
+            "schema-position filled from database.:name on schema-less drivers")))))
 
 (deftest spec-for-table-bigquery-engine-test
-  (testing "BigQuery fills :db from connection details :project-id"
-    (let [database {:engine :bigquery-cloud-sdk
-                    :name "ignored"
-                    :details {:project-id "my-proj"}}
-          table    {:name "orders" :schema "ds"}
-          {:keys [db schema table]} (ws.table-remapping/spec-for-table database table)]
-      (is (= "my-proj" db))
-      (is (= "ds" schema))
-      (is (= "orders" table)))))
+  (when (driver-loadable? :bigquery-cloud-sdk)
+    (testing "BigQuery fills :db from connection details :project-id"
+      (let [database {:engine :bigquery-cloud-sdk
+                      :name "ignored"
+                      :details {:project-id "my-proj"}}
+            table    {:name "orders" :schema "ds"}
+            {:keys [db schema table]} (ws.table-remapping/spec-for-table database table)]
+        (is (= "my-proj" db))
+        (is (= "ds" schema))
+        (is (= "orders" table))))))
 
 (deftest spec-for-table-bigquery-no-project-id-test
-  (testing "BigQuery without explicit :project-id leaves :db empty (does not leak credentials blob)"
-    (let [database {:engine :bigquery-cloud-sdk
-                    :name "ignored"
-                    :details {:service-account-json "{\"private_key\": \"secret\"}"}}
-          table    {:name "orders" :schema "ds"}
-          {:keys [db]} (ws.table-remapping/spec-for-table database table)]
-      (is (= "" db) "service-account-json must NOT be used as a project id"))))
+  (when (driver-loadable? :bigquery-cloud-sdk)
+    (testing "BigQuery without explicit :project-id leaves :db empty (does not leak credentials blob)"
+      (let [database {:engine :bigquery-cloud-sdk
+                      :name "ignored"
+                      :details {:service-account-json "{\"private_key\": \"secret\"}"}}
+            table    {:name "orders" :schema "ds"}
+            {:keys [db]} (ws.table-remapping/spec-for-table database table)]
+        (is (= "" db) "service-account-json must NOT be used as a project id")))))
 
 ;; ----------------------------- Cache invalidation hooks -----------------------------
 ;;
