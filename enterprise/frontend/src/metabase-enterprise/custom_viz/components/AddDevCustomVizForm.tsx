@@ -16,7 +16,9 @@ type FormState = {
   devBundleUrl: string;
 };
 
-const initialValues: FormState = { devBundleUrl: "" };
+const DEFAULT_DEV_BUNDLE_URL = "http://localhost:5174";
+
+const initialValues: FormState = { devBundleUrl: DEFAULT_DEV_BUNDLE_URL };
 
 export function AddDevCustomVizForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
@@ -32,21 +34,21 @@ export function AddDevCustomVizForm() {
   return (
     <SettingsSection>
       <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-        {({ dirty }) => (
+        {({ values }) => (
           <Form>
             <Stack gap="lg">
               <FormTextInput
                 name="devBundleUrl"
                 label={t`Dev server URL`}
                 description={t`URL of the local dev server serving the visualization bundle, manifest, and assets.`}
-                placeholder="http://localhost:5174"
+                placeholder={DEFAULT_DEV_BUNDLE_URL}
                 autoFocus
               />
               <FormErrorMessage />
               <Group justify="flex-end">
                 <FormSubmitButton
-                  label={t`Add`}
-                  disabled={!dirty}
+                  label={t`Enable`}
+                  disabled={!values.devBundleUrl}
                   variant="filled"
                 />
               </Group>
