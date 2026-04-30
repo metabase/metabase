@@ -131,6 +131,16 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-04-22T12:00:03
       author: eric
+      comment: Unique constraint on workspace_database (workspace_id, database_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_database
+            constraintName: idx_unique_workspace_database
+            columnNames: workspace_id, database_id
+
+  - changeSet:
+      id: v62.2026-04-22T12:00:04
+      author: eric
       comment: FK workspace_database.workspace_id -> workspace.id (cascade on delete)
       changes:
         - addForeignKeyConstraint:
@@ -141,14 +151,8 @@ databaseChangeLog:
             constraintName: fk_workspace_database_workspace_id
             deleteCascade: true
 
-  ## RESTRICT (not CASCADE) on workspace_database.database_id: deleting a metabase_database
-  ## with active workspace_database rows must fail at the DB level so warehouse schemas/users
-  ## aren't silently orphaned. An enterprise pre-delete hook on :model/Database does the
-  ## cleanup (refuse with 409 for non-:unprovisioned rows, delete :unprovisioned rows
-  ## explicitly); the FK is the last-line-of-defense for paths that skip the hook.
-
   - changeSet:
-      id: v62.2026-04-22T12:00:04
+      id: v62.2026-04-22T12:00:05
       author: eric
       comment: FK workspace_database.database_id -> metabase_database.id (restrict on delete)
       changes:
@@ -159,16 +163,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_database_database_id
             onDelete: RESTRICT
-
-  - changeSet:
-      id: v62.2026-04-22T12:00:05
-      author: eric
-      comment: Unique constraint on workspace_database (workspace_id, database_id)
-      changes:
-        - addUniqueConstraint:
-            tableName: workspace_database
-            constraintName: idx_unique_workspace_database
-            columnNames: workspace_id, database_id
 
   - changeSet:
       id: v62.2026-04-22T12:00:06
