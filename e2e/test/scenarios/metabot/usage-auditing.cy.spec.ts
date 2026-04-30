@@ -862,6 +862,8 @@ describe("scenarios > metabot > usage auditing", () => {
       visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
       interceptConversationsApi();
 
+      assertMetricChartsRendered("conversations");
+
       clickRowChartBarForLabel(
         TENANT_CONVERSATIONS_CHART_TITLE,
         bobbyTenant.name,
@@ -898,6 +900,8 @@ describe("scenarios > metabot > usage auditing", () => {
   it("drills through from the groups chart to the conversations list", () => {
     visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
     interceptConversationsApi();
+
+    assertMetricChartsRendered("conversations");
 
     clickRowChartBarForLabel(
       "Groups with most conversations",
