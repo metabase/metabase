@@ -13,18 +13,20 @@ export async function jwtDefaultRefreshTokenFunction(
 
   const mbAuthUrl = `${instanceUrl}/auth/sso`;
 
-  const mbAuthUrlWithJwt = new URL(mbAuthUrl);
-  mbAuthUrlWithJwt.searchParams.set("jwt", jwtTokenResponse);
-
   let authSsoResponse;
   try {
-    authSsoResponse = await fetch(mbAuthUrlWithJwt.toString(), {
-      headers: requestHeaders,
+    authSsoResponse = await fetch(mbAuthUrl, {
+      method: "POST",
+      headers: {
+        ...requestHeaders,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ jwt: jwtTokenResponse }),
     });
   } catch (e) {
     // Network error when connecting to Metabase SSO
     throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
-      url: mbAuthUrl.toString(),
+      url: mbAuthUrl,
       message: e instanceof Error ? e.message : String(e),
     });
   }
@@ -32,7 +34,7 @@ export async function jwtDefaultRefreshTokenFunction(
   if (!authSsoResponse.ok) {
     // HTTP status error from Metabase SSO
     throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
-      url: mbAuthUrl.toString(),
+      url: mbAuthUrl,
       status: String(authSsoResponse.status),
     });
   }
