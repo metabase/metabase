@@ -8,6 +8,7 @@ import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
 } from "metabase/collections/containers/CreateCollectionModal";
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import { Modal } from "metabase/common/components/Modal";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
@@ -17,7 +18,6 @@ import {
   type LegacyStaticEmbeddingModalProps,
 } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
 import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
-import { Collections } from "metabase/entities/collections/collections";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
@@ -33,9 +33,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
-  const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
-  );
+  const collectionId = useInitialCollectionId(props) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {

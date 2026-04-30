@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
@@ -128,12 +129,13 @@ describe("ActionMenu", () => {
   describe("moving and archiving", () => {
     it("should allow to move and archive regular collections", async () => {
       const item = createMockCollectionItem({
+        id: 1,
         name: "Collection",
         model: "collection",
         can_write: true,
         setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
       });
+      fetchMock.put("path:/api/collection/1", { ...item, archived: true });
 
       const { onMove } = setup({ item });
 
@@ -143,7 +145,14 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       await userEvent.click(await screen.findByText("Move to trash"));
-      expect(item.setArchived).toHaveBeenCalledWith(true);
+
+      const calls = fetchMock.callHistory.calls("path:/api/collection/1");
+      expect(calls).toHaveLength(1);
+      const [putCall] = calls;
+      expect(putCall.options.method).toBe("PUT");
+      expect(JSON.parse(putCall.options.body as string)).toMatchObject({
+        archived: true,
+      });
     });
 
     it("should not allow to move and archive personal collections", async () => {
@@ -153,7 +162,6 @@ describe("ActionMenu", () => {
         can_write: true,
         personal_owner_id: 1,
         setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
         copy: true,
       });
 
@@ -170,7 +178,6 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: false,
         setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
         copy: true,
       });
 

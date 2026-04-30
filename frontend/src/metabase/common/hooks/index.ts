@@ -14,5 +14,6 @@ export * from "./use-url-with-utm";
 export { useStoreUrl } from "./use-store-url/use-store-url";
 export * from "./use-capture-event";
 export * from "./use-progressive-loader";
+export * from "./use-set-archive";
 export * from "./use-snapshot-selector";
 export * from "./use-subscriber";

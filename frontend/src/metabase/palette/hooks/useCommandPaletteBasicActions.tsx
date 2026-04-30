@@ -5,13 +5,13 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
-import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
@@ -61,9 +61,7 @@ export const useCommandPaletteBasicActions = ({
   ...props
 }: WithRouterProps & { isLoggedIn: boolean }) => {
   const dispatch = useDispatch();
-  const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
-  );
+  const collectionId = useInitialCollectionId(props) ?? undefined;
 
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,

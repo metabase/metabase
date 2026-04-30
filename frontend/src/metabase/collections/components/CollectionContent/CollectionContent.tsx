@@ -1,10 +1,12 @@
 import { useCallback } from "react";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   useBookmarkListQuery,
-  useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
 import { Bookmarks } from "metabase/entities/bookmarks";
@@ -36,7 +38,7 @@ export function CollectionContent({
       "exclude-archived": true,
     });
 
-  const { data: collection, error: collectionError } = useCollectionQuery({
+  const { data: collection, error: collectionError } = useGetCollectionQuery({
     id: collectionId,
   });
 

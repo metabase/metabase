@@ -21,7 +21,6 @@ const dashboardItem1: CollectionItem = {
   collection_id: null,
   name: "Dashboard Foo",
   description: "description foo",
-  setArchived: jest.fn(),
   setPinned: jest.fn(),
   archived: false,
 };
@@ -33,7 +32,6 @@ const dashboardItem2: CollectionItem = {
   collection_id: null,
   name: "Dashboard Bar",
   description: "description foo",
-  setArchived: jest.fn(),
   setPinned: jest.fn(),
   archived: false,
 };

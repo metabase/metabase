@@ -28,7 +28,6 @@ import type {
 import { createEntity, entityCompatibleQuery, undo } from "../utils";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
-import getInitialCollectionId from "./getInitialCollectionId";
 import { getCollectionType } from "./utils";
 
 const listCollectionsTree = (
@@ -109,17 +108,6 @@ export const Collections = createEntity({
   },
 
   objectActions: {
-    setArchived: (
-      { id }: Collection,
-      archived: boolean,
-      opts: Record<string, unknown>,
-    ) =>
-      Collections.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`collection`, archived ? t`trashed` : t`restored`),
-      ),
-
     setCollection: (
       { id }: Collection,
       collection: Collection,
@@ -153,7 +141,6 @@ export const Collections = createEntity({
           collectionFilter,
         ),
     ),
-    getInitialCollectionId,
   },
 
   getAnalyticsMetadata(

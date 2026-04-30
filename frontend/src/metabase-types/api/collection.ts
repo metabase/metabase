@@ -141,10 +141,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  setArchived?: (
-    isArchived: boolean,
-    opts?: Record<string, unknown>,
-  ) => Promise<void>;
   setPinned?: (isPinned: number | boolean) => void;
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
