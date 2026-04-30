@@ -1564,14 +1564,11 @@ describe("admin > custom visualizations", () => {
     it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {
       H.visitCustomVizDevelopment();
 
-      cy.findByLabelText(/Dev server URL/).type(devUrl);
-      cy.log(
-        "It should not be possible to add the plugin until the user understands the risks",
-      );
-      cy.findByRole("button", { name: /Add/ }).should("be.disabled");
-      cy.findByLabelText(/I understand/).click();
-
-      cy.findByRole("button", { name: /Add/ }).click();
+      cy.log("Dev server URL is pre-filled with the default value");
+      cy.findByLabelText(/Dev server URL/).should("have.value", devUrl);
+      cy.findByRole("button", { name: /Enable/ })
+        .should("be.enabled")
+        .click();
 
       cy.log("Verify the dev plugin is registered.");
       H.main().findByText(CUSTOM_VIZ_DEV_PROJECT_NAME).should("be.visible");
