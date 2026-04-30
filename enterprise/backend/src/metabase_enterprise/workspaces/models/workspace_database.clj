@@ -9,7 +9,6 @@
 
 (doto :model/WorkspaceDatabase
   (derive :metabase/model)
-  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/WorkspaceDatabase

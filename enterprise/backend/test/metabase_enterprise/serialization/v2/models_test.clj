@@ -60,11 +60,7 @@
             (testing (str "Model shouldn't have entity_id defined: " (name model))
               (is (not custom-entity-id?))
               ;; TODO: strip serialization stuff off Pulse*
-              ;; These excluded models keep `:hook/entity-id` (and thus a random entity_id)
-              ;; on purpose — the column exists for parity with other tables in case we
-              ;; ever want to round-trip them, even though they're not in serdes today.
-              (when-not (#{"Pulse" "PulseChannel" "PulseCard" "User" "PermissionsGroup"
-                           "Workspace" "WorkspaceDatabase"} (name model))
+              (when-not (#{"Pulse" "PulseChannel" "PulseCard" "User" "PermissionsGroup"} (name model))
                 (is (not random-entity-id?))))))))))
 
 (deftest serialization-complete-spec-test

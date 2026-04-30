@@ -104,6 +104,34 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspace_id),
         ]),
     }),
+    setWorkspaceAccessKey: builder.mutation<
+      { access_key: string },
+      WorkspaceId
+    >({
+      query: (workspace_id) => ({
+        method: "POST",
+        url: `/api/ee/workspace-manager/${workspace_id}/access-key`,
+      }),
+      invalidatesTags: (_, error, workspace_id) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", workspace_id),
+        ]),
+    }),
+    deleteWorkspaceAccessKey: builder.mutation<
+      { access_key: null },
+      WorkspaceId
+    >({
+      query: (workspace_id) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace-manager/${workspace_id}/access-key`,
+      }),
+      invalidatesTags: (_, error, workspace_id) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", workspace_id),
+        ]),
+    }),
   }),
 });
 
@@ -116,4 +144,6 @@ export const {
   useCreateWorkspaceDatabaseMutation,
   useUpdateWorkspaceDatabaseMutation,
   useDeleteWorkspaceDatabaseMutation,
+  useSetWorkspaceAccessKeyMutation,
+  useDeleteWorkspaceAccessKeyMutation,
 } = workspaceManagerApi;
