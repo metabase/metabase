@@ -405,7 +405,7 @@ The location is where custom third-party drivers should be added. Then Metabase 
 Type: integer<br>
 Default: `null`
 
-Port used by Metabase to expose Prometheus metrics. When set, Metabase starts a Prometheus metrics web server on the specified port that Prometheus can scrape.
+Port to serve prometheus metrics from. If set, prometheus collectors are registered and served from `localhost:<port>/metrics`.
 
 See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
