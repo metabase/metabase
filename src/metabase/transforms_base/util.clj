@@ -173,7 +173,7 @@
                       {:temporal t})))))
 
 (defn utc-timestamp-string
-  "Convert the timestamp t to a string encoding the it in the system timezone."
+  "Convert the timestamp `t` to a UTC ISO-8601 string."
   [t]
   (-> t ->instant str))
 
@@ -197,7 +197,10 @@
 (defn first-incremental-run?
   "True when `transform` is configured as `:table-incremental` but has not yet recorded a watermark.
   First incremental runs behave like full runs — they drop-and-recreate the target table rather than
-  appending — so call sites that branch on incremental semantics need to special-case them."
+  appending — so call sites that branch on incremental semantics need to special-case them.
+
+  Note: this stays true across failed first attempts until one successfully persists a watermark,
+  since the predicate only inspects `:last_checkpoint_value`."
   [{:keys [target last_checkpoint_value]}]
   (and (= :table-incremental (keyword (:type target)))
        (nil? last_checkpoint_value)))
