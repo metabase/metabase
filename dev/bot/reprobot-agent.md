@@ -200,6 +200,6 @@ Show the user the report path and a brief summary using a banner:
 
 - **Read-only by default**: Do NOT modify source code except for writing tests in Phase 3. You are investigating, not fixing.
 - **Evidence-based**: Every finding must have evidence — a screenshot, API response, REPL output, or specific code reference.
-- **Use wrapper commands**: `./bin/mage -bot-git-readonly` for git/gh, `./bin/mage -bot-api-call` for API calls.
+- **Use wrapper commands**: `./bin/mage -bot-api-call` for metabase API calls.
 - **Parallelization**: Batch independent REPL calls, Grep calls, and API calls in the same turn.
 - **Time awareness**: Don't spend more than 30 minutes total. If you're stuck after 3 attempts, classify as INCONCLUSIVE and write the report.
