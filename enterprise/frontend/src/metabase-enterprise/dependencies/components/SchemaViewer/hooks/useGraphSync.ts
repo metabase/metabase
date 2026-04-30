@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef } from "react";
+import { type Dispatch, useCallback, useEffect, useRef } from "react";
 
 import type { ConcreteTableId } from "metabase-types/api";
 
-import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
+import type {
+  SchemaViewerFlowEdge,
+  SchemaViewerFlowNode,
+  ViewportFitAction,
+} from "../types";
 import { getNodesWithPositions, mergeWithExistingPositions } from "../utils";
 
 type UseGraphSyncArgs = {
@@ -26,13 +30,12 @@ type UseGraphSyncArgs = {
   setExpandingTableIds: React.Dispatch<
     React.SetStateAction<Set<ConcreteTableId>>
   >;
-  setPendingFitNodeIds: (nodeIds: readonly string[] | null) => void;
   /**
-   * Bumped with a fresh trigger object whenever a full-canvas Dagre layout
-   * is applied — e.g. first load or schema switch. Consumers use this to
-   * fire a `fitView()` on the same paint.
+   * Reducer dispatch for the pending camera-fit channel: fresh layouts
+   * dispatch `fitAll` to reframe the whole canvas, incremental adds
+   * dispatch `fitNodes` to pan/zoom to the newly-added tables.
    */
-  setPendingFreshFit: (trigger: { duration?: number } | null) => void;
+  dispatchCameraFit: Dispatch<ViewportFitAction>;
 };
 
 /**
@@ -62,8 +65,7 @@ export function useGraphSync({
   setNodes,
   setEdges,
   setExpandingTableIds,
-  setPendingFitNodeIds,
-  setPendingFreshFit,
+  dispatchCameraFit,
 }: UseGraphSyncArgs) {
   // When the user expands a new table via FK click, these candidate IDs
   // hold the edge that should be auto-selected once the new graph arrives.
@@ -182,13 +184,13 @@ export function useGraphSync({
           .filter((n) => !currentById.has(n.id))
           .map((n) => n.id);
         if (addedIds.length > 0) {
-          setPendingFitNodeIds(addedIds);
+          dispatchCameraFit({ type: "fitNodes", nodeIds: addedIds });
         }
       }
     } else {
       // Fresh layout: fit the whole canvas (uses ReactFlow's default fitView
       // bounds, so wide schemas can zoom out below the per-node-fit floor).
-      setPendingFreshFit({});
+      dispatchCameraFit({ type: "fitAll" });
     }
   }, [
     hasEntry,
@@ -198,8 +200,7 @@ export function useGraphSync({
     setNodes,
     setEdges,
     setExpandingTableIds,
-    setPendingFitNodeIds,
-    setPendingFreshFit,
+    dispatchCameraFit,
   ]);
 
   return { registerPendingEdgeSelection };

@@ -117,7 +117,7 @@ export function SchemaViewerFieldRow({
       const targetNodeId = getNodeId({
         table_id: field.fk_target_table_id,
       });
-      zoomToNodes([targetNodeId], { duration: 300 });
+      zoomToNodes([targetNodeId]);
 
       // Also highlight the connecting edge — the same visual treatment
       // the user would get from clicking the edge directly. We try both

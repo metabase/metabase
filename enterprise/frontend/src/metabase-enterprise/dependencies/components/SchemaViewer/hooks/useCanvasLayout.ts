@@ -1,22 +1,23 @@
-import { useCallback } from "react";
+import { type Dispatch, useCallback } from "react";
 
-import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
+import type {
+  SchemaViewerFlowEdge,
+  SchemaViewerFlowNode,
+  ViewportFitAction,
+} from "../types";
 import { focusNodeLayout, getNodesWithPositions } from "../utils";
-
-type FreshFitTrigger = { duration?: number } | null;
 
 type UseCanvasLayoutArgs = {
   nodes: SchemaViewerFlowNode[];
   edges: SchemaViewerFlowEdge[];
   setNodes: React.Dispatch<React.SetStateAction<SchemaViewerFlowNode[]>>;
   setEdges: React.Dispatch<React.SetStateAction<SchemaViewerFlowEdge[]>>;
-  setPendingFitNodeIds: (nodeIds: readonly string[] | null) => void;
-  setPendingFreshFit: (trigger: FreshFitTrigger) => void;
+  dispatchViewportFit: Dispatch<ViewportFitAction>;
 };
 
 type UseCanvasLayoutResult = {
   /**
-   * Re-run Dagre over the entire canvas (animated). No-op when the canvas
+   * Re-run default nodes placement over the entire canvas. No-op when the canvas
    * is empty.
    */
   relayout: () => void;
@@ -30,17 +31,14 @@ type UseCanvasLayoutResult = {
 };
 
 /**
- * Manual layout actions exposed to the UI: the auto-layout button calls
- * `relayout`, the "focus node" button calls `focusOnNode`. Each pairs a
- * placement function from `utils.ts` with the right camera-fit trigger.
+ * Manual layout actions exposed to the UI.
  */
 export function useCanvasLayout({
   nodes,
   edges,
   setNodes,
   setEdges,
-  setPendingFitNodeIds,
-  setPendingFreshFit,
+  dispatchViewportFit,
 }: UseCanvasLayoutArgs): UseCanvasLayoutResult {
   const relayout = useCallback(() => {
     if (nodes.length === 0) {
@@ -48,8 +46,8 @@ export function useCanvasLayout({
     }
     const laidOut = getNodesWithPositions(nodes, edges);
     setNodes(laidOut);
-    setPendingFreshFit({ duration: 500 });
-  }, [nodes, edges, setNodes, setPendingFreshFit]);
+    dispatchViewportFit({ type: "fitAll" });
+  }, [nodes, edges, setNodes, dispatchViewportFit]);
 
   const focusOnNode = useCallback(
     (nodeId: string) => {
@@ -69,9 +67,9 @@ export function useCanvasLayout({
       );
       // Zoom in on the focal node itself — useZoomToNodes clamps to ≥0.5 so
       // the table stays legible, and keeps the node's header in view.
-      setPendingFitNodeIds([nodeId]);
+      dispatchViewportFit({ type: "fitNodes", nodeIds: [nodeId] });
     },
-    [edges, setNodes, setEdges, setPendingFitNodeIds],
+    [edges, setNodes, setEdges, dispatchViewportFit],
   );
 
   return { relayout, focusOnNode };

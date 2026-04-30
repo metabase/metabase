@@ -62,7 +62,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const handleDoubleClick = useCallback(() => {
     // Focus on this node using the shared zoom rules (≥0.5 zoom, header
     // kept in the viewport).
-    zoomToNodes([id], { duration: 300 });
+    zoomToNodes([id]);
   }, [id, zoomToNodes]);
 
   const handleHeaderClick = useCallback(

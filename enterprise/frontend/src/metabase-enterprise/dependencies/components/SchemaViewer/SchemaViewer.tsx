@@ -3,10 +3,11 @@ import {
   MiniMap,
   Panel,
   ReactFlow,
+  type ReactFlowInstance,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -30,8 +31,6 @@ import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
 import { AutoLayoutButton } from "./components/AutoLayoutButton";
 import { SchemaViewerEdge } from "./components/Edge";
-import { FitToCanvas } from "./components/FitToCanvas";
-import { FitToNewNodes } from "./components/FitToNewNodes";
 import { SchemaViewerNodeSearch } from "./components/NodeSearch";
 import { SchemaPickerInput } from "./components/SchemaPickerInput";
 import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
@@ -40,10 +39,14 @@ import { FIT_VIEW_OPTIONS, MAX_ZOOM, MIN_ZOOM } from "./constants";
 import { useCanvasLayout } from "./hooks/useCanvasLayout";
 import { useEdgeZoom } from "./hooks/useEdgeZoom";
 import { useGraphSync } from "./hooks/useGraphSync";
-import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
+import { zoomToNodes } from "./hooks/useZoomToNodes";
+import type {
+  PendingViewportFit,
+  SchemaViewerFlowEdge,
+  SchemaViewerFlowNode,
+  ViewportFitAction,
+} from "./types";
 import { toFlowGraph } from "./utils";
-
-// --- ReactFlow configuration ------------------------------------------------
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -57,21 +60,36 @@ const PRO_OPTIONS = {
   hideAttribution: true,
 };
 
-// --- Props ------------------------------------------------------------------
+// Animation duration shared with `zoomToNodes` so every camera move has the
+// same feel (matches DURATION_MS in useZoomToNodes.ts).
+const VIEWPORT_FIT_DURATION_MS = 500;
+
+function viewportFitReducer(
+  _state: PendingViewportFit | null,
+  action: ViewportFitAction,
+): PendingViewportFit | null {
+  switch (action.type) {
+    case "fitAll":
+      return { kind: "all" };
+    case "fitNodes":
+      return action.nodeIds.length === 0
+        ? null
+        : { kind: "nodes", nodeIds: action.nodeIds };
+    case "clear":
+      return null;
+  }
+}
 
 type SchemaViewerProps = {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  /** Add a table to the extra focal set (FK click expansion). */
-  onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
-  /** Stable key for the current (databaseId, schema). */
-  contextKey: string | null;
-  /** ERD response from `useGetErdQuery`. */
   data: ErdResponse | undefined;
-  /** RTK-Query `isFetching` flag. */
   isFetching: boolean;
-  /** RTK-Query error, if any. */
   error: unknown;
+  /** db__schema key for canvas cleanup */
+  contextKey: string | null;
+  /** Add a table to current selected schema (FK click expansion). */
+  onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
 };
 
 export function SchemaViewer({
@@ -83,9 +101,11 @@ export function SchemaViewer({
   isFetching,
   error,
 }: SchemaViewerProps) {
-  // --- State ----------------------------------------------------------------
-
-  // ReactFlow's node/edge stores. All canvas state derives from these.
+  // ReactFlow instance and state
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
+    SchemaViewerFlowNode,
+    SchemaViewerFlowEdge
+  > | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
     [],
   );
@@ -93,20 +113,12 @@ export function SchemaViewer({
     [],
   );
 
-  // Camera-fit channels — set by the sync/layout layer, drained by
-  // render-null components (`<FitToNewNodes>`, `<FitToCanvas>`) inside
-  // `<ReactFlow>` (the only place `useReactFlow` is available).
-  const [pendingFitNodeIds, setPendingFitNodeIds] = useState<
-    readonly string[] | null
-  >(null);
-  const clearPendingFitNodeIds = useCallback(
-    () => setPendingFitNodeIds(null),
-    [],
+  // Viewport-fit channel — sync/layout layer dispatches actions, the effect
+  // below drains the resolved state using the captured ReactFlow instance.
+  const [pendingViewportFit, dispatchViewportFit] = useReducer(
+    viewportFitReducer,
+    null,
   );
-  const [pendingFreshFit, setPendingFreshFit] = useState<{
-    duration?: number;
-  } | null>(null);
-  const clearPendingFreshFit = useCallback(() => setPendingFreshFit(null), []);
 
   // Target table IDs whose FK-expansion fetch is still in flight. Field rows
   // use this to swap the database-type text for a loader until the new table
@@ -192,8 +204,7 @@ export function SchemaViewer({
     setNodes,
     setEdges,
     setExpandingTableIds,
-    setPendingFitNodeIds,
-    setPendingFreshFit,
+    dispatchCameraFit: dispatchViewportFit,
   });
 
   const { relayout, focusOnNode } = useCanvasLayout({
@@ -201,11 +212,30 @@ export function SchemaViewer({
     edges,
     setNodes,
     setEdges,
-    setPendingFitNodeIds,
-    setPendingFreshFit,
+    dispatchViewportFit: dispatchViewportFit,
   });
 
-  const { handleEdgeClick } = useEdgeZoom({ setPendingFitNodeIds });
+  const { handleEdgeClick } = useEdgeZoom({
+    dispatchViewportFit,
+  });
+
+  // Drain the pending viewport-fit request once React Flow has committed the
+  // corresponding node/position changes. `requestAnimationFrame` lets
+  // ReactFlow flush layout before we measure / fit.
+  useEffect(() => {
+    if (pendingViewportFit == null || reactFlowInstance == null) {
+      return;
+    }
+    const handle = requestAnimationFrame(() => {
+      if (pendingViewportFit.kind === "all") {
+        reactFlowInstance.fitView({ duration: VIEWPORT_FIT_DURATION_MS });
+      } else if (pendingViewportFit.nodeIds.length > 0) {
+        zoomToNodes(reactFlowInstance, pendingViewportFit.nodeIds);
+      }
+      dispatchViewportFit({ type: "clear" });
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [pendingViewportFit, reactFlowInstance]);
 
   // --- Handlers -------------------------------------------------------------
 
@@ -272,7 +302,7 @@ export function SchemaViewer({
   // any pending camera fit so the new context starts clean.
   const handleSchemaChange = useCallback(() => {
     setSelectedNodeId(null);
-    setPendingFreshFit(null);
+    dispatchViewportFit({ type: "clear" });
   }, []);
 
   // --- Context value (consumed by TableNode, FieldRow, …) -------------------
@@ -310,6 +340,7 @@ export function SchemaViewer({
         colorMode={colorScheme === "dark" ? "dark" : "light"}
         fitView
         fitViewOptions={FIT_VIEW_OPTIONS}
+        onInit={setReactFlowInstance}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeClick={handleEdgeClick}
@@ -317,13 +348,6 @@ export function SchemaViewer({
         {/* Canvas chrome */}
         <Background />
         <MiniMap position="bottom-right" pannable zoomable />
-
-        {/* Camera-op pumps (render-null) */}
-        <FitToNewNodes
-          nodeIds={pendingFitNodeIds}
-          onDone={clearPendingFitNodeIds}
-        />
-        <FitToCanvas trigger={pendingFreshFit} onDone={clearPendingFreshFit} />
 
         {/* Top-left: context picker + search */}
         <Panel className={S.entryInput} position="top-left">

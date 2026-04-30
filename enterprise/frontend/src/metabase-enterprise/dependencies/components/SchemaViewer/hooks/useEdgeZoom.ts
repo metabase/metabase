@@ -1,9 +1,9 @@
-import { useCallback, useRef } from "react";
+import { type Dispatch, useCallback, useRef } from "react";
 
-import type { SchemaViewerFlowEdge } from "../types";
+import type { SchemaViewerFlowEdge, ViewportFitAction } from "../types";
 
 type UseEdgeZoomArgs = {
-  setPendingFitNodeIds: (nodeIds: readonly string[] | null) => void;
+  dispatchViewportFit: Dispatch<ViewportFitAction>;
 };
 
 /**
@@ -16,8 +16,8 @@ type UseEdgeZoomArgs = {
  * zoom only kicks in once the user has clearly chosen that edge. The edge
  * stays selected — fitView doesn't touch React Flow's selection state.
  */
-export function useEdgeZoom({ setPendingFitNodeIds }: UseEdgeZoomArgs) {
-  // Per-edge memory of which endpoint the camera last zoomed to, so
+export function useEdgeZoom({ dispatchViewportFit }: UseEdgeZoomArgs) {
+  // Per-edge memory of which endpoint the viewport last zoomed to, so
   // successive double-clicks on the same edge alternate source → target.
   const lastEdgeZoomSideRef = useRef<Map<string, "source" | "target">>(
     new Map(),
@@ -33,9 +33,9 @@ export function useEdgeZoom({ setPendingFitNodeIds }: UseEdgeZoomArgs) {
         previousSide === "source" ? "target" : "source";
       lastEdgeZoomSideRef.current.set(edge.id, nextSide);
       const targetNodeId = nextSide === "source" ? edge.source : edge.target;
-      setPendingFitNodeIds([targetNodeId]);
+      dispatchViewportFit({ type: "fitNodes", nodeIds: [targetNodeId] });
     },
-    [setPendingFitNodeIds],
+    [dispatchViewportFit],
   );
 
   return { handleEdgeClick };
