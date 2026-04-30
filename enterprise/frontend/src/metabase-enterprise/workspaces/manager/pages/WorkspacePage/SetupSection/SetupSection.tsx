@@ -138,16 +138,18 @@ function ExportEnvVarsSection({ workspace }: ExportEnvVarsSectionProps) {
 function RunInstanceSection() {
   const jarCommand = `MB_CONFIG_FILE_PATH=./config.yml \\
 MB_REMOTE_SYNC_URL=file://$(pwd)/.git \\
-MB_TABLE_METADATA_PATH=./table_metadata.json \\
+MB_TABLE_METADATA_PATH=./.metabase/table_metadata.json \\
+MB_FIELD_VALUES_PATH=./.metabase/field_values.json \\
 java -jar metabase.jar`;
 
   const dockerCommand = `docker run -d -p 3000:3000 \\
   -v $(pwd)/config.yml:/config.yml \\
-  -v $(pwd)/table_metadata.json:/table_metadata.json \\
+  -v $(pwd)/.metabase:/.metabase \\
   -v $(pwd)/.git:/workspace/.git \\
   -e MB_CONFIG_FILE_PATH=/config.yml \\
   -e MB_REMOTE_SYNC_URL=file:///workspace/.git \\
-  -e MB_TABLE_METADATA_PATH=/table_metadata.json \\
+  -e MB_TABLE_METADATA_PATH=/.metabase/table_metadata.json \\
+  -e MB_FIELD_VALUES_PATH=/.metabase/field_values.json \\
   -e MB_PREMIUM_EMBEDDING_TOKEN \\
   -e MB_WORKSPACE_USER_PASSWORD \\
   metabase/metabase-enterprise:latest`;
