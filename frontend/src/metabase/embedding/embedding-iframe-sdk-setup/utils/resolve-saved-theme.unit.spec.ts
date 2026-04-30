@@ -16,7 +16,6 @@ const SAVED_THEMES: EmbeddingTheme[] = [
       },
       fontFamily: "Inter",
     },
-    color_harmony: "off",
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   },
@@ -26,7 +25,6 @@ const SAVED_THEMES: EmbeddingTheme[] = [
     settings: {
       colors: { brand: "#0077B6" },
     },
-    color_harmony: "off",
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   },
@@ -107,7 +105,6 @@ describe("resolveSavedTheme", () => {
         id: 3,
         name: "Bare",
         settings: { fontFamily: "Lato" },
-        color_harmony: "off",
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-01T00:00:00Z",
       },
