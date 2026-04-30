@@ -4,13 +4,13 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { MODAL_TYPES } from "metabase/querying/constants";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 import { useSharingModal } from "../../hooks/use-sharing-modal";

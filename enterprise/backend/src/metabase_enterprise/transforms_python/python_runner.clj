@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -184,8 +184,8 @@
    duration-ms :- int?
    status :- [:enum :success :error :timeout]]
   (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
-  (prometheus/inc! :metabase-transforms/python-api-calls-total {:status (name status)})
-  (prometheus/observe! :metabase-transforms/python-api-call-duration-ms {} duration-ms))
+  (analytics/inc! :metabase-transforms/python-api-calls-total {:status (name status)})
+  (analytics/observe! :metabase-transforms/python-api-call-duration-ms {} duration-ms))
 
 (defmacro with-python-api-timing
   "Execute body while timing a Python API call."

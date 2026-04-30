@@ -1,0 +1,69 @@
+## Create analytics views for AI/Metabot usage tracking.
+## These views expose conversation, message, and usage data in the
+## Internal Metabase Database for admin analytics.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-01T10:00:00
+      author: noahmoss
+      runOnChange: true
+      comment: Create v_metabot_conversations view for AI analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v1/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v1/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v1/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_metabot_conversations
+
+  - changeSet:
+      id: v61.2026-04-01T10:00:01
+      author: noahmoss
+      runOnChange: true
+      comment: Create v_metabot_messages view for AI analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v1/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v1/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v1/h2-metabot_messages.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_metabot_messages
+
+  - changeSet:
+      id: v61.2026-04-01T10:00:03
+      author: tyler
+      runOnChange: true
+      comment: Create v_ai_usage_log view for AI analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v1/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v1/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v1/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_ai_usage_log

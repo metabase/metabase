@@ -19,6 +19,7 @@
    [java-time.api :as t]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
@@ -116,10 +117,12 @@
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:auth_identity.provider :auth-provider]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
-                            [:tenant] [:= :tenant.id :user.tenant_id]]
+                            [:tenant] [:= :tenant.id :user.tenant_id]
+                            [:auth_identity] [:= :auth_identity.id :session.auth_identity_id]]
                 :where     (into [:and
                                   (if enable-tenants?
                                     [:or [:= :tenant.id nil] :tenant.is_active]
@@ -238,15 +241,25 @@
           (-> user-info
               (dissoc :api-key)))))))
 
+(defn- auth-method
+  [session-info api-key-info embedding-route]
+  (or ({"guest-embed" "guest"} embedding-route embedding-route)
+      (cond session-info (or (:auth-provider session-info) "session")
+            api-key-info "api-key")))
+
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (merge
-   request
-   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key))
-   (when x-metabase-locale
-     (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
-     {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
+  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
+        api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
+        embedding-route (analytics/get-route)
+        auth-method (auth-method session-info api-key-info embedding-route)]
+    (merge
+     request
+     (dissoc (or session-info api-key-info) :auth-provider)
+     (when auth-method {:embedding/auth-method auth-method})
+     (when x-metabase-locale
+       (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
+       {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
@@ -255,7 +268,8 @@
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
                      (merge-current-user-info request))]
-      (handler request' respond raise))))
+      (analytics/with-auth-method! (:embedding/auth-method request')
+        (handler request' respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |

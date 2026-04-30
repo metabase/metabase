@@ -38,6 +38,17 @@ const ToolCallDetailsModal = ({
     }
   }, [message.args]);
 
+  const parsedResult = useMemo(() => {
+    if (!message.result) {
+      return "";
+    }
+    try {
+      return JSON.stringify(JSON.parse(message.result), null, 2);
+    } catch {
+      return message.result;
+    }
+  }, [message.result]);
+
   return (
     <Modal
       opened
@@ -79,12 +90,12 @@ const ToolCallDetailsModal = ({
                   </Badge>
                 )}
               </Flex>
-              <ActionIcon h="sm" onClick={() => copy(message.result)}>
+              <ActionIcon h="sm" onClick={() => copy(parsedResult)}>
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Flex>
             <Box mx="-1.5rem">
-              <CodeEditor value={message.result} readOnly />
+              <CodeEditor value={parsedResult} language="json" readOnly />
             </Box>
           </Stack>
         )}
@@ -114,8 +125,8 @@ export const AgentToolCallMessage = ({
         align="center"
         justify="space-between"
       >
-        <Flex>
-          <Text mr="sm">🔧</Text>
+        <Flex align="center">
+          <Icon name="gear" c="text-secondary" mr="sm" />
           <Text fw="bold">{message.name}</Text>
         </Flex>
         <Flex align="center" gap="xs">

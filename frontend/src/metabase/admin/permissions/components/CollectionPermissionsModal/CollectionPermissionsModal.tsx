@@ -9,9 +9,9 @@ import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
+import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { connect, useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
 import {

@@ -799,3 +799,88 @@
       ;; All dimensions should have empty filter-positions
       (doseq [dim dims]
         (is (= [] (:filter-positions dim)))))))
+
+;;; -------------------------------------------------- available-segments --------------------------------------------------
+;;; These tests cover the source-table-only behavior. Joined-table segment
+;;; support lives in a follow-up PR (den/UXW-3754-segments-joined-tables).
+
+(def ^:private seg-source-metric-1
+  {:lib/type :metadata/metric, :id 1, :name "revenue", :display-name "Revenue", :table-id 10})
+
+(def ^:private seg-source-metric-2
+  {:lib/type :metadata/metric, :id 2, :name "orders", :display-name "Orders", :table-id 30})
+
+(def ^:private seg-source-segment
+  {:lib/type :metadata/segment, :id 100, :name "Big Orders", :table-id 10, :definition {}})
+
+(def ^:private seg-joined-segment
+  {:lib/type :metadata/segment, :id 200, :name "Active Users", :table-id 20, :definition {}})
+
+(def ^:private seg-second-source-segment
+  {:lib/type :metadata/segment, :id 300, :name "Live Widgets", :table-id 30, :definition {}})
+
+(defn- seg-metric-fetcher [{:keys [id]}]
+  (let [wanted (or id #{1 2})]
+    (filterv #(contains? wanted (:id %)) [seg-source-metric-1 seg-source-metric-2])))
+
+(defn- seg-segment-fetcher [{:keys [table-id]}]
+  (case table-id
+    10 [seg-source-segment]
+    20 [seg-joined-segment]
+    30 [seg-second-source-segment]
+    []))
+
+(def ^:private seg-mock-provider
+  (lib-metric.metadata.provider/metric-context-metadata-provider
+   seg-metric-fetcher
+   (constantly [])          ; measure-fetcher-fn
+   (constantly [])          ; dimension-fetcher-fn
+   seg-segment-fetcher      ; segment-fetcher-fn
+   (constantly nil)         ; table->db-fn
+   (constantly nil)         ; db-provider-fn
+   (constantly nil)         ; setting-fn
+   nil))                    ; column-post-process-fn
+
+(def ^:private seg-leaf-uuid-1 "550e8400-e29b-41d4-a716-446655440001")
+(def ^:private seg-leaf-uuid-2 "550e8400-e29b-41d4-a716-446655440002")
+
+(def ^:private seg-definition
+  {:lib/type          :metric/definition
+   :expression        [:metric {:lib/uuid seg-leaf-uuid-1} 1]
+   :filters           []
+   :projections       []
+   :metadata-provider seg-mock-provider})
+
+(deftest ^:parallel available-segments-returns-source-table-segments-test
+  (testing "available-segments returns only segments on the metric's source table"
+    (let [segments (lib-metric.filter/available-segments seg-definition)
+          by-id    (into {} (map (juxt :id identity)) segments)]
+      (is (= #{100} (set (keys by-id)))
+          "Only the source-table segment (100) is returned; joined-table segment (200) is not")
+      (is (every? #(= seg-leaf-uuid-1 (:lib-metric/instance-uuid %)) segments)
+          "All segments carry the expression leaf's instance-uuid"))))
+
+(deftest ^:parallel available-segments-dedupes-by-id-test
+  (testing "available-segments de-duplicates by :id when a segment surfaces for multiple leaves"
+    (let [definition (assoc seg-definition
+                            :expression
+                            [:+ {:lib/uuid "cccccccc-0000-0000-0000-000000000001"}
+                             [:metric {:lib/uuid seg-leaf-uuid-1} 1]
+                             [:metric {:lib/uuid seg-leaf-uuid-2} 1]])
+          segments (lib-metric.filter/available-segments definition)]
+      (is (= 1 (count segments)))
+      (is (= 100 (:id (first segments)))))))
+
+(deftest ^:parallel available-segments-multi-leaf-expression-test
+  (testing "available-segments over a multi-leaf expression returns each leaf's source-table segments"
+    (let [definition (assoc seg-definition
+                            :expression
+                            [:+ {:lib/uuid "cccccccc-0000-0000-0000-000000000001"}
+                             [:metric {:lib/uuid seg-leaf-uuid-1} 1]
+                             [:metric {:lib/uuid seg-leaf-uuid-2} 2]])
+          segments (lib-metric.filter/available-segments definition)
+          by-id (into {} (map (juxt :id identity)) segments)]
+      (is (= #{100 300} (set (keys by-id)))
+          "Segments from each leaf's own source table are returned")
+      (is (= seg-leaf-uuid-1 (:lib-metric/instance-uuid (by-id 100))))
+      (is (= seg-leaf-uuid-2 (:lib-metric/instance-uuid (by-id 300)))))))

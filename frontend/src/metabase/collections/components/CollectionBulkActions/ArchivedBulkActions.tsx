@@ -8,8 +8,8 @@ import {
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
@@ -83,7 +83,6 @@ export const ArchivedBulkActions = ({
           `${selected.length} items have been permanently deleted.`,
           selected.length,
         ),
-        undo: false,
         canDismiss: true,
       }),
     );

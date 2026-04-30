@@ -445,7 +445,7 @@
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
-  [search-ctx :- search.config/SearchContext]
+  [search-ctx :- SearchContext]
   (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
                                                :search/query-length (count (:search-string search-ctx))
                                                :search/model-count  (count (:models search-ctx))}

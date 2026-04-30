@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Link } from "metabase/common/components/Link";
 import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { formatDateTimeWithUnit } from "metabase/utils/formatting";
 import Settings from "metabase/utils/settings";
-import * as Urls from "metabase/utils/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {

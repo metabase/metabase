@@ -6,11 +6,11 @@ import { Link } from "metabase/common/components/Link";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";

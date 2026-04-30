@@ -17,6 +17,7 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
@@ -25,10 +26,9 @@ import {
 } from "metabase/search/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import { modelToUrl } from "metabase/utils/urls";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
 import {

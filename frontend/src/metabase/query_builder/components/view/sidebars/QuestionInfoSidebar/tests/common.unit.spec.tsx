@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { BaseEntityId } from "metabase-types/api";

@@ -7,10 +7,10 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { trackTransformCreate } from "../../../analytics";
 import { CreateTransformCollectionModal } from "../../../components/CreateTransformCollectionModal";

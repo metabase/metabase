@@ -406,7 +406,7 @@
                          {:description "Duration (ms) of a full Data Complexity Score run end-to-end (enumerate + score for all three catalogs + Snowplow publish)."
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
    (prometheus/histogram :metabase-data-complexity/phase-duration-ms
-                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring) for one catalog within a Data Complexity Score run."
+                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
 
@@ -464,6 +464,18 @@
    (prometheus/counter :metabase-embedding-iframe/response
                        {:description "Number of iframe embedding responses by status code."
                         :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe-full-app/response
+                       {:description "Number of full-app iframe embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe-static/response
+                       {:description "Number of static iframe embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-public/response
+                       {:description "Number of public embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-simple/response
+                       {:description "Number of simple (modular) embedding responses by status code."
+                        :labels [:status]})
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced
@@ -517,6 +529,17 @@
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
                         :labels [:status]})
+   (prometheus/counter :metabase-transforms/inspector-discovery
+                       {:description "Transform Inspector lens discovery calls."
+                        :labels [:status]})
+   (prometheus/counter :metabase-transforms/inspector-lens
+                       {:description "Transform Inspector lens retrievals."
+                        :labels [:lens-type :complexity :status]})
+   (prometheus/histogram :metabase-transforms/inspector-query-duration-ms
+                         {:description "Duration in ms of Transform Inspector lens query execution."
+                          :labels [:lens-type :status]
+                          ;; 1ms -> 10 minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})
@@ -619,6 +642,8 @@
    (prometheus/counter :metabase-frontend/errors
                        {:description "Number of frontend errors reported by the browser."
                         :labels [:type]})
+   (prometheus/counter :metabase-frontend/analytics-events-dropped
+                       {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
                         :labels [:format]})])
@@ -703,17 +728,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
+(def ^:private ^:dynamic *setting-up*
+  "True while [[setup!]] is initializing the registry. Guards against reentrant metric
+  emission during init — e.g. token-check error logging that fires while drivers are
+  registering can call [[inc!]], which would otherwise loop back into [[setup!]] before
+  the first call has finished. While `*setting-up*` is true the metric fns silently drop."
+  false)
+
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
-  (when-not system
-    (let [port (prometheus-server-port)]
-      (when-not port
-        (log/info "Running prometheus metrics without a webserver"))
-      (locking #'system
-        (when-not system
-          (let [sys (make-prometheus-system port "metabase-registry")]
-            (alter-var-root #'system (constantly sys))))))))
+  (when (and (not system) (not *setting-up*))
+    (binding [*setting-up* true]
+      (let [port (prometheus-server-port)]
+        (when-not port
+          (log/info "Running prometheus metrics without a webserver"))
+        (locking #'system
+          (when-not system
+            (let [sys (make-prometheus-system port "metabase-registry")]
+              (alter-var-root #'system (constantly sys)))))))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
@@ -743,7 +776,8 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/observe (:registry system) metric (qualified-vals labels) amount)))
+   (when system
+     (prometheus/observe (:registry system) metric (qualified-vals labels) amount))))
 
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry.
@@ -756,18 +790,6 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
-
-(defn inc-if-initialized!
-  "Call iapetos.core/inc on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
-  ([metric] (when system (inc! metric nil 1)))
-  ([metric labels-or-amount]
-   (when system
-     (if (number? labels-or-amount)
-       (inc! metric nil labels-or-amount)
-       (inc! metric labels-or-amount 1))))
-  ([metric labels amount]
    (when system
      (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
@@ -784,7 +806,8 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/dec (:registry system) metric (qualified-vals labels) amount)))
+   (when system
+     (prometheus/dec (:registry system) metric (qualified-vals labels) amount))))
 
 (defn set!
   "Call iapetos.core/set on the metric in the global registry.
@@ -796,14 +819,16 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
+   (when system
+     (prometheus/set (:registry system) metric (qualified-vals labels) amount))))
 
 (defn clear!
   "Call Collector.clear() on given metric."
   [metric]
   (when-not system
     (setup!))
-  (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil))))
+  (when system
+    (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
 
 (comment
   ;; want to see what's in the registry?
