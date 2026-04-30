@@ -2,6 +2,7 @@
   "Tests for the `v_metabot_messages` SQL view."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -129,4 +130,4 @@
                                                          :data []
                                                          :created_at msg-time}]
         (let [row (find-row (query-view [convo-id]) msg-id)]
-          (is (= (.toInstant msg-time) (.toInstant ^java.time.OffsetDateTime (:created_at row)))))))))
+          (is (= (t/instant msg-time) (t/instant (:created_at row)))))))))
