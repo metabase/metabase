@@ -10,8 +10,8 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
 import * as Urls from "metabase/urls";
-import { deleteSession, initiateSLO } from "metabase/utils/auth";
 import { isSmallScreen, reload } from "metabase/utils/dom";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import { loadLocalization } from "metabase/utils/i18n";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
@@ -176,5 +176,25 @@ export const validatePassword = async (password: string) => {
     await UtilApi.password_check({ password });
   } catch (error) {
     return getIn(error, ["data", "errors", "password"]);
+  }
+};
+
+const initiateSLO = async () => {
+  try {
+    return await SessionApi.slo();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
+  }
+};
+
+export const deleteSession = async () => {
+  try {
+    await SessionApi.delete();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
   }
 };
