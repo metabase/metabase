@@ -11,6 +11,7 @@ import type { Workspace } from "metabase-types/api";
 
 const LOCAL_INSTANCE_URL = "http://localhost:3000";
 const CONFIG_FILE_NAME = "config.yml";
+const METADATA_DIR_NAME = ".metabase/";
 const PASSWORD_ENV_VAR = "MB_WORKSPACE_USER_PASSWORD";
 
 type SetupSectionProps = {
@@ -88,7 +89,9 @@ function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
         </Button>
       </Stack>
       <Stack gap="sm" align="flex-start">
-        <Text>{t`Download table metadata to skip syncing the database in the development instance and help a coding agent understand the schema:`}</Text>
+        <Text>
+          {jt`Download table metadata into the ${<Code key="dir">{METADATA_DIR_NAME}</Code>} folder to skip syncing the database in the development instance and help a coding agent understand the schema:`}
+        </Text>
         <Group gap="sm">
           <Button
             component="a"
