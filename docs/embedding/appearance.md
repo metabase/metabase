@@ -51,7 +51,7 @@ From the Themes tab, you can:
 - **Create a theme.** Click **+ New theme**, then set a name, colors, and font.
 - **Edit a theme.** Click a theme card to open the editor. Changes show up in the live preview.
 - **Choose what the preview renders.** Pick the dashboard or question used to preview the theme.
-- **Duplicate a theme.** Handy if you want vary an existing theme.
+- **Duplicate a theme.** Handy if you want to vary an existing theme.
 
 ![Theme editor](./images/theme-editor.png)
 
