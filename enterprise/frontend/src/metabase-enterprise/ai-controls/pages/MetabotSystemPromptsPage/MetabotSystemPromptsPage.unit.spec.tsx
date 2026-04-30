@@ -46,7 +46,7 @@ describe("MetabotSystemPromptsPage", () => {
       });
 
       expect(
-        await screen.findByText("Metabot chat prompt instructions"),
+        await screen.findByText("AI chat prompt instructions"),
       ).toBeInTheDocument();
     });
 
@@ -58,7 +58,7 @@ describe("MetabotSystemPromptsPage", () => {
       });
 
       const textarea = await screen.findByRole("textbox", {
-        name: "Metabot chat prompt instructions",
+        name: "AI chat prompt instructions",
       });
 
       await waitFor(() => {
@@ -73,7 +73,7 @@ describe("MetabotSystemPromptsPage", () => {
       });
 
       const textarea = await screen.findByRole("textbox", {
-        name: "Metabot chat prompt instructions",
+        name: "AI chat prompt instructions",
       });
       await userEvent.type(textarea, "New instructions");
 

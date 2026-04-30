@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Transform, TransformJobId } from "metabase-types/api";
 
 import { TitleSection } from "../../TitleSection";

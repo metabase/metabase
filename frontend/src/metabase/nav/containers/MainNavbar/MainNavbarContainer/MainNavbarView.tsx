@@ -30,8 +30,8 @@ import {
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
-import * as Urls from "metabase/utils/urls";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {

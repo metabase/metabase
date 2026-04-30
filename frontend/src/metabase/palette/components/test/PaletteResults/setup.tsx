@@ -11,7 +11,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { getAdminPaths } from "metabase/admin/app/reducers";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import {
@@ -132,7 +131,14 @@ export const commonSetup = ({
   const adminState = isAdmin
     ? createMockAdminState({
         app: createMockAdminAppState({
-          paths: getAdminPaths(),
+          paths: [
+            {
+              name: "Permissions",
+              path: "/admin/permissions",
+              key: "permissions",
+            },
+            { name: "Settings", path: "/admin/settings", key: "settings" },
+          ],
         }),
       })
     : createMockAdminState();

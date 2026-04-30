@@ -234,7 +234,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: steps.extract-timings.outcome == 'success' && steps.extract-timings.outputs.has-changes == 'true'
         with:
-          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          name: timing-data-${{ inputs.name }}
           path: chunkTimings.json
           retention-days: 1 # gets merged immediately by parent workflow
 

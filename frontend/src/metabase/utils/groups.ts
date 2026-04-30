@@ -15,6 +15,12 @@ export function isDefaultGroup(group: Pick<GroupInfo, "magic_group_type">) {
   return group.magic_group_type === "all-internal-users";
 }
 
+export function isDefaultTenantGroup(
+  group: Pick<GroupInfo, "magic_group_type">,
+) {
+  return group.magic_group_type === "all-external-users";
+}
+
 export function isAdminGroup(group: Pick<GroupInfo, "magic_group_type">) {
   return group.magic_group_type === "admin";
 }

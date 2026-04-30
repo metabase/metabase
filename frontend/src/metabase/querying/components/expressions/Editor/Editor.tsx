@@ -12,7 +12,6 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import {
-  type DefinedClauseName,
   type ExpressionError,
   diagnoseAndCompile,
   format,
@@ -55,7 +54,7 @@ type EditorProps = {
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
-  initialExpressionClause?: DefinedClauseName | null;
+  initialExpressionClause?: Lib.DefinedClauseName | null;
 
   onChange: (
     clause: Lib.ExpressionClause | null,

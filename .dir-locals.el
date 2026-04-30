@@ -87,6 +87,8 @@
   (cider-default-cljs-repl . shadow-select)
   (cider-shadow-default-options . "app"))
 
+ (makefile-mode (indent-tabs-mode . t))
+
  ("bin"
   (clojure-mode
    (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))

@@ -345,7 +345,7 @@ const configs = [
   },
   {
     files: [
-      "**/*.unit.spec.*",
+      "**/*.spec.*",
       "frontend/lint/**/*",
       "**/*.stories.*",
       "**/stories-data.*",
@@ -696,7 +696,7 @@ const configs = [
                 "!metabase/utils/time",
                 "!metabase/utils/time-dayjs",
                 "!metabase/utils/types",
-                "!metabase/utils/urls",
+                "!metabase/urls",
                 "!metabase/utils/clone",
               ],
             },
