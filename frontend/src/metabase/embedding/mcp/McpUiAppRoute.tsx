@@ -91,7 +91,7 @@ export function McpUiAppRoute() {
   }, [isReady]);
 
   const height = "500px";
-  const visualizationHeight = `calc(${height} - 7.5rem)`;
+  const visualizationHeight = `calc(${height} - 8.5rem)`;
   const safeAreaMargins = `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`;
 
   const containerStyle: CSSProperties = {
