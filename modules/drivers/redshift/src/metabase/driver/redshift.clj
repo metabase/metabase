@@ -64,6 +64,12 @@
                               :workspace                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
+(defmethod driver/qualified-name-components :redshift
+  [_driver]
+  ;; Redshift emits `schema.table` (Postgres-style 2-part) in compiled SQL.
+  ;; Cross-database queries use external schemas, not `db.schema.table`.
+  [:schema])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -76,6 +76,13 @@
                               :workspace                              true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :snowflake
+  [_driver]
+  ;; Snowflake emits `db.schema.table` in compiled SQL when crossing databases
+  ;; (and our Honey-SQL identifier emission qualifies cross-database refs explicitly).
+  ;; `:db` = Snowflake database (SQLGlot `Table.catalog`); `:schema` = schema (SQLGlot `Table.db`).
+  [:db :schema])
+
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
   (let [message (first messages)]

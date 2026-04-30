@@ -447,11 +447,6 @@
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
-(defmethod driver/qualified-name-components :mongo
-  [_driver]
-  ;; Mongo collections are addressed bare; database is connection-level.
-  [])
-
 (defmethod driver/database-supports? [:mongo :window-functions/cumulative]
   [_driver _feat db]
   (-> ((some-fn :dbms-version :dbms_version) db)

@@ -850,9 +850,9 @@
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
   [_driver]
-  ;; BigQuery emits three-part identifiers: `project.dataset.table`. Project is
-  ;; connection-level identity but appears in compiled SQL, so we model it as :db.
-  ;; Dataset is :schema in :model/Table metadata.
+  ;; BigQuery emits three-part identifiers in compiled SQL: `project.dataset.table`.
+  ;; Project is connection-level identity but it appears in the AST as `Table.catalog`,
+  ;; so we model it as `:db`. Dataset sits at SQLGlot's `Table.db` position, our `:schema`.
   [:db :schema])
 
 ;; BigQuery is always in UTC

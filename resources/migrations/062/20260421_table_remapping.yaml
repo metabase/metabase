@@ -105,7 +105,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-04-29T12:00:00
       author: bcm
-      comment: Add db columns and allow nullable schema for multi-level driver support (BigQuery project.dataset.table; MySQL/ClickHouse db.table; schema-less drivers)
+      comment: Add from_db column for multi-level driver support (BigQuery project, ClickHouse db, schema-less drivers)
       changes:
         - addColumn:
             tableName: table_remapping
@@ -117,6 +117,15 @@ databaseChangeLog:
                   defaultValue: ""
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:01
+      author: bcm
+      comment: Add to_db column for multi-level driver support
+      changes:
+        - addColumn:
+            tableName: table_remapping
+            columns:
               - column:
                   name: to_db
                   type: varchar(254)
@@ -126,34 +135,58 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.2026-04-29T12:00:01
+      id: v62.2026-04-29T12:00:02
       author: bcm
-      comment: Allow empty-string sentinel in from_schema/to_schema for schema-less drivers; drop NOT NULL is unnecessary because we use "" sentinel, but normalize default
+      comment: Default from_schema to empty-string sentinel for schema-less drivers
       changes:
         - addDefaultValue:
             tableName: table_remapping
             columnName: from_schema
             defaultValue: ""
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:03
+      author: bcm
+      comment: Default to_schema to empty-string sentinel for schema-less drivers
+      changes:
         - addDefaultValue:
             tableName: table_remapping
             columnName: to_schema
             defaultValue: ""
 
   - changeSet:
-      id: v62.2026-04-29T12:00:02
+      id: v62.2026-04-29T12:00:04
       author: bcm
-      comment: Replace unique constraints to include from_db/to_db so 3-level (BigQuery) and db-qualified (ClickHouse) remappings are uniquely keyed per cardinality
+      comment: Drop old source-side unique constraint to widen with from_db
       changes:
         - dropUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_source
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:05
+      author: bcm
+      comment: Drop old target-side unique constraint to widen with to_db
+      changes:
         - dropUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_target
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:06
+      author: bcm
+      comment: Add widened source-side unique constraint including from_db (3-level/BigQuery, db-qualified/ClickHouse)
+      changes:
         - addUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_source
             columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: v62.2026-04-29T12:00:07
+      author: bcm
+      comment: Add widened target-side unique constraint including to_db
+      changes:
         - addUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_target
