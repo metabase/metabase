@@ -219,7 +219,7 @@
                 (is (nil? (:next_sync_at response)))
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets)))))))))
-        (testing "when state==syncing, status==syncing"
+        (testing "when state==active with last-sync-started-at after last-sync-at, status==syncing"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-syncing-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
