@@ -32,13 +32,13 @@ defineMetabaseConfig({
 });
 ```
 
-## Saved themes
+## Theme
 
 ![Embedding themes](./images/themes.png)
 
 {% include plans-blockquote.html feature="Saved embedding themes" is_plural=true %}
 
-You can save a theme to reuse across embeds so you don't have to copy color values into each snippet by hand.
+A theme is a named set of colors and fonts that the embed wizard can copy into each new embed's config. The embed doesn't reference the theme, the embed carries its own inlined copy of the values. Changing or deleting the theme won't affect existing embeds.
 
 ### Manage themes
 
@@ -65,7 +65,7 @@ When you create a new embed using the [embed wizard](./modular-embedding.md#3-cu
 
 ![Embed wizard appearance](./images/embed-wizard-appearance.png)
 
-The theme you pick is inlined into the generated `defineMetabaseConfig({ theme: ... })` snippet. Editing the saved theme later won't update embeds that have already been generated. To pick up theme changes in an existing embed, regenerate the snippet from the wizard, or edit the `theme` block in your code by hand.
+The theme you pick is inlined into the generated `defineMetabaseConfig({ theme: ... })` snippet. Because each embed carries its _own_ copy of the values, editing or deleting the theme in Metabase won't change the themes in embeds that have already been generated. Those embeds keep the colors and fonts they were created with. To pick up theme changes in an existing embed, regenerate the snippet from the wizard, or edit the `theme` block in your code by hand.
 
 ### Reuse a saved theme in the SDK
 
