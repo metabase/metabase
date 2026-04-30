@@ -112,8 +112,7 @@
           (tracing/with-span :tasks "task.transform.python" {:transform/id          transform-id
                                                              :transform/target-type (name (keyword (:type target)))
                                                              :transform/incremental (= :table-incremental (keyword (:type target)))
-                                                             :transform/first-run   (and (= :table-incremental (keyword (:type target)))
-                                                                                         (nil? (:last_checkpoint_value transform)))
+                                                             :transform/first-run   (transforms-base.u/first-incremental-run? transform)
                                                              :db/id                 (:id db)
                                                              :db/engine             (name driver)}
             (let [conn-spec         (driver/connection-spec driver db)

@@ -194,6 +194,14 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
+(defn first-incremental-run?
+  "True when `transform` is configured as `:table-incremental` but has not yet recorded a watermark.
+  First incremental runs behave like full runs — they drop-and-recreate the target table rather than
+  appending — so call sites that branch on incremental semantics need to special-case them."
+  [{:keys [target last_checkpoint_value]}]
+  (and (= :table-incremental (keyword (:type target)))
+       (nil? last_checkpoint_value)))
+
 (defn- encode-checkpoint-value [v]
   (if (number? v)
     (str v)
