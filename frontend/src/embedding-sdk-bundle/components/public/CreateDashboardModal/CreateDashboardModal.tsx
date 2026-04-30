@@ -7,8 +7,9 @@ import type {
   MetabaseDashboard,
   SdkCollectionId,
 } from "embedding-sdk-bundle/types";
+import { useGetCollectionQuery } from "metabase/api";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/common/CreateDashboard/CreateDashboardModal";
-import { useCollectionQuery, useLocale } from "metabase/common/hooks";
+import { useLocale } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 
 import { createDashboardModalSchema } from "./CreateDashboardModal.schema";
@@ -67,7 +68,7 @@ const CreateDashboardModalInner = ({
       : undefined,
   );
 
-  const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
+  const { isLoading: isCollectionQueryLoading } = useGetCollectionQuery({
     id: collectionIdSlug,
   });
 
