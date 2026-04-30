@@ -8,7 +8,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 
 type TableModalType = "unpublish" | "move";

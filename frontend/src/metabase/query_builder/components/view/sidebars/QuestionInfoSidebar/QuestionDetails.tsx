@@ -10,7 +10,7 @@ import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
 import { QuestionPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type Question from "metabase-lib/v1/Question";
 

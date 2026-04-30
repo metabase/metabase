@@ -7,7 +7,7 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import { useDispatch } from "metabase/redux";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageShell } from "../../components/MetricPageShell";

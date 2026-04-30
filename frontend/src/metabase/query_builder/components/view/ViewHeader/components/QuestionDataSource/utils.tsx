@@ -3,8 +3,8 @@ import { type ReactElement, isValidElement } from "react";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { getIcon } from "metabase/common/utils/icon";
 import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -14,7 +14,6 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -188,10 +187,10 @@ function getTableURL(table: Table) {
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     if (cardId != null) {
-      return Urls.question({ id: cardId, name: table.displayName() });
+      return Urls.card({ id: cardId, name: table.displayName() });
     }
   }
-  return ML_Urls.getUrl(table.newQuestion());
+  return Urls.question(table.newQuestion());
 }
 
 export function getQuestionIcon(question: Question): IconName {

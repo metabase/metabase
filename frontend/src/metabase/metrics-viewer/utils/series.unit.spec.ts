@@ -27,6 +27,7 @@ import {
   buildDimensionItemsFromDefinitions,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
+  shouldShowStackSeries,
   splitByBreakout,
 } from "./series";
 
@@ -675,5 +676,61 @@ describe("buildDimensionItemsFromDefinitions", () => {
       expect(expressionItem.icon).toBeUndefined();
       expect(expressionItem.metricSources).toHaveLength(2);
     });
+  });
+});
+
+describe("shouldShowStackSeries", () => {
+  const metricMeta = createMetricMetadata([REVENUE_METRIC]);
+
+  const metricEntity: MetricsViewerFormulaEntity = {
+    id: "metric:1" as MetricSourceId,
+    type: "metric",
+    definition: null,
+  };
+
+  const oneSeries = [createMockSingleSeries({ name: "Series 1" })];
+  const twoSeries = [
+    createMockSingleSeries({ name: "Series 1" }),
+    createMockSingleSeries({ name: "Series 2" }),
+  ];
+
+  function makeDefinitions(withBreakout: boolean) {
+    const definition = withBreakout
+      ? setupDefinitionWithBreakout(metricMeta, REVENUE_METRIC.id, 0)
+      : setupDefinition(metricMeta, REVENUE_METRIC.id);
+    return {
+      ["metric:1" as MetricSourceId]: {
+        id: "metric:1" as MetricSourceId,
+        definition,
+      },
+    };
+  }
+
+  it("returns false when the display does not support stacking", () => {
+    const definitions = makeDefinitions(false);
+    expect(
+      shouldShowStackSeries("map", twoSeries, [metricEntity], definitions),
+    ).toBe(false);
+  });
+
+  it("returns false when the display supports stacking but there is one series and no breakout", () => {
+    const definitions = makeDefinitions(false);
+    expect(
+      shouldShowStackSeries("line", oneSeries, [metricEntity], definitions),
+    ).toBe(false);
+  });
+
+  it("returns true when there are multiple raw series", () => {
+    const definitions = makeDefinitions(false);
+    expect(
+      shouldShowStackSeries("line", twoSeries, [metricEntity], definitions),
+    ).toBe(true);
+  });
+
+  it("returns true when there is one raw series but the metric has a breakout", () => {
+    const definitions = makeDefinitions(true);
+    expect(
+      shouldShowStackSeries("line", oneSeries, [metricEntity], definitions),
+    ).toBe(true);
   });
 });

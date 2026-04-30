@@ -10,7 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
-import { dataStudioArchivedSnippets } from "metabase/utils/urls";
+import { dataStudioArchivedSnippets } from "metabase/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,

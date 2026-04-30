@@ -2,11 +2,6 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
-import {
-  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
-  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
-} from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isStorybookActive } from "metabase/env";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -35,13 +30,7 @@ export const saveDomImageStyles = css`
       overflow: visible;
     }
 
-    .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
-      legend {
-        top: -9px;
-      }
-    }
-
-    .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} {
+    [data-dashcard-key].${GlobalDashboardS.Card} {
       /* the renderer we use for saving to image/pdf doesn't support box-shadow
         so we replace it with a border */
       box-shadow: none;
@@ -53,7 +42,7 @@ export const saveDomImageStyles = css`
      this is a workaround to make sure the text is not clipped vertically */
     ${isEmbeddingSdk() &&
     css`
-      .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
+      [data-dashcard-key].${GlobalDashboardS.Card} * {
         overflow: visible !important;
       }
     `};
@@ -90,6 +79,16 @@ export const canvasToBlob = (
   });
 };
 
+// html2canvas renders fieldset legends shifted down; nudge them back up in the
+// cloned parameter bar before capture.
+export const fixParameterLegendOffsetForExport = (
+  parametersNode: HTMLElement,
+) => {
+  parametersNode.querySelectorAll<HTMLElement>("legend").forEach((el) => {
+    el.style.top = "-9px";
+  });
+};
+
 export interface DashboardRenderSetup {
   gridNode: HTMLElement;
   contentWidth: number;
@@ -100,19 +99,18 @@ export interface DashboardRenderSetup {
 }
 
 export const setupDashboardForRendering = (
-  selector: string,
+  dashboardRoot: HTMLElement,
+  getParametersNode: (dashboardRoot: HTMLElement) => HTMLElement | null,
 ): DashboardRenderSetup | undefined => {
-  const dashboardRoot = document.querySelector(selector);
-  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
+  const gridNode = dashboardRoot.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
-    console.warn("No dashboard content found", selector);
+    console.warn("No dashboard content found");
     return undefined;
   }
 
-  const pageHeaderParametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
-    ?.cloneNode(true);
+  const pageHeaderParametersNode =
+    getParametersNode(dashboardRoot)?.cloneNode(true);
 
   let parametersHeight = 0;
   if (pageHeaderParametersNode instanceof HTMLElement) {
@@ -146,8 +144,17 @@ export const setupDashboardForRendering = (
 
 export const getDashboardImage = async (
   selector: string,
+  parametersNodeSelector: string,
 ): Promise<string | undefined> => {
-  const setup = setupDashboardForRendering(selector);
+  const dashboardRoot = document.querySelector(selector);
+  if (!(dashboardRoot instanceof HTMLElement)) {
+    console.warn("No dashboard root found", selector);
+    return undefined;
+  }
+
+  const setup = setupDashboardForRendering(dashboardRoot, (root) =>
+    root.querySelector<HTMLElement>(parametersNodeSelector),
+  );
   if (!setup) {
     return undefined;
   }
@@ -168,6 +175,7 @@ export const getDashboardImage = async (
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
       if (parametersNode) {
+        fixParameterLegendOffsetForExport(parametersNode);
         node.insertBefore(parametersNode, node.firstChild);
       }
     },
