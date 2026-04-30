@@ -75,7 +75,9 @@ export function GdriveDbMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <SyncNowButton disabled={status === "syncing"} />
+          <SyncNowButton
+            disabled={status === "syncing" || status === "initializing"}
+          />
           <Menu.Item
             leftSection={<Icon name="close" />}
             fw="bold"
@@ -148,7 +150,7 @@ function MenuSyncStatus() {
 
   return (
     <>
-      {folderStatus === "syncing" ? (
+      {folderStatus === "syncing" || folderStatus === "initializing" ? (
         <SyncingText />
       ) : (
         <Text fw="bold">{t`Next sync ${nextSyncRelative}`}</Text>

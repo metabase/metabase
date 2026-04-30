@@ -295,7 +295,7 @@
 
           (= "initializing" status)
           (assoc (setting->response saved-setting)
-                 :status "syncing"
+                 :status "initializing"
                  :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
