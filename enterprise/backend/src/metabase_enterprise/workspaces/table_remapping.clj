@@ -20,16 +20,23 @@
    ## Three-level identifiers
 
    `:model/TableRemapping` rows have three identifier columns per side: `db`, `schema`,
-   `table_name`. They map to driver identifier hierarchies as follows:
+   `table_name`. Slot names are SQLGlot **AST positions**, not warehouse vocabulary:
+   `:db` ↔ `Table.catalog`, `:schema` ↔ `Table.db`, `:table` ↔ `Table.name`. A driver
+   populates a slot iff its [[metabase.driver/qualified-name-components]] includes it.
 
    | Driver                              | db          | schema       | table_name |
    |-------------------------------------|-------------|--------------|------------|
-   | Postgres / Snowflake / Redshift     | \"\"        | schema       | table      |
-   | H2 / SQL Server                     | \"\"        | schema       | table      |
+   | Postgres / Redshift / H2            | \"\"        | schema       | table      |
    | MySQL                               | \"\"        | \"\"         | table      |
    | ClickHouse                          | \"\"        | db-name      | table      |
+   | Snowflake                           | database    | schema       | table      |
+   | SQL Server                          | database    | schema       | table      |
    | BigQuery                            | project     | dataset      | table      |
    | Mongo                               | \"\"        | \"\"         | collection |
+
+   ClickHouse calls its top level a \"database\" but it lives at AST `:schema` because
+   that's where it appears in compiled SQL (`db.table`). The slot name follows the AST
+   position, not what the warehouse vendor calls the level.
 
    Empty string (`\"\"`) is the sentinel for \"this driver does not emit this level.\"
    Empty string is preferred over `nil` because Postgres/MySQL/H2 treat NULL as
@@ -37,8 +44,7 @@
    `(database_id, db, schema, table_name)` unique constraint enforceable across DBs.
    The QP rewriter filters `\"\"` out before handing keys to SQLGlot.
 
-   The driver multimethod [[metabase.driver/qualified-name-components]] returns which
-   AST identifier positions each driver emits. [[spec-for-table]] uses that to fill the
+   [[spec-for-table]] uses [[metabase.driver/qualified-name-components]] to fill the
    right slots from a `:model/Database` and `:model/Table` row."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
