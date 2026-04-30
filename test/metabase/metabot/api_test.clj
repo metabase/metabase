@@ -157,7 +157,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id parts]
+                            api/store-native-parts!                  (fn [_conv-id _prof-id _external-id parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -550,7 +550,9 @@
     (testing "/feedback"
       (is (= "Unauthenticated"
              (mt/client :post 401 "metabot/feedback"
-                        {:feedback {}}))))))
+                        {:metabot_id 1
+                         :message_id "x"
+                         :positive   true}))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
@@ -679,7 +681,7 @@
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
           (#'api/store-native-parts!
-           conv-id "internal"
+           conv-id "internal" (str (random-uuid))
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
             ;; SSE usage parts carry bare model names (from provider API response)

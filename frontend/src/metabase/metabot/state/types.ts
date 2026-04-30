@@ -26,6 +26,7 @@ export type MetabotAgentTextChatMessage = {
   role: "agent";
   type: "text";
   message: string;
+  externalId?: string;
 };
 
 export type MetabotAgentTodoListChatMessage = {
@@ -109,6 +110,7 @@ export interface MetabotConverstationState {
   state: any;
   activeToolCalls: MetabotToolCall[];
   profileOverride: string | undefined;
+  pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;
