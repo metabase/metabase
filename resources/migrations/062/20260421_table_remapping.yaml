@@ -162,6 +162,11 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_source
+      rollback:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_schema, from_table_name
 
   - changeSet:
       id: v62.2026-04-29T12:00:05
@@ -171,6 +176,11 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_target
+      rollback:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_schema, to_table_name
 
   - changeSet:
       id: v62.2026-04-29T12:00:06
