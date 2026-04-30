@@ -1608,16 +1608,17 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
-def is_single_select_stmt(sql: str, dialect: str = None) -> str:
-    """Validates that a query is a single SELECT statement
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
+    """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
     """
-    is_single_select = {"is_single_select?": False}
+    result = {"is_single_stmt?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
-        if len(stmts) == 1 and isinstance(stmts[0], exp.Select):
-            is_single_select["is_single_select?"] = True
-            is_single_select["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+        allowed_types = (exp.Select,) if stmt_type == "read" else (exp.Update, exp.Insert, exp.Delete)
+        if len(stmts) == 1 and isinstance(stmts[0], allowed_types):
+            result["is_single_stmt?"] = True
+            result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
-        is_single_select["error"] = str(e)
-    return json.dumps(is_single_select)
+        result["error"] = str(e)
+    return json.dumps(result)
