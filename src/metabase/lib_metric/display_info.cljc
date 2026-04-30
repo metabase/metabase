@@ -85,12 +85,12 @@
 
 (defmethod display-info-method :metadata/dimension
   [definition dimension]
-  (let [display-name (or (:display-name dimension)
+  (let [display-name (or (:display_name dimension)
                          (:name dimension)
                          (i18n/tru "Dimension"))
         group        (:group dimension)
         long-name    (if (and group (not= "main" (:type group)))
-                       (str (:display-name group) " → " display-name)
+                       (str (:display_name group) " → " display-name)
                        display-name)]
     (merge (default-display-info definition dimension)
            {:display-name display-name
@@ -192,7 +192,7 @@
   [definition dim-ref]
   (let [uuid (dimension-uuid dim-ref)]
     (if-let [dim (lookup-dimension definition uuid)]
-      (or (:display-name dim) (:name dim) uuid)
+      (or (:display_name dim) (:name dim) uuid)
       uuid)))
 
 (defn- format-filter-value

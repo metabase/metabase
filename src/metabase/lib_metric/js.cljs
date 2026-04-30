@@ -849,7 +849,7 @@
    dimension (computed during sync). Falls back to resolving the underlying field
    for backward compatibility with older dimensions that lack the key."
   [definition dimension]
-  (let [raw-hfv (:has-field-values dimension)
+  (let [raw-hfv (:has_field_values dimension)
         dim-hfv (when raw-hfv (keyword raw-hfv))]
     (if dim-hfv
       (display-info->js

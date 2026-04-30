@@ -18,9 +18,9 @@
   (:dimensions (mt/user-http-request user-kw :get 200 (str "metric/" metric-id))))
 
 (defn- dimension-names
-  "Extract the set of display-name (or name) values from a seq of dimensions."
+  "Extract the set of display_name (or name) values from a seq of dimensions."
   [dims]
-  (into #{} (map #(or (:display_name %) (:display-name %) (:name %))) dims))
+  (into #{} (map #(or (:display_name %) (:name %))) dims))
 
 (defn- dimension-group-names
   "Extract the set of group display-names from a seq of dimensions."
@@ -167,13 +167,13 @@
 
 (deftest unresolvable-dimension-kept-test
   (testing "Dimensions without a resolvable field ID are conservatively kept"
-    (let [fake-metric {:dimensions         [{:id "resolvable" :display-name "Tax"
+    (let [fake-metric {:dimensions         [{:id "resolvable" :display_name "Tax"
                                              :sources [{:field-id (mt/id :orders :tax)}]}
-                                            {:id "unresolvable" :display-name "Mystery"
+                                            {:id "unresolvable" :display_name "Mystery"
                                              :sources []}]
-                       :dimension_mappings [{:dimension-id "resolvable"
+                       :dimension_mappings [{:dimension_id "resolvable"
                                              :target [:field {} (mt/id :orders :tax)]}
-                                            {:dimension-id "unresolvable"
+                                            {:dimension_id "unresolvable"
                                              :target [:some-other-ref {}]}]}
           result      (mt/with-test-user :rasta
                         (metrics.perms/filter-dimensions-for-user fake-metric))]
@@ -181,4 +181,4 @@
         (is (= #{"Tax" "Mystery"} (dimension-names (:dimensions result)))))
       (testing "both mappings are preserved"
         (is (= #{"resolvable" "unresolvable"}
-               (into #{} (map :dimension-id) (:dimension_mappings result))))))))
+               (into #{} (map :dimension_id) (:dimension_mappings result))))))))

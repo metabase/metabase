@@ -99,15 +99,16 @@
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
 (defn- parse-dimension
-  "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
-   Similar to how metabase.lib.js.metadata parses fields."
+  "Parse a single dimension, converting keys to snake_case keywords and type values to keywords.
+   Similar to how metabase.lib.js.metadata parses fields. The canonical
+   dimension shape uses snake_case keys (matching the JSON wire format)."
   [dim]
-  (let [converted (update-keys dim (comp keyword u/->kebab-case-en))]
+  (let [converted (update-keys dim (comp keyword u/->snake_case_en))]
     (cond-> converted
-      (:effective-type converted)   (update :effective-type keyword)
-      (:semantic-type converted)    (update :semantic-type keyword)
+      (:effective_type converted)   (update :effective_type keyword)
+      (:semantic_type converted)    (update :semantic_type keyword)
       (:base-type converted)        (update :base-type keyword)
-      (:has-field-values converted) (update :has-field-values keyword)
+      (:has_field_values converted) (update :has_field_values keyword)
       (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
       (:group converted)            (update :group u/normalize-map))))
 
@@ -123,7 +124,7 @@
   [entity source-type]
   (let [dims     (:dimensions entity)
         mappings (:dimension-mappings entity)
-        mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
+        mappings-by-dim-id (into {} (map (juxt :dimension_id identity) mappings))]
     (for [dim dims
           :let [parsed-dim (parse-dimension dim)
                 mapping    (get mappings-by-dim-id (:id parsed-dim))]]
@@ -153,7 +154,7 @@
                               (= metric-id (:source-id %))))
     measure-id  (filter #(and (= :measure (:source-type %))
                               (= measure-id (:source-id %))))
-    table-id    (filter #(= table-id (get-in % [:dimension-mapping :table-id])))
+    table-id    (filter #(= table-id (get-in % [:dimension-mapping :table_id])))
     true        vec))
 
 (defn metadata-provider

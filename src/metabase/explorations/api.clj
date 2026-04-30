@@ -8,7 +8,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metrics.api :as metrics.api]
    [metabase.metrics.core :as metrics]
    [metabase.queries.models.card :as card]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
@@ -37,7 +36,7 @@
 (defn- find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted dimension_mappings."
   [dimension-id dimension-mappings]
-  (some #(when (= (:dimension-id %) dimension-id)
+  (some #(when (= (:dimension_id %) dimension-id)
            (:target %))
         dimension-mappings))
 
@@ -190,7 +189,7 @@
 (defn- metric-matches-search? [metric q-lower]
   (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
       (some (fn [d]
-              (str/includes? (u/lower-case-en (or (:display-name d) "")) q-lower))
+              (str/includes? (u/lower-case-en (or (:display_name d) "")) q-lower))
             (:dimensions metric))))
 
 (defn- dedupe-dimensions [metrics]
@@ -279,12 +278,10 @@
         slimmed        (mapv (fn [m]
                                (-> m
                                    (assoc :dimension_ids (mapv :id (:dimensions m)))
-                                   (dissoc :dimensions)
-                                   (update :dimension_mappings
-                                           metrics.api/snake-case-dimension-mappings)))
+                                   (dissoc :dimensions)))
                              filtered)]
     {:metrics    slimmed
-     :dimensions (metrics.api/snake-case-dimensions (dedupe-dimensions filtered))}))
+     :dimensions (dedupe-dimensions filtered)}))
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."

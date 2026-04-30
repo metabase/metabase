@@ -131,8 +131,8 @@
                   :description  "Q3 dip"
                   :prompt       "break down by region"
                   :metrics      [{:card_id (:id metric)
-                                  :dimension_mappings [{:dimension-id "d1"
-                                                        :table-id 1
+                                  :dimension_mappings [{:dimension_id "d1"
+                                                        :table_id 1
                                                         :target ["field" {} 1]}]}]
                   :dimensions   [{:dimension_id "d1" :display_name "Region"}]
                   :timeline_ids [(:id tl)]}
@@ -159,8 +159,8 @@
     (mt/with-temp [:model/User u {:email "matrix@example.com"}
                    :model/Card m1 (valid-metric-card (:id u))
                    :model/Card m2 (valid-metric-card (:id u))]
-      (let [mapping  [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}
-                      {:dimension-id "d2" :table-id 1 :target ["field" {} 2]}]
+      (let [mapping  [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}
+                      {:dimension_id "d2" :table_id 1 :target ["field" {} 2]}]
             body     {:name "matrix"
                       :metrics [{:card_id (:id m1) :dimension_mappings mapping}
                                 {:card_id (:id m2) :dimension_mappings mapping}]
@@ -198,10 +198,10 @@
                    :model/Card signups (valid-metric-card (:id u))]
       (let [body {:name "applicability"
                   :metrics [{:card_id (:id revenue)
-                             :dimension_mappings [{:dimension-id "plan"   :table-id 1 :target ["field" {} 1]}]}
+                             :dimension_mappings [{:dimension_id "plan"   :table_id 1 :target ["field" {} 1]}]}
                             {:card_id (:id signups)
-                             :dimension_mappings [{:dimension-id "plan"   :table-id 1 :target ["field" {} 2]}
-                                                  {:dimension-id "channel" :table-id 1 :target ["field" {} 3]}]}]
+                             :dimension_mappings [{:dimension_id "plan"   :table_id 1 :target ["field" {} 2]}
+                                                  {:dimension_id "channel" :table_id 1 :target ["field" {} 3]}]}]
                   :dimensions [{:dimension_id "plan"} {:dimension_id "channel"}]}
             resp     (mt/user-http-request u :post 200 "exploration" body)
             queries  (-> resp :threads first :queries)]
@@ -220,8 +220,8 @@
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
       (let [body {:name "naming"
                   :metrics    [{:card_id (:id revenue)
-                                :dimension_mappings [{:dimension-id "country" :table-id 1 :target ["field" {} 1]}
-                                                     {:dimension-id "no-name" :table-id 1 :target ["field" {} 2]}]}]
+                                :dimension_mappings [{:dimension_id "country" :table_id 1 :target ["field" {} 1]}
+                                                     {:dimension_id "no-name" :table_id 1 :target ["field" {} 2]}]}]
                   :dimensions [{:dimension_id "country" :display_name "Country"}
                                {:dimension_id "no-name"}]}
             resp     (mt/user-http-request u :post 200 "exploration" body)
@@ -239,7 +239,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "list"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]})
             eid       (:id resp)
             summaries (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
@@ -260,7 +260,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "score-list"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)]
@@ -300,7 +300,7 @@
       (let [resp     (mt/user-http-request u :post 200 "exploration"
                                            {:name "result"
                                             :metrics [{:card_id (:id metric)
-                                                       :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                                       :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                             :dimensions [{:dimension_id "d1"}]})
             qid      (-> resp :threads first :queries first :id)
             qp-out   {:status :completed
@@ -322,7 +322,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "pending"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)
             body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
@@ -337,7 +337,7 @@
       (let [resp (mt/user-http-request owner :post 200 "exploration"
                                        {:name "qr-private"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
@@ -350,7 +350,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "cascade"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension-id "d1" :table-id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                         :dimensions [{:dimension_id "d1"}]
                                         :timeline_ids [(:id tl)]})
             eid  (:id resp)
