@@ -94,7 +94,7 @@
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
-          tool  (assoc tool :scope scope :uri uri :_meta {:ui {:resourceUri uri}})]
+          tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
       (swap! registry assoc-in [:uri->tool uri] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
