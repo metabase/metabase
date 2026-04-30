@@ -1,14 +1,8 @@
 // FIXME: how to get a unique id?
 import Settings from "metabase/utils/settings";
 
-// Umami uses an in-memory cache token returned by the server on each response.
-// It's echoed back via x-umami-cache on subsequent requests — this is how the
-// server associates requests with a session/visit without client-side storage.
 const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
-
-// FIXME: need to find out what filtering is happening here
-// only metabase host is working
-const anonymizedHostname = "metabase.com";
+const anonymizedHostname = "anonymous.metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
 
 const getSanitizedUrl = (url: string) => {
