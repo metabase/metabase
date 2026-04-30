@@ -20,8 +20,6 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <DownloadConfigSection workspace={workspace} />
       <Divider />
       <RunInstanceSection />
-      <Divider />
-      <UsageCommentsSection />
     </TitleSection>
   );
 }
@@ -48,16 +46,14 @@ function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
 function RunInstanceSection() {
   const dockerCommand = `docker run -d -p 3000:3000 \\
   -v $(pwd)/config.yml:/config.yml \\
-  -v $(pwd)/.git:/workspace/.git \\
   -e MB_CONFIG_FILE_PATH=/config.yml \\
-  -e MB_REMOTE_SYNC_URL=file:///workspace/.git \\
   -e MB_PREMIUM_EMBEDDING_TOKEN \\
   metabase/metabase-enterprise:latest`;
 
   return (
     <Stack p="md" gap="sm">
       <Text>
-        {jt`In the root of the repository synced with this instance, start the developer instance at ${(
+        {jt`Start the developer instance at ${(
           <Anchor
             key="url"
             href={LOCAL_INSTANCE_URL}
@@ -69,16 +65,6 @@ function RunInstanceSection() {
         )}.`}
       </Text>
       <Code block>{dockerCommand}</Code>
-    </Stack>
-  );
-}
-
-function UsageCommentsSection() {
-  return (
-    <Stack p="md" gap="sm">
-      <Text>
-        {t`Edit the files locally and commit your changes — then pull them into the developer instance from the remote sync settings page.`}
-      </Text>
     </Stack>
   );
 }
