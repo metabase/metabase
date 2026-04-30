@@ -405,7 +405,7 @@ The location is where custom third-party drivers should be added. Then Metabase 
 Type: integer<br>
 Default: `null`
 
-Port to serve prometheus metrics from. If set, prometheus collectors are registered and served from `localhost:<port>/metrics`.
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
 
 See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
