@@ -76,7 +76,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases :sharing_key])
+          (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (update :databases #(mapv present-workspace-database %))))
 
@@ -149,27 +149,6 @@
   (api/check-superuser)
   (present-workspace
    (ws/remove-database! id db-id)))
-
-;;; ----------------------------------------- Sharing key endpoints -----------------------------------------------
-
-(api.macros/defendpoint :post "/:id/sharing-key"
-  "Set or rotate the sharing key for a workspace. The key is a fresh UUID, distinct from
-  the developer instance's admin API key (which is supplied separately at runtime via
-  the `MB_WORKSPACE_API_KEY` env var). Returns the new key."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (let [new-key (str (random-uuid))]
-    (t2/update! :model/Workspace :id id {:sharing_key new-key})
-    {:sharing_key new-key}))
-
-(api.macros/defendpoint :delete "/:id/sharing-key"
-  "Remove the sharing key from a workspace, disabling unauthenticated access."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (t2/update! :model/Workspace :id id {:sharing_key nil})
-  {:sharing_key nil})
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

@@ -146,12 +146,6 @@ function ExportEnvVarsSection({ workspace }: ExportEnvVarsSectionProps) {
 }
 
 function RunInstanceSection() {
-  const jarCommand = `MB_CONFIG_FILE_PATH=./config.yml \\
-MB_REMOTE_SYNC_URL=file://$(pwd)/.git \\
-MB_TABLE_METADATA_PATH=./.metadata/table_metadata.json \\
-MB_FIELD_VALUES_PATH=./.metadata/field_values.json \\
-java -jar metabase.jar`;
-
   const dockerCommand = `docker run -d -p 3000:3000 \\
   -v $(pwd)/config.yml:/config.yml \\
   -v $(pwd)/.metadata:/.metadata \\
@@ -178,9 +172,6 @@ java -jar metabase.jar`;
           </Anchor>
         )}.`}
       </Text>
-      <Text>{t`With a jar:`}</Text>
-      <Code block>{jarCommand}</Code>
-      <Text>{t`With a Docker image:`}</Text>
       <Code block>{dockerCommand}</Code>
     </Stack>
   );
