@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 
+import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
 import { createSeriesCard } from "metabase/metrics/utils/series";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import * as Lib from "metabase-lib";
 import type { Dataset, ExplorationQuery } from "metabase-types/api";
 
 import S from "./ExplorationVisualization.module.css";
@@ -18,18 +22,28 @@ export function ExplorationVisualization({
   const { data: dataset } = useGetExplorationQueryResultQuery(
     explorationQuery.id,
   );
+  const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
+    explorationQuery.dataset_query,
+  );
+  const metadata = useSelector(getMetadata);
 
   const series = useMemo(() => {
-    if (!dataset) {
+    if (!dataset || isMetadataLoading) {
       return undefined;
     }
+    const query = Lib.fromJsQueryAndMetadata(
+      metadata,
+      explorationQuery.dataset_query,
+    );
+    const { display, settings } = Lib.defaultDisplay(query);
     return [
       {
         card: createSeriesCard(
           explorationQuery.id,
           explorationQuery.name,
-          "line",
+          display === "table" ? "bar" : display,
           {
+            ...settings,
             "graph.dimensions": getDimensions(dataset),
             ...(explorationQuery.visualization_settings ?? {}),
           },
@@ -37,7 +51,7 @@ export function ExplorationVisualization({
         data: dataset.data,
       },
     ];
-  }, [dataset, explorationQuery]);
+  }, [explorationQuery, dataset, isMetadataLoading, metadata]);
 
   return (
     <Stack
@@ -58,8 +72,11 @@ export function ExplorationVisualization({
 
 function getDimensions(dataset: Dataset) {
   const cols = dataset.data.cols;
-  // the first column is the date column and should be the x-axis
-  // the second column is the breakout
-  // we have to provide these manually, otherwise viz settings might swap them based on cardinality
-  return [cols[0]?.name, cols[1]?.name];
+  if (cols.length === 3) {
+    // the first column is the date column and should be the x-axis
+    // the second column is the breakout
+    // we have to provide these manually, otherwise viz settings might swap them based on cardinality
+    return [cols[0]?.name, cols[1]?.name];
+  }
+  return undefined;
 }
