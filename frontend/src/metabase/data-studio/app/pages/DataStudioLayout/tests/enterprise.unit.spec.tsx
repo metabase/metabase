@@ -148,6 +148,70 @@ describe("DataStudioLayout", () => {
     });
   });
 
+  describe("workspaces gating", () => {
+    const ENTERPRISE_WORKSPACES_PLUGINS: Parameters<typeof setup>[0] = {
+      ...DEFAULT_EE_SETTINGS,
+      enterprisePlugins: [
+        ...(DEFAULT_EE_SETTINGS.enterprisePlugins ?? []),
+        "workspaces",
+      ],
+      tokenFeatures: {
+        ...DEFAULT_EE_SETTINGS.tokenFeatures,
+        workspaces: true,
+      },
+    };
+
+    it("should not render a workspaces tab when the workspaces token feature is disabled", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        tokenFeatures: {
+          ...DEFAULT_EE_SETTINGS.tokenFeatures,
+          workspaces: false,
+        },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspace")).not.toBeInTheDocument();
+    });
+
+    it("should not render a workspaces tab for non-admins even when the feature is enabled", async () => {
+      setup({ ...ENTERPRISE_WORKSPACES_PLUGINS, isAdmin: false });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspace")).not.toBeInTheDocument();
+    });
+
+    it("should render the manager Workspaces tab when there is no active workspace on this instance", async () => {
+      setup({ ...ENTERPRISE_WORKSPACES_PLUGINS, hasActiveWorkspace: false });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText("Workspaces")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspace")).not.toBeInTheDocument();
+    });
+
+    it("should render the instance Workspace tab when an active workspace is loaded", async () => {
+      setup({ ...ENTERPRISE_WORKSPACES_PLUGINS, hasActiveWorkspace: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText("Workspace")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
+    });
+  });
+
   describe("transform dirty indicator", () => {
     it("should show dirty indicator on Exit tab when transforms have dirty changes", async () => {
       setup({
