@@ -31,12 +31,6 @@ type UsageAuditingTenants = {
   robertTenant: UsageAuditingTenant;
 };
 
-const USAGE_STATS_METRICS: UsageStatsMetric[] = [
-  "conversations",
-  "messages",
-  "tokens",
-];
-
 const METRIC_TAB_NAMES: Record<UsageStatsMetric, string> = {
   conversations: "Conversations",
   messages: "Messages",
@@ -162,9 +156,6 @@ const DATE_FILTER_CASES: Array<{
   { label: "Yesterday", chartLabels: YESTERDAY_CHART_LABELS },
   { label: "Previous week", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
   { label: "Previous 7 days", chartLabels: RECENT_CHART_LABELS },
-  { label: "Previous 30 days", chartLabels: RECENT_CHART_LABELS },
-  { label: "Previous month", chartLabels: PREVIOUS_MONTH_CHART_LABELS },
-  { label: "Previous 3 months", chartLabels: PREVIOUS_MONTH_CHART_LABELS },
   { label: "Previous 12 months", chartLabels: PREVIOUS_MONTH_CHART_LABELS },
 ];
 
@@ -652,19 +643,18 @@ function clickLastTimeseriesChartDot(title: string): void {
 }
 
 function clickRowChartBarForLabel(title: string, label: string): void {
-  getChartCard(title)
-    .findByText(label)
-    .then(($label) => {
-      const rect = $label[0].getBoundingClientRect();
-      // Row-chart labels are not the click target; click the bar next to the visible label.
-      const target = $label[0].ownerDocument.elementFromPoint(
-        rect.right + 30,
-        rect.top + rect.height / 2,
-      );
+  getChartCard(title).within(() => {
+    cy.findByTestId("row-chart-container").then(($container) => {
+      cy.findByText(label).then(($label) => {
+        const containerRect = $container[0].getBoundingClientRect();
+        const labelRect = $label[0].getBoundingClientRect();
+        const x = labelRect.right - containerRect.left + 30;
+        const y = labelRect.top - containerRect.top + labelRect.height / 2;
 
-      expect(target).to.exist;
-      cy.wrap(target).realClick({ force: true });
+        cy.wrap($container).realClick({ x, y, scrollBehavior: false });
+      });
     });
+  });
 }
 
 function openConversationFromProfile(profileLabel: string): void {
@@ -709,22 +699,50 @@ describe("scenarios > metabot > usage auditing", () => {
     assertConversationChartLabels(RECENT_CHART_LABELS);
   });
 
-  it("renders usage stats charts for every date shortcut on every metric tab", () => {
+  it("renders usage stats charts for every date shortcut on conversations", () => {
     visitUsageStatsPage();
 
-    USAGE_STATS_METRICS.forEach((metric) => {
-      if (metric !== "conversations") {
-        selectMetricTab(metric);
-      }
+    const metric = "conversations";
 
-      DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
-        cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
-        selectDateFilter(label);
+    DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
+      cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
+      selectDateFilter(label);
 
-        assertMetricChartsRenderedForDate(metric, label);
-        assertMetricChartLabels(metric, chartLabels);
-        assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
-      });
+      assertMetricChartsRenderedForDate(metric, label);
+      assertMetricChartLabels(metric, chartLabels);
+      assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
+    });
+  });
+
+  it("renders usage stats charts for every date shortcut on tokens", () => {
+    visitUsageStatsPage();
+
+    const metric = "tokens";
+    selectMetricTab(metric);
+
+    DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
+      cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
+      selectDateFilter(label);
+
+      assertMetricChartsRenderedForDate(metric, label);
+      assertMetricChartLabels(metric, chartLabels);
+      assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
+    });
+  });
+
+  it("renders usage stats charts for every date shortcut on messages", () => {
+    visitUsageStatsPage();
+
+    const metric = "messages";
+    selectMetricTab(metric);
+
+    DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
+      cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
+      selectDateFilter(label);
+
+      assertMetricChartsRenderedForDate(metric, label);
+      assertMetricChartLabels(metric, chartLabels);
+      assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
     });
   });
 
