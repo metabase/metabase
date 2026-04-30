@@ -159,7 +159,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :schedules))
+                   (dissoc :details :write_data_details :admin_details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -1230,7 +1230,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1480,7 +1480,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details))]
+                                (disj :details :write_data_details :admin_details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys

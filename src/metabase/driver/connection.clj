@@ -100,12 +100,13 @@
    ownership, schema management). Code that needs admin access must opt in
    explicitly.
 
-   Logs at INFO on entry, including the prior `*connection-type*` so escalations
-   from `:write-data` or re-entries from `:admin` are visible in normal log
-   output."
+   Logs at INFO when entering admin scope from a non-admin connection type, so
+   escalations from `:default` or `:write-data` are visible in normal log output.
+   Re-entries from `:admin` are silent."
   [& body]
   `(let [prior# *connection-type*]
-     (log/infof "Entering admin connection scope (from %s)" prior#)
+     (when (not= prior# :admin)
+       (log/infof "Entering admin connection scope (from %s)" prior#))
      (binding [*connection-type* :admin]
        ~@body)))
 
@@ -205,7 +206,7 @@
   [database]
   (let [database (driver.u/ensure-lib-database database)]
     (if (and (not= *connection-type* :default)
-             (seq (overlay-details-for-type database *connection-type*)))
+             (perf/not-empty (overlay-details-for-type database *connection-type*)))
       *connection-type*
       :default)))
 
