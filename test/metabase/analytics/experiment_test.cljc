@@ -50,9 +50,9 @@
                 (calls-for calls :experiment/matches-total)))
          (is (empty? (calls-for calls :experiment/mismatches-total)))
          (is (empty? (calls-for calls :experiment/errors-total)))
-         (is (= [{:op :observe! :metric :experiment/control-duration-ms :labels labels :amount 1.0}]
+         (is (= [{:op :inc! :metric :experiment/control-duration-ms :labels labels :amount 1.0}]
                 (calls-for calls :experiment/control-duration-ms)))
-         (is (= [{:op :observe! :metric :experiment/candidate-duration-ms :labels labels :amount 2.0}]
+         (is (= [{:op :inc! :metric :experiment/candidate-duration-ms :labels labels :amount 2.0}]
                 (calls-for calls :experiment/candidate-duration-ms))))))))
 
 (deftest report-mismatch-test
@@ -111,7 +111,7 @@
          (is (empty? (calls-for calls :experiment/matches-total)))
          (is (empty? (calls-for calls :experiment/mismatches-total)))
          (is (empty? (calls-for calls :experiment/candidate-duration-ms)))
-         (is (= [{:op :observe! :metric :experiment/candidate-error-duration-ms :labels labels :amount 0.5}]
+         (is (= [{:op :inc! :metric :experiment/candidate-error-duration-ms :labels labels :amount 0.5}]
                 (calls-for calls :experiment/candidate-error-duration-ms))))))))
 
 (deftest wiring-test

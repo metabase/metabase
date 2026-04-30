@@ -28,8 +28,8 @@
                                  :experiment/candidate-duration-ms)]
     (analytics/inc! :experiment/runs-total labels)
     (analytics/inc! outcome-key labels)
-    (analytics/observe! :experiment/control-duration-ms labels (/ control-duration-ns 1e6))
-    (analytics/observe! candidate-duration-key labels (/ candidate-duration-ns 1e6))))
+    (analytics/inc! :experiment/control-duration-ms labels (/ control-duration-ns 1e6))
+    (analytics/inc! candidate-duration-key labels (/ candidate-duration-ns 1e6))))
 
 ;; Wire as the default report fn. Requiring this namespace is sufficient.
 (experiment/set-default-report-fn! report!)

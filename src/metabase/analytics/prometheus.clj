@@ -638,15 +638,15 @@
    (prometheus/counter :experiment/errors-total
                        {:description "Number of experiment runs where the candidate threw."
                         :labels [:experiment]})
-   (prometheus/histogram :experiment/control-duration-ms
-                         {:description "Duration in milliseconds of experiment control code path."
-                          :labels [:experiment]})
-   (prometheus/histogram :experiment/candidate-duration-ms
-                         {:description "Duration in milliseconds of experiment candidate code path."
-                          :labels [:experiment]})
-   (prometheus/histogram :experiment/candidate-error-duration-ms
-                         {:description "Duration in milliseconds of experiment candidate code path when it threw."
-                          :labels [:experiment]})])
+   (prometheus/counter :experiment/control-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment control code path."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/candidate-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment candidate code path."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/candidate-error-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
+                        :labels [:experiment]})])
 
 (defn- quartz-collectors
   []
