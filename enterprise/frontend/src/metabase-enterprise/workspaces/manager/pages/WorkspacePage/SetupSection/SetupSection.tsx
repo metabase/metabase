@@ -27,7 +27,7 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <Divider />
       <DownloadConfigSection workspace={workspace} />
       <Divider />
-      <ExportEnvVarsSection />
+      <ExportEnvVarsSection workspace={workspace} />
       <Divider />
       <RunInstanceSection />
       <Divider />
@@ -96,7 +96,12 @@ function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
   );
 }
 
-function ExportEnvVarsSection() {
+type ExportEnvVarsSectionProps = {
+  workspace: Workspace;
+};
+
+function ExportEnvVarsSection({ workspace }: ExportEnvVarsSectionProps) {
+  const hasCreator = workspace.creator != null;
   const licenseTokenEnv = "MB_PREMIUM_EMBEDDING_TOKEN=";
   const userPasswordEnv = "MB_WORKSPACE_USER_PASSWORD=";
 
@@ -106,10 +111,12 @@ function ExportEnvVarsSection() {
         <Text>{t`Export the license token as an environment variable:`}</Text>
         <Code block>{licenseTokenEnv}</Code>
       </Stack>
-      <Stack gap="sm">
-        <Text>{t`Export a password for the default user — this lets the development instance skip the setup process:`}</Text>
-        <Code block>{userPasswordEnv}</Code>
-      </Stack>
+      {hasCreator && (
+        <Stack gap="sm">
+          <Text>{t`Export a password for the default user — this lets the development instance skip the setup process:`}</Text>
+          <Code block>{userPasswordEnv}</Code>
+        </Stack>
+      )}
     </Stack>
   );
 }
@@ -161,19 +168,15 @@ function UsageCommentsSection({ workspace }: UsageCommentsSectionProps) {
   const creatorEmail = workspace.creator?.email;
 
   return (
-    <Stack p="md" gap="lg">
+    <Stack p="md" gap="sm">
       {creatorEmail != null && (
-        <Stack gap="sm">
-          <Text>
-            {jt`Log in with ${<Code key="email">{creatorEmail}</Code>} and the password from ${<Code key="pwd">{PASSWORD_ENV_VAR}</Code>}.`}
-          </Text>
-        </Stack>
-      )}
-      <Stack gap="sm">
         <Text>
-          {t`Edit the files locally and commit your changes — then pull them into the developer instance from the remote sync settings page.`}
+          {jt`Log in with ${<Code key="email">{creatorEmail}</Code>} and the password from ${<Code key="pwd">{PASSWORD_ENV_VAR}</Code>}.`}
         </Text>
-      </Stack>
+      )}
+      <Text>
+        {t`Edit the files locally and commit your changes — then pull them into the developer instance from the remote sync settings page.`}
+      </Text>
     </Stack>
   );
 }
