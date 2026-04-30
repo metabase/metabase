@@ -135,7 +135,8 @@
                                   :dimension_mappings [{:dimension_id "d1"
                                                         :table_id 1
                                                         :target ["field" {} 1]}]}]
-                  :dimensions   [{:dimension_id "d1" :display_name "Region"}]
+                  :dimensions   [{:dimension_id "d1" :display_name "Total"
+                                  :effective_type "type/Number"}]
                   :timeline_ids [(:id tl)]}
             resp (mt/user-http-request u :post 200 "exploration" body)
             thread (-> resp :threads first)
@@ -151,9 +152,82 @@
         (is (= "d1" (:dimension_id q)))
         (is (= "pending" (:status q)))
         (let [mp  (lib-be/application-database-metadata-provider 1)
-              qry (lib/query mp (:dataset_query q))]
+              qry (lib/query mp (:dataset_query q))
+              brk (first (lib/breakouts qry))]
           (is (= 1 (count (lib/breakouts qry)))
-              "snapshot MBQL adds a breakout from the dimension's target"))))))
+              "snapshot MBQL adds a breakout from the dimension's target")
+          (is (= :default (:strategy (lib/binning brk)))
+              "numeric dim picks up default auto-binning"))))))
+
+(deftest exploration-create-applies-default-binning-test
+  (testing "POST / picks a sensible default temporal bucket / numeric binning per dim type"
+    (mt/with-temp [:model/User u {:email "binning@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [body {:name    "binning"
+                  :metrics [{:card_id (:id metric)
+                             :dimension_mappings [{:dimension_id "dt"  :table_id 1 :target ["field" {} 1]}
+                                                  {:dimension_id "d"   :table_id 1 :target ["field" {} 2]}
+                                                  {:dimension_id "t"   :table_id 1 :target ["field" {} 3]}
+                                                  {:dimension_id "n"   :table_id 1 :target ["field" {} 4]}
+                                                  {:dimension_id "lat" :table_id 1 :target ["field" {} 5]}
+                                                  {:dimension_id "s"   :table_id 1 :target ["field" {} 6]}]}]
+                  :dimensions [{:dimension_id "dt"  :effective_type "type/DateTime"}
+                               {:dimension_id "d"   :effective_type "type/Date"}
+                               {:dimension_id "t"   :effective_type "type/Time"}
+                               {:dimension_id "n"   :effective_type "type/Number"}
+                               {:dimension_id "lat" :effective_type "type/Float" :semantic_type "type/Latitude"}
+                               {:dimension_id "s"   :effective_type "type/Text"}]}
+            resp    (mt/user-http-request u :post 200 "exploration" body)
+            mp      (lib-be/application-database-metadata-provider 1)
+            by-dim  (into {} (for [q (-> resp :threads first :queries)]
+                               [(:dimension_id q) (->> (:dataset_query q)
+                                                       (lib/query mp)
+                                                       lib/breakouts
+                                                       first)]))]
+        (testing "DateTime dim → :month bucket"
+          (is (= :month (lib/raw-temporal-bucket (get by-dim "dt"))))
+          (is (nil? (lib/binning (get by-dim "dt")))))
+        (testing "Date dim → :day bucket"
+          (is (= :day (lib/raw-temporal-bucket (get by-dim "d")))))
+        (testing "Time dim → :hour bucket"
+          (is (= :hour (lib/raw-temporal-bucket (get by-dim "t")))))
+        (testing "Number dim → default auto-binning"
+          (is (= :default (:strategy (lib/binning (get by-dim "n")))))
+          (is (nil? (lib/raw-temporal-bucket (get by-dim "n")))))
+        (testing "Coordinate (semantic Latitude over Float) → default auto-binning, not raw number path"
+          (is (= :default (:strategy (lib/binning (get by-dim "lat"))))))
+        (testing "Non-numeric / non-temporal dim → no bucket"
+          (is (nil? (lib/binning (get by-dim "s"))))
+          (is (nil? (lib/raw-temporal-bucket (get by-dim "s")))))))))
+
+(deftest exploration-create-strips-metric-default-breakout-test
+  (testing "POST / drops the metric's default temporal breakout so only the chosen dim remains"
+    (mt/with-temp [:model/User u {:email "strip@example.com"}
+                   :model/Card metric {:type          :metric
+                                       :creator_id    (:id u)
+                                       :dataset_query {:database 1
+                                                       :type     :query
+                                                       :query    {:source-table 1
+                                                                  :aggregation  [[:count]]
+                                                                  :breakout     [[:field 2 {:temporal-unit :month}]]}}}]
+      (let [body {:name       "no time pls"
+                  :metrics    [{:card_id            (:id metric)
+                                :dimension_mappings [{:dimension_id "d1"
+                                                      :table_id     1
+                                                      :target       ["field" {} 1]}]}]
+                  :dimensions [{:dimension_id "d1" :display_name "Region"}]}
+            resp (mt/user-http-request u :post 200 "exploration" body)
+            q    (-> resp :threads first :queries first)
+            mp   (lib-be/application-database-metadata-provider 1)
+            qry  (lib/query mp (:dataset_query q))
+            bos  (lib/breakouts qry)
+            ids  (set (filter int? (tree-seq coll? seq (first bos))))]
+        (is (= 1 (count bos))
+            "metric's default temporal breakout is stripped before the chosen one is added")
+        (is (contains? ids 1)
+            "the surviving breakout points at the chosen dim's target (field 1)")
+        (is (not (contains? ids 2))
+            "the metric's original temporal breakout (field 2) is gone")))))
 
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
@@ -174,6 +248,71 @@
                  [(:id m2) "d1"] [(:id m2) "d2"]}
                (set (map (juxt :card_id :dimension_id) queries))))
         (is (every? #(= "pending" (:status %)) queries))))))
+
+(defn- venues-metric-card [user-id]
+  {:type          :metric
+   :creator_id    user-id
+   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
+
+(defn- venues-dimension-mappings []
+  [{:dimension_id "category" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+   {:dimension_id "price"    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
+
+(defn- segment-filters
+  "Extract :segment filter clauses (as `[:segment {} <id>]`) from a snapshot dataset_query at stage 0."
+  [dataset-query]
+  (let [mp  (lib-be/application-database-metadata-provider (mt/id))
+        qry (lib/query mp dataset-query)]
+    (filter (fn [f] (= :segment (first f))) (or (lib/filters qry) []))))
+
+(deftest exploration-create-fans-out-applicable-segments-test
+  (testing "POST / produces base + one extra row per Segment whose table_id matches the metric's source-table"
+    (mt/with-temp [:model/User u {:email "segments@example.com"}
+                   :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
+                   :model/Segment internal {:name       "internal"
+                                            :table_id   (mt/id :venues)
+                                            :definition (mt/mbql-query venues {:filter [:= $price 1]})}
+                   :model/Segment premium  {:name       "premium"
+                                            :table_id   (mt/id :venues)
+                                            :definition (mt/mbql-query venues {:filter [:= $price 4]})}]
+      (let [body    {:name       "fan-out"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
+                     :dimensions [{:dimension_id "category" :display_name "Category"}
+                                  {:dimension_id "price"    :display_name "Price"}]}
+            resp    (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> resp :threads first :queries)
+            base    (filter #(nil? (:segment_id %)) queries)
+            segged  (remove #(nil? (:segment_id %)) queries)]
+        (is (= 6 (count queries)) "2 dimensions × (1 base + 2 segments) = 6 queries")
+        (is (= 2 (count base)))
+        (is (= 4 (count segged)))
+        (is (= #{(:id internal) (:id premium)}
+               (set (map :segment_id segged))))
+        (testing "every segmented query carries a :segment filter clause"
+          (is (every? #(seq (segment-filters (:dataset_query %))) segged)))
+        (testing "the unsegmented base rows have no :segment filter"
+          (is (every? #(empty? (segment-filters (:dataset_query %))) base)))
+        (testing "segmented row name includes the segment name"
+          (let [segged-by-id (group-by :segment_id segged)
+                a-internal   (some #(when (= "category" (:dimension_id %)) %)
+                                   (get segged-by-id (:id internal)))]
+            (is (= "Revenue by Category (internal)" (:name a-internal)))))))))
+
+(deftest exploration-create-skips-segments-on-other-tables-test
+  (testing "Segments whose table_id doesn't match the metric's source-table are not applied"
+    (mt/with-temp [:model/User u {:email "seg-scope@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))
+                   :model/Segment _other {:name       "users-only"
+                                          :table_id   (mt/id :users)
+                                          :definition (mt/mbql-query users {:filter [:not-null $id]})}]
+      (let [body    {:name       "scope"
+                     :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
+                     :dimensions [{:dimension_id "category"} {:dimension_id "price"}]}
+            resp    (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> resp :threads first :queries)]
+        (is (= 2 (count queries))
+            "venues metric × 2 dims; the users-table segment doesn't apply, so no fan-out")
+        (is (every? #(nil? (:segment_id %)) queries))))))
 
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"

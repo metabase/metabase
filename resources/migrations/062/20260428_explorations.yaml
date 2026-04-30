@@ -495,6 +495,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: segment_id
+                  type: int
+                  remarks: Optional segment applied as a filter on top of (card, dimension); null for the unsegmented base query
+                  constraints:
+                    nullable: true
+              - column:
                   name: dimension_id
                   type: ${text.type}
                   remarks: Virtual dimension ID used as the breakout for this chart
@@ -596,6 +602,19 @@ databaseChangeLog:
             referencedTableName: report_card
             referencedColumnNames: id
             constraintName: fk_exploration_query_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.qsegfk
+      author: johnswanson
+      comment: FK exploration_query.segment_id -> segment.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: segment_id
+            referencedTableName: segment
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_segment_id
             onDelete: CASCADE
 
   - changeSet:

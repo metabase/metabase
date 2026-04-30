@@ -37,41 +37,101 @@
            (:target %))
         dimension-mappings))
 
+(defn- dim-type-isa?
+  "True if the dim's snapshot effective_type or semantic_type derives from `parent`. Snapshot
+  columns arrive as strings (e.g. `\"type/DateTime\"`), so coerce to keywords before `isa?`."
+  [dim parent]
+  (boolean
+   (some (fn [t]
+           (when (some? t)
+             (isa? (keyword t) parent)))
+         [(:effective_type dim) (:semantic_type dim)])))
+
+(defn- default-bucket-for-dim
+  "Pick a default temporal bucket or numeric binning for a dimension based on its snapshot type.
+  Returns one of:
+    `[:temporal unit]`  — apply via `lib/with-temporal-bucket`
+    `[:binning binning]` — apply via `lib/with-binning`
+    `nil`               — no bucket; use a bare breakout (current behavior).
+
+  Resolution order matters: DateTime first (it derives from both HasDate and HasTime), then Date,
+  then Time. Coordinates come before generic numbers because Coordinate also derives from Number."
+  [dim]
+  (cond
+    (dim-type-isa? dim :type/DateTime)   [:temporal :month]
+    (dim-type-isa? dim :type/Date)       [:temporal :day]
+    (dim-type-isa? dim :type/Time)       [:temporal :hour]
+    (dim-type-isa? dim :type/Coordinate) [:binning {:strategy :default}]
+    (dim-type-isa? dim :type/Number)     [:binning {:strategy :default}]
+    :else                                nil))
+
+(defn- apply-default-bucket
+  "Apply a default temporal bucket / numeric binning to the breakout `ref-clause`, chosen from the
+  dim's snapshot effective/semantic type. Returns the (possibly unchanged) ref."
+  [ref-clause dim]
+  (let [[kind v] (default-bucket-for-dim dim)]
+    (case kind
+      :temporal (lib/with-temporal-bucket ref-clause v)
+      :binning  (lib/with-binning ref-clause v)
+      nil       ref-clause)))
+
 (defn- build-snapshot-mbql
-  "Wrap the metric Card's `:dataset_query` in a Lib query and add a breakout for the given
+  "Wrap the metric Card's `:dataset_query` in a Lib query, drop any breakout the metric carries
+  (its default temporal dimension, e.g. `created_at`), and add a single breakout for the chosen
   dimension's target. Cards may store their query in legacy MBQL 4 or MBQL 5; `lib/query`
   normalizes both into MBQL 5 so the QP receives a single, well-formed shape. The target is a
   JSON-decoded legacy ref (string operator + string-typed option values), so we run it through
   `lib/normalize` against the ref schema to coerce it into well-formed MBQL 5 before adding the
-  breakout."
-  [mp card-dataset-query target]
+  breakout. A default temporal bucket / numeric binning is applied to the ref based on the dim's
+  snapshot type so date/numeric breakouts produce a useful chart out of the box rather than a
+  group-by-every-distinct-value."
+  [mp card-dataset-query target dim]
   (-> (lib/query mp card-dataset-query)
-      (lib/breakout (lib/normalize :metabase.lib.schema.ref/ref target))))
+      lib/remove-all-breakouts
+      (lib/breakout (-> (lib/normalize :metabase.lib.schema.ref/ref target)
+                        (apply-default-bucket dim)))))
 
 (defn- generate-queries!
-  "Materialize one `exploration_query` row per (metric, dimension) pair where the dimension is
+  "Materialize `exploration_query` rows for each (metric, dimension) pair where the dimension is
   applicable to the metric — i.e., the metric's snapshotted `dimension_mappings` resolves a
   target for that dimension. Pairs with no mapping are dropped before enqueue, so the worker
-  never executes a no-breakout duplicate of the metric's own query."
+  never executes a no-breakout duplicate of the metric's own query.
+
+  For each surviving pair, also fans out one additional row per Segment whose `:table-id`
+  matches the metric Card's source table. The unsegmented base row carries `segment_id = nil`;
+  segmented rows snapshot the segment as a `:segment` filter clause inside `dataset_query`."
   [thread-id metrics dimensions]
   (when (and (seq metrics) (seq dimensions))
-    (let [cards (t2/select-pk->fn identity [:model/Card :id :name :database_id :dataset_query :card_schema]
-                                  :id [:in (distinct (map :card_id metrics))])
-          rows  (for [metric metrics
-                      dim    dimensions
-                      :let [dim-id (:dimension_id dim)
-                            card   (get cards (:card_id metric))
-                            target (find-dimension-target dim-id (:dimension_mappings metric))]
-                      :when (and card target)
-                      :let [mp (lib-be/application-database-metadata-provider (:database_id card))]]
-                  {:exploration_thread_id thread-id
-                   :card_id               (:card_id metric)
-                   :dimension_id          dim-id
-                   :name                  (tru "{0} by {1}"
-                                               (:name card)
-                                               (or (:display_name dim) dim-id))
-                   :dataset_query         (build-snapshot-mbql mp (:dataset_query card) target)
-                   :status                "pending"})]
+    (let [cards    (t2/select-pk->fn identity [:model/Card :id :name :database_id :dataset_query :card_schema]
+                                     :id [:in (distinct (map :card_id metrics))])
+          card-ctx (into {} (for [[id card] cards
+                                  :let [mp (lib-be/application-database-metadata-provider (:database_id card))]]
+                              [id {:mp       mp
+                                   :segments (lib/available-segments (lib/query mp (:dataset_query card)))}]))
+          rows     (for [metric metrics
+                         dim    dimensions
+                         :let  [dim-id (:dimension_id dim)
+                                card   (get cards (:card_id metric))
+                                target (find-dimension-target dim-id (:dimension_mappings metric))]
+                         :when (and card target)
+                         :let  [{:keys [mp segments]} (get card-ctx (:card_id metric))
+                                base (build-snapshot-mbql mp (:dataset_query card) target dim)]
+                         seg   (cons nil segments)]
+                     {:exploration_thread_id thread-id
+                      :card_id               (:card_id metric)
+                      :segment_id            (:id seg)
+                      :dimension_id          dim-id
+                      :name                  (if seg
+                                               (tru "{0} by {1} ({2})"
+                                                    (:name card)
+                                                    (or (:display_name dim) dim-id)
+                                                    (:name seg))
+                                               (tru "{0} by {1}"
+                                                    (:name card)
+                                                    (or (:display_name dim) dim-id)))
+                      :dataset_query         (cond-> base
+                                               seg (lib/filter seg))
+                      :status                "pending"})]
       (when (seq rows)
         (t2/insert! :model/ExplorationQuery
                     (map-indexed (fn [i r] (assoc r :position i)) rows))))))
@@ -111,6 +171,7 @@
    [:id                    ms/PositiveInt]
    [:exploration_thread_id ms/PositiveInt]
    [:card_id               ms/PositiveInt]
+   [:segment_id            {:optional true} [:maybe ms/PositiveInt]]
    [:dimension_id          [:maybe :string]]
    [:name                  {:optional true} [:maybe :string]]
    [:position              ms/IntGreaterThanOrEqualToZero]
@@ -257,7 +318,8 @@
   (api/read-check (get-exploration-or-404 id))
   (t2/select [:model/ExplorationQuery
               :exploration_query.id :exploration_query.exploration_thread_id
-              :exploration_query.card_id :exploration_query.dimension_id
+              :exploration_query.card_id :exploration_query.segment_id
+              :exploration_query.dimension_id
               :exploration_query.name :exploration_query.position
               :exploration_query.status :exploration_query.error_message
               :exploration_query.started_at :exploration_query.finished_at
