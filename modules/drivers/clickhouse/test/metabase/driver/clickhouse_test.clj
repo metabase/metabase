@@ -496,6 +496,15 @@
                   (qp/process-query)
                   (mt/rows)))))))
 
+(deftest ^:parallel query-with-boolean-setting-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a query with settings set to a boolean (#73431)"
+      (is (= [[2]]
+             (->> "select 2 SETTINGS use_query_cache = true"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))
+
 (defn- check-legacy-dbname [dbname exp-name]
   (let [details (assoc (:details (mt/db)) :dbname dbname)
         spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
