@@ -1571,11 +1571,8 @@
 
 (defn- validate-overlay-details!
   "Common guardrails for overlay-details (write_data_details, admin_details).
-   Throws 400 on violation.
-
-   `article-noun` (e.g. \"a write\", \"an admin\") and `conn-noun` (e.g. \"write\", \"admin\")
-   are passed as `tru` template parameters so messages stay grammatical without duplicating
-   each whole sentence per overlay type."
+   Throws 400 on violation. `article-noun` (e.g. \"a write\", \"an admin\") and `conn-noun`
+   (e.g. \"write\", \"admin\") are interpolated into the error messages."
   [existing-database overlay-details
    {:keys [marker-key overlay-key-name article-noun conn-noun hidden-fields-fn]}]
   (let [marker-name (name marker-key)]
@@ -1698,7 +1695,6 @@
     (if (or main-conn-error write-conn-error admin-conn-error)
       ;; failed to connect, return error
       {:status 400
-       ;; Overlay details are a merge over the top of default connection:
        :body   (or main-conn-error write-conn-error admin-conn-error)}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)

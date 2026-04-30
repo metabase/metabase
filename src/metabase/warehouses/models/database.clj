@@ -608,9 +608,8 @@
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
-  ;; details should be imported if available regardless of options. Same export rule applies to all
-  ;; details-shaped columns: skip on export unless secrets are included AND the database is not an
-  ;; attached DWH; identity on import.
+  ;; Export only when secrets are explicitly included AND the database isn't an attached DWH.
+  ;; Import is unconditional.
   (let [details-transform {:export-with-context (fn [current _ details]
                                                   (if (and include-database-secrets
                                                            (not (:is_attached_dwh current)))

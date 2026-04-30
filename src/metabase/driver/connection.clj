@@ -62,11 +62,7 @@
 ;;  - (let [{{:keys [user]} :details} database])
 
 (def connection-types
-  "All valid values for [[*connection-type*]], in canonical order.
-
-   Single source of truth — anything that needs to enumerate connection types
-   (e.g., per-type pool invalidation) should consume this rather than
-   duplicating the list."
+  "All valid values for [[*connection-type*]], in canonical order."
   [:default :write-data :admin])
 
 (mr/def ::connection-type
@@ -98,11 +94,7 @@
    into account (if configured) instead of only primary `:details`. The admin
    connection carries the highest-privilege credentials for a database (DDL,
    ownership, schema management). Code that needs admin access must opt in
-   explicitly.
-
-   Logs at INFO when entering admin scope from a non-admin connection type, so
-   escalations from `:default` or `:write-data` are visible in normal log output.
-   Re-entries from `:admin` are silent."
+   explicitly."
   [& body]
   `(let [prior# *connection-type*]
      (when (not= prior# :admin)

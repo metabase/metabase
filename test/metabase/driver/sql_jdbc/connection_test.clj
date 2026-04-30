@@ -215,7 +215,7 @@
           (let [read-details  {:db "mem:invalidate_test"}
                 write-details {:db "mem:invalidate_write_test"}
                 admin-details {:db "mem:invalidate_admin_test"}]
-          ;; Use snake_case for column names since deftransforms uses snake_case keys
+            ;; Use snake_case for column names since deftransforms uses snake_case keys
             (mt/with-temp [:model/Database database {:engine             :h2
                                                      :details            read-details
                                                      :write_data_details write-details
@@ -224,7 +224,6 @@
                     default-cache-key [db-id :default]
                     write-cache-key   [db-id :write-data]
                     admin-cache-key   [db-id :admin]]
-              ;; Create all three pools
                 (sql-jdbc.conn/db->pooled-connection-spec database)
                 (driver.conn/with-write-connection
                   (sql-jdbc.conn/db->pooled-connection-spec database))
