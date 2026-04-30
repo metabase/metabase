@@ -46,7 +46,6 @@ import {
   Ellipsified,
   Flex,
   Icon,
-  Loader,
   Menu,
   Text,
   TextInput,
@@ -70,6 +69,7 @@ import CS from "../extensions.module.css";
 import { NativeQueryModal } from "../shared/NativeQueryModal";
 import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 
+import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
@@ -423,26 +423,7 @@ export const CardEmbedComponent = memo(
           data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
-          <Box
-            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
-              [styles.selected]: selected,
-            })}
-          >
-            <Box className={styles.questionHeader}>
-              <Flex align="center" justify="space-between" gap="0.5rem">
-                <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-primary" fw={700}>
-                    {t`Loading question...`}
-                  </Text>
-                </Box>
-              </Flex>
-            </Box>
-            <Box className={styles.questionResults}>
-              <Box className={styles.loadingContainer}>
-                <Loader />
-              </Box>
-            </Box>
-          </Box>
+          <CardEmbedLoadingState />
         </NodeViewWrapper>
       );
     }
