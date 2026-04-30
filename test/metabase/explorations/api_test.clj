@@ -200,6 +200,35 @@
           (is (nil? (lib/binning (get by-dim "s"))))
           (is (nil? (lib/raw-temporal-bucket (get by-dim "s")))))))))
 
+(deftest exploration-create-strips-metric-default-breakout-test
+  (testing "POST / drops the metric's default temporal breakout so only the chosen dim remains"
+    (mt/with-temp [:model/User u {:email "strip@example.com"}
+                   :model/Card metric {:type          :metric
+                                       :creator_id    (:id u)
+                                       :dataset_query {:database 1
+                                                       :type     :query
+                                                       :query    {:source-table 1
+                                                                  :aggregation  [[:count]]
+                                                                  :breakout     [[:field 2 {:temporal-unit :month}]]}}}]
+      (let [body {:name       "no time pls"
+                  :metrics    [{:card_id            (:id metric)
+                                :dimension_mappings [{:dimension-id "d1"
+                                                      :table-id     1
+                                                      :target       ["field" {} 1]}]}]
+                  :dimensions [{:dimension_id "d1" :display_name "Region"}]}
+            resp (mt/user-http-request u :post 200 "exploration" body)
+            q    (-> resp :threads first :queries first)
+            mp   (lib-be/application-database-metadata-provider 1)
+            qry  (lib/query mp (:dataset_query q))
+            bos  (lib/breakouts qry)
+            ids  (set (filter int? (tree-seq coll? seq (first bos))))]
+        (is (= 1 (count bos))
+            "metric's default temporal breakout is stripped before the chosen one is added")
+        (is (contains? ids 1)
+            "the surviving breakout points at the chosen dim's target (field 1)")
+        (is (not (contains? ids 2))
+            "the metric's original temporal breakout (field 2) is gone")))))
+
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
     (mt/with-temp [:model/User u {:email "matrix@example.com"}

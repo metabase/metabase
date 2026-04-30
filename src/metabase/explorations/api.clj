@@ -82,7 +82,8 @@
       nil       ref-clause)))
 
 (defn- build-snapshot-mbql
-  "Wrap the metric Card's `:dataset_query` in a Lib query and add a breakout for the given
+  "Wrap the metric Card's `:dataset_query` in a Lib query, drop any breakout the metric carries
+  (its default temporal dimension, e.g. `created_at`), and add a single breakout for the chosen
   dimension's target. Cards may store their query in legacy MBQL 4 or MBQL 5; `lib/query`
   normalizes both into MBQL 5 so the QP receives a single, well-formed shape. The target is a
   JSON-decoded legacy ref (string operator + string-typed option values), so we run it through
@@ -92,6 +93,7 @@
   group-by-every-distinct-value."
   [mp card-dataset-query target dim]
   (-> (lib/query mp card-dataset-query)
+      lib/remove-all-breakouts
       (lib/breakout (-> (lib/normalize :metabase.lib.schema.ref/ref target)
                         (apply-default-bucket dim)))))
 
