@@ -1,3 +1,23 @@
 .threadList {
   overflow-y: auto;
 }
+
+.queryRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.queryRow:hover {
+  background: var(--mb-color-background-hover);
+}
+
+.queryRowSelected {
+  background: var(--mb-color-background-brand);
+  color: var(--mb-color-brand);
+}

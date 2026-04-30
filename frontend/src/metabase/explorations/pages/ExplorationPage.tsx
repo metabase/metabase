@@ -3,21 +3,43 @@ import { useEffect, useMemo, useState } from "react";
 import { useGetExplorationQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center, Group } from "metabase/ui";
-import type { ExplorationQueryId } from "metabase-types/api";
+import type { Exploration, ExplorationQueryId } from "metabase-types/api";
+import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import { ExplorationVisualization } from "../components/ExplorationVisualization/ExplorationVisualization";
+
+const QUERY_POLL_INTERVAL_MS = 2000;
 
 interface ExplorationPageProps {
   params: { id: string };
 }
 
+function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
+  if (!exploration?.threads) {
+    return false;
+  }
+  return exploration.threads.some((thread) =>
+    thread.queries?.some((q) => !isSettledExplorationQueryStatus(q.status)),
+  );
+}
+
 export function ExplorationPage({ params }: ExplorationPageProps) {
+  // Poll the exploration while any query is still in a non-terminal state.
+  // RTK Query reads `pollingInterval` on every render, so deriving it from
+  // the response is enough — passing 0 stops polling.
+  const [shouldPoll, setShouldPoll] = useState(true);
   const {
     data: exploration,
     isLoading,
     error,
-  } = useGetExplorationQuery(Number(params.id));
+  } = useGetExplorationQuery(Number(params.id), {
+    pollingInterval: shouldPoll ? QUERY_POLL_INTERVAL_MS : 0,
+  });
+
+  useEffect(() => {
+    setShouldPoll(hasUnsettledQueries(exploration));
+  }, [exploration]);
   const [selectedQueryId, setSelectedQueryId] =
     useState<ExplorationQueryId | null>(null);
 

@@ -1,15 +1,17 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useGetAdhocQueryMetadataQuery } from "metabase/api/dataset";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
 import { createSeriesCard } from "metabase/metrics/utils/series";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Stack, Text } from "metabase/ui";
+import { Icon, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type { Dataset, ExplorationQuery } from "metabase-types/api";
 
+import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 
 interface ExplorationVisualizationProps {
@@ -17,6 +19,42 @@ interface ExplorationVisualizationProps {
 }
 
 export function ExplorationVisualization({
+  explorationQuery,
+}: ExplorationVisualizationProps) {
+  return (
+    <Stack
+      flex={1}
+      h="100%"
+      bg="background-primary"
+      bd="1px solid border"
+      bdrs="md"
+      p="lg"
+    >
+      <Text fw="bold" size="lg">
+        {explorationQuery.name}
+      </Text>
+      <ExplorationVisualizationBody explorationQuery={explorationQuery} />
+    </Stack>
+  );
+}
+
+function ExplorationVisualizationBody({
+  explorationQuery,
+}: ExplorationVisualizationProps) {
+  if (explorationQuery.status === "error") {
+    return (
+      <ExplorationVisualizationError explorationQuery={explorationQuery} />
+    );
+  }
+
+  if (explorationQuery.status !== "done") {
+    return <ExplorationChartSkeleton />;
+  }
+
+  return <ExplorationVisualizationChart explorationQuery={explorationQuery} />;
+}
+
+function ExplorationVisualizationChart({
   explorationQuery,
 }: ExplorationVisualizationProps) {
   const { data: dataset } = useGetExplorationQueryResultQuery(
@@ -45,7 +83,6 @@ export function ExplorationVisualization({
           {
             ...settings,
             "graph.dimensions": getDimensions(dataset),
-            ...(explorationQuery.visualization_settings ?? {}),
           },
         ),
         data: dataset.data,
@@ -53,19 +90,33 @@ export function ExplorationVisualization({
     ];
   }, [explorationQuery, dataset, isMetadataLoading, metadata]);
 
+  if (!series) {
+    return <ExplorationChartSkeleton />;
+  }
+
+  return <Visualization rawSeries={series} className={S.chart} />;
+}
+
+function ExplorationVisualizationError({
+  explorationQuery,
+}: ExplorationVisualizationProps) {
   return (
     <Stack
+      align="center"
+      justify="center"
       flex={1}
-      h="100%"
-      bg="background-primary"
-      bd="1px solid border"
-      bdrs="md"
-      p="lg"
+      gap="sm"
+      ta="center"
+      role="alert"
+      aria-live="polite"
     >
-      <Text fw="bold" size="lg">
-        {explorationQuery.name}
-      </Text>
-      <Visualization rawSeries={series} className={S.chart} />
+      <Icon name="warning" c="error" size={32} />
+      <Text fw="bold">{t`We couldn't generate this chart.`}</Text>
+      {explorationQuery.error_message && (
+        <Text c="text-secondary" maw="32rem">
+          {explorationQuery.error_message}
+        </Text>
+      )}
     </Stack>
   );
 }

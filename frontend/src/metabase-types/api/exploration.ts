@@ -54,19 +54,31 @@ export interface ExplorationThreadTimeline {
   position: number;
 }
 
+export type ExplorationQueryStatus = "pending" | "running" | "done" | "error";
+
+export const SETTLED_EXPLORATION_QUERY_STATUSES: ReadonlySet<ExplorationQueryStatus> =
+  new Set(["done", "error"]);
+
+export function isSettledExplorationQueryStatus(
+  status: ExplorationQueryStatus,
+): boolean {
+  return SETTLED_EXPLORATION_QUERY_STATUSES.has(status);
+}
+
 export interface ExplorationQuery {
   id: ExplorationQueryId;
   exploration_thread_id: ExplorationThreadId;
-  name: string | null;
   card_id: CardId;
   dimension_id: string;
-  display: string | null;
-  visualization_settings: Record<string, unknown> | null;
-  dataset_query: DatasetQuery;
+  name: string | null;
   position: number;
+  status: ExplorationQueryStatus;
+  error_message: string | null;
+  started_at: string | null;
+  finished_at: string | null;
   entity_id: string;
-  created_at: string;
-  updated_at: string;
+  interestingness_score: number | null;
+  dataset_query: DatasetQuery;
 }
 
 export interface ExplorationThread {
