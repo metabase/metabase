@@ -135,7 +135,8 @@
                                   :dimension_mappings [{:dimension_id "d1"
                                                         :table_id 1
                                                         :target ["field" {} 1]}]}]
-                  :dimensions   [{:dimension_id "d1" :display_name "Region"}]
+                  :dimensions   [{:dimension_id "d1" :display_name "Total"
+                                  :effective_type "type/Number"}]
                   :timeline_ids [(:id tl)]}
             resp (mt/user-http-request u :post 200 "exploration" body)
             thread (-> resp :threads first)
@@ -151,9 +152,53 @@
         (is (= "d1" (:dimension_id q)))
         (is (= "pending" (:status q)))
         (let [mp  (lib-be/application-database-metadata-provider 1)
-              qry (lib/query mp (:dataset_query q))]
+              qry (lib/query mp (:dataset_query q))
+              brk (first (lib/breakouts qry))]
           (is (= 1 (count (lib/breakouts qry)))
-              "snapshot MBQL adds a breakout from the dimension's target"))))))
+              "snapshot MBQL adds a breakout from the dimension's target")
+          (is (= :default (:strategy (lib/binning brk)))
+              "numeric dim picks up default auto-binning"))))))
+
+(deftest exploration-create-applies-default-binning-test
+  (testing "POST / picks a sensible default temporal bucket / numeric binning per dim type"
+    (mt/with-temp [:model/User u {:email "binning@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [body {:name    "binning"
+                  :metrics [{:card_id (:id metric)
+                             :dimension_mappings [{:dimension-id "dt"  :table-id 1 :target ["field" {} 1]}
+                                                  {:dimension-id "d"   :table-id 1 :target ["field" {} 2]}
+                                                  {:dimension-id "t"   :table-id 1 :target ["field" {} 3]}
+                                                  {:dimension-id "n"   :table-id 1 :target ["field" {} 4]}
+                                                  {:dimension-id "lat" :table-id 1 :target ["field" {} 5]}
+                                                  {:dimension-id "s"   :table-id 1 :target ["field" {} 6]}]}]
+                  :dimensions [{:dimension_id "dt"  :effective_type "type/DateTime"}
+                               {:dimension_id "d"   :effective_type "type/Date"}
+                               {:dimension_id "t"   :effective_type "type/Time"}
+                               {:dimension_id "n"   :effective_type "type/Number"}
+                               {:dimension_id "lat" :effective_type "type/Float" :semantic_type "type/Latitude"}
+                               {:dimension_id "s"   :effective_type "type/Text"}]}
+            resp    (mt/user-http-request u :post 200 "exploration" body)
+            mp      (lib-be/application-database-metadata-provider 1)
+            by-dim  (into {} (for [q (-> resp :threads first :queries)]
+                               [(:dimension_id q) (->> (:dataset_query q)
+                                                       (lib/query mp)
+                                                       lib/breakouts
+                                                       first)]))]
+        (testing "DateTime dim → :month bucket"
+          (is (= :month (lib/raw-temporal-bucket (get by-dim "dt"))))
+          (is (nil? (lib/binning (get by-dim "dt")))))
+        (testing "Date dim → :day bucket"
+          (is (= :day (lib/raw-temporal-bucket (get by-dim "d")))))
+        (testing "Time dim → :hour bucket"
+          (is (= :hour (lib/raw-temporal-bucket (get by-dim "t")))))
+        (testing "Number dim → default auto-binning"
+          (is (= :default (:strategy (lib/binning (get by-dim "n")))))
+          (is (nil? (lib/raw-temporal-bucket (get by-dim "n")))))
+        (testing "Coordinate (semantic Latitude over Float) → default auto-binning, not raw number path"
+          (is (= :default (:strategy (lib/binning (get by-dim "lat"))))))
+        (testing "Non-numeric / non-temporal dim → no bucket"
+          (is (nil? (lib/binning (get by-dim "s"))))
+          (is (nil? (lib/raw-temporal-bucket (get by-dim "s")))))))))
 
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
