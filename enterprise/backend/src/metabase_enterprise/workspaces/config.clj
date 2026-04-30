@@ -9,17 +9,19 @@
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 (defn- user-entry
-  "Build the admin user entry for the config from the workspace creator. Falls back
-   to a generic default if the creator has been deleted. The password is the
-   `{{env MB_WORKSPACE_USER_PASSWORD}}` placeholder so the developer instance picks
-   it up from the `MB_WORKSPACE_USER_PASSWORD` env var at boot — see
-   [[metabase-enterprise.advanced-config.file]] for the template-expansion mechanics."
+  "Admin user entry derived from the workspace creator. Returns nil when the creator
+   has been deleted or has no email — without a real identity to bind the user to,
+   we'd be inventing one, so we skip the section instead. The password is the
+   `{{env MB_WORKSPACE_USER_PASSWORD}}` placeholder so the developer instance picks it
+   up from env at boot — see [[metabase-enterprise.advanced-config.file]] for the
+   template-expansion mechanics."
   [creator]
-  {:first_name   (or (:first_name creator) "Workspace")
-   :last_name    (or (:last_name creator) "Admin")
-   :email        (or (:email creator) "workspace@workspace.local")
-   :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
-   :is_superuser true})
+  (when-let [email (:email creator)]
+    {:first_name   (:first_name creator)
+     :last_name    (:last_name creator)
+     :email        email
+     :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
+     :is_superuser true}))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
@@ -49,7 +51,8 @@
   `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
-    (let [wsds (:databases ws)]
+    (let [wsds    (:databases ws)
+          creator (:creator ws)]
       (when (some #(not= :provisioned (:status %)) wsds)
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
@@ -60,12 +63,13 @@
                         {})
             pairs     (for [wsd wsds
                             :let [db (get dbs-by-id (:database_id wsd))]]
-                        [wsd db])]
+                        [wsd db])
+            user      (user-entry creator)]
         {:version 1
-         :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-                   :users     [(user-entry (:creator ws))]
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+         :config  (cond-> {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+                           :workspace {:name      (:name ws)
+                                       :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
+                    user (assoc :users [user]))}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

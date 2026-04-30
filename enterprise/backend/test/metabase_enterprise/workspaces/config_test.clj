@@ -16,7 +16,8 @@
                               :port   5432
                               :user   "admin"
                               :dbname "stitchdata_incoming"}}
-                   :model/Workspace {ws-id :id} {:name "github"}
+                   :model/Workspace {ws-id :id} {:name       "github"
+                                                 :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _
                    {:workspace_id     ws-id
                     :database_id      db-id
@@ -24,10 +25,12 @@
                     :output_schema    "mb_isolation_github"
                     :input_schemas    ["raw_github"]
                     :status           :provisioned}]
-      (let [cfg (config/build-workspace-config ws-id)]
+      (let [cfg       (config/build-workspace-config ws-id)
+            crowberto (mt/fetch-user :crowberto)]
         (testing "outer shape matches config.yml (version + config block)"
           (is (= 1 (:version cfg)))
-          (is (every? #(contains? (:config cfg) %) [:databases :users :workspace])))
+          (is (every? #(contains? (:config cfg) %)
+                      [:databases :users :workspace])))
         (testing "databases entry"
           (is (= 1 (count (-> cfg :config :databases))))
           (let [db (first (-> cfg :config :databases))]
@@ -42,10 +45,10 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "bundles a single default admin user marked as superuser"
-          (is (= [{:first_name   "Workspace"
-                   :last_name    "Admin"
-                   :email        "workspace@workspace.local"
+        (testing "user matches the workspace creator; password is the env placeholder"
+          (is (= [{:first_name   (:first_name crowberto)
+                   :last_name    (:last_name crowberto)
+                   :email        (:email crowberto)
                    :password     "{{env MB_WORKSPACE_USER_PASSWORD}}"
                    :is_superuser true}]
                  (-> cfg :config :users))))
@@ -60,7 +63,8 @@
   (testing "Multiple input schemas are comma-joined in schema-filters-patterns"
     (mt/with-temp [:model/Database {db-id :id}
                    {:name "DW" :engine :postgres :details {:host "h" :port 5432}}
-                   :model/Workspace {ws-id :id} {:name "multi"}
+                   :model/Workspace {ws-id :id} {:name       "multi"
+                                                 :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _
                    {:workspace_id     ws-id
                     :database_id      db-id
@@ -74,7 +78,8 @@
 
 (deftest build-workspace-config-rejects-non-provisioned-test
   (testing "Any non-:provisioned WorkspaceDatabase causes a 409"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Mixed"}
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Mixed"
+                                                 :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _
                    {:workspace_id ws-id :database_id (mt/id)
                     :database_details {} :output_schema "" :input_schemas ["public"]
@@ -84,9 +89,17 @@
            #"not :provisioned"
            (config/build-workspace-config ws-id))))))
 
+(deftest build-workspace-config-omits-user-without-creator-test
+  (testing "When the workspace has no creator, the users section is dropped (no throw)"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Creatorless"}]
+      (let [cfg (config/build-workspace-config ws-id)]
+        (is (some? cfg))
+        (is (not (contains? (:config cfg) :users)))))))
+
 (deftest build-workspace-config-empty-workspace-test
-  (testing "A workspace with no databases still produces the version+config outer shape with a default user"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Empty"}]
+  (testing "A workspace with no databases still produces the version+config outer shape"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
+                                                 :creator_id (mt/user->id :crowberto)}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= 1 (:version cfg)))
         (is (= "Empty" (-> cfg :config :workspace :name)))

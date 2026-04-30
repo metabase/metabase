@@ -18,20 +18,20 @@ import {
 import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
 import type { Workspace, WorkspaceId } from "metabase-types/api";
 
-type ApiKeySectionProps = {
+type AccessKeySectionProps = {
   workspace: Workspace;
 };
 
-export function ApiKeySection({ workspace }: ApiKeySectionProps) {
+export function AccessKeySection({ workspace }: AccessKeySectionProps) {
   return (
     <TitleSection
-      label={t`API key`}
-      description={t`Create an API key to be able to access workspace configuration without a user session.`}
+      label={t`Access key`}
+      description={t`Create an access key to be able to download workspace configuration without a user session.`}
     >
       {workspace.sharing_key == null ? (
-        <CreateApiKeySection workspaceId={workspace.id} />
+        <CreateAccessKeySection workspaceId={workspace.id} />
       ) : (
-        <ManageApiKeySection
+        <ManageAccessKeySection
           workspaceId={workspace.id}
           sharingKey={workspace.sharing_key}
         />
@@ -40,11 +40,11 @@ export function ApiKeySection({ workspace }: ApiKeySectionProps) {
   );
 }
 
-type CreateApiKeySectionProps = {
+type CreateAccessKeySectionProps = {
   workspaceId: WorkspaceId;
 };
 
-function CreateApiKeySection({ workspaceId }: CreateApiKeySectionProps) {
+function CreateAccessKeySection({ workspaceId }: CreateAccessKeySectionProps) {
   const [setSharingKey, { isLoading }] = useSetWorkspaceSharingKeyMutation();
 
   const handleCreate = async () => {
@@ -54,21 +54,21 @@ function CreateApiKeySection({ workspaceId }: CreateApiKeySectionProps) {
   return (
     <Box p="md">
       <Button variant="filled" loading={isLoading} onClick={handleCreate}>
-        {t`Create API key`}
+        {t`Create access key`}
       </Button>
     </Box>
   );
 }
 
-type ManageApiKeySectionProps = {
+type ManageAccessKeySectionProps = {
   workspaceId: WorkspaceId;
   sharingKey: string;
 };
 
-function ManageApiKeySection({
+function ManageAccessKeySection({
   workspaceId,
   sharingKey,
-}: ManageApiKeySectionProps) {
+}: ManageAccessKeySectionProps) {
   const [setSharingKey] = useSetWorkspaceSharingKeyMutation();
   const [deleteSharingKey] = useDeleteWorkspaceSharingKeyMutation();
   const { modalContent, show } = useConfirmation();
@@ -80,8 +80,8 @@ function ManageApiKeySection({
 
   const handleRegenerate = () => {
     show({
-      title: t`Regenerate API key`,
-      message: t`We will replace the existing API key with a new key. You won't be able to recover the old key.`,
+      title: t`Regenerate access key`,
+      message: t`We will replace the existing access key with a new key. You won't be able to recover the old key.`,
       confirmButtonText: t`Regenerate`,
       confirmButtonProps: { variant: "filled", color: "brand" },
       onConfirm: async () => {
@@ -92,9 +92,9 @@ function ManageApiKeySection({
 
   const handleDelete = () => {
     show({
-      title: t`Delete API key`,
-      message: t`You won't be able to recover a deleted API key. You'll have to create a new key.`,
-      confirmButtonText: t`Delete API key`,
+      title: t`Delete access key`,
+      message: t`You won't be able to recover a deleted access key. You'll have to create a new key.`,
+      confirmButtonText: t`Delete access key`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
         await deleteSharingKey(workspaceId).unwrap();
@@ -115,19 +115,19 @@ function ManageApiKeySection({
             <Icon name={clipboard.copied ? "check" : "copy"} />
           </ActionIcon>
         </Tooltip>
-        <Tooltip label={t`Regenerate API key`}>
+        <Tooltip label={t`Regenerate access key`}>
           <ActionIcon
             variant="subtle"
-            aria-label={t`Regenerate API key`}
+            aria-label={t`Regenerate access key`}
             onClick={handleRegenerate}
           >
             <Icon name="pencil" />
           </ActionIcon>
         </Tooltip>
-        <Tooltip label={t`Delete API key`}>
+        <Tooltip label={t`Delete access key`}>
           <ActionIcon
             variant="subtle"
-            aria-label={t`Delete API key`}
+            aria-label={t`Delete access key`}
             onClick={handleDelete}
           >
             <Icon name="trash" />

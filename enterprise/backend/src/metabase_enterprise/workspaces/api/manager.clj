@@ -151,7 +151,9 @@
 ;;; ----------------------------------------- Sharing key endpoints -----------------------------------------------
 
 (api.macros/defendpoint :post "/:id/sharing-key"
-  "Set or rotate the sharing key for a workspace. Returns the new key."
+  "Set or rotate the sharing key for a workspace. The key is a fresh UUID, distinct from
+  the developer instance's admin API key (which is supplied separately at runtime via
+  the `MB_WORKSPACE_API_KEY` env var). Returns the new key."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (ws/get-workspace id))

@@ -6,9 +6,9 @@ import * as Urls from "metabase/utils/urls";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
-import { ApiKeySection } from "./ApiKeySection";
+import { AccessKeySection } from "./AccessKeySection";
 import { DatabaseSection } from "./DatabaseSection";
-import { RemoteSyncSection } from "./RemoteSyncSection";
+import { SetupSection } from "./SetupSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceMoreMenu } from "./WorkspaceMoreMenu";
 
@@ -57,8 +57,8 @@ function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
       />
       <Stack gap="3.25rem">
         <DatabaseSection workspace={workspace} databases={databases} />
-        <RemoteSyncSection />
-        <ApiKeySection workspace={workspace} />
+        <AccessKeySection workspace={workspace} />
+        <SetupSection />
       </Stack>
     </PageContainer>
   );

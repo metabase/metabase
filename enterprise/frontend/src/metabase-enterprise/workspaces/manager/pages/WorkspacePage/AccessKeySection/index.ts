@@ -1,1 +1,1 @@
-export { ApiKeySection } from "./ApiKeySection";
+export { AccessKeySection } from "./AccessKeySection";
