@@ -7,7 +7,6 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.audit-app.core :as audit]
@@ -19,7 +18,11 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons."
+  "Bump when the scoring formula changes in a way that would break historical comparisons.
+
+  Changes to `embedding-model`, `synonym-threshold`, `text-variant`, etc don't need a bump.
+  These parameters are already captured in the fingerprint.
+  Formula versioning is reserved for cases where the actual formulas or components change."
   1)
 
 (def weights
@@ -44,10 +47,12 @@
 
 (def synonym-similarity-threshold
   "Cosine-similarity cutoff for flagging two names as synonyms.
-  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not recall.
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for how this
-  value was chosen."
-  0.90)
+
+  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not
+  recall. Note that we typically will use a STS model which typically produces lower similarity scores.
+
+  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for background."
+  0.80)
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
@@ -345,18 +350,23 @@
   [& parts]
   (str/join "." (map snake parts)))
 
+(defn- snake-keys
+  "Walk maps recursively, snake-casing keyword keys and keyword leaf values to strings.
+  Sequential collections aren't traversed — current callers (`weights`, `embedding-model`) only
+  pass maps. Sorted-map output keeps the JSON serialization stable."
+  [x]
+  (cond
+    (map? x)     (into (sorted-map) (map (fn [[k v]] [(snake k) (snake-keys v)])) x)
+    (keyword? x) (snake x)
+    :else        x))
+
 (defn- parameters-map
-  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
-  String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
-  snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
-  colon. Excludes `formula_version` — that stays top-level as the primary cross-version filter."
-  [{:keys [synonym-threshold embedding-model weights]}]
+  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event."
+  [{:keys [synonym-threshold embedding-model text-variant weights]}]
   (cond-> (sorted-map "synonym_threshold" synonym-threshold
-                      "weights"           (into (sorted-map)
-                                                (map (fn [[k v]] [(snake k) v]))
-                                                weights))
-    embedding-model (assoc "embedding_model_provider" (:provider embedding-model)
-                           "embedding_model_name"     (:model-name embedding-model))))
+                      "weights"           (snake-keys weights))
+    embedding-model (assoc "embedding_model" (snake-keys embedding-model))
+    text-variant    (assoc "text_variant"    (snake text-variant))))
 
 (def ^:private max-error-length
   "Matches the Snowplow schema's `error` maxLength — a pathological exception message
@@ -365,6 +375,14 @@
 
 (defn- truncate-error [s]
   (cond-> s (< max-error-length (count s)) (subs 0 max-error-length)))
+
+(defn- with-score
+  "Attach `:score` to `event` only when it is non-nil.
+  The `data_complexity` Snowplow schema flags `score` as non-nullable but optional, so an
+  uncomputed sub-score (or a rollup that cascaded nil from one) must omit the key entirely
+  rather than emit `\"score\": null`."
+  [event score]
+  (cond-> event (some? score) (assoc :score score)))
 
 (defn- emit-snowplow!
   "Submits Snowplow events for every score, every group aggregation, and the grand total.
@@ -377,23 +395,23 @@
         events (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
                      event (concat (for [[component sub] (:components result)]
                                      ;; leaf component
-                                     (cond-> (assoc base
-                                                    :catalog     catalog
-                                                    :key         (dotted-key (component->group component) component)
-                                                    :score       (:score sub)
-                                                    :measurement (:measurement sub))
+                                     (cond-> (-> base
+                                                 (assoc :catalog     catalog
+                                                        :key         (dotted-key (component->group component) component)
+                                                        :measurement (:measurement sub))
+                                                 (with-score (:score sub)))
                                        (:error sub) (assoc :error (truncate-error (:error sub)))))
                                    (for [[group entries] (group-by #(component->group (key %)) (:components result))]
                                      ;; group total
-                                     (assoc base
-                                            :catalog catalog
-                                            :key     (dotted-key group :total)
-                                            :score   (nil-safe-sum (map (comp :score val) entries))))
+                                     (-> base
+                                         (assoc :catalog catalog
+                                                :key     (dotted-key group :total))
+                                         (with-score (nil-safe-sum (map (comp :score val) entries)))))
                                    ;; grand total
-                                   [(assoc base
-                                           :catalog catalog
-                                           :key     (dotted-key :total)
-                                           :score   (:total result))])]
+                                   [(-> base
+                                        (assoc :catalog catalog
+                                               :key     (dotted-key :total))
+                                        (with-score (:total result)))])]
                  event)]
     ;; No short-circuiting - even if they are failures, attempt the rest.
     (reduce (fn [all-ok? event]
@@ -415,40 +433,40 @@
 
 (defn complexity-scores
   "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs of this
-   Metabase instance. Returns a map of the shape:
+  Metabase instance.
 
-     {:library  {:total n :components {...}}
-      :universe {:total n :components {...}}
-      :metabot  {:total n :components {...}}
-      :meta     {:formula-version 1
-                 :synonym-threshold 0.90
-                 :embedding-model {...}}}
+  Returns a map of the shape:
 
-   Options:
-     `:embedder` — overrides the synonym-axis embedder (defaults to
-        [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
-        synonym scoring.
-     `:metabot-scope` — a `{:verified-only? <bool> :collection-id <nil|Long>}` map describing how
-        the internal Metabot filters Cards. `:metabot` is always scored separately from `:universe`
-        because Metabot/search table visibility (hidden tables, routed databases) already diverges
-        from the raw `:universe` set; the scope only narrows Cards further. The caller owns the
-        scope decision (premium-feature gate + Metabot row lookup) so this namespace stays free of
-        settings/feature/Metabot-row reads."
-  [& {:keys [embedder metabot-scope] :as opts}]
-  ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
-  ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
-  ;;; (name, kind, field-count, measure-names — no fat columns like `result_metadata`),
-  ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
-  ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory
-  ;;; we currently will currently consume (provided we have that memory).
+      {:library  {:total n :components {...}}
+       :universe {:total n :components {...}}
+       :metabot  {:total n :components {...}}
+       :meta     {:formula-version 1
+                  :synonym-threshold 0.80
+                  :embedding-model {:provider ..., :model-name ..., :model-dimensions ...}
+                  :text-variant :names-split}}
+
+  Pure: this fn does not read settings or feature flags. Callers (api / task) resolve the
+  synonym-axis source via [[metabase-enterprise.data-complexity-score.synonym-source]] and pass
+  the result here.
+
+  Options:
+    `:embedder`             — synonym-axis embedder. `nil` (or unset) disables synonym scoring.
+    `:embedding-model-meta` — `{:provider :model-name :model-dimensions}` published into
+                              `:meta.embedding-model`. Pass nil to omit.
+    `:text-variant`         — preprocessing variant published into `:meta.text-variant`. Pass nil
+                              to omit (the search-index path passes nil because its preprocessing
+                              isn't a single named variant).
+    `:metabot-scope`        — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how
+                              the internal Metabot filters Cards."
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope]}]
+  ;;; NOTE: we fully materialize vectors of the relevant entities.
+  ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
+  ;;; by many sub-score functions that each walk the collection, so making this reducible would
+  ;;; re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
+  ;;; currently consume.
   (let [total-timer (u/start-timer)]
     (try
-      (let [embedder       (if (contains? opts :embedder)
-                             embedder
-                             semantic-search/search-index-embedder)
-            model-meta     (when (= embedder semantic-search/search-index-embedder)
-                             (semantic-search/active-embedding-model))
-            {:keys [library universe metabot]}
+      (let [{:keys [library universe metabot]}
             ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
             ;; catalog label `"all"` on the enumerate stage reflects that one pass covers all
@@ -462,7 +480,8 @@
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
                                                :synonym-threshold synonym-similarity-threshold}
-                                        model-meta (assoc :embedding-model model-meta))}]
+                                        embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                                        text-variant         (assoc :text-variant    text-variant))}]
         (log-scores! result)
         (let [published? (time-phase! "publish" "all"
                                       (fn []
