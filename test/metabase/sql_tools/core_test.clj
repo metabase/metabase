@@ -175,7 +175,7 @@
         (is (= :skipped status))
         (is (= :missing-dialect reason))))))
 
-(deftest ^:parallel is-single-select-stmt?-test
+(deftest ^:parallel is-single-stmt-of-type?-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))
@@ -184,20 +184,35 @@
                     (lib/filter (lib/= product-category "Widget")))
           native-query (:query (qp.compile/compile-with-inline-parameters query))]
       (testing "A single SELECT statement returns true and the reconstructed SQL"
-        (are [sql] (=? {:is-single-select? true, :sql string?}
-                       (sql-tools/is-single-select-stmt? driver/*driver* sql))
+        (are [sql] (=? {:is-single-stmt? true, :sql string?}
+                       (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
           native-query
           "SELECT 1"
           "SELECT * FROM table"
           "WITH x AS (SELECT * FROM foo) SELECT * from x"
           "WITH x AS (SELECT a FROM foo), y AS (SELECT b FROM bar), z AS (SELECT c FROM baz) SELECT x.a, y.b, z.c FROM x, y, z")))
-    (testing "All other queries are rejected"
-      (are [sql] (=? {:is-single-select? false}
-                     (sql-tools/is-single-select-stmt? driver/*driver* sql))
+    (testing "All other read queries are rejected"
+      (are [sql] (=? {:is-single-stmt? false}
+                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
         "SELECT ("
         "SELECT 1; SELECT 2"
         "SET ROLE NONE"
         "DROP TABLE table"
         "SET ROLE NONE; DROP TABLE table"
         "SELECT set_config('role', 'none', false); DROP TABLE table"
-        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;"))))
+        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;"))
+    (testing "A single insert, update or delete statement returns true and the reconstructed SQL"
+      (are [sql] (=? {:is-single-stmt? true, :sql string?}
+                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
+        "INSERT INTO table VALUES (1)"
+        "UPDATE table SET column = 1"
+        "DELETE FROM table WHERE id = 1"))
+    (testing "All other write queries are rejected"
+      (are [sql] (=? {:is-single-stmt? false}
+                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
+        "SELECT 1"
+        "INSERT INTO table VALUES (1); SELECT 1"
+        "UPDATE table SET column = 1; SELECT 1"
+        "DELETE FROM table WHERE id = 1; SELECT 1"
+        "SET ROLE NONE; INSERT INTO table VALUES (1)"
+        "SELECT set_config('role', 'none', false); DELETE FROM table WHERE id = 1"))))

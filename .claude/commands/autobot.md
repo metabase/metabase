@@ -53,14 +53,19 @@ If no precheck skill exists for the inner bot, skip this step.
 
 ### 3. Discover context
 
-Run the `/<bot-name>-discover` skill, passing the inner-args as its arguments. For example, if the command is `/fixbot MB-12345`, run `/fixbot-discover MB-12345`.
+Generate a timestamp in `YYYYMMDD-HHMMSS` format (use the current wall-clock time if known; otherwise run `./bin/mage -bot-timestamp` — do NOT use `date` directly). Set:
+
+- `TIMESTAMP=<YYYYMMDD-HHMMSS>`
+- `OUTPUT_DIR=.bot/<BOT_NAME>/<TIMESTAMP>`
+
+Run the `/<bot-name>-discover` skill, passing the inner-args plus `--output-dir <OUTPUT_DIR>`. For example, if the command is `/fixbot MB-12345`, run `/fixbot-discover MB-12345 --output-dir <OUTPUT_DIR>`.
 
 This will:
 - Gather external context (Linear issues, PR descriptions, etc.)
 - Determine the correct app database
-- Write results to `.bot/<bot-name>/discover/result.env`
+- Write results to `<OUTPUT_DIR>/config.env` (per-run, not in any shared location)
 
-After the discover skill completes, read `.bot/<bot-name>/discover/result.env` and extract the `APP_DB` value. If the file doesn't exist or APP_DB is missing, default to `postgres`.
+After the discover skill completes, read `<OUTPUT_DIR>/config.env` and extract the `APP_DB` value. If the file doesn't exist or APP_DB is missing, default to `postgres`.
 
 ### 4. Launch the autobot session
 
@@ -86,4 +91,4 @@ Tell the user:
 - How to attach: `tmux attach -t <session-name>`
 - How to stop: `/autobot-stop <session-name>` (or `/autobot-stop` from inside the session)
 - How to list all sessions: `/autobot-list`
-- How to remove: `/autobot-quit <session-name>`
+- How to remove: `/autobot-kill <session-name>`

@@ -710,13 +710,13 @@
    :arg-schema [:tuple [:string {:name "branch"}] [:string {:name "bot"}]]
    :task (task! (autobot/result! parsed))}
 
-  -autobot-quit
+  -autobot-kill
   {:doc "Tear down and remove an autobot session. No args = remove current session."
-   :examples [["./bin/mage -autobot-quit qabot-master" "Remove named session"]
-              ["./bin/mage -autobot-quit" "Remove current session (from inside an autobot session)"]]
+   :examples [["./bin/mage -autobot-kill qabot-master" "Remove named session"]
+              ["./bin/mage -autobot-kill" "Remove current session (from inside an autobot session)"]]
    :requires [[mage.bot.autobot :as autobot]]
    :arg-schema [:? [:string {:name "name-or-id"}]]
-   :task (task! (autobot/quit! parsed))}
+   :task (task! (autobot/kill! parsed))}
 
   ;;; Shared bot tasks
 

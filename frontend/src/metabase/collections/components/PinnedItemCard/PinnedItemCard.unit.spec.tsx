@@ -48,7 +48,6 @@ const getCollectionItem = ({
   name = "My Item",
   description = "description foo foo foo",
   collection_position = 1,
-  setArchived = jest.fn(),
   setPinned = jest.fn(),
   ...rest
 }: {
@@ -57,7 +56,6 @@ const getCollectionItem = ({
   name?: string;
   description?: string;
   collection_position?: number;
-  setArchived?: (isArchived: boolean) => Promise<void>;
   setPinned?: (isPinned: boolean | number) => void;
 } = {}): CollectionItem & { description: string } => {
   return createMockCollectionItem({
@@ -67,7 +65,6 @@ const getCollectionItem = ({
     name,
     description,
     collection_position,
-    setArchived,
     setPinned,
   }) as CollectionItem & { description: string };
 };

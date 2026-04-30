@@ -1,5 +1,5 @@
 (ns mage.bot.autobot
-  "Unified autobot session management — launch, stop, list, quit."
+  "Unified autobot session management — launch, stop, list, kill."
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
@@ -88,7 +88,7 @@
     (zero? exit)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Self-detection (for running stop/quit from inside a session)
+;; Self-detection (for running stop/kill from inside a session)
 
 (defn- current-worktree-path
   "Return the absolute path of the git worktree the caller is currently in,
@@ -200,7 +200,8 @@
   [{:keys [session-name branch-name branch-ref prompt-file workmux-config display-info]}]
   (let [cfg-path (launch-config-path u/project-root-directory session-name)
         ref      (or branch-ref branch-name)
-        attached? (in-tmux?)]
+        attached? (in-tmux?)
+        bootstrap "workmux-bootstrap"]
     (with-workmux-config! cfg-path workmux-config
       (fn []
         ;; Fetch latest refs
@@ -215,16 +216,46 @@
         (println (c/yellow "Prompt: ") prompt-file)
         (println)
 
-        ;; Synchronous workmux invocation. With --config we don't touch
-        ;; ./.workmux.yaml. With -s (when not already in tmux) workmux owns
-        ;; session creation. workmux returns once the worktree + window are
-        ;; up, so the cfg file is safe to delete in the finally.
-        (apply shell/sh
-               (concat ["workmux" "add" ref
-                        "--config" cfg-path
-                        "--name" session-name
-                        "-P" prompt-file]
-                       (when-not attached? ["-s"])))
+        ;; workmux requires a running tmux server with at least one
+        ;; session before it will create another. `tmux start-server` is
+        ;; a no-op on macOS without a session, so spin up a throwaway
+        ;; detached session if nothing is running yet.
+        (let [created-bootstrap?
+              (when-not attached?
+                (let [{:keys [exit]} (shell/sh* {:quiet? true} "tmux" "has-session")]
+                  (when-not (zero? exit)
+                    (shell/sh* {:quiet? true}
+                               "tmux" "new-session" "-d" "-s" bootstrap)
+                    true)))]
+
+          ;; Synchronous workmux invocation. With --config we don't touch
+          ;; ./.workmux.yaml. When not attached we pass -s (own session)
+          ;; and -b (background — skip switch-client, which fails with no
+          ;; current client). workmux returns once the worktree + window
+          ;; are up, so the cfg file is safe to delete in the finally.
+          (apply shell/sh
+                 (concat ["workmux" "add" ref
+                          "--config" cfg-path
+                          "--name" session-name
+                          "-P" prompt-file]
+                         (when-not attached? ["-s" "-b"])))
+
+          ;; If we had to spin up the bootstrap session and the real
+          ;; autobot session is now live, clean up the bootstrap so it
+          ;; doesn't clutter `tmux ls`. Only kill it when at least one
+          ;; non-bootstrap session exists, so we don't tear down the
+          ;; whole tmux server on a partial-failure path.
+          (when created-bootstrap?
+            (let [{:keys [exit out]}
+                  (shell/sh* {:quiet? true}
+                             "tmux" "list-sessions" "-F" "#{session_name}")
+                  others (when (zero? exit)
+                           (->> (str/split-lines (or out ""))
+                                (remove #(or (str/blank? %) (= % bootstrap)))
+                                seq))]
+              (when others
+                (shell/sh* {:quiet? true}
+                           "tmux" "kill-session" "-t" bootstrap)))))
 
         (when-not attached?
           (println)
@@ -504,7 +535,7 @@
     (println (c/bold (c/green "Session stopped: ") (c/cyan session)))
     (println (c/yellow "Worktree preserved. Use /autobot to restart."))))
 
-(defn quit!
+(defn kill!
   "Tear down and remove a session.
    Works with a session name argument, or detects current session if no args."
   [{:keys [arguments]}]

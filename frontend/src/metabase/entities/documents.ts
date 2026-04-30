@@ -70,13 +70,6 @@ export const Documents = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }: Document, archived: boolean) =>
-      Documents.actions.update(
-        { id },
-        { archived },
-        undo({}, t`document`, archived ? t`trashed` : t`restored`),
-      ),
-
     setCollection: (
       { id }: Document,
       collection: Pick<Collection, "type" | "id">,
