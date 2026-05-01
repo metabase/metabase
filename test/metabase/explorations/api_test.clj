@@ -442,6 +442,37 @@
         (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
           (is (= 0.42 (:interestingness_score s))))))))
 
+(deftest exploration-get-includes-interestingness-on-queries-test
+  (testing "GET /:id hydrates user_interestingness and interestingness_score on each nested query"
+    (mt/with-temp [:model/User u {:email "get-score@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "get-score"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            eid (:id resp)
+            qid (-> resp :threads first :queries first :id)
+            fetch-query (fn []
+                          (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+                              :threads first :queries first))]
+        (testing "fresh query: score nil (no result row), user_interestingness nil"
+          (let [q (fetch-query)]
+            (is (contains? q :interestingness_score))
+            (is (nil? (:interestingness_score q)))
+            (is (contains? q :user_interestingness))
+            (is (nil? (:user_interestingness q)))))
+        (testing "after a result row is inserted, score surfaces via hydration"
+          (t2/insert! :model/ExplorationQueryResult
+                      {:exploration_query_id  qid
+                       :result_data           (byte-array [0])
+                       :interestingness_score 0.42})
+          (is (= 0.42 (:interestingness_score (fetch-query)))))
+        (testing "user_interestingness on the query column round-trips through GET /:id"
+          (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
+                                {:user_interestingness 1})
+          (is (= 1 (:user_interestingness (fetch-query)))))))))
+
 (deftest exploration-list-queries-permissions-test
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"
     (mt/with-temp [:model/User owner {:email "lq-owner@example.com"}

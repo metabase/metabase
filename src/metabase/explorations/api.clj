@@ -163,23 +163,11 @@
    [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type  {:optional true} [:maybe :string]]])
 
-(mr/def ::HydratedThread
-  "Schema for an Exploration thread with hydrated selections and queries."
-  [:map
-   [:id                    ms/PositiveInt]
-   [:exploration_id        ms/PositiveInt]
-   [:prompt                {:optional true} [:maybe :string]]
-   [:position              ms/IntGreaterThanOrEqualToZero]
-   [:started_at            {:optional true} [:maybe :any]]
-   [:metrics               {:optional true} [:maybe [:sequential :map]]]
-   [:dimensions            {:optional true} [:maybe [:sequential :map]]]
-   [:timelines             {:optional true} [:maybe [:sequential :map]]]
-   [:queries               {:optional true} [:maybe [:sequential :map]]]])
-
 (mr/def ::ExplorationQuerySummary
-  "Schema for a row from `GET /:id/queries`. Result blob and `dataset_query` are excluded;
-   `interestingness_score` is left-joined from `exploration_query_result` and may be nil
-   for pending or errored queries."
+  "Schema for a query row in API responses. The result blob and `dataset_query` aren't
+   asserted here; `interestingness_score` is left-joined (in `/:id/queries`) or
+   batched-hydrated (in `/:id`) from `exploration_query_result` and may be nil for pending
+   or errored queries."
   [:map
    [:id                    ms/PositiveInt]
    [:exploration_thread_id ms/PositiveInt]
@@ -195,6 +183,19 @@
    [:user_interestingness  {:optional true} [:maybe [:enum 0 1 2]]]
    [:entity_id             {:optional true} [:maybe :string]]
    [:interestingness_score {:optional true} [:maybe number?]]])
+
+(mr/def ::HydratedThread
+  "Schema for an Exploration thread with hydrated selections and queries."
+  [:map
+   [:id                    ms/PositiveInt]
+   [:exploration_id        ms/PositiveInt]
+   [:prompt                {:optional true} [:maybe :string]]
+   [:position              ms/IntGreaterThanOrEqualToZero]
+   [:started_at            {:optional true} [:maybe :any]]
+   [:metrics               {:optional true} [:maybe [:sequential :map]]]
+   [:dimensions            {:optional true} [:maybe [:sequential :map]]]
+   [:timelines             {:optional true} [:maybe [:sequential :map]]]
+   [:queries               {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]])
 
 (mr/def ::ExplorationQueryStreamResponse
   "Schema for `GET /query/:id`. On success the body is a streamed dataset (api/csv/json/xlsx),
