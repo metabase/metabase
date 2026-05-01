@@ -17,16 +17,11 @@
   - `:projected` — the per-participant shadow of a `:mixed` row: for each
                   distinct owner involved, emit a row attributing the
                   multi-source clause to that owner. Not a card→table
-                  back-projection.
-
-  Queries are treated as opaque values; all introspection goes through the
-  public `metabase.lib` API (see `.clj-kondo/config/modules/config.edn` for the
-  allow-listed lib namespaces)."
+                  back-projection."
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -39,8 +34,8 @@
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)
       json/encode))
 
-(defn select-root-owner
-  "Return the stage-0 source owner for a normalized MBQL query, or nil if it should be skipped."
+(defn query-source-table-or-card
+  "Returns the source of a query (table or card ID), or `nil` if none."
   [query]
   (when (and query (not (lib/any-native-stage? query)))
     (or (when-let [table-id (lib/primary-source-table-id query)]
@@ -49,10 +44,6 @@
         (when-let [card-id (lib/primary-source-card-id query)]
           {:source-type :card
            :source-id   card-id}))))
-
-(defn- stage-default-owner
-  [query _stage-number]
-  (select-root-owner query))
 
 (defn- owner-from-metadata
   [root-owner metadata]
@@ -73,44 +64,48 @@
     :else
     nil))
 
-(defn- owner-for-field-ref
-  [query stage-number field-ref]
-  (let [root-owner      (stage-default-owner query stage-number)
-        visible-columns (try
-                          (lib/visible-columns query stage-number)
-                          (catch Throwable e
-                            (log/debugf e "usage-metadata: visible-columns failed (stage %s)" stage-number)
-                            nil))
-        matched         (try
-                          (when (seq visible-columns)
-                            (lib/find-matching-column field-ref visible-columns))
-                          (catch Throwable e
-                            (log/debugf e "usage-metadata: find-matching-column failed for %s (stage %s)"
-                                        (pr-str field-ref) stage-number)
-                            nil))]
-    (or (owner-from-metadata root-owner matched)
-        root-owner)))
+(defn- column-metadata?
+  [x]
+  (and (map? x) (= :metadata/column (:lib/type x))))
 
-(defn- clause-field-refs
+(defn- participants-from-parts
+  [root-owner parts]
+  (letfn [(walk [node]
+            (cond
+              (column-metadata? node)
+              (when-let [field-id (:id node)]
+                (when (pos-int? field-id)
+                  (when-let [owner (owner-from-metadata root-owner node)]
+                    [{:field-id field-id :owner owner}])))
+
+              (and (map? node) (= :mbql/expression-parts (:lib/type node)))
+              (mapcat walk (:args node))
+
+              :else
+              nil))]
+    (-> (walk parts) distinct vec)))
+
+(defn- expression-parts-safe
   [query stage-number clause]
-  (->> (lib.util.match/match-many clause [:field _opts _id-or-name] &match)
-       (keep (fn [field-ref]
-               (when-let [field-id (lib/field-ref-id field-ref)]
-                 (when-let [owner (owner-for-field-ref query stage-number field-ref)]
-                   {:field-id field-id :owner owner}))))
-       distinct
-       vec))
+  (try
+    (lib/expression-parts query stage-number clause)
+    (catch Throwable e
+      (log/debugf e "usage-metadata: expression-parts failed (stage %s)" stage-number)
+      nil)))
 
-(defn- atomic-filter-clauses
-  [clause]
-  (if (lib/clause-of-type? clause :and)
-    (let [[_tag _opts & args] clause]
-      (into [] (mapcat atomic-filter-clauses) args))
-    [clause]))
+(defn- breakout-column-safe
+  [query stage-number breakout]
+  (try
+    (lib/breakout-column query stage-number breakout)
+    (catch Throwable e
+      (log/debugf e "usage-metadata: breakout-column failed (stage %s)" stage-number)
+      nil)))
 
 (defn- segment-facts-for-clause
   [query stage-number clause]
-  (let [field-refs (clause-field-refs query stage-number clause)
+  (let [root-owner (query-source-table-or-card query)
+        parts      (expression-parts-safe query stage-number clause)
+        field-refs (participants-from-parts root-owner parts)
         owners     (set (map :owner field-refs))
         predicate  (canonicalize-for-storage clause)]
     (cond
@@ -143,23 +138,17 @@
 
 (defn- segment-facts-for-stage
   [query stage-number]
-  (into [] (comp (mapcat atomic-filter-clauses)
-                 (mapcat (partial segment-facts-for-clause query stage-number)))
+  (into []
+        (mapcat (partial segment-facts-for-clause query stage-number))
         (or (lib/filters query stage-number) [])))
-
-(defn- temporal-breakout
-  [breakout]
-  (when-let [temporal-unit (lib/raw-temporal-bucket breakout)]
-    (when-let [field-id (some-> breakout lib/all-field-ids not-empty first)]
-      {:temporal-field-id field-id
-       :temporal-unit     temporal-unit})))
 
 (defn- metric-bases
   [query stage-number aggregation]
-  (let [field-refs  (clause-field-refs query stage-number aggregation)
-        owners      (set (map :owner field-refs))
-        root-owner  (select-root-owner query)
-        agg-type    (first aggregation)]
+  (let [root-owner (query-source-table-or-card query)
+        parts      (expression-parts-safe query stage-number aggregation)
+        agg-type   (:operator parts)
+        field-refs (participants-from-parts root-owner parts)
+        owners     (set (map :owner field-refs))]
     (cond
       (empty? field-refs)
       [{:source-type     (:source-type root-owner)
@@ -191,9 +180,19 @@
                       :agg-field-id   field-id))
              field-refs))))))
 
+(defn- temporal-breakout-from-column
+  [breakout-col]
+  (when-let [unit (lib/raw-temporal-bucket breakout-col)]
+    (when-let [field-id (:id breakout-col)]
+      (when (pos-int? field-id)
+        {:temporal-field-id field-id
+         :temporal-unit     unit}))))
+
 (defn- metric-facts-for-stage
   [query stage-number]
-  (let [temporal-breakouts (into [] (keep temporal-breakout) (or (lib/breakouts query stage-number) []))]
+  (let [breakout-cols      (mapv (partial breakout-column-safe query stage-number)
+                                 (or (lib/breakouts query stage-number) []))
+        temporal-breakouts (into [] (keep temporal-breakout-from-column) breakout-cols)]
     (into []
           (mapcat (fn [aggregation]
                     (for [base     (metric-bases query stage-number aggregation)
@@ -204,39 +203,28 @@
                       (merge base temporal))))
           (or (lib/aggregations query stage-number) []))))
 
-(defn- breakout-field-id
-  [breakout]
-  (or (when (lib/clause-of-type? breakout :field)
-        (lib/field-ref-id breakout))
-      (some-> breakout lib/all-field-ids not-empty first)))
-
-(defn- breakout-owner
-  [query stage-number breakout]
-  (or (when (lib/clause-of-type? breakout :field)
-        (owner-for-field-ref query stage-number breakout))
-      (some-> breakout
-              (clause-field-refs query stage-number)
-              first
-              :owner)))
+(defn- serialize-binning
+  [binning]
+  (canonicalize-for-storage
+   (cond-> {:strategy (:strategy binning)}
+     (:num-bins binning)  (assoc :num-bins (:num-bins binning))
+     (:bin-width binning) (assoc :bin-width (:bin-width binning)))))
 
 (defn- dimension-facts-for-stage
   [query stage-number]
-  (into []
-        (keep (fn [breakout]
-                (when-let [field-id (breakout-field-id breakout)]
-                  (when-let [owner (breakout-owner query stage-number breakout)]
-                    (let [binning (lib/binning breakout)
-                          serialized-binning (when binning
-                                               (canonicalize-for-storage
-                                                (cond-> {:strategy (:strategy binning)}
-                                                  (:num-bins binning) (assoc :num-bins (:num-bins binning))
-                                                  (:bin-width binning) (assoc :bin-width (:bin-width binning)))))]
-                      (assoc owner
-                             :ownership-mode :direct
-                             :field-id       field-id
-                             :temporal-unit  (lib/raw-temporal-bucket breakout)
-                             :binning        serialized-binning))))))
-        (or (lib/breakouts query stage-number) [])))
+  (let [root-owner (query-source-table-or-card query)]
+    (into []
+          (keep (fn [breakout]
+                  (when-let [col (breakout-column-safe query stage-number breakout)]
+                    (when-let [field-id (:id col)]
+                      (when (pos-int? field-id)
+                        (when-let [owner (owner-from-metadata root-owner col)]
+                          (assoc owner
+                                 :ownership-mode :direct
+                                 :field-id       field-id
+                                 :temporal-unit  (lib/raw-temporal-bucket col)
+                                 :binning        (some-> (lib/binning col) serialize-binning))))))))
+          (or (lib/breakouts query stage-number) []))))
 
 (defn extract-usage-facts
   "Extract fact-level usage tuples from a normalized MBQL query."

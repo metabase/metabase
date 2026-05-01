@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
@@ -75,17 +74,13 @@
                 cards)])))
 
 (defn- predicate-field-ids
-  "Return distinct field ids referenced in a decoded predicate (handles both MBQL4 and MBQL5 field shapes)."
+  "Return distinct field ids referenced in a decoded predicate."
   [predicate]
   (when predicate
     (try
-      (->> (lib.util.match/match-many predicate
-             [(:or "field" :field) _opts (id :guard pos-int?)] id
-             [(:or "field" :field) (id :guard pos-int?) _opts] id)
-           distinct
-           vec)
+      (vec (lib/all-field-ids predicate))
       (catch Throwable e
-        (log/debug e "usage-metadata: predicate-field-ids match failed")
+        (log/debug e "usage-metadata: predicate-field-ids failed")
         []))))
 
 ;; No SQL LIMIT here: callers filter saved-signature collisions in Clojure, so a SQL LIMIT can under-deliver.
