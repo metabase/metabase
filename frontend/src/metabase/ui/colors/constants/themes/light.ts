@@ -94,5 +94,6 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "upsell-primary": baseColors.ocean[70],
     "upsell-secondary": baseColors.ocean[20],
     "upsell-gem": "#00d4ff",
+    interesting: baseColors.mango[40],
   },
 };

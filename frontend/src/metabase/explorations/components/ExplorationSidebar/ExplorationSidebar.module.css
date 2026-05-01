@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.25rem 0.75rem;
   border-radius: var(--default-border-radius);
   cursor: pointer;
   color: inherit;
@@ -24,4 +24,9 @@
 .queryRowSelected {
   background: var(--mb-color-background-brand);
   color: var(--mb-color-brand);
+}
+
+.interestingnessIndicator {
+  border-radius: 50%;
+  flex-shrink: 0;
 }

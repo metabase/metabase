@@ -2,6 +2,7 @@ import type { CardId } from "./card";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { DatasetQuery } from "./query";
+import type { SegmentId } from "./segment";
 import type { TimelineId } from "./timeline";
 import type { UserId } from "./user";
 
@@ -99,6 +100,7 @@ export interface ExplorationQuery {
   entity_id: string;
   interestingness_score: number | null;
   dataset_query: DatasetQuery;
+  segment_id: SegmentId | null;
 }
 
 export interface ExplorationThread {

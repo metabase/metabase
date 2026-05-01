@@ -94,5 +94,6 @@ export const METABASE_DARK_THEME: MetabaseThemeV2 = {
     "upsell-primary": baseColors.ocean[30],
     "upsell-secondary": baseColors.ocean[80],
     "upsell-gem": "#00d4ff",
+    interesting: baseColors.mango[40],
   },
 };
