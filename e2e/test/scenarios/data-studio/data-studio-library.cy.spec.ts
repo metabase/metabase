@@ -226,7 +226,9 @@ describe("scenarios > data studio > library", () => {
       H.modal().button("Publish this table").click();
 
       cy.log("Navigate back to Library via breadcrumbs");
-      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
+      H.DataStudio.breadcrumbs()
+        .findByRole("link", { name: "Library" })
+        .click();
 
       cy.log("Verify Data section shows the table (empty state hidden)");
       H.DataStudio.Library.tableItem("Orders").should("be.visible");

@@ -57,7 +57,6 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
     <Box
       onClick={(event) => {
         event.stopPropagation();
-        event.preventDefault();
       }}
     >
       <Menu withinPortal>

@@ -410,12 +410,16 @@ function LibraryPageContent() {
   // Initialize browseExpanded from defaultExpanded once collections are loaded,
   // so we stop falling through to a recalculated defaultExpanded on every render.
   useEffect(() => {
-    if (browseExpanded === null && Object.keys(defaultExpanded).length > 0) {
+    if (
+      browseExpanded === null &&
+      !isLoading &&
+      Object.keys(defaultExpanded).length > 0
+    ) {
       setBrowseExpanded(defaultExpanded);
     }
-  }, [browseExpanded, defaultExpanded]);
+  }, [browseExpanded, defaultExpanded, isLoading]);
 
-  const expanded = isSearchActive ? true : (browseExpanded ?? {});
+  const expanded = isSearchActive ? true : (browseExpanded ?? defaultExpanded);
   const onExpandedChange = useCallback(
     (updater: ExpandedState | ((old: ExpandedState) => ExpandedState)) => {
       if (!isSearchActive) {

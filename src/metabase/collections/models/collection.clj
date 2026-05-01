@@ -1181,13 +1181,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses]
-  {:select [:id :name :description]
+  {:select [:id :name :description :type]
    :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (t2/select [:model/Collection :id :name :description]
+  (set (t2/select [:model/Collection :id :name :description :type]
                   {:where (apply effective-children-where-clause
                                  collection
                                  (t2/table-name :model/Collection)
