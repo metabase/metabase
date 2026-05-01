@@ -6,6 +6,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_SCHEMA_VIEWER,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
@@ -75,9 +76,9 @@ export function getDataStudioRoutes(
             component={DependencyDiagnosticsUpsellPage}
           />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled ? (
+        {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
           <Route path="schema-viewer">
-            {PLUGIN_DEPENDENCIES.getDataStudioSchemaViewerRoutes()}
+            {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
           </Route>
         ) : (
           <Route path="schema-viewer" component={SchemaViewerUpsellPage} />

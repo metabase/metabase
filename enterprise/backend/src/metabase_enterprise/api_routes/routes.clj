@@ -22,6 +22,7 @@
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
+   [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot.api]
@@ -111,6 +112,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :dependencies)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)

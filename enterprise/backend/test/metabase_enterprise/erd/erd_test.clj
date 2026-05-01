@@ -1,4 +1,4 @@
-(ns metabase-enterprise.dependencies.erd-test
+(ns metabase-enterprise.erd.erd-test
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]
@@ -29,7 +29,7 @@
   "Make an ERD endpoint request. `opts` is a map with optional keys
    :table-ids (coll), :schema."
   [opts]
-  (apply mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+  (apply mt/user-http-request :rasta :get 200 "ee/erd"
          :database-id (mt/id)
          (mapcat (fn [[k v]]
                    (if (= k :table-ids)
@@ -118,7 +118,7 @@
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/FK
                                      :fk_target_field_id b-pk-id}]
-        (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response      (mt/user-http-request :rasta :get 200 "ee/erd"
                                                   :database-id db-id
                                                   :table-ids a-id)
               nodes-by-name (into {} (map (juxt :name identity)) (:nodes response))
@@ -152,7 +152,7 @@
                                                 :database_type "INTEGER" :base_type :type/Integer
                                                 :semantic_type :type/FK
                                                 :fk_target_field_id b-pk-id}]
-        (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response      (mt/user-http-request :rasta :get 200 "ee/erd"
                                                   :database-id db-id
                                                   :table-ids a-id
                                                   :schema "public")
@@ -185,7 +185,7 @@
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/FK
                                      :fk_target_field_id b-pk-id}]
-        (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response      (mt/user-http-request :rasta :get 200 "ee/erd"
                                                   :database-id db-id
                                                   :table-ids a-id
                                                   :table-ids b-id
@@ -207,7 +207,7 @@
                                                    :database_type "INTEGER" :base_type :type/Integer
                                                    :semantic_type :type/FK
                                                    :fk_target_field_id pk-id}]
-        (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                              :database-id db-id
                                              :table-ids tid)]
           (is (= {:categories [:categories]}
@@ -235,7 +235,7 @@
                      :model/Table _        {:db_id db-id :name "p1" :schema "public"}
                      :model/Table _        {:db_id db-id :name "p2" :schema "public"}
                      :model/Table {x :id}  {:db_id db-id :name "x"  :schema "other"}]
-        (let [response   (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response   (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id
                                                :schema "public"
                                                :table-ids x)
@@ -249,7 +249,7 @@
                      :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
                      :model/Table _ {:db_id db-id :name "empty_schema" :schema ""}
                      :model/Table _ {:db_id db-id :name "other_schema" :schema "other"}]
-        (let [response   (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response   (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id)
               node-names (set (map :name (:nodes response)))]
           (is (= #{"nil_schema" "empty_schema" "other_schema"} node-names)))))
@@ -259,7 +259,7 @@
                      :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
                      :model/Table _ {:db_id db-id :name "empty_schema" :schema ""}
                      :model/Table _ {:db_id db-id :name "other_schema" :schema "other"}]
-        (let [response   (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response   (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id
                                                :schema "")
               node-names (set (map :name (:nodes response)))]
@@ -272,7 +272,7 @@
                      :model/Table _ {:db_id db-a-id :name "local" :schema "PUBLIC"}
                      :model/Database {db-b-id :id} {}
                      :model/Table {other-table-id :id} {:db_id db-b-id :name "other" :schema "PUBLIC"}]
-        (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                              :database-id db-a-id
                                              :table-ids other-table-id)]
           (is (empty? (:nodes response)))
@@ -293,7 +293,7 @@
                                      :visibility_type "hidden"}
                      :model/Table _ {:db_id db-id :name "hidden_table" :schema "PUBLIC"
                                      :visibility_type "hidden"}]
-        (let [response    (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response    (mt/user-http-request :rasta :get 200 "ee/erd"
                                                 :database-id db-id
                                                 :schema "PUBLIC")
               node-names  (set (map :name (:nodes response)))
@@ -324,7 +324,7 @@
                                                                :database_type "INTEGER" :base_type :type/Integer
                                                                :semantic_type :type/FK
                                                                :fk_target_field_id sensitive-target-field-id}]
-        (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+        (let [response      (mt/user-http-request :rasta :get 200 "ee/erd"
                                                   :database-id db-id
                                                   :schema "PUBLIC")
               nodes-by-name (into {} (map (juxt :name identity)) (:nodes response))
@@ -357,7 +357,7 @@
                                                         :fk_target_field_id target-pk-id}]
           (perms/add-user-to-group! (mt/user->id :rasta) gid)
           (perms/grant-collection-read-permissions! gid coll-id)
-          (let [response      (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+          (let [response      (mt/user-http-request :rasta :get 200 "ee/erd"
                                                     :database-id db-id
                                                     :schema "public")
                 nodes-by-name (into {} (map (juxt :name identity)) (:nodes response))
@@ -372,12 +372,12 @@
 (deftest erd-endpoint-guard-rails-test
   (testing "without :dependencies feature returns 402"
     (mt/with-premium-features #{}
-      (mt/user-http-request :rasta :get 402 "ee/dependencies/erd"
+      (mt/user-http-request :rasta :get 402 "ee/erd"
                             :database-id (mt/id))))
 
   (mt/with-premium-features #{:dependencies}
     (testing "non-existent database returns 404"
-      (mt/user-http-request :rasta :get 404 "ee/dependencies/erd"
+      (mt/user-http-request :rasta :get 404 "ee/erd"
                             :database-id Integer/MAX_VALUE))))
 
 ;;; ---------------------------------------- Permission graph tests ----------------------------------------
@@ -394,7 +394,7 @@
           (perms/add-user-to-group! (mt/user->id :rasta) gid)
           ;; Grant orders only — products is unreachable
           (grant-table-read! gid (mt/id :orders))
-          (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+          (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id (mt/id)
                                                :table-ids (mt/id :orders)
                                                :table-ids (mt/id :products))]
@@ -421,7 +421,7 @@
           (grant-table-read! gid (mt/id :reviews))
           (grant-table-read! gid (mt/id :people))
           ;; products is NOT granted — it's the "intermediate" table
-          (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+          (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id (mt/id)
                                                :table-ids (mt/id :orders))]
             (testing "orders reaches people (readable) but not products (unreadable)"
@@ -443,7 +443,7 @@
           (data-perms/set-database-permission! gid db-id :perms/view-data :blocked)
           (data-perms/set-database-permission! gid db-id :perms/create-queries :no)
           (data-perms/set-table-permission! gid table-id :perms/manage-table-metadata :yes)
-          (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+          (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id
                                                :table-ids table-id)]
             (is (= {:metadata_only []}

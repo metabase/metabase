@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { FixedSizeIcon, Group, Text, UnstyledButton } from "metabase/ui";
+import { GraphInfoPanel } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphInfoPanel";
 import type {
   Database,
   DependencyId,
@@ -11,7 +12,6 @@ import type {
   TableDependencyNodeData,
 } from "metabase-types/api";
 
-import { GraphInfoPanel } from "../../DependencyGraph/GraphInfoPanel";
 import S from "../SchemaViewer.module.css";
 import { useSchemaViewerContext } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";

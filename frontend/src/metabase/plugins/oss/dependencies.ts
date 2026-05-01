@@ -58,7 +58,6 @@ type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
   getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
-  getDataStudioSchemaViewerRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -83,7 +82,6 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
   getDataStudioDependencyDiagnosticsRoutes: () => null,
-  getDataStudioSchemaViewerRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

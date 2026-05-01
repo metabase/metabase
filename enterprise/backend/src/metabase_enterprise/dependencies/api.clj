@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.erd :as erd]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
@@ -1195,19 +1194,6 @@
   `complete` is true when there are no stale or outdated entities awaiting processing."
   [_route-params _query-params]
   {:complete (not (deps.dependency-status/has-stale-or-outdated?))})
-
-;;; -------------------------------------------------- ERD Endpoint --------------------------------------------------
-
-(api.macros/defendpoint :get "/erd" :- ::erd/erd-response
-  "Return an Entity Relationship Diagram (ERD) for tables and their FK relationships.
-  When `table-ids` is provided, those tables are the focal points (and must belong to `database-id`).
-  When only `database-id` is provided, auto-selects the most connected tables."
-  [_route-params
-   {:keys [database-id table-ids schema] :as query-params} :- ::erd/erd-request]
-  (erd/erd {:database-id database-id
-            :table-ids        table-ids
-            :schema           schema
-            :schema-selected? (contains? query-params :schema)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

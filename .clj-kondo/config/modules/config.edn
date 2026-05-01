@@ -2939,6 +2939,17 @@
            settings
            util}}
 
+  enterprise/erd
+  {:team "Gadget"
+   :api  #{metabase-enterprise.erd.api
+           metabase-enterprise.erd.core}
+   :uses #{api
+           models
+           util}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table}}
+
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}

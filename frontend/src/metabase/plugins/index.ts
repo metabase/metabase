@@ -108,6 +108,7 @@ export {
   type SourceReplacementModalProps,
 } from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
+export { PLUGIN_SCHEMA_VIEWER } from "./oss/schema-viewer";
 export {
   PLUGIN_SEMANTIC_SEARCH,
   type SearchSettingsWidgetProps,
@@ -185,6 +186,7 @@ import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
+import { reinitialize as reinitializeSchemaViewer } from "./oss/schema-viewer";
 import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
@@ -227,6 +229,7 @@ export function reinitialize() {
   reinitializeRemoteSync();
   reinitializeReplacement();
   reinitializeResourceDownloads();
+  reinitializeSchemaViewer();
   reinitializeSecurityCenter();
   reinitializeSemanticSearch();
   reinitializeSettings();

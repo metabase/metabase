@@ -7,7 +7,7 @@ export const erdApi = EnterpriseApi.injectEndpoints({
     getErd: builder.query<ErdResponse, GetErdRequest>({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/dependencies/erd",
+        url: "/api/ee/erd",
         params,
       }),
     }),

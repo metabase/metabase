@@ -34,9 +34,7 @@ export function useRedirectToLastDatabase({
     namespace: "schema_viewer",
     key: "last_database",
   });
-  // The `schema_viewer` namespace in UserKeyValue unions two value shapes
-  // (per-context table-ids and the last-opened DB record under "last_database")
-  // — narrow to the shape this branch cares about.
+
   const lastDatabase =
     lastDatabaseRaw != null &&
     typeof lastDatabaseRaw === "object" &&
