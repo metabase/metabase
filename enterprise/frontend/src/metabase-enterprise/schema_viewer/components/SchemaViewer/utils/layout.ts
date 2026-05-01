@@ -34,12 +34,24 @@ type OccupiedBox = {
   bottom: number;
 };
 
-type PlacementState = {
-  columnsByX: Map<number, OccupiedBox[]>;
-  dimensionsById: Map<string, NodeDimensions>;
-  maxRight: number;
+type OccupiedColumn = {
+  left: number;
+  right: number;
+  boxes: OccupiedBox[];
 };
 
+type PlacementState = {
+  columns: OccupiedColumn[];
+  columnsByX: Map<number, OccupiedColumn>;
+  dimensionsById: Map<string, NodeDimensions>;
+  maxRight: number;
+  maxColumnWidth: number;
+};
+
+/**
+ * Runs a full Dagre pass and converts center-based Dagre coordinates into
+ * React Flow's top-left node positions.
+ */
 function getNodesWithPositions(
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
@@ -104,8 +116,15 @@ function mergeWithExistingPositions(
     return null;
   }
 
-  const currentById = new Map(current.map((n) => [n.id, n]));
-  const incomingIds = new Set(incoming.map((n) => n.id));
+  const currentById = new Map<string, SchemaViewerFlowNode>();
+  for (const node of current) {
+    currentById.set(node.id, node);
+  }
+
+  const incomingIds = new Set<string>();
+  for (const node of incoming) {
+    incomingIds.add(node.id);
+  }
 
   // If any existing node was removed, this isn't a pure add — fall back.
   if (current.some((n) => !incomingIds.has(n.id))) {
@@ -116,6 +135,7 @@ function mergeWithExistingPositions(
   // tables that have been placed in the iteration below).
   const placedById = new Map<string, SchemaViewerFlowNode>();
   const placementState = createPlacementState(incoming);
+  const newNodes: SchemaViewerFlowNode[] = [];
   for (const node of incoming) {
     const existing = currentById.get(node.id);
     if (existing != null) {
@@ -127,13 +147,19 @@ function mergeWithExistingPositions(
       };
       placedById.set(node.id, positionedNode);
       registerPlacedNode(positionedNode, placementState);
+    } else {
+      newNodes.push(node);
     }
+  }
+
+  if (newNodes.length === 0) {
+    return incoming.map((n) => placedById.get(n.id)!);
   }
 
   // Remaining = new tables still to position.
   const adjacency = buildAdjacency(edges);
   const remaining = placeNodesByAdjacency(
-    incoming.filter((n) => !currentById.has(n.id)),
+    newNodes,
     placedById,
     adjacency,
     placementState,
@@ -182,7 +208,7 @@ function findNonCollidingPosition(
   const baseY = neighbor.position.y;
 
   const fits = (x: number, y: number) =>
-    !collidesWithAny(x, y, width, height, placementState.columnsByX);
+    !collidesWithAny(x, y, width, height, placementState);
 
   // Try increasing Y offsets, checking both columns at each step. Within a
   // given Y step, preferred side is checked before alternate. For i > 0 we
@@ -217,26 +243,36 @@ function findNonCollidingPosition(
   return { x: placementState.maxRight + DAGRE_RANK_SEP, y: baseY };
 }
 
+/**
+ * Tests a candidate box against nearby occupied columns, using the sorted
+ * column index to skip boxes that cannot overlap horizontally.
+ */
 function collidesWithAny(
   x: number,
   y: number,
   width: number,
   height: number,
-  columnsByX: Map<number, OccupiedBox[]>,
+  placementState: PlacementState,
 ): boolean {
   const left = x;
   const right = x + width;
   const top = y;
   const bottom = y + height;
+  const { columns, maxColumnWidth } = placementState;
+  const firstColumn = getFirstColumnAtOrAfter(
+    columns,
+    left - maxColumnWidth - COLLISION_PADDING,
+  );
 
-  for (const [columnX, boxes] of columnsByX) {
-    if (
-      left >= columnX + NODE_WIDTH + COLLISION_PADDING ||
-      right + COLLISION_PADDING <= columnX
-    ) {
+  for (let i = firstColumn; i < columns.length; i++) {
+    const column = columns[i];
+    if (column.left >= right + COLLISION_PADDING) {
+      break;
+    }
+    if (left >= column.right + COLLISION_PADDING) {
       continue;
     }
-    for (const box of boxes) {
+    for (const box of column.boxes) {
       if (
         left < box.right + COLLISION_PADDING &&
         right + COLLISION_PADDING > box.left &&
@@ -250,6 +286,10 @@ function collidesWithAny(
   return false;
 }
 
+/**
+ * Reads numeric dimensions that React Flow stores on node style; ignores
+ * non-numeric style values so callers can safely fall back.
+ */
 function getStyleDimension(
   node: SchemaViewerFlowNode,
   key: "width" | "height",
@@ -258,6 +298,10 @@ function getStyleDimension(
   return typeof value === "number" ? value : null;
 }
 
+/**
+ * Resolves dimensions from the placement cache first, falling back to style
+ * dimensions and then default table-card dimensions.
+ */
 function getNodeDimensions(
   node: SchemaViewerFlowNode,
   dimensionsById?: Map<string, NodeDimensions>,
@@ -270,17 +314,24 @@ function getNodeDimensions(
   );
 }
 
+/**
+ * Builds the shared mutable placement index used while laying out nodes,
+ * precomputing node dimensions and optionally seeding existing boxes.
+ */
 function createPlacementState(
   nodes: SchemaViewerFlowNode[],
   placedById?: Map<string, SchemaViewerFlowNode>,
 ): PlacementState {
-  const dimensionsById = new Map(
-    nodes.map((node) => [node.id, getNodeDimensions(node)]),
-  );
+  const dimensionsById = new Map<string, NodeDimensions>();
+  for (const node of nodes) {
+    dimensionsById.set(node.id, getNodeDimensions(node));
+  }
   const state: PlacementState = {
+    columns: [],
     columnsByX: new Map(),
     dimensionsById,
     maxRight: 0,
+    maxColumnWidth: 0,
   };
   if (placedById != null) {
     for (const node of placedById.values()) {
@@ -290,6 +341,10 @@ function createPlacementState(
   return state;
 }
 
+/**
+ * Adds a positioned node to the collision index, keeping per-X lookup fast
+ * and the sorted column list ready for binary-search scans.
+ */
 function registerPlacedNode(
   node: SchemaViewerFlowNode,
   placementState: PlacementState,
@@ -300,21 +355,71 @@ function registerPlacedNode(
   );
   const x = node.position.x;
   const y = node.position.y;
-  const boxes = placementState.columnsByX.get(x);
   const occupied: OccupiedBox = {
     left: x,
     right: x + width,
     top: y,
     bottom: y + height,
   };
-  if (boxes == null) {
-    placementState.columnsByX.set(x, [occupied]);
+  const column = placementState.columnsByX.get(x);
+  if (column == null) {
+    const newColumn = {
+      left: occupied.left,
+      right: occupied.right,
+      boxes: [occupied],
+    };
+    placementState.columnsByX.set(x, newColumn);
+    insertColumn(newColumn, placementState.columns);
   } else {
-    boxes.push(occupied);
+    column.right = Math.max(column.right, occupied.right);
+    column.boxes.push(occupied);
   }
   placementState.maxRight = Math.max(placementState.maxRight, occupied.right);
+  placementState.maxColumnWidth = Math.max(
+    placementState.maxColumnWidth,
+    width,
+  );
 }
 
+/**
+ * Inserts a new occupied column into sorted order, using an append fast path
+ * for the common left-to-right layout case.
+ */
+function insertColumn(column: OccupiedColumn, columns: OccupiedColumn[]): void {
+  const lastColumn = columns[columns.length - 1];
+  if (lastColumn == null || lastColumn.left <= column.left) {
+    columns.push(column);
+    return;
+  }
+
+  columns.splice(getFirstColumnAtOrAfter(columns, column.left), 0, column);
+}
+
+/**
+ * Finds the first column whose left edge is at or after a target X using a
+ * lower-bound binary search.
+ */
+function getFirstColumnAtOrAfter(
+  columns: OccupiedColumn[],
+  minLeft: number,
+): number {
+  let low = 0;
+  let high = columns.length;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (columns[mid].left < minLeft) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+/**
+ * Creates bidirectional neighbor lookup for incremental placement, preserving
+ * edge direction as a preferred left/right placement hint.
+ */
 function buildAdjacency(
   edges: { source: string; target: string }[],
 ): Map<string, NeighborPlacement[]> {
@@ -344,6 +449,10 @@ function buildAdjacency(
   return adjacency;
 }
 
+/**
+ * Places nodes whose neighbors are already positioned, iterating until no
+ * reachable unplaced nodes remain.
+ */
 function placeNodesByAdjacency(
   nodes: SchemaViewerFlowNode[],
   placedById: Map<string, SchemaViewerFlowNode>,
@@ -398,12 +507,18 @@ function focusNodeLayout(
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
 ): SchemaViewerFlowNode[] {
-  const focal = nodes.find((n) => n.id === focalId);
+  const nodesById = new Map<string, SchemaViewerFlowNode>();
+  let focal: SchemaViewerFlowNode | undefined;
+  for (const node of nodes) {
+    nodesById.set(node.id, node);
+    if (node.id === focalId) {
+      focal = node;
+    }
+  }
   if (focal == null) {
     return nodes;
   }
 
-  const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const placedById = new Map<string, SchemaViewerFlowNode>();
   placedById.set(focalId, {
     ...focal,
@@ -432,22 +547,30 @@ function focusNodeLayout(
   // from touching.
   const columnGap = DAGRE_NODE_SEP;
 
+  /**
+   * Places direct focal neighbors into one vertical stack centered on the
+   * focal node, preserving the neighbor iteration order.
+   */
   const placeColumn = (neighborIds: Set<string>, x: number) => {
-    const neighbors = [...neighborIds]
-      .map((id) => nodesById.get(id))
-      .filter((n): n is SchemaViewerFlowNode => n != null);
+    const neighbors: { node: SchemaViewerFlowNode; height: number }[] = [];
+    let totalHeight = 0;
+    for (const id of neighborIds) {
+      const node = nodesById.get(id);
+      if (node != null) {
+        const height = getNodeDimensions(
+          node,
+          placementState.dimensionsById,
+        ).height;
+        neighbors.push({ node, height });
+        totalHeight += height;
+      }
+    }
     if (neighbors.length === 0) {
       return;
     }
-    const heights = neighbors.map(
-      (n) => getNodeDimensions(n, placementState.dimensionsById).height,
-    );
-    const totalHeight =
-      heights.reduce((sum, h) => sum + h, 0) +
-      columnGap * (neighbors.length - 1);
+    totalHeight += columnGap * (neighbors.length - 1);
     let cursorY = focalCenterY - totalHeight / 2;
-    for (let i = 0; i < neighbors.length; i++) {
-      const node = neighbors[i];
+    for (const { node, height } of neighbors) {
       const positionedNode = {
         ...node,
         position: { x, y: cursorY },
@@ -455,7 +578,7 @@ function focusNodeLayout(
       };
       placedById.set(node.id, positionedNode);
       registerPlacedNode(positionedNode, placementState);
-      cursorY += heights[i] + columnGap;
+      cursorY += height + columnGap;
     }
   };
 
@@ -472,7 +595,10 @@ function focusNodeLayout(
   // toward the already-placed focal cluster.
   const restNodes = nodes.filter((n) => !placedById.has(n.id));
   if (restNodes.length > 0) {
-    const restIds = new Set(restNodes.map((n) => n.id));
+    const restIds = new Set<string>();
+    for (const node of restNodes) {
+      restIds.add(node.id);
+    }
     const restEdges = edges.filter(
       (e) => restIds.has(e.source) && restIds.has(e.target),
     );
