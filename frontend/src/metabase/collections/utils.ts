@@ -224,10 +224,6 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
   }
 }
 
-export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && item.setPinned != null && !item.archived;
-}
-
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
