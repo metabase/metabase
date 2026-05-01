@@ -197,15 +197,28 @@ describe("useSdkControlledParameters", () => {
   });
 
   describe("useObserveAppliedParameters", () => {
-    it("does not subscribe when `onParametersChange` is undefined", () => {
+    it("subscribes two listeners (initial-state + manual-change) on mount regardless of whether a callback is provided", () => {
       setup({ onParametersChange: undefined });
 
-      expect(startSdkListeningMock).not.toHaveBeenCalled();
+      // Subscriptions are unconditional — fire-time presence check
+      // decides whether to invoke the host callback. Lets a callback
+      // wired up after mount still receive subsequent events.
+      expect(startSdkListeningMock).toHaveBeenCalledTimes(2);
     });
 
-    it("subscribes two listeners (initial-state + manual-change) when a callback is provided", () => {
-      setup({ onParametersChange: jest.fn() });
+    it("does not re-subscribe listeners when `onParametersChange` ref changes between renders (no missed-event window for inline callbacks)", () => {
+      const initialCallback = jest.fn();
+      const { rerender } = setup({ onParametersChange: initialCallback });
 
+      expect(startSdkListeningMock).toHaveBeenCalledTimes(2);
+
+      // Simulate a host re-render passing a fresh inline function.
+      rerender({
+        parameters: undefined,
+        onParametersChange: jest.fn(),
+      });
+
+      // Still 2 — listeners persist across the callback ref change.
       expect(startSdkListeningMock).toHaveBeenCalledTimes(2);
     });
   });

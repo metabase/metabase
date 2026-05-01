@@ -17,7 +17,7 @@ import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-que
 import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
-import { resolveSeedParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -92,7 +92,7 @@ export const SdkQuestionProvider = ({
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
 
-  const effectiveInitialSqlParameters = resolveSeedParameterValues(
+  const effectiveInitialSqlParameters = getEffectiveParameterValues(
     sqlParameters,
     initialSqlParameters,
   );

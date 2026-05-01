@@ -29,7 +29,7 @@ export const buildControlledParameters = (
     mapExplicitNullToEmpty(parameters),
   );
 
-export const resolveSeedParameterValues = (
+export const getEffectiveParameterValues = (
   controlledParameters: ParameterValues | null | undefined,
   initialParameters: ParameterValues | undefined,
 ): ParameterValues => {

@@ -32,7 +32,7 @@ import {
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
-import { resolveSeedParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -133,7 +133,7 @@ export type SdkDashboardProps = PropsWithChildren<
     autoRefreshInterval?: number;
 
     /**
-     * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+     * Initial values for query parameters — uncontrolled. Read once on load and ignored on every subsequent render; user widget edits are not reflected back to the host. For a single option, use a `string` value, and use a list of strings for multiple options. For controlled (push + observe) behavior use {@link SdkDashboardProps.parameters | parameters} + {@link SdkDashboardProps.onParametersChange | onParametersChange}.
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
@@ -142,7 +142,7 @@ export type SdkDashboardProps = PropsWithChildren<
     initialParameters?: ParameterValues;
 
     /**
-     * Controlled parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with manual edits.
+     * Controlled parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Setting the prop itself to `undefined` switches back to uncontrolled mode and leaves the dashboard's last applied values in place — to clear all filters, pass an empty object `{}`. Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with manual edits.
      * <br/>
      * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
@@ -228,7 +228,7 @@ const SdkDashboardInner = ({
     parameterPropName: "parameters",
   });
 
-  const effectiveInitialParameters = resolveSeedParameterValues(
+  const effectiveInitialParameters = getEffectiveParameterValues(
     parameters,
     initialParameters,
   );

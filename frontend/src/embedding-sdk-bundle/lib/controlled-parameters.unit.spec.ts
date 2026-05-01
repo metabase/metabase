@@ -3,8 +3,8 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   buildControlledParameters,
   buildParametersPayload,
+  getEffectiveParameterValues,
   mapExplicitNullToEmpty,
-  resolveSeedParameterValues,
 } from "./controlled-parameters";
 
 const STATE_PARAM = {
@@ -112,27 +112,27 @@ describe("buildControlledParameters", () => {
   });
 });
 
-describe("resolveSeedParameterValues", () => {
+describe("getEffectiveParameterValues", () => {
   it("returns `mapExplicitNullToEmpty(controlled)` when the controlled prop is set", () => {
     expect(
-      resolveSeedParameterValues({ state: null, category: "Foo" }, undefined),
+      getEffectiveParameterValues({ state: null, category: "Foo" }, undefined),
     ).toEqual({ state: "", category: "Foo" });
   });
 
   it("falls back to `initialParameters` when the controlled prop is undefined", () => {
-    expect(resolveSeedParameterValues(undefined, { state: "NY" })).toEqual({
+    expect(getEffectiveParameterValues(undefined, { state: "NY" })).toEqual({
       state: "NY",
     });
   });
 
   it("falls back to `initialParameters` when the controlled prop is `null` (JS-level guard)", () => {
-    expect(resolveSeedParameterValues(null, { state: "NY" })).toEqual({
+    expect(getEffectiveParameterValues(null, { state: "NY" })).toEqual({
       state: "NY",
     });
   });
 
   it("returns `{}` when both inputs are missing", () => {
-    expect(resolveSeedParameterValues(undefined, undefined)).toEqual({});
+    expect(getEffectiveParameterValues(undefined, undefined)).toEqual({});
   });
 });
 

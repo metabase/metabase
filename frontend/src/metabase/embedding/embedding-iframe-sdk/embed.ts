@@ -710,8 +710,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     const currentJson = this.getAttribute(attrName);
 
     if (nextJson === currentJson) {
+      // Skip when clearing something that was never set — no observable
+      // state change, no need for a postMessage.
+      if (nextJson === null) {
+        return;
+      }
+
       const nextSettings = {
-        [settingKey]: shouldRemoveValue ? undefined : value,
+        [settingKey]: value,
       } as Partial<SdkIframeEmbedElementSettings>;
 
       this._updateSettings(nextSettings);

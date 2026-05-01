@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLatest } from "react-use";
 import { isEqual } from "underscore";
 
 import {
@@ -95,11 +96,9 @@ const useObserveAppliedParameters = (
     | ((payload: DashboardParameterChangePayload) => void)
     | undefined,
 ) => {
-  useEffect(() => {
-    if (!onParametersChange) {
-      return;
-    }
+  const callbackRef = useLatest(onParametersChange);
 
+  useEffect(() => {
     const unsubInitial = startSdkListening({
       actionCreator: fetchDashboard.fulfilled,
       effect: (_action, store) => {
@@ -107,8 +106,9 @@ const useObserveAppliedParameters = (
           store.getState(),
           "initial-state",
         );
+
         if (payload) {
-          onParametersChange(payload);
+          callbackRef.current?.(payload);
         }
       },
     });
@@ -135,7 +135,7 @@ const useObserveAppliedParameters = (
         );
 
         if (payload) {
-          onParametersChange(payload);
+          callbackRef.current?.(payload);
         }
       },
     });
@@ -144,7 +144,7 @@ const useObserveAppliedParameters = (
       unsubInitial();
       unsubManual();
     };
-  }, [onParametersChange]);
+  }, [callbackRef]);
 };
 
 const buildDashboardChangePayload = (

@@ -41,12 +41,12 @@ type SdkQuestionConfig = {
   isSaveEnabled?: boolean;
 
   /**
-   * Initial values for the SQL parameters.
+   * Initial values for SQL parameters — uncontrolled. Read once on load and ignored on every subsequent render; user widget edits are not reflected back to the host. For controlled (push + observe) behavior use `sqlParameters` + `onSqlParametersChange`.
    **/
   initialSqlParameters?: SqlParameterValues;
 
   /**
-   * Controlled SQL parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Pair with `onSqlParametersChange` to stay in sync with manual edits.
+   * Controlled SQL parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Setting the prop itself to `undefined` switches back to uncontrolled mode and leaves the question's last applied values in place — to clear all filters, pass an empty object `{}`. Pair with `onSqlParametersChange` to stay in sync with manual edits.
    **/
   sqlParameters?: SqlParameterValues;
 

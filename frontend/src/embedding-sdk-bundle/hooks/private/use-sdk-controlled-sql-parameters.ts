@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useLatest } from "react-use";
 import { isEqual } from "underscore";
 
 import {
@@ -122,12 +123,10 @@ const useObserveAppliedSqlParameters = ({
   const emittedQuestionIdRef = useRef<unknown>(undefined);
   const emittedValuesRef = useRef<ParameterValuesMap | null>(null);
 
+  const callbackRef = useLatest(onSqlParametersChange);
+
   useEffect(() => {
-    if (
-      !onSqlParametersChange ||
-      !question ||
-      parameterDefinitions.length === 0
-    ) {
+    if (!question || parameterDefinitions.length === 0) {
       return;
     }
 
@@ -141,9 +140,9 @@ const useObserveAppliedSqlParameters = ({
     emittedQuestionIdRef.current = questionId;
     emittedValuesRef.current = parameterValues;
 
-    onSqlParametersChange({
+    callbackRef.current?.({
       source: isLoadEvent ? "initial-state" : "manual-change",
       ...buildParametersPayload(parameterValues, parameterDefinitions),
     });
-  }, [onSqlParametersChange, question, parameterDefinitions, parameterValues]);
+  }, [callbackRef, question, parameterDefinitions, parameterValues]);
 };

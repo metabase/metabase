@@ -347,5 +347,34 @@ describe("useSdkControlledSqlParameters", () => {
         "manual-change",
       );
     });
+
+    it("invokes the latest `onSqlParametersChange` ref even if the host swapped it after mount (callback ref isolation)", () => {
+      const firstCallback = jest.fn();
+      const secondCallback = jest.fn();
+
+      const { rerender } = setup({
+        sqlParameters: undefined,
+        onSqlParametersChange: firstCallback,
+        question: makeQuestion(1),
+        parameterValues: {},
+      });
+
+      // initial-state goes to the first callback.
+      expect(firstCallback).toHaveBeenCalledTimes(1);
+      expect(secondCallback).not.toHaveBeenCalled();
+
+      // Host swaps the callback ref + values change → manual-change
+      // must fire on the *latest* callback, not the stale one.
+      rerender({
+        sqlParameters: undefined,
+        onSqlParametersChange: secondCallback,
+        question: makeQuestion(1),
+        parameterValues: { [STATE_PARAM.id]: ["NY"] },
+      });
+
+      expect(firstCallback).toHaveBeenCalledTimes(1);
+      expect(secondCallback).toHaveBeenCalledTimes(1);
+      expect(secondCallback.mock.calls[0][0].source).toEqual("manual-change");
+    });
   });
 });
