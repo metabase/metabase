@@ -8,7 +8,6 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
-    ; TODO: Should we require both oss and ee here? Should we only allow interacting with the API through the OSS surface?
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.sync.fetch-metadata :as fetch-metadata]
