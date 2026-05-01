@@ -7,6 +7,7 @@ import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
+import { useSetArchive } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
@@ -22,13 +23,6 @@ interface Props {
   isAdmin: boolean;
   isRemoteSyncReadOnly: boolean;
   segments: Segment[];
-  setArchived: (
-    { id }: Pick<Segment, "id">,
-    archived: boolean,
-    opts?: {
-      revision_message?: string;
-    },
-  ) => void;
   tableSelector: ReactNode;
 }
 
@@ -36,9 +30,9 @@ function SegmentListAppInner({
   isAdmin,
   isRemoteSyncReadOnly,
   segments,
-  setArchived,
   tableSelector,
 }: Props) {
+  const archive = useSetArchive();
   const trackSegmentCreateClick = () => {
     trackSegmentCreateStarted("admin_datamodel_segments");
   };
@@ -78,7 +72,11 @@ function SegmentListAppInner({
               key={segment.id}
               segment={segment}
               readOnly={segment.table?.is_published && isRemoteSyncReadOnly}
-              onRetire={isAdmin ? () => setArchived(segment, true) : undefined}
+              onRetire={
+                isAdmin
+                  ? () => archive({ id: segment.id, model: "segment" }, true)
+                  : undefined
+              }
             />
           ))}
         </tbody>
@@ -96,13 +94,8 @@ function SegmentListAppInner({
 export const SegmentListApp = _.compose(
   Segments.loadList(),
   FilteredToUrlTable,
-  connect(
-    (state: State) => ({
-      isAdmin: getUserIsAdmin(state),
-      isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
-    }),
-    {
-      setArchived: Segments.actions.setArchived,
-    },
-  ),
+  connect((state: State) => ({
+    isAdmin: getUserIsAdmin(state),
+    isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
+  })),
 )(SegmentListAppInner);

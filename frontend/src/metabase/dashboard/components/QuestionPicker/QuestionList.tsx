@@ -23,7 +23,13 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type { CardId, CollectionId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  CollectionItem,
+  SearchResult,
+} from "metabase-types/api";
+import type { WrappedEntity } from "metabase-types/entities";
 
 import S from "./QuestionList.module.css";
 import { trackVisualizeAnotherWayClicked } from "./analytics";
@@ -109,7 +115,7 @@ export function QuestionList({
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
-  const list = useMemo(() => {
+  const list: WrappedEntity<SearchResult | CollectionItem>[] = useMemo(() => {
     return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 
@@ -144,7 +150,7 @@ export function QuestionList({
                 label: S.QuestionListItemLabel,
               }}
               className={S.QuestionListItem}
-              name={item.getName()}
+              name={item.name}
               icon={{
                 name: getIcon(item).name,
                 size: item.model === "dataset" ? 18 : 16,
