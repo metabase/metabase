@@ -269,3 +269,84 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+
+  - changeSet:
+      id: v62.2026-04-22T12:00:11
+      author: eric
+      comment: Create workspace_access_key_log table for tracking access-key usage
+      changes:
+        - createTable:
+            tableName: workspace_access_key_log
+            remarks: Audit trail of workspace access-key usage from public endpoints
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace the key belonged to; null after workspace deletion
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_access_key_id
+                  type: int
+                  remarks: Access key used; null after the key has been deleted
+                  constraints:
+                    nullable: true
+              - column:
+                  name: context
+                  type: varchar(254)
+                  remarks: Operation tag for the call site, e.g. "config"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: When the access key was used
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.2026-04-22T12:00:12
+      author: eric
+      comment: FK workspace_access_key_log.workspace_id -> workspace.id (set null on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_access_key_log
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_access_key_log_workspace_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v62.2026-04-22T12:00:13
+      author: eric
+      comment: FK workspace_access_key_log.workspace_access_key_id -> workspace_access_key.id (set null on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_access_key_log
+            baseColumnNames: workspace_access_key_id
+            referencedTableName: workspace_access_key
+            referencedColumnNames: id
+            constraintName: fk_workspace_access_key_log_workspace_access_key_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v62.2026-04-22T12:00:14
+      author: eric
+      comment: Index workspace_access_key_log.workspace_access_key_id for per-key lookups
+      changes:
+        - createIndex:
+            tableName: workspace_access_key_log
+            indexName: idx_workspace_access_key_log_access_key_id
+            columns:
+              - column:
+                  name: workspace_access_key_id

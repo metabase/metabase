@@ -24,14 +24,20 @@
 ;;; ----------------------------------------- Public endpoints ---------------------------------------------------
 
 (deftest public-config-yaml-test
-  (testing "config YAML is accessible via access key without auth"
-    (mt/with-model-cleanup [:model/Workspace]
+  (testing "config YAML is accessible via access key without auth, and the call is logged"
+    (mt/with-model-cleanup [:model/Workspace :model/WorkspaceAccessKeyLog]
       (let [ws  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                       {:name "Public Config Test"})
             ak  (create-key! (:id ws) "shared")
             res (mt/client :get 200 (str "ee/workspace-public/" (:key ak) "/config/yaml"))]
         (is (string? res))
-        (is (re-find #"Public Config Test" res))))))
+        (is (re-find #"Public Config Test" res))
+        (testing "an access-key-log row is written with context=config"
+          (let [log-row (t2/select-one :model/WorkspaceAccessKeyLog
+                                       :workspace_access_key_id (:id ak))]
+            (is (some? log-row))
+            (is (= "config" (:context log-row)))
+            (is (= (:id ws) (:workspace_id log-row)))))))))
 
 (deftest public-invalid-key-test
   (testing "invalid access key returns 404"

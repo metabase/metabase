@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-access-key]
+   [metabase-enterprise.workspaces.models.workspace-access-key-log]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -8,6 +9,7 @@
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.workspace-access-key/keep-me
+         metabase-enterprise.workspaces.models.workspace-access-key-log/keep-me
          metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
@@ -60,16 +62,16 @@
   "Return the Workspace with the given id and its `:databases` + `:access_keys` + `:creator` hydrated,
   or nil if none exists."
   [id]
-  (when-let [ws (t2/select-one :model/Workspace :id id)]
-    (t2/hydrate ws :creator :databases [:access_keys :creator])))
+  (when-let [workspace (t2/select-one :model/Workspace :id id)]
+    (t2/hydrate workspace :creator :databases [:access_keys :creator])))
 
 (defn get-workspace-by-name
   "Return the Workspace with the given name and its `:databases` + `:creator` hydrated,
   or nil if none exists. Workspace names are not unique at the schema level, so this
   returns the lowest-id match."
   [workspace-name]
-  (when-let [ws (t2/select-one :model/Workspace :name workspace-name {:order-by [[:id :asc]]})]
-    (t2/hydrate ws :creator :databases)))
+  (when-let [workspace (t2/select-one :model/Workspace :name workspace-name {:order-by [[:id :asc]]})]
+    (t2/hydrate workspace :creator :databases)))
 
 (defn- with-workspace-database-defaults
   "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
@@ -85,13 +87,13 @@
   `:databases` and `:creator` hydrated."
   [{:keys [name creator_id databases]}]
   (t2/with-transaction [_conn]
-    (let [ws-id (t2/insert-returning-pk! :model/Workspace
-                                         {:name       name
-                                          :creator_id creator_id})]
+    (let [workspace-id (t2/insert-returning-pk! :model/Workspace
+                                                {:name       name
+                                                 :creator_id creator_id})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
-                    (map #(with-workspace-database-defaults % ws-id) databases)))
-      (get-workspace ws-id))))
+                    (map #(with-workspace-database-defaults % workspace-id) databases)))
+      (get-workspace workspace-id))))
 
 (defn- reject-active-modification!
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
