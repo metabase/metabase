@@ -206,11 +206,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: key
-                  type: text
-                  remarks: Encrypted access key value
+                  name: key_hash
+                  type: char(64)
+                  remarks: Hex SHA-256 of the UUID access key, indexed for lookup
                   constraints:
                     nullable: false
+                    unique: true
               - column:
                   name: creator_id
                   type: int

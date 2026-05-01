@@ -29,7 +29,7 @@ type DownloadConfigSectionProps = {
 };
 
 function DownloadConfigSection({ workspace }: DownloadConfigSectionProps) {
-  const configUrl = `/api/ee/workspace-manager/${workspace.id}/config/yaml`;
+  const configUrl = `/api/ee/workspace-manager/${workspace.id}/config`;
 
   return (
     <Stack p="md" gap="sm" align="flex-start">

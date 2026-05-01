@@ -12,3 +12,12 @@
 
 (doto :model/WorkspaceAccessKeyLog
   (derive :metabase/model))
+
+(defn log-access-key-usage!
+  "Insert a row recording that `access-key` was used for `context`. `context` is
+  a short tag identifying the call site (e.g. `\"config\"`)."
+  [access-key context]
+  (t2/insert! :model/WorkspaceAccessKeyLog
+              {:workspace_id            (:workspace_id access-key)
+               :workspace_access_key_id (:id access-key)
+               :context                 context}))

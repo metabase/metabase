@@ -3,9 +3,11 @@
    Validation, auth, and presentation only — all logic lives in
    [[metabase-enterprise.workspaces.core]]."
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace-access-key :as ws.access-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]
@@ -56,15 +58,15 @@
 
 (def ^:private AccessKeyResponse
   "Access key as exposed to the API — never includes the plaintext `:key`. The
-  plaintext is only returned by the create endpoint, in a separate `[:map [:key ...]]`
-  response that wraps this one."
+  plaintext is only returned by the create endpoint, in a separate
+  `AccessKeyWithSecretResponse` that wraps this one."
   [:map {:closed true}
-   [:id          ms/PositiveInt]
+   [:id           ms/PositiveInt]
    [:workspace_id ms/PositiveInt]
-   [:name        ms/NonBlankString]
-   [:creator     [:maybe CreatorResponse]]
-   [:created_at  Timestamp]
-   [:updated_at  Timestamp]])
+   [:name         ms/NonBlankString]
+   [:creator      [:maybe CreatorResponse]]
+   [:created_at   Timestamp]
+   [:updated_at   Timestamp]])
 
 (def ^:private WorkspaceResponse
   [:map {:closed true}
@@ -90,22 +92,21 @@
     (select-keys creator [:id :first_name :last_name :email :common_name])))
 
 (defn- present-access-key
-  "Strip the plaintext `:key` from an access-key row. The plaintext only escapes
-  via [[present-access-key-with-secret]], which is reserved for the create
-  endpoint."
-  [ak]
-  (some-> ak
+  "Strip the stored `key_hash` from an access-key row, exposing only safe fields.
+  The plaintext only escapes via [[present-access-key-with-secret]], which is
+  reserved for the create endpoint."
+  [access-key]
+  (some-> access-key
           (select-keys [:id :workspace_id :name :creator :created_at :updated_at])
           (update :creator present-creator)))
 
 (defn- present-access-key-with-secret
-  "Like [[present-access-key]] but keeps the plaintext `:key`. Used **only** by
+  "Like [[present-access-key]] but adds the plaintext `:key`. Used **only** by
   the create endpoint so the caller can capture the key once; subsequent reads
-  never expose it."
-  [ak]
-  (some-> ak
-          (select-keys [:id :workspace_id :name :creator :created_at :updated_at :key])
-          (update :creator present-creator)))
+  never expose it (we don't store it)."
+  [access-key plaintext]
+  (-> (present-access-key access-key)
+      (assoc :key plaintext)))
 
 (defn- present-workspace [workspace]
   (some-> workspace
@@ -195,34 +196,29 @@
    [:name ms/NonBlankString]])
 
 (def ^:private AccessKeyWithSecretResponse
-  "Create-only response: same shape as `AccessKeyResponse` plus the plaintext `:key`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:workspace_id ms/PositiveInt]
-   [:name         ms/NonBlankString]
-   [:creator      [:maybe CreatorResponse]]
-   [:created_at   Timestamp]
-   [:updated_at   Timestamp]
-   [:key          ms/UUIDString]])
+  "Create-only response: `AccessKeyResponse` plus the plaintext UUID `:key`,
+  exposed once at creation."
+  (mut/merge AccessKeyResponse
+             [:map [:key ms/UUIDString]]))
 
 (api.macros/defendpoint :post "/:id/access-key"
   :- AccessKeyWithSecretResponse
   "Create a new access key for a workspace. **The returned `:key` is the only
   time the plaintext is exposed** — store it immediately, the API never returns it
-  again."
+  again. Only the SHA-256 hex hash of the UUID is kept at rest in `key_hash`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- CreateAccessKeyParams]
   (api/check-superuser)
   (api/check-404 (ws/get-workspace id))
-  (let [plaintext (str (random-uuid))
-        ak-id     (t2/insert-returning-pk! :model/WorkspaceAccessKey
-                                           {:workspace_id id
-                                            :name         (:name params)
-                                            :key          plaintext
-                                            :creator_id   api/*current-user-id*})
-        ak        (t2/hydrate (t2/select-one :model/WorkspaceAccessKey :id ak-id) :creator)]
-    (present-access-key-with-secret (assoc ak :key plaintext))))
+  (let [plaintext     (str (random-uuid))
+        access-key-id (t2/insert-returning-pk! :model/WorkspaceAccessKey
+                                               {:workspace_id id
+                                                :name         (:name params)
+                                                :key_hash     (ws.access-key/key-hash plaintext)
+                                                :creator_id   api/*current-user-id*})
+        access-key    (t2/hydrate (t2/select-one :model/WorkspaceAccessKey :id access-key-id) :creator)]
+    (present-access-key-with-secret access-key plaintext)))
 
 (api.macros/defendpoint :put "/:id/access-key/:key-id"
   :- AccessKeyResponse
@@ -247,7 +243,7 @@
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
-(api.macros/defendpoint :get "/:id/config/yaml"
+(api.macros/defendpoint :get "/:id/config"
   :- [:map
       [:status  [:= 200]]
       [:headers [:map-of :string :string]]

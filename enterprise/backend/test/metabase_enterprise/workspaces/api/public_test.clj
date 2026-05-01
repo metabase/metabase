@@ -29,7 +29,7 @@
       (let [ws  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                       {:name "Public Config Test"})
             ak  (create-key! (:id ws) "shared")
-            res (mt/client :get 200 (str "ee/workspace-public/" (:key ak) "/config/yaml"))]
+            res (mt/client :get 200 (str "ee/workspace-public/" (:key ak) "/config"))]
         (is (string? res))
         (is (re-find #"Public Config Test" res))
         (testing "an access-key-log row is written with context=config"
@@ -40,8 +40,8 @@
             (is (= (:id ws) (:workspace_id log-row)))))))))
 
 (deftest public-invalid-key-test
-  (testing "invalid access key returns 404"
-    (mt/client :get 404 "ee/workspace-public/00000000-0000-0000-0000-000000000000/config/yaml")))
+  (testing "an unknown but well-formed access key returns 404"
+    (mt/client :get 404 "ee/workspace-public/00000000-0000-0000-0000-000000000000/config")))
 
 (deftest public-deleted-key-test
   (testing "a deleted access key no longer works"
@@ -50,12 +50,12 @@
                                      {:name "Deleted Key Test"})
             ak (create-key! (:id ws) "to-delete")]
         ;; Works before delete
-        (is (string? (mt/client :get 200 (str "ee/workspace-public/" (:key ak) "/config/yaml"))))
+        (is (string? (mt/client :get 200 (str "ee/workspace-public/" (:key ak) "/config"))))
         ;; Delete the key
         (mt/user-http-request :crowberto :delete 200
                               (str "ee/workspace-manager/" (:id ws) "/access-key/" (:id ak)))
         ;; No longer works
-        (mt/client :get 404 (str "ee/workspace-public/" (:key ak) "/config/yaml"))))))
+        (mt/client :get 404 (str "ee/workspace-public/" (:key ak) "/config"))))))
 
 (deftest public-multiple-keys-test
   (testing "any of a workspace's access keys can be used to fetch its config"
@@ -64,8 +64,8 @@
                                         {:name "Multi-key Test"})
             ak-a  (create-key! (:id ws) "key-a")
             ak-b  (create-key! (:id ws) "key-b")]
-        (is (string? (mt/client :get 200 (str "ee/workspace-public/" (:key ak-a) "/config/yaml"))))
-        (is (string? (mt/client :get 200 (str "ee/workspace-public/" (:key ak-b) "/config/yaml"))))))))
+        (is (string? (mt/client :get 200 (str "ee/workspace-public/" (:key ak-a) "/config"))))
+        (is (string? (mt/client :get 200 (str "ee/workspace-public/" (:key ak-b) "/config"))))))))
 
 (deftest public-cascade-on-workspace-delete-test
   (testing "deleting the workspace cascades to its access keys (FK ON DELETE CASCADE)"
