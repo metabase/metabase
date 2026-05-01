@@ -14,7 +14,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io FileNotFoundException)
-   (java.net URI URL)
+   (java.net URL)
    (java.nio.file CopyOption Files FileSystem FileSystemAlreadyExistsException
                   FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
@@ -216,15 +216,13 @@
 
   `(u.files/find-in-current-jar \"glob:/metabase/*/metabase-plugin.yaml\")`
 
- to find the plugin manifests in the jar."
+  to find the plugin manifests in the jar."
   [pattern]
-  ;; Get the location of the current JAR
-  (let [jar-path (get-jar-path)
-        jar-uri (URI. (str "jar:file:" jar-path))]
-    (with-open [fs (FileSystems/newFileSystem jar-uri (java.util.HashMap.))]
+  (let [jar-url (URL. (str "jar:file:" (get-jar-path) "!/"))]
+    (with-open [fs (jar-file-system-from-url jar-url)]
       (let [matcher (.getPathMatcher fs pattern)
-            root (.getPath fs "/" (into-array String []))
-            files (atom [])]
+            root    (.getPath fs "/" (into-array String []))
+            files   (atom [])]
         (Files/walkFileTree root
                             (proxy [java.nio.file.SimpleFileVisitor] []
                               (preVisitDirectory [dir _attrs]
