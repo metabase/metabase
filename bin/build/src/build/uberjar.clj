@@ -134,7 +134,10 @@
    ;; clean Docker env, so it's more of a nice to have to keep the clutter in our JARs down when building locally.
    #"\~$"
    #"^\.?#"
-   #"\.rej$"])
+   #"\.rej$"
+   ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
+   ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
+   #"^modules/"])
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
