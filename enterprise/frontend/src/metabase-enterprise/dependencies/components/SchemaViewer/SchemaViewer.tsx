@@ -1,6 +1,5 @@
 import {
   Background,
-  MiniMap,
   Panel,
   ReactFlow,
   type ReactFlowInstance,
@@ -33,6 +32,7 @@ import { AutoLayoutButton } from "./components/AutoLayoutButton";
 import { SchemaViewerEdge } from "./components/Edge";
 import { SchemaViewerNodeSearch } from "./components/NodeSearch";
 import { SchemaPickerInput } from "./components/SchemaPickerInput";
+import { SchemaViewerMinimap } from "./components/SchemaViewerMinimap";
 import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./components/TableNode";
 import { FIT_VIEW_OPTIONS, MAX_ZOOM, MIN_ZOOM } from "./constants";
@@ -305,7 +305,7 @@ export function SchemaViewer({
         onEdgeClick={handleEdgeClick}
       >
         <Background />
-        <MiniMap position="bottom-right" pannable zoomable />
+        <SchemaViewerMinimap />
 
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
