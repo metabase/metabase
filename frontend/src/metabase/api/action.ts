@@ -112,6 +112,7 @@ export const {
   useGetActionQuery,
   useListActionsQuery,
   useListPublicActionsQuery,
+  useUpdateActionMutation,
   useDeleteActionPublicLinkMutation,
   endpoints: {
     listPublicActions,

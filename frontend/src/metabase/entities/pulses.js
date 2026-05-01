@@ -1,14 +1,11 @@
-import { t } from "ttag";
-
 import {
   subscriptionApi,
   useGetSubscriptionQuery,
   useListSubscriptionsQuery,
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
-import { color } from "metabase/ui/colors";
 
-import { createEntity, entityCompatibleQuery, undo } from "./utils";
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -53,21 +50,6 @@ export const Pulses = createEntity({
     delete: () => {
       throw new TypeError("Pulses.api.delete is not supported");
     },
-  },
-
-  objectActions: {
-    setArchived: ({ id }, archived, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
-      );
-    },
-  },
-
-  objectSelectors: {
-    getName: (pulse) => pulse && pulse.name,
-    getColor: (pulse) => color("pulse"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

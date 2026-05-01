@@ -6,7 +6,10 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import type { DimensionType } from "./dimension-types";
-import { getDimensionType } from "./dimension-types";
+import {
+  PREFERRED_DIMENSION_PREDICATES,
+  getDimensionType,
+} from "./dimension-types";
 
 export interface DimensionDescriptor {
   dimensionMetadata: DimensionMetadata;
@@ -17,6 +20,7 @@ export interface DimensionDescriptor {
   group?: DimensionGroup;
   isDefault: boolean;
   canListValues: boolean;
+  isPreferred?: boolean;
 }
 
 const dimensionDescriptorCache = new WeakMap<
@@ -48,6 +52,9 @@ export function getDimensionDescriptors(
       continue;
     }
 
+    const isPreferred =
+      PREFERRED_DIMENSION_PREDICATES[dimensionType]?.(dimension);
+
     const valuesInfo = LibMetric.dimensionValuesInfo(definition, dimension);
     const displayInfo = LibMetric.displayInfo(definition, dimension);
     if (!valuesInfo.id || result.has(valuesInfo.id)) {
@@ -63,6 +70,7 @@ export function getDimensionDescriptors(
       group: displayInfo.group,
       isDefault: defaultDimensionIds.has(valuesInfo.id),
       canListValues: valuesInfo.canListValues,
+      isPreferred,
     });
   }
 

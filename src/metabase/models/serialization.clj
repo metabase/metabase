@@ -337,7 +337,9 @@
 
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
-  (maybe-labeled model-name entity :name))
+  (maybe-labeled model-name entity #(if (string? (:name %))
+                                      (:name %)
+                                      (:format-string (:name %)))))
 
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"

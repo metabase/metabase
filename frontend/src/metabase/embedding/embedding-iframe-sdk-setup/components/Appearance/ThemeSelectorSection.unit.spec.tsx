@@ -39,12 +39,14 @@ function setup({
   savedThemes = SAVED_THEMES,
   theme = undefined,
   onThemeChange = jest.fn(),
+  onCustomSelect = jest.fn(),
   onColorChange = jest.fn(),
   onColorReset = jest.fn(),
 }: {
   savedThemes?: EmbeddingTheme[];
   theme?: Parameters<typeof ThemeSelectorSection>[0]["theme"];
   onThemeChange?: jest.Mock;
+  onCustomSelect?: jest.Mock;
   onColorChange?: jest.Mock;
   onColorReset?: jest.Mock;
 } = {}) {
@@ -53,12 +55,19 @@ function setup({
       savedThemes={savedThemes}
       theme={theme}
       onThemeChange={onThemeChange}
+      onCustomSelect={onCustomSelect}
       onColorChange={onColorChange}
       onColorReset={onColorReset}
     />,
   );
 
-  return { ...utils, onThemeChange, onColorChange, onColorReset };
+  return {
+    ...utils,
+    onThemeChange,
+    onCustomSelect,
+    onColorChange,
+    onColorReset,
+  };
 }
 
 describe("ThemeSelectorSection", () => {
@@ -169,6 +178,72 @@ describe("ThemeSelectorSection", () => {
       expect(screen.getByText("Brand color")).toBeInTheDocument();
       expect(screen.getByText("Text color")).toBeInTheDocument();
       expect(screen.getByText("Background color")).toBeInTheDocument();
+    });
+
+    it("initializes Custom from no theme when no theme was previously selected", async () => {
+      const { onCustomSelect } = setup();
+
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+
+      expect(onCustomSelect).toHaveBeenCalledTimes(1);
+      expect(onCustomSelect).toHaveBeenCalledWith(undefined);
+    });
+
+    it("initializes Custom with the configurable colors of the previously selected saved theme", async () => {
+      const { onCustomSelect } = setup();
+
+      await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+
+      expect(onCustomSelect).toHaveBeenCalledTimes(1);
+      expect(onCustomSelect).toHaveBeenCalledWith({
+        brand: "#BB86FC",
+        "text-primary": "#FFFFFF",
+        background: "#121212",
+      });
+    });
+
+    it("ignores non-configurable settings (e.g. fontFamily) when initializing Custom from a saved theme", async () => {
+      const themesWithExtras: EmbeddingTheme[] = [
+        {
+          id: 10,
+          name: "Extras Theme",
+          settings: {
+            fontFamily: "Inter",
+            colors: {
+              brand: "#111111",
+              "text-primary": "#222222",
+              background: "#333333",
+              // Not in the configurable set:
+              "text-secondary": "#999999",
+            },
+          },
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ];
+
+      const { onCustomSelect } = setup({ savedThemes: themesWithExtras });
+
+      await userEvent.click(screen.getByTestId("theme-card-Extras Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+
+      expect(onCustomSelect).toHaveBeenLastCalledWith({
+        brand: "#111111",
+        "text-primary": "#222222",
+        background: "#333333",
+      });
+    });
+
+    it("initializes Custom from no theme when switching from Instance theme", async () => {
+      const { onCustomSelect } = setup();
+
+      // Select a saved theme, then go back to Instance theme, then click Custom
+      await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Instance theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+
+      expect(onCustomSelect).toHaveBeenLastCalledWith(undefined);
     });
 
     it("hides color inputs when switching from Custom to Instance theme", async () => {

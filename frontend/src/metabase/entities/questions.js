@@ -15,7 +15,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
 
 import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
@@ -72,13 +71,6 @@ export const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: (card, archived, opts) =>
-      Questions.actions.update(
-        { id: card.id },
-        { archived },
-        undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
-      ),
-
     // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
     // this function name is incorrect but maintained for consistency with other entities.
     setCollection: (card, destination, opts) => {
@@ -153,11 +145,6 @@ export const Questions = createEntity({
         Questions.selectors.getObjectUnfiltered(state, { entityId }),
       );
     },
-  },
-
-  objectSelectors: {
-    getName: (card) => card && card.name,
-    getColor: () => color("text-secondary"),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

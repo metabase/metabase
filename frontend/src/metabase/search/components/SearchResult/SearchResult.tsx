@@ -7,8 +7,8 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import { Group, Icon, Loader } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import { modelToUrl } from "metabase/utils/urls";
 import type { SearchContext, SearchResult } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";

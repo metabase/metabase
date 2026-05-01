@@ -12,7 +12,6 @@ import {
 import { getCollectionType } from "metabase/entities/collections/utils";
 import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { color } from "metabase/ui/colors";
 
 import {
   createEntity,
@@ -89,13 +88,6 @@ export const Dashboards = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      Dashboards.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`dashboard`, archived ? t`trashed` : t`restored`),
-      ),
-
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
@@ -169,11 +161,6 @@ export const Dashboards = createEntity({
       return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
-  },
-
-  objectSelectors: {
-    getName: (dashboard) => dashboard && dashboard.name,
-    getColor: () => color("dashboard"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

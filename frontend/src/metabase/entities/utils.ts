@@ -107,7 +107,6 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  getInitialCollectionId: EntitySelector;
   getExpandedCollectionsById: EntitySelector;
 };
 
@@ -384,7 +383,9 @@ export function createEntity(def: EntityDef): Entity {
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
-  const getWritableProperties = (object: EntityObject): Partial<EntityObject> =>
+  const getWritableProperties = (
+    object: EntityObject,
+  ): Partial<EntityObject> =>
     entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
       : object;
@@ -803,14 +804,8 @@ export function createEntity(def: EntityDef): Entity {
   } as EntitySelectors;
 
   entity.objectSelectors = {
-    getName(object: EntityObject) {
-      return object.name;
-    },
     getIcon(_object: EntityObject) {
       return { name: "unknown" };
-    },
-    getColor(_object: EntityObject): string | undefined {
-      return undefined;
     },
     ...(def.objectSelectors || {}),
   };

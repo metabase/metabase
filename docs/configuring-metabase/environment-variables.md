@@ -101,13 +101,22 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of embed path, query parameters, user agent, and IP address of who views your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help us improve.
+Enable the collection of anonymous usage data in order to help Metabase improve..
 
 ### `MB_API_KEY`
 
@@ -2588,6 +2597,15 @@ Default: `"plugins"`
 Path of the "plugins" directory, which is used to store the Metabase database drivers. The user who is running Metabase should have permission to write to the directory. When running the JAR, the default directory is `plugins`, created in the same location as the JAR file. When running Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
+
+### `MB_PROMETHEUS_SERVER_PORT`
+
+Type: integer<br>
+Default: `null`
+
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
 ### `MB_QP_CACHE_BACKEND`
 

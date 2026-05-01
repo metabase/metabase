@@ -92,10 +92,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   nameOne: string;
   normalize: (object: unknown) => { object: unknown };
   normalizeList: (list: unknown) => { list: unknown };
-  objectSelectors: {
-    getName: (entity: Entity | EntityWrapper) => string;
-    getColor: (entity: Entity | EntityWrapper) => string | undefined;
-  };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
       action?: string;
