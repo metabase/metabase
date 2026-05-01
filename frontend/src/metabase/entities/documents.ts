@@ -83,14 +83,6 @@ export const Documents = createEntity({
         undo({}, t`document`, t`moved`),
       ),
 
-    setPinned: ({ id }: Document, pinned: number | boolean) =>
-      Documents.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-      ),
     copy:
       ({ id }: Document, overrides: Omit<CopyDocumentRequest, "id">) =>
       async (dispatch: Dispatch) => {

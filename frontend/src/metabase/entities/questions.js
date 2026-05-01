@@ -123,16 +123,6 @@ export const Questions = createEntity({
         return result;
       };
     },
-
-    setPinned: ({ id }, pinned, opts) =>
-      Questions.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
-      ),
   },
 
   selectors: {

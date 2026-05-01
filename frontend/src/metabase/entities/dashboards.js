@@ -101,16 +101,6 @@ export const Dashboards = createEntity({
         undo(opts, "dashboard", "moved"),
       ),
 
-    setPinned: ({ id }, pinned, opts) =>
-      Dashboards.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
-      ),
-
     // TODO move into more common area as copy is implemented for more entities
     copy: compose(
       withAction(COPY_ACTION),
