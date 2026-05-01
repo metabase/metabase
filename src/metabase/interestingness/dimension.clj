@@ -58,7 +58,7 @@
     (cond
       ;; No fingerprint data at all
       (nil? distinct-count)
-      {:score 0.5 :reason "no cardinality data"}
+      {:score nil :reason "no cardinality data"}
 
       ;; Constant field — hard-zero gate
       (<= distinct-count 1)
@@ -74,7 +74,7 @@
                 {:keys [granularity count score]} (best-temporal-buckets days)]
             {:score  score
              :reason (str (long days) "-day range, ~" (long count) " " (name granularity) " buckets")})
-          {:score 0.5 :reason "unparseable temporal bounds"}))
+          {:score nil :reason "unparseable temporal bounds"}))
 
       ;; Numeric with high cardinality and a nonzero range → auto-binning will produce good buckets
       (and numeric-fp (> distinct-count 50)
@@ -104,26 +104,29 @@
    :type/Title])
 
 (defn type-bonus
-  "Boost fields with semantic types that tend to produce interesting explorations."
+  "Boost fields with semantic types that tend to produce interesting explorations.
+   Returns `:score nil` (no signal) when the field's semantic type isn't on the
+   bonus list — the absence of a bonus isn't a neutral signal, it just means this
+   scorer has nothing to say."
   [field]
   (let [semantic-type (:semantic-type field)]
     (if (some #(isa? semantic-type %) dimension-bonus-types)
       {:score 1.0 :reason "special type"}
-      {:score 0.5 :reason "no type bonus"})))
+      {:score nil :reason "no type bonus"})))
 
 (defn temporal-range
   "Score temporal fields by their date range span. Wider ranges enable richer time-series exploration."
   [field]
   (let [temporal-fp (get-in field [:fingerprint :type :type/DateTime])]
     (if (nil? temporal-fp)
-      {:score 0.5 :reason "not a temporal field"}
+      {:score nil :reason "not a temporal field"}
       (let [{:keys [earliest latest]} temporal-fp]
         (if (or (nil? earliest) (nil? latest))
-          {:score 0.5 :reason "missing temporal bounds"}
+          {:score nil :reason "missing temporal bounds"}
           (let [start (u.time/coerce-to-timestamp earliest)
                 end   (u.time/coerce-to-timestamp latest)]
             (if (or (nil? start) (nil? end))
-              {:score 0.5 :reason "unparseable temporal bounds"}
+              {:score nil :reason "unparseable temporal bounds"}
               (let [days (u.time/day-diff start end)]
                 (cond
                   (<= days 0)   {:score 0.1  :reason "single-point temporal range"}
@@ -143,7 +146,7 @@
   [field]
   (let [text-fp (get-in field [:fingerprint :type :type/Text])]
     (if (nil? text-fp)
-      {:score 0.5 :reason "not a text field"}
+      {:score nil :reason "not a text field"}
       (let [{:keys [percent-json percent-url percent-email percent-state average-length percent-blank]} text-fp]
         (cond
           (and (some? percent-blank) (> percent-blank 0.8))
@@ -186,17 +189,13 @@
    impl/numeric-variance   0.05})
 
 (defn dimension-interestingness
-  "Return the canonical `dimension_interestingness` score for `field`.
+  "Return the canonical `dimension_interestingness` score for `field`. Always
+   returns a double in [0.0, 1.0].
 
    Accepts either a raw DB-style field map with snake_case keys or a normalized
-   field map with kebab-case keys. Returns a double in [0.0, 1.0], or nil when
-   the field has no fingerprint and no hard-zero gate fired (we lack the inputs
-   to score it). Hard-zero gates (e.g. `:type/PK` via `type-penalty`) always
-   produce 0.0, regardless of whether a fingerprint is present."
+   field map with kebab-case keys. Hard-zero gates (e.g. `:type/PK` via
+   `type-penalty`) always produce 0.0."
   [field]
   (let [normalized (impl/normalize-field field)
         result     (impl/score-field canonical-dimension-weights normalized)]
-    (cond
-      (:has-hard-zero? result)        0.0
-      (nil? (:fingerprint normalized)) nil
-      :else                           (:score result))))
+    (:score result)))

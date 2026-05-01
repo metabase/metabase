@@ -19,9 +19,9 @@
       :type/UpdatedTimestamp  "updated timestamp"
       :type/DeletionTimestamp "deletion timestamp"))
 
-  (testing "non-penalized types score 1.0 (including FK — x-ray templates use FK columns)"
+  (testing "non-penalized types score nil (no signal — neither penalty nor bonus)"
     (are [sem-type]
-         (= 1.0 (:score (impl/type-penalty {:semantic-type sem-type})))
+         (nil? (:score (impl/type-penalty {:semantic-type sem-type})))
       :type/Category
       :type/Name
       :type/CreationTimestamp
@@ -29,8 +29,8 @@
       :type/FK
       nil))
 
-  (testing "nil semantic type scores 1.0"
-    (is (= 1.0 (:score (impl/type-penalty {}))))))
+  (testing "nil semantic type scores nil (no signal)"
+    (is (nil? (:score (impl/type-penalty {}))))))
 
 ;;; -------------------------------------------------- score-field composition --------------------------------------------------
 
@@ -67,8 +67,31 @@
                   {})]
       (is (= 0.0 (:score result)))))
 
-  (testing "empty scorer map returns 0.5"
-    (is (= 0.5 (:score (impl/score-field {} {}))))))
+  (testing "empty scorer map returns 0.5 (neutral default)"
+    (is (= 0.5 (:score (impl/score-field {} {})))))
+
+  (testing "nil-scoring scorers are excluded from both numerator and denominator"
+    (let [result (impl/score-field
+                  {(constant-scorer 1.0 "real")    0.30
+                   (constant-scorer nil "missing") 0.70}
+                  {})]
+      ;; only the real scorer participates: 1.0 * 0.30 / 0.30 = 1.0
+      (is (= 1.0 (:score result)))))
+
+  (testing "all-nil scorers fall back to 0.5 neutral"
+    (let [result (impl/score-field
+                  {(constant-scorer nil "no data 1") 0.5
+                   (constant-scorer nil "no data 2") 0.5}
+                  {})]
+      (is (= 0.5 (:score result)))))
+
+  (testing "nil score does not trip the hard-zero gate"
+    (let [result (impl/score-field
+                  {(constant-scorer 1.0 "good") 0.5
+                   (constant-scorer nil "n/a")  0.5}
+                  {})]
+      (is (false? (:has-hard-zero? result)))
+      (is (= 1.0 (:score result))))))
 
 (deftest ^:parallel compose-test
   (testing "compose returns a callable scorer"
@@ -113,8 +136,8 @@
   (testing "50% null scores 0.5"
     (is (= 0.5 (:score (impl/nullness {:fingerprint {:global {:nil% 0.5}}})))))
 
-  (testing "missing fingerprint returns 0.5"
-    (is (= 0.5 (:score (impl/nullness {}))))))
+  (testing "missing fingerprint returns nil (no signal)"
+    (is (nil? (:score (impl/nullness {}))))))
 
 ;;; -------------------------------------------------- numeric-variance --------------------------------------------------
 
@@ -133,17 +156,17 @@
                          {:fingerprint {:type {:type/Number {:sd 10.0 :avg 50.0 :min 0 :max 100}}}}))]
       (is (> score 0.3))))
 
-  (testing "non-numeric field returns 0.5"
-    (is (= 0.5 (:score (impl/numeric-variance {}))))
-    (is (= 0.5 (:score (impl/numeric-variance {:fingerprint {:type {:type/Text {}}}}))))))
+  (testing "non-numeric field returns nil (no signal)"
+    (is (nil? (:score (impl/numeric-variance {}))))
+    (is (nil? (:score (impl/numeric-variance {:fingerprint {:type {:type/Text {}}}}))))))
 
 ;;; -------------------------------------------------- distribution-shape --------------------------------------------------
 
 (deftest ^:parallel distribution-shape-test
-  (testing "no distribution data returns 0.5"
-    (is (= 0.5 (:score (impl/distribution-shape {}))))
-    (is (= 0.5 (:score (impl/distribution-shape
-                        {:fingerprint {:type {:type/Number {:avg 10 :sd 2}}}})))))
+  (testing "no distribution data returns nil (no signal)"
+    (is (nil? (:score (impl/distribution-shape {}))))
+    (is (nil? (:score (impl/distribution-shape
+                       {:fingerprint {:type {:type/Number {:avg 10 :sd 2}}}})))))
 
   (testing "symmetric low-dominance distribution scores high"
     (let [score (:score (impl/distribution-shape

@@ -17,9 +17,9 @@
   (testing "high cardinality scores lower"
     (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 5000}}}))]
       (is (< score 0.5))))
-  (testing "missing fingerprint returns 0.5"
-    (is (= 0.5 (:score (dim/cardinality {}))))
-    (is (= 0.5 (:score (dim/cardinality {:fingerprint {}}))))))
+  (testing "missing fingerprint returns nil (no signal)"
+    (is (nil? (:score (dim/cardinality {}))))
+    (is (nil? (:score (dim/cardinality {:fingerprint {}}))))))
 
 ;;; -------------------------------------------------- type-bonus --------------------------------------------------
 
@@ -42,15 +42,15 @@
                       :type/Owner]]
       (is (= 1.0 (:score (dim/type-bonus {:semantic-type sem-type})))
           (str sem-type " should score 1.0"))))
-  (testing "non-listed types score 0.5"
+  (testing "non-listed types score nil (no signal)"
     (doseq [sem-type [:type/Category :type/Name :type/Number :type/Text nil]]
-      (is (= 0.5 (:score (dim/type-bonus {:semantic-type sem-type})))
-          (str sem-type " should score 0.5"))))
+      (is (nil? (:score (dim/type-bonus {:semantic-type sem-type})))
+          (str sem-type " should score nil"))))
   (testing "base-type alone (no semantic-type) does not earn a bonus"
-    (is (= 0.5 (:score (dim/type-bonus {:base-type :type/DateTime}))))
-    (is (= 0.5 (:score (dim/type-bonus {:base-type :type/Boolean})))))
-  (testing "no semantic type returns 0.5"
-    (is (= 0.5 (:score (dim/type-bonus {}))))))
+    (is (nil? (:score (dim/type-bonus {:base-type :type/DateTime}))))
+    (is (nil? (:score (dim/type-bonus {:base-type :type/Boolean})))))
+  (testing "no semantic type returns nil"
+    (is (nil? (:score (dim/type-bonus {}))))))
 
 ;;; -------------------------------------------------- temporal-range --------------------------------------------------
 
@@ -68,11 +68,11 @@
                          {:fingerprint {:type {:type/DateTime {:earliest "2024-01-01" :latest "2024-01-10"}}}}))]
       (is (> score 0.3))
       (is (< score 0.7))))
-  (testing "non-temporal field returns 0.5"
-    (is (= 0.5 (:score (dim/temporal-range {})))))
-  (testing "missing bounds returns 0.5"
-    (is (= 0.5 (:score (dim/temporal-range
-                        {:fingerprint {:type {:type/DateTime {:earliest nil :latest nil}}}}))))))
+  (testing "non-temporal field returns nil (no signal)"
+    (is (nil? (:score (dim/temporal-range {})))))
+  (testing "missing bounds returns nil (no signal)"
+    (is (nil? (:score (dim/temporal-range
+                       {:fingerprint {:type {:type/DateTime {:earliest nil :latest nil}}}}))))))
 
 ;;; -------------------------------------------------- text-structure --------------------------------------------------
 
@@ -113,8 +113,8 @@
                   {:fingerprint {:type {:type/Text {:percent-state 0.95}}}})]
       (is (<= (:score result) 0.4))
       (is (re-find #"state" (:reason result)))))
-  (testing "non-text field returns 0.5"
-    (is (= 0.5 (:score (dim/text-structure {}))))))
+  (testing "non-text field returns nil (no signal)"
+    (is (nil? (:score (dim/text-structure {}))))))
 
 ;;; -------------------------------------------------- text-structure percent-blank --------------------------------------------------
 
@@ -149,10 +149,17 @@
     (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/DeletionTimestamp})))
     (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/DeletionDate})))
     (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/DeletionTime}))))
-  (testing "non-PK field with no fingerprint returns nil (insufficient data)"
-    (is (nil? (dim/dimension-interestingness {:semantic-type :type/Category})))
-    (is (nil? (dim/dimension-interestingness {})))
-    (is (nil? (dim/dimension-interestingness {:fingerprint nil}))))
+  (testing "non-hard-zero field with no fingerprint scores from the fingerprint-independent components only"
+    (testing "plain category gets the type-penalty + type-bonus weighted average"
+      (let [score (dim/dimension-interestingness {:semantic-type :type/Category})]
+        (is (number? score))
+        (is (pos? score))))
+    (testing "field with no semantic type at all is treated as 'no penalty, no bonus'"
+      (is (number? (dim/dimension-interestingness {})))
+      (is (number? (dim/dimension-interestingness {:fingerprint nil}))))
+    (testing "dimension-bonus semantic type scores higher than a plain field, both without fingerprint"
+      (is (> (dim/dimension-interestingness {:semantic-type :type/Currency})
+             (dim/dimension-interestingness {:semantic-type :type/Category})))))
   (testing "ordinary field with fingerprint returns a numeric score"
     (let [score (dim/dimension-interestingness
                  {:semantic-type :type/Category

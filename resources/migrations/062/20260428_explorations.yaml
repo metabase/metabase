@@ -745,3 +745,17 @@ databaseChangeLog:
               )
               AND (dimension_interestingness IS NULL OR dimension_interestingness <> 0)
       rollback:
+
+  - changeSet:
+      id: v62.gjdases
+      author: nvoxland
+      comment: Force re-analyze for any Field still missing a dimension_interestingness score.
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: last_analyzed
+                  value: null
+            where: dimension_interestingness IS NULL
+      rollback:
