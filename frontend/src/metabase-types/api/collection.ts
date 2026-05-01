@@ -139,7 +139,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  setPinned?: (isPinned: number | boolean) => void;
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
