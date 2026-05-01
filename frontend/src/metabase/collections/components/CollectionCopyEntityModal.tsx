@@ -2,19 +2,9 @@ import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Collections } from "metabase/entities/collections";
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { entityTypeForObject } from "metabase/entities/utils";
-import { connect } from "metabase/redux";
-
-function mapStateToProps(state: any, props: any) {
-  return {
-    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
-      ...props,
-      collectionId: props.entityObject.collection_id,
-    }),
-  };
-}
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {
@@ -28,15 +18,16 @@ const getTitle = (entityObject: any, isShallowCopy: boolean) => {
 
 function CollectionCopyEntityModal({
   entityObject,
-  initialCollectionId,
   onClose,
   onSaved,
 }: {
   entityObject: any;
-  initialCollectionId: number;
   onClose: () => void;
   onSaved: (newEntityObject: any) => void;
 }) {
+  const initialCollectionId = useInitialCollectionId({
+    collectionId: entityObject.collection_id,
+  });
   const [isShallowCopy, setIsShallowCopy] = useState(true);
   const title = getTitle(entityObject, isShallowCopy);
 
@@ -68,4 +59,4 @@ function CollectionCopyEntityModal({
 }
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps)(CollectionCopyEntityModal);
+export default CollectionCopyEntityModal;

@@ -5,12 +5,11 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
-import { Collections } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { Dashboards } from "metabase/entities/dashboards";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { connect, useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -20,29 +19,14 @@ type OwnProps = {
   onClose: () => void;
 };
 
-const mapStateToProps = (state: State, props: OwnProps) => {
-  const dashboard = getDashboardComplete(state);
-  return {
-    dashboard,
-    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
-      ...props,
-      collectionId: dashboard?.collection_id,
-    }),
-  };
-};
-
 const mapDispatchToProps = {
   copyDashboard: Dashboards.actions.copy,
   onReplaceLocation: replace,
 };
 
-type StateProps = ReturnType<typeof mapStateToProps>;
 type DispatchProps = typeof mapDispatchToProps;
 
-type DashboardCopyModalProps = OwnProps &
-  StateProps &
-  DispatchProps &
-  WithRouterProps;
+type DashboardCopyModalProps = OwnProps & DispatchProps & WithRouterProps;
 
 const getTitle = (
   dashboard: Dashboard | null,
@@ -61,10 +45,15 @@ const DashboardCopyModal = ({
   onClose,
   onReplaceLocation,
   copyDashboard,
-  dashboard,
-  initialCollectionId,
   params,
+  location,
 }: DashboardCopyModalProps) => {
+  const dashboard = useSelector(getDashboardComplete);
+  const initialCollectionId = useInitialCollectionId({
+    collectionId: dashboard?.collection_id,
+    params,
+    location,
+  });
   const [isShallowCopy, setIsShallowCopy] = useState(true);
   const dashboardIdFromSlug = Urls.extractEntityId(params?.slug);
 
@@ -102,5 +91,5 @@ const DashboardCopyModal = ({
 
 export const DashboardCopyModalConnected = _.compose(
   withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(DashboardCopyModal);

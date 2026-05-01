@@ -35,7 +35,17 @@
   (-clear! [this metric]
     "Clear all values for a metric (reset all label combinations)."))
 
-(defonce ^:private reporter (atom nil))
+(def ^:private no-op-reporter
+  "A no-op reporter. This ideally should never be used in production, as the real one is installed after setting up the
+  prometheus server. That has been moved to very early in the startup chain"
+  (reify Reporter
+    (-inc! [_this _metric _labels _amount])
+    (-dec-gauge! [_this _metric _labels _amount])
+    (-set-gauge! [_this _metric _labels _amount])
+    (-observe! [_this _metric _labels _amount])
+    (-clear! [_this _metric])))
+
+(defonce ^:private reporter (atom no-op-reporter))
 
 (defn get-reporter
   "Return the currently registered [[Reporter]], or nil."
