@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ParametersPlayground,
-  formatLogEntry,
+  useControlledParametersPlaygroundState,
 } from "embedding-sdk-bundle/test/ParametersPlayground";
 import type { DashboardParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
@@ -10,7 +10,6 @@ import { SegmentedControl, Stack, Text } from "metabase/ui";
 
 import type { MetabaseDashboardElement } from "./embed";
 
-// Side-effects: registers <metabase-dashboard> and friends.
 import "./embed";
 
 type Mode = "controlled" | "uncontrolled";
@@ -24,20 +23,17 @@ const ControlledParametersEmbedJsPlayground = () => {
   const elementRef = useRef<MetabaseDashboardElement | null>(null);
 
   const [ready, setReady] = useState(false);
-  const [parameters, setParameters] = useState<ParameterValues>({});
   const [readValue, setReadValue] = useState<ParameterValues | null>(null);
-  const [source, setSource] = useState<string | null>(null);
-  const [defaultParameters, setDefaultParameters] =
-    useState<ParameterValues | null>(null);
-  const [lastUsedParameters, setLastUsedParameters] =
-    useState<ParameterValues | null>(null);
-  const [log, setLog] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("controlled");
 
-  const pushLog = (entry: string) =>
-    setLog((prev) => [formatLogEntry(entry), ...prev]);
+  const playground = useControlledParametersPlaygroundState({
+    onLocalChange: (next) => {
+      if (mode === "controlled" && elementRef.current) {
+        elementRef.current.parameters = next;
+      }
+    },
+  });
 
-  // Initialize metabaseConfig before the element mounts.
   useMemo(() => {
     (window as any).metabaseConfig = {
       instanceUrl: INSTANCE_URL,
@@ -46,70 +42,43 @@ const ControlledParametersEmbedJsPlayground = () => {
   }, []);
 
   useEffect(() => {
-    const el = elementRef.current;
-    if (!el) {
+    const element = elementRef.current;
+
+    if (!element) {
       return;
     }
 
     const onReady = () => {
       setReady(true);
-      pushLog("ready");
+      playground.pushLog("ready");
     };
-    el.addEventListener("ready", onReady);
 
-    // Only attach the change listener in controlled mode — that's the
-    // signal that the host wants to mirror iframe state into its own
-    // parent state and (optionally) push updates back. In uncontrolled
-    // mode the host doesn't observe; user edits in the widget stay
-    // inside the iframe.
+    element.addEventListener("ready", onReady);
+
     let onParametersChange: ((event: Event) => void) | null = null;
     if (mode === "controlled") {
       onParametersChange = (event: Event) => {
         const detail = (event as CustomEvent<DashboardParameterChangePayload>)
           .detail;
-        setParameters(detail.parameters);
-        setSource(detail.source);
-        setDefaultParameters(detail.defaultParameters);
-        setLastUsedParameters(detail.lastUsedParameters);
-        pushLog(
-          `parameters-change [${detail.source}] parameters=${JSON.stringify(detail.parameters)}`,
-        );
+        playground.handleParametersChange(detail);
       };
-      el.addEventListener("parameters-change", onParametersChange);
+
+      element.addEventListener("parameters-change", onParametersChange);
     }
 
     return () => {
-      el.removeEventListener("ready", onReady);
+      element.removeEventListener("ready", onReady);
+
       if (onParametersChange) {
-        el.removeEventListener("parameters-change", onParametersChange);
+        element.removeEventListener("parameters-change", onParametersChange);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
-
-  // Push a slug-keyed patch by merging it into the host-tracked state and
-  // assigning the merged object to the controlled `parameters` property.
-  // In uncontrolled mode this is a no-op: the host's role is to set the
-  // initial seed via the attribute and walk away.
-  const pushPatch = (patch: ParameterValues, description: string) => {
-    if (mode === "uncontrolled") {
-      pushLog(
-        `${description} — ignored (uncontrolled mode: host shouldn't push)`,
-      );
-      return;
-    }
-
-    setParameters((prev) => {
-      const next = { ...prev, ...patch };
-      if (elementRef.current) {
-        elementRef.current.parameters = next;
-      }
-      return next;
-    });
-    pushLog(description);
-  };
 
   return (
     <ParametersPlayground
+      {...playground}
       title="Embed.js — parameters playground"
       description={
         <Stack gap="xs">
@@ -140,39 +109,13 @@ const ControlledParametersEmbedJsPlayground = () => {
         </Stack>
       }
       ready={ready}
-      parameters={parameters}
-      log={log}
-      onSetOne={(slug, value) =>
-        pushPatch(
-          { [slug]: value },
-          `el.parameters[${slug}] = ${JSON.stringify(value)}`,
-        )
-      }
-      onClearOne={(slug) =>
-        pushPatch({ [slug]: null }, `el.parameters[${slug}] = null`)
-      }
-      onClearAll={() => {
-        const knownKeys = Object.keys(parameters);
-        if (knownKeys.length === 0) {
-          pushLog("clear all — no known keys yet");
-          return;
-        }
-        const patch: ParameterValues = {};
-        for (const key of knownKeys) {
-          patch[key] = null;
-        }
-        pushPatch(patch, `el.parameters = ${JSON.stringify(patch)}`);
-      }}
       onGetNow={() => {
         const values: ParameterValues | undefined =
           elementRef.current?.parameters;
         setReadValue(values ?? null);
-        pushLog(`el.parameters → ${JSON.stringify(values)}`);
+        playground.pushLog(`el.parameters → ${JSON.stringify(values)}`);
       }}
       readValue={readValue}
-      source={source}
-      defaultParameters={defaultParameters}
-      lastUsedParameters={lastUsedParameters}
       dashboard={
         // @ts-expect-error - unknown custom element
         <metabase-dashboard

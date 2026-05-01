@@ -27,11 +27,8 @@ export type ParametersPlaygroundProps = {
   onClearAll: () => void;
   onGetNow?: () => void;
   readValue?: ParameterValues | null;
-  /** Last received `source` from `parameters-change` payload. */
   source?: string | null;
-  /** Last received `defaultParameters` from `parameters-change` payload. */
   defaultParameters?: ParameterValues | null;
-  /** Last received `lastUsedParameters` from `parameters-change` payload. */
   lastUsedParameters?: ParameterValues | null;
 };
 
@@ -221,3 +218,81 @@ export const ParametersPlayground = ({
 
 export const formatLogEntry = (entry: string) =>
   `${new Date().toLocaleTimeString()} — ${entry}`;
+
+type ChangePayload = {
+  source: string;
+  parameters: ParameterValues;
+  defaultParameters: ParameterValues;
+  lastUsedParameters?: ParameterValues;
+};
+
+export type UseControlledParametersPlaygroundStateOptions = {
+  initialValues?: ParameterValues;
+  onLocalChange?: (next: ParameterValues) => void;
+};
+
+export const useControlledParametersPlaygroundState = ({
+  initialValues = {},
+  onLocalChange,
+}: UseControlledParametersPlaygroundStateOptions = {}) => {
+  const [parameters, setParameters] = useState<ParameterValues>(initialValues);
+  const [source, setSource] = useState<string | null>(null);
+  const [defaultParameters, setDefaultParameters] =
+    useState<ParameterValues | null>(null);
+  const [lastUsedParameters, setLastUsedParameters] =
+    useState<ParameterValues | null>(null);
+  const [log, setLog] = useState<string[]>([]);
+
+  const pushLog = (entry: string) =>
+    setLog((prev) => [formatLogEntry(entry), ...prev]);
+
+  const patchAndLog = (patch: ParameterValues, description: string) => {
+    setParameters((prev) => {
+      const next = { ...prev, ...patch };
+      onLocalChange?.(next);
+      return next;
+    });
+    pushLog(description);
+  };
+
+  const handleParametersChange = (payload: ChangePayload) => {
+    setParameters(payload.parameters);
+    setSource(payload.source);
+    setDefaultParameters(payload.defaultParameters);
+    setLastUsedParameters(payload.lastUsedParameters ?? null);
+    pushLog(
+      `onParametersChange [${payload.source}] ${JSON.stringify(payload.parameters)}`,
+    );
+  };
+
+  const onSetOne = (slug: string, value: string) =>
+    patchAndLog({ [slug]: value }, `push ${slug} = ${JSON.stringify(value)}`);
+
+  const onClearOne = (slug: string) =>
+    patchAndLog({ [slug]: null }, `clear ${slug} (push null)`);
+
+  const onClearAll = () => {
+    const knownKeys = Object.keys(parameters);
+    if (knownKeys.length === 0) {
+      pushLog("clear all — nothing known yet (wait for onParametersChange)");
+      return;
+    }
+    patchAndLog(
+      Object.fromEntries(knownKeys.map((key) => [key, null])),
+      `clear all (push null for ${knownKeys.join(", ")})`,
+    );
+  };
+
+  return {
+    parameters,
+    source,
+    defaultParameters,
+    lastUsedParameters,
+    log,
+    pushLog,
+    handleParametersChange,
+    onSetOne,
+    onClearOne,
+    onClearAll,
+  };
+};

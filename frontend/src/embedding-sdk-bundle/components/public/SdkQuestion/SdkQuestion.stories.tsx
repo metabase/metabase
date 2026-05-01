@@ -1,18 +1,16 @@
 import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
-import { type ComponentProps, useState } from "react";
+import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import {
   ParametersPlayground,
-  formatLogEntry,
+  useControlledParametersPlaygroundState,
 } from "embedding-sdk-bundle/test/ParametersPlayground";
 import {
   questionIdArgType,
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
-import type { SqlParameterValues } from "embedding-sdk-bundle/types";
-import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import { Box, Stack } from "metabase/ui";
 import {
   createMockNativeCard,
@@ -218,23 +216,13 @@ export const CreateQuestion = {
 };
 
 const ControlledSqlParametersPlayground = (args: SdkQuestionComponentProps) => {
-  const [sqlParameters, setSqlParameters] = useState<SqlParameterValues>(
-    args.sqlParameters ?? args.initialSqlParameters ?? {},
-  );
-  const [log, setLog] = useState<string[]>([]);
-
-  const pushLog = (entry: string) =>
-    setLog((prev) => [formatLogEntry(entry), ...prev]);
-
-  const handleSqlParametersChange = (payload: SqlParameterChangePayload) => {
-    setSqlParameters(payload.parameters);
-    pushLog(
-      `onSqlParametersChange [${payload.source}] ${JSON.stringify(payload.parameters)}`,
-    );
-  };
+  const playground = useControlledParametersPlaygroundState({
+    initialValues: args.sqlParameters ?? args.initialSqlParameters ?? {},
+  });
 
   return (
     <ParametersPlayground
+      {...playground}
       title="Controlled SQL parameters"
       description={
         <>
@@ -245,37 +233,12 @@ const ControlledSqlParametersPlayground = (args: SdkQuestionComponentProps) => {
           every pushed param, so the visualization reacts to pushes.
         </>
       }
-      parameters={sqlParameters}
-      log={log}
-      onSetOne={(slug, value) => {
-        setSqlParameters((prev) => ({ ...prev, [slug]: value }));
-        pushLog(`push ${slug} = ${JSON.stringify(value)}`);
-      }}
-      onClearOne={(slug) => {
-        setSqlParameters((prev) => ({ ...prev, [slug]: null }));
-        pushLog(`clear ${slug} (push null)`);
-      }}
-      onClearAll={() => {
-        const knownKeys = Object.keys(sqlParameters);
-        if (knownKeys.length === 0) {
-          pushLog(
-            "clear all — nothing known yet (wait for onSqlParametersChange)",
-          );
-          return;
-        }
-        const patch: SqlParameterValues = {};
-        for (const key of knownKeys) {
-          patch[key] = null;
-        }
-        setSqlParameters((prev) => ({ ...prev, ...patch }));
-        pushLog(`clear all (push null for ${knownKeys.join(", ")})`);
-      }}
       dashboard={
         <Box bg="background-primary" mih="100vh" p="md">
           <SdkQuestion
             {...args}
-            sqlParameters={sqlParameters}
-            onSqlParametersChange={handleSqlParametersChange}
+            sqlParameters={playground.parameters}
+            onSqlParametersChange={playground.handleParametersChange}
           >
             <Stack gap="md">
               <SdkQuestion.SqlParametersList />

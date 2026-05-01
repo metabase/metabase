@@ -1,18 +1,14 @@
-import { useState } from "react";
-
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import {
   ParametersPlayground,
-  formatLogEntry,
+  useControlledParametersPlaygroundState,
 } from "embedding-sdk-bundle/test/ParametersPlayground";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk-bundle/test/storybook-themes";
-import type { DashboardParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import {
   ActionIcon,
   Box,
@@ -325,59 +321,21 @@ export const WithInitialParameters = {
 };
 
 const ControlledParametersPlayground = (args: SdkDashboardProps) => {
-  // Single source of truth the host app holds. Pushes update it eagerly,
-  // onParametersChange syncs it back to whatever the dashboard applied
-  // (including user-driven filter edits).
-  const [parameters, setParameters] = useState<ParameterValues>(
-    args.parameters ?? args.initialParameters ?? {},
-  );
-  const [log, setLog] = useState<string[]>([]);
-
-  const pushLog = (entry: string) =>
-    setLog((prev) => [formatLogEntry(entry), ...prev]);
-
-  const handleParametersChange = (payload: DashboardParameterChangePayload) => {
-    setParameters(payload.parameters);
-    pushLog(
-      `onParametersChange [${payload.source}] ${JSON.stringify(payload.parameters)}`,
-    );
-  };
+  const playground = useControlledParametersPlaygroundState({
+    initialValues: args.parameters ?? args.initialParameters ?? {},
+  });
 
   return (
     <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
       <ParametersPlayground
+        {...playground}
         title="Controlled parameters"
         description="Push a parameter value into the dashboard without clicking its filter UI — mimics a barcode scanner or app-state reflection."
-        parameters={parameters}
-        log={log}
-        onSetOne={(slug, value) => {
-          setParameters((prev) => ({ ...prev, [slug]: value }));
-          pushLog(`push ${slug} = ${JSON.stringify(value)}`);
-        }}
-        onClearOne={(slug) => {
-          setParameters((prev) => ({ ...prev, [slug]: null }));
-          pushLog(`clear ${slug} (push null)`);
-        }}
-        onClearAll={() => {
-          const knownKeys = Object.keys(parameters);
-          if (knownKeys.length === 0) {
-            pushLog(
-              "clear all — nothing known yet (wait for onParametersChange)",
-            );
-            return;
-          }
-          const patch: ParameterValues = {};
-          for (const key of knownKeys) {
-            patch[key] = null;
-          }
-          setParameters((prev) => ({ ...prev, ...patch }));
-          pushLog(`clear all (push null for ${knownKeys.join(", ")})`);
-        }}
         dashboard={
           <SdkDashboard
             {...args}
-            parameters={parameters}
-            onParametersChange={handleParametersChange}
+            parameters={playground.parameters}
+            onParametersChange={playground.handleParametersChange}
           />
         }
       />
