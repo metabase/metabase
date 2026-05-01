@@ -75,6 +75,41 @@ describe("buildControlledParameters", () => {
 
     expect(result[STATE_PARAM.id]).toEqual(null);
   });
+
+  describe("controlled-parameters value normalization round-trip", () => {
+    it("wraps a single-value string push into an array (matches widget storage shape)", () => {
+      // Host pushes a bare string for an array-like parameter.
+      const pushed = buildControlledParameters(
+        { state: "Gizmo" },
+        DEFAULT_DEFINITIONS,
+      );
+
+      expect(pushed[STATE_PARAM.id]).toEqual(["Gizmo"]);
+    });
+
+    it("preserves an array push unchanged (no double-wrap)", () => {
+      const pushed = buildControlledParameters(
+        { state: ["Gizmo", "Widget"] },
+        DEFAULT_DEFINITIONS,
+      );
+      expect(pushed[STATE_PARAM.id]).toEqual(["Gizmo", "Widget"]);
+    });
+
+    it("emits the normalized array shape back to the host", () => {
+      const applied = buildControlledParameters(
+        { state: "Gizmo" },
+        DEFAULT_DEFINITIONS,
+      );
+
+      const payload = buildParametersPayload(applied, DEFAULT_DEFINITIONS);
+
+      // Host gets back the normalized array, not its original string.
+      expect(payload.parameters).toEqual({
+        state: ["Gizmo"],
+        category: null,
+      });
+    });
+  });
 });
 
 describe("resolveSeedParameterValues", () => {
