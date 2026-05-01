@@ -145,28 +145,25 @@ export type SqlParameterValues = Record<
 >;
 
 /**
- * Source of a sql-parameter-change event. `initial-state` fires exactly
- * once per question load — after the backend response has
- * resolved applied parameter values from defaults and the
- * host-provided `sqlParameters` prop. All subsequent emissions (user
- * widget edits, programmatic pushes via the controlled prop, default
- * resolution on reload) are tagged `manual-change`
+ * Source of a sql-parameter-change event:
+ * - `initial-state` - first applied state, fired once per question load.
+ * - `manual-change` - user edited parameters in UI.
+ * - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
  *
  * @category InteractiveQuestion
  */
-export type SqlParameterChangeSource = "initial-state" | "manual-change";
+export type SqlParameterChangeSource =
+  | "initial-state"
+  | "manual-change"
+  | "auto-change";
 
 /**
- * Payload delivered to question-side `onSqlParametersChange` callbacks
- * and Embed.js `sql-parameters-change` `event.detail`
+ * Payload passed to `onSqlParametersChange` callback
  *
  * @category InteractiveQuestion
  */
 export type SqlParameterChangePayload = {
-  /** Post-load `'initial-state'` snapshot (fired once) or subsequent `'manual-change'` (user edit / programmatic push). */
   source: SqlParameterChangeSource;
-  /** Currently applied values, slug-keyed. */
   parameters: ParameterValues;
-  /** BE-provided defaults, slug-keyed. */
   defaultParameters: ParameterValues;
 };

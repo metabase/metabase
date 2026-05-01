@@ -134,11 +134,6 @@ export const ParametersPlayground = ({
             <Text size="sm" fw={500}>
               Last received payload
             </Text>
-            <Text size="xs" c="text-secondary">
-              Other fields delivered with the last `parameters-change` event —
-              `source` discriminates initial-state from manual-change; defaults
-              and last-used come from the BE.
-            </Text>
             {source !== undefined && (
               <Text size="xs">
                 source: <b>{source ?? "(none)"}</b>

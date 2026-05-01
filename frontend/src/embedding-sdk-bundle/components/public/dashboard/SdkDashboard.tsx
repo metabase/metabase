@@ -151,7 +151,7 @@ export type SdkDashboardProps = PropsWithChildren<
     parameters?: ParameterValues;
 
     /**
-     * Fires on every applied parameter change — user edits, pushes via {@link SdkDashboardProps.parameters | parameters}, or default resolution on load.
+     * Fires on parameters change. The payload's `source` distinguishes the initial state on load (`'initial-state'`), user edits in the UI (`'manual-change'`), and auto-updates (`'auto-change'`).
      */
     onParametersChange?: (payload: ParameterChangePayload) => void;
   } & SdkDashboardDisplayProps &

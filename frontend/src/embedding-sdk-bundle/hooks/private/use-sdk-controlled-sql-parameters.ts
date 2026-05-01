@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { type MutableRefObject, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 import { isEqual } from "underscore";
 
@@ -48,17 +48,21 @@ export const useSdkControlledSqlParameters = ({
     [question, metadata, parameterValues],
   );
 
+  const lastSqlParametersPushRef = useRef<SqlParameterValues | null>(null);
+
   usePushControlled({
     sqlParameters,
     parameterDefinitions,
     appliedParameterValues: parameterValues,
     updateParameterValues,
+    lastSqlParametersPushRef,
   });
   useObserveAppliedSqlParameters({
     question,
     parameterDefinitions,
     parameterValues,
     onSqlParametersChange,
+    lastSqlParametersPushRef,
   });
 };
 
@@ -67,11 +71,13 @@ const usePushControlled = ({
   parameterDefinitions,
   appliedParameterValues,
   updateParameterValues,
+  lastSqlParametersPushRef,
 }: {
   sqlParameters: SqlParameterValues | null | undefined;
   parameterDefinitions: UiParameter[];
   appliedParameterValues: ParameterValuesMap;
   updateParameterValues: (next: ParameterValuesMap) => void;
+  lastSqlParametersPushRef: MutableRefObject<SqlParameterValues | null>;
 }) => {
   // To skip redundant dispatches when `parameters` reference didn't change
   // but the effect re-fired (e.g. `parameterDefinitions` got a new reference from a refetch with the same content)
@@ -94,6 +100,7 @@ const usePushControlled = ({
     const next = buildControlledParameters(sqlParameters, parameterDefinitions);
 
     if (!isEqual(next, appliedParameterValues)) {
+      lastSqlParametersPushRef.current = sqlParameters;
       updateParameterValues(next);
     }
 
@@ -103,6 +110,7 @@ const usePushControlled = ({
     parameterDefinitions,
     appliedParameterValues,
     updateParameterValues,
+    lastSqlParametersPushRef,
   ]);
 };
 
@@ -111,6 +119,7 @@ const useObserveAppliedSqlParameters = ({
   parameterDefinitions,
   parameterValues,
   onSqlParametersChange,
+  lastSqlParametersPushRef,
 }: {
   question: Question | undefined;
   parameterDefinitions: UiParameter[];
@@ -118,6 +127,7 @@ const useObserveAppliedSqlParameters = ({
   onSqlParametersChange:
     | ((payload: SqlParameterChangePayload) => void)
     | undefined;
+  lastSqlParametersPushRef: MutableRefObject<SqlParameterValues | null>;
 }) => {
   // Tracks question id change, so we can fire event with `source: initial-state`
   const emittedQuestionIdRef = useRef<unknown>(undefined);
@@ -140,9 +150,34 @@ const useObserveAppliedSqlParameters = ({
     emittedQuestionIdRef.current = questionId;
     emittedValuesRef.current = parameterValues;
 
-    callbackRef.current?.({
-      source: isLoadEvent ? "initial-state" : "manual-change",
-      ...buildParametersPayload(parameterValues, parameterDefinitions),
-    });
-  }, [callbackRef, question, parameterDefinitions, parameterValues]);
+    const payload = buildParametersPayload(
+      parameterValues,
+      parameterDefinitions,
+    );
+
+    if (isLoadEvent) {
+      callbackRef.current?.({ source: "initial-state", ...payload });
+
+      return;
+    }
+
+    const lastSqlParametersPush = lastSqlParametersPushRef.current;
+    lastSqlParametersPushRef.current = null;
+
+    if (lastSqlParametersPush !== null) {
+      if (!isEqual(payload.parameters, lastSqlParametersPush)) {
+        callbackRef.current?.({ source: "auto-change", ...payload });
+      }
+
+      return;
+    }
+
+    callbackRef.current?.({ source: "manual-change", ...payload });
+  }, [
+    callbackRef,
+    question,
+    parameterDefinitions,
+    parameterValues,
+    lastSqlParametersPushRef,
+  ]);
 };

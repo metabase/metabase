@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import { useLatest } from "react-use";
 import { isEqual } from "underscore";
 
@@ -50,12 +50,15 @@ export const useSdkControlledParameters = ({
   parameters,
   onParametersChange,
 }: Options) => {
-  usePushControlledParameters(parameters);
-  useObserveAppliedParameters(onParametersChange);
+  const lastParametersPushRef = useRef<ParameterValues | null>(null);
+
+  usePushControlledParameters(parameters, lastParametersPushRef);
+  useObserveAppliedParameters(onParametersChange, lastParametersPushRef);
 };
 
 const usePushControlledParameters = (
   parameters: ParameterValues | null | undefined,
+  lastParametersPushRef: MutableRefObject<ParameterValues | null>,
 ) => {
   const dispatch = useSdkDispatch();
   const parameterDefinitions = useSdkSelector(getParameters);
@@ -82,35 +85,41 @@ const usePushControlledParameters = (
     const next = buildControlledParameters(parameters, parameterDefinitions);
 
     if (!isEqual(next, appliedParameterValues)) {
+      lastParametersPushRef.current = parameters;
       dispatch(setParameterValues(next));
     }
 
     lastDispatchedRef.current = parameters;
-  }, [parameters, parameterDefinitions, appliedParameterValues, dispatch]);
+  }, [
+    parameters,
+    parameterDefinitions,
+    appliedParameterValues,
+    dispatch,
+    lastParametersPushRef,
+  ]);
 };
 
 const useObserveAppliedParameters = (
   onParametersChange: ((payload: ParameterChangePayload) => void) | undefined,
+  lastParametersPushRef: MutableRefObject<ParameterValues | null>,
 ) => {
   const callbackRef = useLatest(onParametersChange);
-
-  const emitFromState = useCallback(
-    (state: SdkStoreState, source: ParameterChangePayload["source"]) => {
-      const payload = buildDashboardChangePayload(state, source);
-      if (payload) {
-        callbackRef.current?.(payload);
-      }
-    },
-    [callbackRef],
-  );
 
   const handleInitialStateAction = useCallback<
     Parameters<typeof startSdkListening>[0] extends { effect: infer E }
       ? E & ((...args: any[]) => void)
       : never
   >(
-    (_action, store) => emitFromState(store.getState(), "initial-state"),
-    [emitFromState],
+    (_action, store) => {
+      const payload = buildDashboardChangePayload(
+        store.getState(),
+        "initial-state",
+      );
+      if (payload) {
+        callbackRef.current?.(payload);
+      }
+    },
+    [callbackRef],
   );
 
   const isParameterValueChangeAction = useCallback<
@@ -139,8 +148,28 @@ const useObserveAppliedParameters = (
       ? E & ((...args: any[]) => void)
       : never
   >(
-    (_action, store) => emitFromState(store.getState(), "manual-change"),
-    [emitFromState],
+    (_action, store) => {
+      const state = store.getState();
+      const lastParametersPush = lastParametersPushRef.current;
+      lastParametersPushRef.current = null;
+
+      if (lastParametersPush !== null) {
+        const payload = buildDashboardChangePayload(state, "auto-change");
+
+        if (payload && !isEqual(payload.parameters, lastParametersPush)) {
+          callbackRef.current?.(payload);
+        }
+
+        return;
+      }
+
+      const payload = buildDashboardChangePayload(state, "manual-change");
+
+      if (payload) {
+        callbackRef.current?.(payload);
+      }
+    },
+    [callbackRef, lastParametersPushRef],
   );
 
   useEffect(() => {

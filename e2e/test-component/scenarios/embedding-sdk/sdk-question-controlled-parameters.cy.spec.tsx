@@ -228,7 +228,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       });
   });
 
-  it("fires `onSqlParametersChange` with `source: 'manual-change'` when values are pushed programmatically", () => {
+  it("fires `onSqlParametersChange` with `source: 'auto-change'` when a scalar push is wrapped into an array by the pipeline", () => {
     const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
 
     const PushButton = ({ questionId }: { questionId: number | string }) => {
@@ -276,7 +276,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
     cy.get("@onSqlParametersChange")
       .its("lastCall.args.0")
       .should((payload) => {
-        expect(payload.source).to.equal("manual-change");
+        expect(payload.source).to.equal("auto-change");
         expect(payload.parameters).to.deep.include({ state: ["WA"] });
       });
   });
@@ -297,7 +297,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
     cy.get("@onSqlParametersChange").should("have.been.calledOnce");
   });
 
-  it("emits `manual-change` with `null` value when host pushes an explicit null", () => {
+  it("emits `auto-change` with `null` value when host pushes an explicit null", () => {
     const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
 
     const ClearableQuestion = ({
@@ -347,7 +347,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
     cy.get("@onSqlParametersChange")
       .its("lastCall.args.0")
       .should((payload) => {
-        expect(payload.source).to.equal("manual-change");
+        expect(payload.source).to.equal("auto-change");
         expect(payload.parameters.city).to.equal(null);
       });
   });

@@ -220,7 +220,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
       });
   });
 
-  it("fires `onParametersChange` with `source: 'manual-change'` when values are pushed programmatically", () => {
+  it("does not fire `onParametersChange` when pushed values are applied unchanged", () => {
     const onParametersChange = cy.spy().as("onParametersChange");
 
     const PushButton = ({ dashboardId }: { dashboardId: string }) => {
@@ -259,14 +259,8 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
 
     cy.wait("@dashcardQuery");
 
-    cy.get("@onParametersChange")
-      .its("lastCall.args.0")
-      .should((payload) => {
-        expect(payload.source).to.equal("manual-change");
-        expect(payload.parameters).to.deep.include({
-          "filter-date": "thisyear",
-        });
-      });
+    cy.wait(500);
+    cy.get("@onParametersChange").should("have.been.calledOnce");
   });
 
   it("does not fire a redundant `manual-change` after `initial-state` when the seed equals the BE-resolved values", () => {
@@ -335,7 +329,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     findDateFilterValue().should("not.contain.text", "Previous 30 days");
   });
 
-  it("emits `manual-change` with `null` value when host pushes an explicit null", () => {
+  it("emits `auto-change` with `null` value when host pushes an explicit null", () => {
     const onParametersChange = cy.spy().as("onParametersChange");
 
     const ClearableDashboard = ({ dashboardId }: { dashboardId: string }) => {
@@ -373,7 +367,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     cy.get("@onParametersChange")
       .its("lastCall.args.0")
       .should((payload) => {
-        expect(payload.source).to.equal("manual-change");
+        expect(payload.source).to.equal("auto-change");
         expect(payload.parameters["filter-date"]).to.equal(null);
       });
   });

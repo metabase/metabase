@@ -90,30 +90,26 @@ export type CreateDashboardValues = Omit<
 };
 
 /**
- * Source of a parameter-change event. `initial-state` fires exactly
- * once per dashboard load — after the backend response has
- * resolved applied parameter values from defaults, last-used, and the
- * host-provided `parameters` prop. All subsequent emissions (user
- * widget edits, programmatic pushes via the controlled prop, default
- * resolution on reload) are tagged `manual-change`
+ * Source of a parameter-change event:
+ * - `initial-state` - first applied snapshot, fired once per dashboard load.
+ * - `manual-change` - user edited parameters in UI.
+ * - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
  *
  * @category Dashboard
  */
-export type ParameterChangeSource = "initial-state" | "manual-change";
+export type ParameterChangeSource =
+  | "initial-state"
+  | "manual-change"
+  | "auto-change";
 
 /**
- * Payload delivered to dashboard-side `onParametersChange` callbacks and
- * Embed.js `parameters-change` `event.detail`
+ * Payload passed to `onParametersChange` callback
  *
  * @category Dashboard
  */
 export type ParameterChangePayload = {
-  /** Post-load `'initial-state'` snapshot (fired once) or subsequent `'manual-change'` (user edit / programmatic push). */
   source: ParameterChangeSource;
-  /** Currently applied values, slug-keyed. */
   parameters: ParameterValues;
-  /** BE-provided defaults, slug-keyed. */
   defaultParameters: ParameterValues;
-  /** BE-provided last-used values for this user on this dashboard, slug-keyed. Empty when the user has not applied any parameters yet. */
   lastUsedParameters: ParameterValues;
 };

@@ -3,6 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { startSdkListening } from "embedding-sdk-bundle/store/listener-middleware";
 import {
+  getDashboardComplete,
   getParameterValues,
   getParameters,
 } from "metabase/dashboard/selectors";
@@ -20,10 +21,18 @@ jest.mock("embedding-sdk-bundle/store", () => ({
 jest.mock("embedding-sdk-bundle/store/listener-middleware", () => ({
   startSdkListening: jest.fn(),
 }));
+jest.mock("metabase/dashboard/selectors", () => ({
+  getDashboardComplete: jest.fn(),
+  getParameterValues: jest.fn(),
+  getParameters: jest.fn(),
+}));
 
 const useSdkDispatchMock = useSdkDispatch as unknown as jest.Mock;
 const useSdkSelectorMock = useSdkSelector as unknown as jest.Mock;
 const startSdkListeningMock = startSdkListening as unknown as jest.Mock;
+const getDashboardCompleteMock = getDashboardComplete as unknown as jest.Mock;
+const getParameterValuesMock = getParameterValues as unknown as jest.Mock;
+const getParametersMock = getParameters as unknown as jest.Mock;
 
 const STATE_PARAM = {
   id: "p1",
@@ -76,6 +85,16 @@ const setup = (options: SetupOptions = {}) => {
     }
     return undefined;
   });
+
+  // Drive the imported real-selector references used inside the
+  // listener-middleware effect handlers from the same `selectorState`.
+  getParametersMock.mockImplementation(
+    () => selectorState.parameterDefinitions,
+  );
+  getParameterValuesMock.mockImplementation(
+    () => selectorState.appliedParameterValues,
+  );
+  getDashboardCompleteMock.mockReturnValue({ last_used_param_values: {} });
 
   const unsubInitial = jest.fn();
   const unsubManual = jest.fn();
@@ -204,6 +223,112 @@ describe("useSdkControlledParameters", () => {
       // decides whether to invoke the host callback. Lets a callback
       // wired up after mount still receive subsequent events.
       expect(startSdkListeningMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not fire `onParametersChange` when pushed values are applied unchanged", () => {
+      const onParametersChange = jest.fn();
+      const hostInput = { state: ["NY"] };
+      const { dispatch, rerender, updateSelectors } = setup({
+        parameters: hostInput,
+        onParametersChange,
+        parameterDefinitions: [STATE_PARAM],
+        appliedParameterValues: {},
+      });
+
+      expect(dispatch).toHaveBeenCalledTimes(1);
+      const pushed = dispatch.mock.calls[0][0].payload;
+
+      const manualSubscription = startSdkListeningMock.mock.calls[1][0];
+      const effect = manualSubscription.effect;
+
+      updateSelectors({ appliedParameterValues: pushed });
+      rerender({ parameters: hostInput, onParametersChange });
+
+      effect({}, { getState: () => ({}) });
+
+      expect(onParametersChange).not.toHaveBeenCalled();
+    });
+
+    it("emits `source: 'auto-change'` when pushed values are applied in a different shape (e.g. scalar normalized to array)", () => {
+      const onParametersChange = jest.fn();
+      const { dispatch, rerender, updateSelectors } = setup({
+        parameters: { state: "NY" },
+        onParametersChange,
+        parameterDefinitions: [STATE_PARAM],
+        appliedParameterValues: {},
+      });
+
+      const pushed = dispatch.mock.calls[0][0].payload;
+      const manualSubscription = startSdkListeningMock.mock.calls[1][0];
+      const effect = manualSubscription.effect;
+
+      updateSelectors({ appliedParameterValues: pushed });
+      rerender({ parameters: { state: "NY" }, onParametersChange });
+
+      effect({}, { getState: () => ({}) });
+
+      expect(onParametersChange).toHaveBeenCalledTimes(1);
+      const payload = onParametersChange.mock.calls[0][0];
+      expect(payload.source).toEqual("auto-change");
+      expect(payload.parameters).toEqual({ state: ["NY"] });
+    });
+
+    it("emits `source: 'auto-change'` when full-replace adds slugs the host did not push", () => {
+      const onParametersChange = jest.fn();
+      // Two definitions, host pushes only one — `category` ends up
+      // null-filled in `payload.parameters`, which differs from the
+      // host's input → host gets an `auto-change` event so they can sync.
+      const { dispatch, rerender, updateSelectors } = setup({
+        parameters: { state: ["NY"] },
+        onParametersChange,
+        parameterDefinitions: DEFAULT_DEFINITIONS,
+        appliedParameterValues: {},
+      });
+
+      const pushed = dispatch.mock.calls[0][0].payload;
+      const manualSubscription = startSdkListeningMock.mock.calls[1][0];
+      const effect = manualSubscription.effect;
+
+      updateSelectors({ appliedParameterValues: pushed });
+      rerender({ parameters: { state: ["NY"] }, onParametersChange });
+      effect({}, { getState: () => ({}) });
+
+      expect(onParametersChange).toHaveBeenCalledTimes(1);
+      const payload = onParametersChange.mock.calls[0][0];
+      expect(payload.source).toEqual("auto-change");
+      expect(payload.parameters).toMatchObject({
+        state: ["NY"],
+        category: null,
+      });
+    });
+
+    it("emits `manual-change` for user edits after a host push", () => {
+      const onParametersChange = jest.fn();
+      const hostInput = { state: ["NY"] };
+      const { dispatch, rerender, updateSelectors } = setup({
+        parameters: hostInput,
+        onParametersChange,
+        parameterDefinitions: [STATE_PARAM],
+        appliedParameterValues: {},
+      });
+
+      const pushed = dispatch.mock.calls[0][0].payload;
+      const manualSubscription = startSdkListeningMock.mock.calls[1][0];
+      const effect = manualSubscription.effect;
+
+      // First fire — push applied unchanged, no callback.
+      updateSelectors({ appliedParameterValues: pushed });
+      rerender({ parameters: hostInput, onParametersChange });
+      effect({}, { getState: () => ({}) });
+      expect(onParametersChange).not.toHaveBeenCalled();
+
+      // Second fire — user widget edit (different value, no pending push).
+      updateSelectors({ appliedParameterValues: { p1: ["CA"] } });
+      effect({}, { getState: () => ({}) });
+      expect(onParametersChange).toHaveBeenCalledTimes(1);
+      expect(onParametersChange.mock.calls[0][0].source).toEqual(
+        "manual-change",
+      );
     });
 
     it("does not re-subscribe listeners when `onParametersChange` ref changes between renders (no missed-event window for inline callbacks)", () => {

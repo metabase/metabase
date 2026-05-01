@@ -51,7 +51,7 @@ type SdkQuestionConfig = {
   sqlParameters?: SqlParameterValues;
 
   /**
-   * Fires on every applied SQL parameter change. The payload's `source` distinguishes the initial post-load resolution (`'initial-state'`, fired once) from subsequent user/programmatic edits (`'manual-change'`).
+   * Fires on SQL parameters change. The payload's `source` distinguishes the initial state on load (`'initial-state'`), user edits in the UI (`'manual-change'`), and auto-updates (`'auto-change'`).
    **/
   onSqlParametersChange?: (payload: SqlParameterChangePayload) => void;
 

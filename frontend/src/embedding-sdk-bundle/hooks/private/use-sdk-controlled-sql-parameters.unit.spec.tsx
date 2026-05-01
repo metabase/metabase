@@ -348,6 +348,111 @@ describe("useSdkControlledSqlParameters", () => {
       );
     });
 
+    it("does not fire `onSqlParametersChange` when pushed values are applied unchanged", () => {
+      const onSqlParametersChange = jest.fn();
+      const inputParameters = { state: ["NY"] };
+      const { updateParameterValues, rerender } = setup({
+        sqlParameters: undefined,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: {},
+        parameterDefinitions: [STATE_PARAM],
+      });
+
+      expect(onSqlParametersChange).toHaveBeenCalledTimes(1);
+      expect(onSqlParametersChange.mock.calls[0][0].source).toEqual(
+        "initial-state",
+      );
+
+      getCardUiParametersMock.mockReturnValue([STATE_PARAM]);
+      rerender({
+        sqlParameters: inputParameters,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: {},
+      });
+      const pushed = updateParameterValues.mock.calls[0][0];
+
+      rerender({
+        sqlParameters: inputParameters,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: pushed,
+      });
+
+      expect(onSqlParametersChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("emits `source: 'auto-change'` when pushed values are applied in a different shape (e.g. scalar normalized to array)", () => {
+      const onSqlParametersChange = jest.fn();
+      const { updateParameterValues, rerender } = setup({
+        sqlParameters: undefined,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: {},
+        parameterDefinitions: [STATE_PARAM],
+      });
+      expect(onSqlParametersChange).toHaveBeenCalledTimes(1);
+
+      getCardUiParametersMock.mockReturnValue([STATE_PARAM]);
+      rerender({
+        sqlParameters: { state: "NY" },
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: {},
+      });
+      const pushed = updateParameterValues.mock.calls[0][0];
+
+      rerender({
+        sqlParameters: { state: "NY" },
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: pushed,
+      });
+
+      expect(onSqlParametersChange).toHaveBeenCalledTimes(2);
+      const payload = onSqlParametersChange.mock.calls[1][0];
+      expect(payload.source).toEqual("auto-change");
+      expect(payload.parameters).toEqual({ state: ["NY"] });
+    });
+
+    it("emits `manual-change` for user edits after a host push", () => {
+      const onSqlParametersChange = jest.fn();
+      const inputParameters = { state: ["NY"] };
+      const { updateParameterValues, rerender } = setup({
+        sqlParameters: inputParameters,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: {},
+        parameterDefinitions: [STATE_PARAM],
+      });
+
+      const pushed = updateParameterValues.mock.calls[0][0];
+
+      rerender({
+        sqlParameters: inputParameters,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: pushed,
+      });
+      expect(onSqlParametersChange).toHaveBeenCalledTimes(1);
+      expect(onSqlParametersChange.mock.calls[0][0].source).toEqual(
+        "initial-state",
+      );
+
+      // User edits a widget — different value than what the host pushed.
+      rerender({
+        sqlParameters: inputParameters,
+        onSqlParametersChange,
+        question: makeQuestion(1),
+        parameterValues: { ...pushed, [STATE_PARAM.id]: ["CA"] },
+      });
+      expect(onSqlParametersChange).toHaveBeenCalledTimes(2);
+      expect(onSqlParametersChange.mock.calls[1][0].source).toEqual(
+        "manual-change",
+      );
+    });
+
     it("invokes the latest `onSqlParametersChange` ref even if the host swapped it after mount (callback ref isolation)", () => {
       const firstCallback = jest.fn();
       const secondCallback = jest.fn();
