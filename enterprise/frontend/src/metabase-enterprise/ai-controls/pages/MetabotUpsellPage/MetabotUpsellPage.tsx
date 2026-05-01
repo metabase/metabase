@@ -7,13 +7,13 @@ import { Stack } from "metabase/ui";
 
 export function MetabotUpsellPage({
   campaign,
-  source,
+  location,
   title,
   description,
   image,
 }: {
   campaign: string;
-  source: string;
+  location: string;
   title: string;
   description: string;
   image: string;
@@ -21,7 +21,7 @@ export function MetabotUpsellPage({
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: UPGRADE_URL,
     campaign,
-    location: source,
+    location,
   });
 
   return (
@@ -30,7 +30,7 @@ export function MetabotUpsellPage({
         <LineDecorator>
           <UpsellCardContent
             campaign={campaign}
-            location={source}
+            location={location}
             title={title}
             description={description}
             upgradeOnClick={upgradeOnClick}

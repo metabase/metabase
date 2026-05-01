@@ -9,13 +9,13 @@ import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/Met
 import { Stack } from "metabase/ui";
 
 export function MetabotAnalyticsUpsellPage() {
-  const campaign = "ai_controls";
-  const source = "ai_controls";
+  const campaign = "ai-controls-usage-auditing";
+  const location = "ai-controls-usage-auditing-page";
 
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: UPGRADE_URL,
     campaign,
-    location: source,
+    location,
   });
 
   return (
@@ -25,13 +25,13 @@ export function MetabotAnalyticsUpsellPage() {
           <LineDecorator>
             <UpsellCardContent
               campaign={campaign}
-              location={source}
+              location={location}
               title={t`See how your team is using AI`}
               // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
               description={t`Track trends of token use, conversations, and messages, and understand what your team is doing with AI in Metabase.`}
               upgradeOnClick={upgradeOnClick}
               upgradeUrl={upgradeUrl}
-              image={"app/assets/img/upsell-ai-usage-auditing.png"}
+              image="app/assets/img/upsell-ai-usage-auditing.png"
             />
           </LineDecorator>
         </Stack>
