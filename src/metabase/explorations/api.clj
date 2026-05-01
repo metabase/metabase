@@ -65,14 +65,28 @@
     (dim-type-isa? dim :type/Number)     [:binning {:strategy :default}]
     :else                                nil))
 
+(defn- numeric-fingerprint-bounded?
+  "True if `ref-clause` resolves to a column whose `:type/Number` fingerprint has both `:min` and
+  `:max`. False for refs that don't resolve to a real Field (native result columns, expressions),
+  or whose fingerprint is missing/incomplete — those would crash the QP's binning middleware
+  (`metabase.query-processor.middleware.binning/extract-bounds`)."
+  [query ref-clause]
+  (when-let [col (lib/find-matching-column query -1 ref-clause
+                                           (lib/breakoutable-columns query))]
+    (let [{mn :min mx :max} (get-in col [:fingerprint :type :type/Number])]
+      (and (some? mn) (some? mx)))))
+
 (defn- apply-default-bucket
   "Apply a default temporal bucket / numeric binning to the breakout `ref-clause`, chosen from the
-  dim's snapshot effective/semantic type. Returns the (possibly unchanged) ref."
-  [ref-clause dim]
+  dim's snapshot effective/semantic type. Numeric binning is gated on the underlying column having
+  a usable `:min`/`:max` fingerprint — without it the QP throws at preprocess time. Returns the
+  (possibly unchanged) ref."
+  [query ref-clause dim]
   (let [[kind v] (default-bucket-for-dim dim)]
     (case kind
       :temporal (lib/with-temporal-bucket ref-clause v)
-      :binning  (lib/with-binning ref-clause v)
+      :binning  (cond-> ref-clause
+                  (numeric-fingerprint-bounded? query ref-clause) (lib/with-binning v))
       nil       ref-clause)))
 
 (defn- build-snapshot-mbql
@@ -86,10 +100,9 @@
   snapshot type so date/numeric breakouts produce a useful chart out of the box rather than a
   group-by-every-distinct-value."
   [mp card-dataset-query target dim]
-  (-> (lib/query mp card-dataset-query)
-      lib/remove-all-breakouts
-      (lib/breakout (-> (lib/normalize :metabase.lib.schema.ref/ref target)
-                        (apply-default-bucket dim)))))
+  (let [base-query (-> (lib/query mp card-dataset-query) lib/remove-all-breakouts)
+        ref-clause (lib/normalize :metabase.lib.schema.ref/ref target)]
+    (lib/breakout base-query (apply-default-bucket base-query ref-clause dim))))
 
 (defn- generate-queries!
   "Materialize `exploration_query` rows for each (metric, dimension) pair where the dimension is

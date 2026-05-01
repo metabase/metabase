@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -118,10 +119,7 @@
 (defn- valid-metric-card [user-id]
   {:type          :metric
    :creator_id    user-id
-   :dataset_query {:database 1
-                   :type     :query
-                   :query    {:source-table 1
-                              :aggregation  [[:count]]}}})
+   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
 
 (deftest exploration-create-persists-everything-and-runs-test
   (testing "POST / creates an exploration with one thread, persists selections, and materializes queries"
@@ -133,9 +131,9 @@
                   :prompt       "break down by region"
                   :metrics      [{:card_id (:id metric)
                                   :dimension_mappings [{:dimension_id "d1"
-                                                        :table_id 1
-                                                        :target ["field" {} 1]}]}]
-                  :dimensions   [{:dimension_id "d1" :display_name "Total"
+                                                        :table_id (mt/id :venues)
+                                                        :target ["field" {} (mt/id :venues :price)]}]}]
+                  :dimensions   [{:dimension_id "d1" :display_name "Price"
                                   :effective_type "type/Number"}]
                   :timeline_ids [(:id tl)]}
             resp (mt/user-http-request u :post 200 "exploration" body)
@@ -151,34 +149,41 @@
         (is (= 1 (count (:queries thread))))
         (is (= "d1" (:dimension_id q)))
         (is (= "pending" (:status q)))
-        (let [mp  (lib-be/application-database-metadata-provider 1)
+        (let [mp  (lib-be/application-database-metadata-provider (mt/id))
               qry (lib/query mp (:dataset_query q))
               brk (first (lib/breakouts qry))]
           (is (= 1 (count (lib/breakouts qry)))
               "snapshot MBQL adds a breakout from the dimension's target")
           (is (= :default (:strategy (lib/binning brk)))
-              "numeric dim picks up default auto-binning"))))))
+              "numeric dim with a usable fingerprint picks up default auto-binning"))))))
 
 (deftest exploration-create-applies-default-binning-test
   (testing "POST / picks a sensible default temporal bucket / numeric binning per dim type"
     (mt/with-temp [:model/User u {:email "binning@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [body {:name    "binning"
-                  :metrics [{:card_id (:id metric)
-                             :dimension_mappings [{:dimension_id "dt"  :table_id 1 :target ["field" {} 1]}
-                                                  {:dimension_id "d"   :table_id 1 :target ["field" {} 2]}
-                                                  {:dimension_id "t"   :table_id 1 :target ["field" {} 3]}
-                                                  {:dimension_id "n"   :table_id 1 :target ["field" {} 4]}
-                                                  {:dimension_id "lat" :table_id 1 :target ["field" {} 5]}
-                                                  {:dimension_id "s"   :table_id 1 :target ["field" {} 6]}]}]
-                  :dimensions [{:dimension_id "dt"  :effective_type "type/DateTime"}
-                               {:dimension_id "d"   :effective_type "type/Date"}
-                               {:dimension_id "t"   :effective_type "type/Time"}
-                               {:dimension_id "n"   :effective_type "type/Number"}
-                               {:dimension_id "lat" :effective_type "type/Float" :semantic_type "type/Latitude"}
-                               {:dimension_id "s"   :effective_type "type/Text"}]}
+      (let [tbl-id  (mt/id :venues)
+            ;; Real venues field IDs; numeric/coordinate cases need fingerprinted Fields, the
+            ;; temporal cases don't read fingerprints so any field works.
+            id-fid  (mt/id :venues :id)
+            num-fid (mt/id :venues :price)
+            lat-fid (mt/id :venues :latitude)
+            txt-fid (mt/id :venues :name)
+            body    {:name    "binning"
+                     :metrics [{:card_id (:id metric)
+                                :dimension_mappings [{:dimension_id "dt"  :table_id tbl-id :target ["field" {} id-fid]}
+                                                     {:dimension_id "d"   :table_id tbl-id :target ["field" {} id-fid]}
+                                                     {:dimension_id "t"   :table_id tbl-id :target ["field" {} id-fid]}
+                                                     {:dimension_id "n"   :table_id tbl-id :target ["field" {} num-fid]}
+                                                     {:dimension_id "lat" :table_id tbl-id :target ["field" {} lat-fid]}
+                                                     {:dimension_id "s"   :table_id tbl-id :target ["field" {} txt-fid]}]}]
+                     :dimensions [{:dimension_id "dt"  :effective_type "type/DateTime"}
+                                  {:dimension_id "d"   :effective_type "type/Date"}
+                                  {:dimension_id "t"   :effective_type "type/Time"}
+                                  {:dimension_id "n"   :effective_type "type/Number"}
+                                  {:dimension_id "lat" :effective_type "type/Float" :semantic_type "type/Latitude"}
+                                  {:dimension_id "s"   :effective_type "type/Text"}]}
             resp    (mt/user-http-request u :post 200 "exploration" body)
-            mp      (lib-be/application-database-metadata-provider 1)
+            mp      (lib-be/application-database-metadata-provider (mt/id))
             by-dim  (into {} (for [q (-> resp :threads first :queries)]
                                [(:dimension_id q) (->> (:dataset_query q)
                                                        (lib/query mp)
@@ -191,14 +196,40 @@
           (is (= :day (lib/raw-temporal-bucket (get by-dim "d")))))
         (testing "Time dim → :hour bucket"
           (is (= :hour (lib/raw-temporal-bucket (get by-dim "t")))))
-        (testing "Number dim → default auto-binning"
+        (testing "Number dim with a fingerprinted field → default auto-binning"
           (is (= :default (:strategy (lib/binning (get by-dim "n")))))
           (is (nil? (lib/raw-temporal-bucket (get by-dim "n")))))
-        (testing "Coordinate (semantic Latitude over Float) → default auto-binning, not raw number path"
+        (testing "Coordinate (semantic Latitude over Float) with a fingerprinted field → default auto-binning"
           (is (= :default (:strategy (lib/binning (get by-dim "lat"))))))
         (testing "Non-numeric / non-temporal dim → no bucket"
           (is (nil? (lib/binning (get by-dim "s"))))
           (is (nil? (lib/raw-temporal-bucket (get by-dim "s")))))))))
+
+(deftest exploration-create-skips-binning-when-fingerprint-missing-test
+  (testing "POST / skips default numeric binning when the underlying Field has no min/max fingerprint"
+    (mt/with-temp [:model/User u {:email "no-fp@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [field-id (mt/id :venues :price)]
+        ;; Null the fingerprint to simulate a fresh-synced / native-result / all-null field.
+        (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint nil}
+          (let [body {:name    "no fp"
+                      :metrics [{:card_id (:id metric)
+                                 :dimension_mappings [{:dimension_id "n"
+                                                       :table_id (mt/id :venues)
+                                                       :target ["field" {} field-id]}]}]
+                      :dimensions [{:dimension_id "n" :effective_type "type/Number"}]}
+                resp (mt/user-http-request u :post 200 "exploration" body)
+                q    (-> resp :threads first :queries first)
+                mp   (lib-be/application-database-metadata-provider (mt/id))
+                qry  (lib/query mp (:dataset_query q))
+                brk  (first (lib/breakouts qry))]
+            (is (= 1 (count (lib/breakouts qry)))
+                "the chosen dim still produces a breakout")
+            (is (nil? (lib/binning brk))
+                "no binning option is attached when the fingerprint can't supply min/max")
+            (testing "the resulting query runs successfully through the QP (the original failure path)"
+              (is (= :completed
+                     (-> qry qp/userland-query qp/process-query :status))))))))))
 
 (deftest exploration-create-strips-metric-default-breakout-test
   (testing "POST / drops the metric's default temporal breakout so only the chosen dim remains"
