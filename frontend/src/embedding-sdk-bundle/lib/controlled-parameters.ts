@@ -7,26 +7,19 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValuesMap } from "metabase-types/api";
 
-/**
- * Map explicit `null` values to `""` to align with the URL-querystring convention
- */
 export const mapExplicitNullToEmpty = (
   values: ParameterValues,
 ): ParameterValues => {
   const result: ParameterValues = {};
 
   for (const [slug, value] of Object.entries(values)) {
+    // Map explicit `null` values to `""` to align with the URL-querystring convention
     result[slug] = value === null ? "" : value;
   }
 
   return result;
 };
 
-/**
- * Build the id-keyed `ParameterValuesMap` to dispatch from a controlled
- * `parameters` push. See `mapExplicitNullToEmpty` for the resolution
- * rules.
- */
 export const buildControlledParameters = (
   parameters: ParameterValues,
   parameterDefinitions: UiParameter[],
@@ -36,14 +29,17 @@ export const buildControlledParameters = (
     mapExplicitNullToEmpty(parameters),
   );
 
-/**
- * Build the slug-keyed snapshot of applied + default values shared by
- * `DashboardParameterChangePayload` and `SqlParameterChangePayload`.
- *
- * `lastUsedParameters` is only included when `lastUsedParameterValues`
- * is provided (dashboards have it from the BE; questions don't — and
- * the question payload spec omits the field entirely, not as `{}`).
- */
+export const resolveSeedParameterValues = (
+  controlledParameters: ParameterValues | null | undefined,
+  initialParameters: ParameterValues | undefined,
+): ParameterValues => {
+  if (controlledParameters === null || controlledParameters === undefined) {
+    return initialParameters ?? {};
+  }
+
+  return mapExplicitNullToEmpty(controlledParameters);
+};
+
 export function buildParametersPayload(
   applied: ParameterValuesMap,
   parameterDefinitions: UiParameter[],

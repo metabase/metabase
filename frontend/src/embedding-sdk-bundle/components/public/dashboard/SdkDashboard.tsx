@@ -31,7 +31,8 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
-import { mapExplicitNullToEmpty } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
+import { resolveSeedParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -220,20 +221,17 @@ const SdkDashboardInner = ({
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);
 
-  const hasConflictingParameterProps =
-    initialParameters !== undefined && parameters !== undefined;
-  useEffect(() => {
-    if (hasConflictingParameterProps) {
-      console.warn(
-        "`initialParameters` is ignored when `parameters` is set. Pass only one.",
-      );
-    }
-  }, [hasConflictingParameterProps]);
+  useWarnConflictingParameterProps({
+    initialParameters,
+    parameters,
+    initialParameterPropName: "initialParameters",
+    parameterPropName: "parameters",
+  });
 
-  const effectiveInitialParameters =
-    parameters !== undefined
-      ? mapExplicitNullToEmpty(parameters)
-      : (initialParameters ?? {});
+  const effectiveInitialParameters = resolveSeedParameterValues(
+    parameters,
+    initialParameters,
+  );
 
   useSdkControlledParameters({
     parameters,

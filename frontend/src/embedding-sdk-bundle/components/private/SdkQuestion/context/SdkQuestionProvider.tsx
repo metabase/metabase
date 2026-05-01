@@ -16,7 +16,8 @@ import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/pri
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
-import { mapExplicitNullToEmpty } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
+import { resolveSeedParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -90,6 +91,11 @@ export const SdkQuestionProvider = ({
   const [isFirstRender, setIsFirstRender] = useState(true);
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
+
+  const effectiveInitialSqlParameters = resolveSeedParameterValues(
+    sqlParameters,
+    initialSqlParameters,
+  );
 
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
@@ -181,22 +187,16 @@ export const SdkQuestionProvider = ({
     token,
     options,
     deserializedCard,
-    initialSqlParameters:
-      sqlParameters !== undefined
-        ? mapExplicitNullToEmpty(sqlParameters)
-        : initialSqlParameters,
+    initialSqlParameters: effectiveInitialSqlParameters,
     targetDashboardId,
   });
 
-  const hasConflictingSqlParameterProps =
-    initialSqlParameters !== undefined && sqlParameters !== undefined;
-  useEffect(() => {
-    if (hasConflictingSqlParameterProps) {
-      console.warn(
-        "`initialSqlParameters` is ignored when `sqlParameters` is set. Pass only one.",
-      );
-    }
-  }, [hasConflictingSqlParameterProps]);
+  useWarnConflictingParameterProps({
+    initialParameters: initialSqlParameters,
+    parameters: sqlParameters,
+    initialParameterPropName: "initialSqlParameters",
+    parameterPropName: "sqlParameters",
+  });
 
   useSdkControlledSqlParameters({
     sqlParameters,
