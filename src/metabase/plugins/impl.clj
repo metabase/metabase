@@ -111,7 +111,7 @@
 (defn- load-plugin-manifest! [path]
   (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
-(defn- driver-manifest-paths
+(defn- bundled-driver-manifest-paths
   "Return a sequence of paths (URIs when running from a jar, Paths in dev) for `metabase-plugin.yaml` plugin manifests
   for drivers on the classpath. Driver manifests live at `metabase/<driver-name>/metabase-plugin.yaml` on the classpath."
   []
@@ -129,13 +129,13 @@
             f founds]
         f))))
 
-(defn- load-driver-plugin-manifests!
+(defn- load-bundled-driver-plugin-manifests!
   "Find and load driver plugin manifests from the classpath. In the uberjar, driver classes are flattened directly into
   the jar (rather than shipped as nested JARs in a `modules/` directory) and their manifests live at
   `metabase/<driver>/metabase-plugin.yaml`. In dev, the same manifests are found via the driver resource directories on
   the classpath."
   []
-  (doseq [manifest-path (driver-manifest-paths)]
+  (doseq [manifest-path (bundled-driver-manifest-paths)]
     (log/infof "Loading driver plugin manifest at %s" (str manifest-path))
     (load-plugin-manifest! manifest-path)))
 
@@ -161,7 +161,7 @@
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
   (let [paths (plugins-paths)]
     (init-plugins! paths))
-  (load-driver-plugin-manifests!))
+  (load-bundled-driver-plugin-manifests!))
 
 (defonce ^:private loaded? (atom false))
 
