@@ -123,10 +123,6 @@ export const Collections = createEntity({
       ),
   },
 
-  objectSelectors: {
-    getName: (collection?: Collection) => collection?.name,
-  },
-
   selectors: {
     getExpandedCollectionsById: createSelector(
       [

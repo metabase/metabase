@@ -100,8 +100,4 @@ export const Documents = createEntity({
         return (result as { data: Document }).data;
       },
   },
-
-  objectSelectors: {
-    getName: (document: Document) => document && document.name,
-  },
 });

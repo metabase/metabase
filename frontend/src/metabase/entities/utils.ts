@@ -802,9 +802,6 @@ export function createEntity(def: EntityDef): Entity {
   } as EntitySelectors;
 
   entity.objectSelectors = {
-    getName(object: EntityObject) {
-      return object.name;
-    },
     getIcon(_object: EntityObject) {
       return { name: "unknown" };
     },

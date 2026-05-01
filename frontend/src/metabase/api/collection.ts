@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/redux/metadata";
+import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
   CreateCollectionRequest,
@@ -23,6 +25,7 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -68,6 +71,15 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
+      // Hydrate the legacy entity store so legacy entity actions (e.g.
+      // Dashboards.actions.setCollection) can read the original object to
+      // build their undo payloads.
+      //
+      // TODO: Remove once entity actions are migrated.
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (response) =>
+          dispatch(updateMetadata(response.data, [ObjectUnionSchema])),
+        ),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {

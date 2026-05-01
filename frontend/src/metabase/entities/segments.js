@@ -59,10 +59,6 @@ export const Segments = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).segment(entityId),
   },
-
-  objectSelectors: {
-    getName: (segment) => segment && segment.name,
-  },
 });
 
 const useGetQuery = ({ id }, options) => {

@@ -141,13 +141,6 @@ export const Search = createEntity({
             null)
         : warnEntityAndReturnObject(object);
     },
-
-    getName: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
-        : warnEntityAndReturnObject(object);
-    },
   },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
