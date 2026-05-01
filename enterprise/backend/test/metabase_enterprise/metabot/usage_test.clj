@@ -31,17 +31,17 @@
     (testing "log-ai-usage! inserts a row into ai_usage_log"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
-          (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "log-test")]
+          (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")]
             (usage/log-ai-usage!
-             {:source            "log-test"
+             {:source            "metabot_agent"
               :model             "anthropic/claude-test"
               :prompt-tokens     100
               :completion-tokens 50
               :ai-proxied        true})
             (try
               (is (= (inc before-count)
-                     (t2/count :model/AiUsageLog :user_id user-id :source "log-test")))
-              (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "log-test"
+                     (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")))
+              (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "metabot_agent"
                                        {:order-by [[:id :desc]]})]
                 (is (= "anthropic/claude-test" (:model row)))
                 (is (= 100 (:prompt_tokens row)))
@@ -50,7 +50,7 @@
                 (is (= user-id (:user_id row)))
                 (is (true? (:ai_proxied row))))
               (finally
-                (t2/delete! :model/AiUsageLog :user_id user-id :source "log-test")))))))))
+                (t2/delete! :model/AiUsageLog :user_id user-id :source "metabot_agent")))))))))
 
 (deftest log-ai-usage!-skips-intent-classification-test
   (mt/with-premium-features #{:ai-controls}
@@ -74,33 +74,33 @@
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
           (usage/log-ai-usage!
-           {:source            "binding-test"
+           {:source            "document_generate_content"
             :model             "test/model"
             :prompt-tokens     1
             :completion-tokens 1})
           (try
-            (let [row (t2/select-one :model/AiUsageLog :source "binding-test"
+            (let [row (t2/select-one :model/AiUsageLog :source "document_generate_content"
                                      {:order-by [[:id :desc]]})]
               (is (= user-id (:user_id row))))
             (finally
-              (t2/delete! :model/AiUsageLog :source "binding-test"))))))))
+              (t2/delete! :model/AiUsageLog :source "document_generate_content"))))))))
 
 (deftest log-ai-usage!-converts-profile-id-keyword-test
   (mt/with-premium-features #{:ai-controls}
     (testing "log-ai-usage! converts keyword profile-id to string"
       (mt/with-test-user :rasta
         (usage/log-ai-usage!
-         {:source            "profile-test"
+         {:source            "example_question_generation_batch"
           :model             "test/model"
           :prompt-tokens     1
           :completion-tokens 1
           :profile-id        :internal})
         (try
-          (let [row (t2/select-one :model/AiUsageLog :source "profile-test"
+          (let [row (t2/select-one :model/AiUsageLog :source "example_question_generation_batch"
                                    {:order-by [[:id :desc]]})]
             (is (= "internal" (:profile_id row))))
           (finally
-            (t2/delete! :model/AiUsageLog :source "profile-test")))))))
+            (t2/delete! :model/AiUsageLog :source "example_question_generation_batch")))))))
 
 (deftest log-ai-usage!-explicit-user-id-test
   (mt/with-premium-features #{:ai-controls}
@@ -108,33 +108,60 @@
       (let [crowberto-id (mt/user->id :crowberto)]
         (mt/with-test-user :rasta
           (usage/log-ai-usage!
-           {:source            "explicit-user-test"
+           {:source            "slack"
             :model             "test/model"
             :prompt-tokens     1
             :completion-tokens 1
             :user-id           crowberto-id})
           (try
-            (let [row (t2/select-one :model/AiUsageLog :source "explicit-user-test"
+            (let [row (t2/select-one :model/AiUsageLog :source "slack"
                                      {:order-by [[:id :desc]]})]
               (is (= crowberto-id (:user_id row))))
             (finally
-              (t2/delete! :model/AiUsageLog :source "explicit-user-test"))))))))
+              (t2/delete! :model/AiUsageLog :source "slack"))))))))
 
 (deftest log-ai-usage!-ai-proxied-defaults-to-nil-test
   (mt/with-premium-features #{:ai-controls}
     (testing "log-ai-usage! stores nil for ai_proxied when not provided"
       (mt/with-test-user :rasta
         (usage/log-ai-usage!
-         {:source            "proxied-default-test"
+         {:source            "oss-sql-gen"
           :model             "test/model"
           :prompt-tokens     1
           :completion-tokens 1})
         (try
-          (let [row (t2/select-one :model/AiUsageLog :source "proxied-default-test"
+          (let [row (t2/select-one :model/AiUsageLog :source "oss-sql-gen"
                                    {:order-by [[:id :desc]]})]
             (is (nil? (:ai_proxied row))))
           (finally
-            (t2/delete! :model/AiUsageLog :source "proxied-default-test")))))))
+            (t2/delete! :model/AiUsageLog :source "oss-sql-gen")))))))
+
+(deftest log-ai-usage!-throws-on-unknown-source-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "log-ai-usage! throws when source is not in the known set"
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unknown ai_usage_log source"
+             (usage/log-ai-usage!
+              {:source            "made-up-source"
+               :model             "test/model"
+               :prompt-tokens     1
+               :completion-tokens 1})))))))
+
+(deftest log-ai-usage!-throws-on-unknown-profile-id-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "log-ai-usage! throws when profile-id is not in the known set"
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unknown ai_usage_log profile-id"
+             (usage/log-ai-usage!
+              {:source            "metabot_agent"
+               :model             "test/model"
+               :prompt-tokens     1
+               :completion-tokens 1
+               :profile-id        :made-up-profile})))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 

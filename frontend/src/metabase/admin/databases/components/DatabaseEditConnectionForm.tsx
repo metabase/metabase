@@ -10,6 +10,7 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { isDbModifiable } from "metabase/common/utils/database";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type {
   DatabaseFormConfig,
@@ -25,7 +26,6 @@ import type {
 } from "metabase-types/api";
 
 import { saveDatabase } from "../database";
-import { isDbModifiable } from "../utils";
 
 const makeDefaultSaveDbFn =
   (dispatch: Dispatch) =>

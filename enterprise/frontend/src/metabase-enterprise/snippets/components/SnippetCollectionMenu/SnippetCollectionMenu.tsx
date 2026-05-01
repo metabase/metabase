@@ -47,7 +47,7 @@ export function SnippetCollectionMenu({
           message: wasArchived
             ? t`"${collection.name}" has been unarchived`
             : t`"${collection.name}" has been archived`,
-          undo: async () => {
+          action: async () => {
             await updateCollection({
               id: collection.id,
               archived: wasArchived,

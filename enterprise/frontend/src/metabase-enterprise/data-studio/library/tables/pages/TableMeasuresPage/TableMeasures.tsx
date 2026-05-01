@@ -8,7 +8,7 @@ import {
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 type TableMeasuresProps = {

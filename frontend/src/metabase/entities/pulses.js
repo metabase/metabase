@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import {
   subscriptionApi,
   useGetSubscriptionQuery,
@@ -7,7 +5,7 @@ import {
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
 
-import { createEntity, entityCompatibleQuery, undo } from "./utils";
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -51,16 +49,6 @@ export const Pulses = createEntity({
       ),
     delete: () => {
       throw new TypeError("Pulses.api.delete is not supported");
-    },
-  },
-
-  objectActions: {
-    setArchived: ({ id }, archived, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
-      );
     },
   },
 

@@ -57,7 +57,6 @@ export const MigrationInProgress = ({
       addUndo({
         icon: "info",
         message: t`Migration to Metabase Cloud has been canceled.`,
-        undo: false,
       }),
     );
   };

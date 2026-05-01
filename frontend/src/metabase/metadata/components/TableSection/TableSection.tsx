@@ -19,7 +19,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";

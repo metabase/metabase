@@ -406,7 +406,7 @@
                          {:description "Duration (ms) of a full Data Complexity Score run end-to-end (enumerate + score for all three catalogs + Snowplow publish)."
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
    (prometheus/histogram :metabase-data-complexity/phase-duration-ms
-                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring) for one catalog within a Data Complexity Score run."
+                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
 
@@ -529,6 +529,17 @@
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
                         :labels [:status]})
+   (prometheus/counter :metabase-transforms/inspector-discovery
+                       {:description "Transform Inspector lens discovery calls."
+                        :labels [:status]})
+   (prometheus/counter :metabase-transforms/inspector-lens
+                       {:description "Transform Inspector lens retrievals."
+                        :labels [:lens-type :complexity :status]})
+   (prometheus/histogram :metabase-transforms/inspector-query-duration-ms
+                         {:description "Duration in ms of Transform Inspector lens query execution."
+                          :labels [:lens-type :status]
+                          ;; 1ms -> 10 minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})

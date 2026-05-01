@@ -107,7 +107,6 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  getInitialCollectionId: EntitySelector;
   getExpandedCollectionsById: EntitySelector;
 };
 

@@ -20,7 +20,7 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 
-import { createEntity, entityCompatibleQuery, undo } from "../utils";
+import { createEntity, entityCompatibleQuery } from "../utils";
 
 type BaseCreateActionParams = Pick<
   WritebackAction,
@@ -196,12 +196,6 @@ export const Actions = createEntity({
           return { id };
         },
     ),
-    setArchived: ({ id }: WritebackAction, archived: boolean) =>
-      Actions.actions.update(
-        { id },
-        { archived },
-        undo({}, t`action`, archived ? t`archived` : t`unarchived`),
-      ),
   },
   reducer: (state, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
