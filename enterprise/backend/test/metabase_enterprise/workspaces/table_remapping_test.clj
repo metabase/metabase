@@ -112,8 +112,9 @@
        (with-provisioned-workspace-db!
          (mt/id) "ws_fresh"
          (fn []
-           (ws.table-remapping/add-transform-target-mapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
-           (is (= ["ws_fresh" "orders_copy"]
+           (ws.table-remapping/add-transform-target-mapping!
+            (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})
+           (is (= ["ws_fresh" "ORDERS"]
                   (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS")))))))))
 
 (deftest add-transform-target-mapping!-is-idempotent-test
@@ -124,10 +125,11 @@
        (with-provisioned-workspace-db!
          (mt/id) "ws_idem"
          (fn []
-           (ws.table-remapping/add-transform-target-mapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
-           (ws.table-remapping/add-transform-target-mapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
-           (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "orders_copy"]}
-                  (ws.table-remapping/all-mappings-for-db (mt/id))))))))))
+           (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}]
+             (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
+             (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
+             (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "ORDERS"]}
+                    (ws.table-remapping/all-mappings-for-db (mt/id)))))))))))
 
 (deftest workspace-remap-schema+name-redirects-sync-fetch-test
   (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"
@@ -191,7 +193,8 @@
      (mt/id)
      (fn []
        (let [ex (try
-                  (ws.table-remapping/add-transform-target-mapping! (mt/id) "PUBLIC" "ORDERS" "orders_copy")
+                  (ws.table-remapping/add-transform-target-mapping!
+                   (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})
                   nil
                   (catch clojure.lang.ExceptionInfo e e))]
          (is (some? ex) "add-transform-target-mapping! must throw when the db is not workspaced")

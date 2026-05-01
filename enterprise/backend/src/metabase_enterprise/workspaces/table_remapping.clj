@@ -53,7 +53,8 @@
    [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -317,30 +318,42 @@
   (ws.remapping/clear-for-db! database-id))
 
 (defn add-transform-target-mapping!
-  "Register a remapping for a transform target on a workspaced database. Resolves the
-   destination schema from the database's provisioned `WorkspaceDatabase` row, then
-   delegates to [[add-mapping!]] (which is itself idempotent).
+  "Register a remapping for a transform target on a workspaced database. The from-side spec
+   is normalized via [[spec-for-table]] so it carries the right slots for the driver
+   (e.g., 3-slot for Snowflake/SQL Server/BigQuery, 2-slot for Postgres/ClickHouse,
+   1-slot for MySQL). Delegates to [[add-mapping!]] (idempotent on the unique constraint).
 
-   Inputs come from the transform's target — `(from-schema, from-table-name)` strings
-   identifying the canonical target the transform was originally configured to write to,
-   plus `to-table-name` (typically the same name, but in the workspace schema). The
-   transform's actual write goes to `(workspace-schema, to-table-name)`; future reads
-   of the canonical pair are redirected via the QP middleware.
+   Inputs:
+   - `db-id` -- the canonical `:model/Database` id.
+   - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
+     identifier the transform was configured to write to. Same shape `resolve-transform-target`
+     already passes around.
 
-   Today's transform path only writes 2-level remappings (schema + table). BigQuery
-   transforms will need a separate writer that resolves `:db` from the database row.
+   Resolution:
+   - From-side: a synthetic `:model/Database` + `:model/Table` shape is fed through
+     `spec-for-table` so `:db` and `:schema` slots are filled per the driver's
+     `qualified-name-components`.
+   - To-side: workspace output schema comes from `ws/db-workspace-schema`. Today the
+     atom only carries `output_schema` (single string), so `:db` is `\"\"` for all drivers.
+     When the YAML transmission lands carrying `output_db` for cross-DB workspaces
+     (Snowflake/BQ/SQL Server), this can be extended -- see audit H7.
 
-   Throws when the database is not workspaced (`ws/db-workspace-schema` returns nil):
-   a caller getting here in that case is a programming error — the transform-hook path
-   should gate on [[ws/db-workspace-schema]] first."
-  [db-id from-schema from-table-name to-table-name]
+   Throws when the database is not workspaced -- a caller getting here in that case is a
+   programming error; the transform-hook path should gate on [[ws/db-workspace-schema]] first."
+  [db-id target]
   (let [workspace-schema (ws/db-workspace-schema db-id)]
     (when-not workspace-schema
       (throw (ex-info "Cannot record transform-target remapping: database is not workspaced"
-                      {:db-id db-id
-                       :from-schema from-schema
-                       :from-table-name from-table-name
-                       :to-table-name to-table-name})))
-    (add-mapping! db-id
-                  {:schema from-schema      :table from-table-name}
-                  {:schema workspace-schema :table to-table-name})))
+                      {:db-id db-id :target target})))
+    (let [database     (or (t2/select-one :model/Database :id db-id)
+                           (throw (ex-info "Database not found"
+                                           {:db-id db-id :target target})))
+          {table-name :name from-schema :schema} target
+          ;; Synthesize a :model/Table shape so spec-for-table can populate the canonical
+          ;; from-side slots per the driver's qualified-name-components.
+          from-table   {:name table-name :schema from-schema}
+          from-spec    (spec-for-table database from-table)
+          ;; To-side: same :name (transforms today don't rename), workspace schema substituted.
+          ;; :db slot stays "" until the atom carries output_db (audit H7 second half).
+          to-spec      (assoc from-spec :schema workspace-schema)]
+      (add-mapping! db-id from-spec to-spec))))
