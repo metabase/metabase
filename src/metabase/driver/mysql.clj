@@ -210,10 +210,14 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
+(def ^:private malicious-pattern #"(allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
+
 (defmethod driver/can-connect? :mysql
   [driver details]
   ;; delegate to parent method to check whether we can connect; if so, check if it's an unsupported version and issue
   ;; a warning if it is
+  (when (re-find malicious-pattern (:additional-options details ""))
+    (throw (ex-info "Malicious keys detected" {:details details})))
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))

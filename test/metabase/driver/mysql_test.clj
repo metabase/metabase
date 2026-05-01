@@ -1039,3 +1039,15 @@
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (testing "Reject connection strings with malicious properties"
+    (let [details (assoc (tx/dbdef->connection-details :mysql :db
+                                                       {:database-name "argent"})
+                         :additional-options "allowLoadLocalInfile=true")
+          result (try (driver/can-connect? :mysql details)
+                      ::did-not-throw
+                      (catch Exception e e))]
+      (is (instance? clojure.lang.ExceptionInfo result))
+      (is (partial= {:cause "Malicious keys detected"}
+                    (Throwable->map result))))))
