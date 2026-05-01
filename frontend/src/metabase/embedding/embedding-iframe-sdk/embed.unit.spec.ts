@@ -554,7 +554,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       return undefined;
     };
 
-    it("setting the `parameters` attribute pushes a setSettings update", async () => {
+    it("pushes a setSettings update when the `parameters` attribute is set", async () => {
       const { embed, iframePostMessageSpy, markReady } = setupDashboard();
       await markReady();
 
@@ -564,7 +564,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       expect(settings?.parameters).toEqual({ state: "NY" });
     });
 
-    it("setting the `parameters` property reflects to the attribute and pushes a setSettings update", async () => {
+    it("reflects to the attribute and pushes a setSettings update when the `parameters` property is set", async () => {
       const { embed, iframePostMessageSpy, markReady } = setupDashboard();
       await markReady();
 
@@ -575,7 +575,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       expect(settings?.parameters).toEqual({ state: "NY" });
     });
 
-    it("reading the `parameters` property returns the parsed attribute", async () => {
+    it("returns the parsed attribute when the `parameters` property is read", async () => {
       const { embed, markReady } = setupDashboard();
       await markReady();
 
@@ -612,7 +612,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       expect(settings?.parameters).toEqual({ state: null });
     });
 
-    it("setting `parameters = undefined` removes the attribute", async () => {
+    it("removes the attribute when `parameters` is set to undefined", async () => {
       const { embed, markReady } = setupDashboard();
       await markReady();
 
@@ -621,6 +621,52 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
       embed.parameters = undefined;
       expect(embed).not.toHaveAttribute("parameters");
+    });
+
+    it("fires exactly one setSettings call when the `parameters` property is set (no double-dispatch via attributeChangedCallback)", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+      iframePostMessageSpy.mockClear();
+
+      embed.parameters = { state: "NY" };
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      expect(setSettingsCalls).toHaveLength(1);
+      expect(setSettingsCalls[0][0].data.parameters).toEqual({ state: "NY" });
+    });
+
+    it("re-pushes setSettings when the same `parameters` value is re-assigned (host can counter iframe drift)", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+
+      embed.parameters = { state: "NY" };
+      iframePostMessageSpy.mockClear();
+
+      embed.parameters = { state: "NY" };
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      expect(setSettingsCalls).toHaveLength(1);
+    });
+
+    it("treats `el.parameters = null` as a no-op (does not crash; no excess setSettings dispatch)", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+      iframePostMessageSpy.mockClear();
+
+      expect(() => {
+        (embed as unknown as { parameters: unknown }).parameters = null;
+      }).not.toThrow();
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      // SDK push hook treats null as "no controlled value" — at the embed
+      // boundary we don't crash and we don't fire more than one update.
+      expect(setSettingsCalls.length).toBeLessThanOrEqual(1);
     });
 
     it("dispatches a `parameters-change` event when the iframe broadcasts a change", async () => {
@@ -689,7 +735,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       return undefined;
     };
 
-    it("setting the `sql-parameters` attribute pushes a setSettings update", async () => {
+    it("pushes a setSettings update when the `sql-parameters` attribute is set", async () => {
       const { embed, iframePostMessageSpy, markReady } = setupQuestion();
       await markReady();
 
@@ -699,7 +745,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       expect(settings?.sqlParameters).toEqual({ region: "EU" });
     });
 
-    it("setting the `sqlParameters` property reflects to the attribute and pushes a setSettings update", async () => {
+    it("reflects to the attribute and pushes a setSettings update when the `sqlParameters` property is set", async () => {
       const { embed, iframePostMessageSpy, markReady } = setupQuestion();
       await markReady();
 
