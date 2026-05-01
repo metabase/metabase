@@ -274,46 +274,62 @@
                             [:model/Dashboard ud]]]
           (recent-views/update-users-recent-views! (mt/user->id :rasta) model id :view))
 
-        (testing "no metabot-id passed -> no filtering"
-          (let [items (-> (context/create-context {}) :user_recently_viewed)
-                ids   (set (map :id items))]
-            (is (= 5 (count items)))
-            (is (contains? ids uq))
-            (is (contains? ids um))
-            (is (contains? ids ud))
-            (is (contains? ids table-id))))
+        ;; IDs are unique per model but can collide across models (e.g. a Card and a Dashboard
+        ;; can share the same id). Identify items by [:type :id] pairs so cross-model collisions
+        ;; don't mask filtering bugs.
+        (let [as-pair (fn [type id] [type id])
+              vq1*    (as-pair "question"  vq1)
+              vq2*    (as-pair "question"  vq2)
+              vm1*    (as-pair "model"     vm1)
+              vm2*    (as-pair "model"     vm2)
+              vd*     (as-pair "dashboard" vd)
+              uq*     (as-pair "question"  uq)
+              um*     (as-pair "model"     um)
+              ud*     (as-pair "dashboard" ud)
+              table*  (as-pair "table"     table-id)
+              keys-of (fn [items] (set (map (juxt :type :id) items)))]
 
-        (testing "use_verified_content=true with :content-verification feature -> filters"
-          (mt/with-premium-features #{:content-verification}
-            (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
-                            :user_recently_viewed)
-                  ids   (set (map :id items))]
-              (is (contains? ids table-id) "tables are not moderatable and pass through")
-              (is (contains? ids vd))
-              (is (not (contains? ids uq)))
-              (is (not (contains? ids um)))
-              (is (not (contains? ids ud)))
-              (testing "filter is applied *before* `take 5` — verified items deeper in the list survive"
-                (is (= 5 (count items))
-                    "Should keep 5 items even though 3 unverified items were ahead of older verified items")
-                (is (contains? ids vm2))
-                (is (contains? ids vm1))))))
+          (testing "no metabot-id passed -> no filtering (even with :content-verification active)"
+            (mt/with-premium-features #{:content-verification}
+              (let [items (-> (context/create-context {}) :user_recently_viewed)
+                    ks    (keys-of items)]
+                (is (= 5 (count items)))
+                (is (contains? ks uq*))
+                (is (contains? ks um*))
+                (is (contains? ks ud*))
+                (is (contains? ks table*)))))
 
-        (testing "use_verified_content=true but premium feature absent -> no filtering"
-          (mt/with-premium-features #{}
-            (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
-                            :user_recently_viewed)
-                  ids   (set (map :id items))]
-              (is (contains? ids uq))
-              (is (contains? ids um))
-              (is (contains? ids ud)))))
+          (testing "use_verified_content=true with :content-verification feature -> filters"
+            (mt/with-premium-features #{:content-verification}
+              (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+                              :user_recently_viewed)
+                    ks    (keys-of items)]
+                (is (contains? ks table*) "tables are not moderatable and pass through")
+                (is (contains? ks vd*))
+                (is (not (contains? ks uq*)))
+                (is (not (contains? ks um*)))
+                (is (not (contains? ks ud*)))
+                (testing "filter is applied *before* `take 5` — verified items deeper in the list survive"
+                  (is (= 5 (count items))
+                      "Should keep 5 items even though 3 unverified items were ahead of older verified items")
+                  (is (contains? ks vm2*))
+                  (is (contains? ks vm1*))))))
 
-        (testing "metabot-id that does not resolve -> no filtering"
-          (mt/with-premium-features #{:content-verification}
-            (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})
-                            :user_recently_viewed)
-                  ids   (set (map :id items))]
-              (is (contains? ids uq)))))))))
+          (testing "use_verified_content=true but premium feature absent -> no filtering"
+            (mt/with-premium-features #{}
+              (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+                              :user_recently_viewed)
+                    ks    (keys-of items)]
+                (is (contains? ks uq*))
+                (is (contains? ks um*))
+                (is (contains? ks ud*)))))
+
+          (testing "metabot-id that does not resolve -> no filtering"
+            (mt/with-premium-features #{:content-verification}
+              (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})
+                              :user_recently_viewed)
+                    ks    (keys-of items)]
+                (is (contains? ks uq*))))))))))
 
 (deftest recent-views-most-recent-review-wins-test
   (testing "A card that was verified and later un-verified is correctly excluded"
