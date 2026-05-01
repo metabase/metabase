@@ -231,11 +231,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
   it("fires `onSqlParametersChange` with `source: 'manual-change'` when values are pushed programmatically", () => {
     const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
 
-    const PushButton = ({
-      questionId,
-    }: {
-      questionId: number | string;
-    }) => {
+    const PushButton = ({ questionId }: { questionId: number | string }) => {
       const [sqlParameters, setSqlParameters] = useState<SqlParameterValues>({
         state: "AR",
       });
