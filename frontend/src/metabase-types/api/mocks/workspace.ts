@@ -12,7 +12,6 @@ export function createMockWorkspaceDatabase(
   return {
     database_id: 1,
     input_schemas: ["public"],
-    output_schema: "workspace",
     ...opts,
   };
 }
@@ -21,8 +20,8 @@ export function createMockWorkspace(opts?: Partial<Workspace>): Workspace {
   return {
     id: 1,
     name: "Workspace",
-    databases: [createMockWorkspaceDatabase()],
-    access_key: null,
+    databases: [],
+    access_keys: [],
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     creator_id: null,
@@ -37,7 +36,6 @@ export function createMockWorkspaceInstanceDatabase(
   return {
     name: "Sample Database",
     input_schemas: ["public"],
-    output_schema: "workspace",
     ...opts,
   };
 }

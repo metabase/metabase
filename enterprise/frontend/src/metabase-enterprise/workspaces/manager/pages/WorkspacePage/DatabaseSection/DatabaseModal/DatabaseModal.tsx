@@ -117,7 +117,7 @@ function CreateDatabaseForm({
 }: CreateDatabaseFormProps) {
   const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
   const availableDatabases = useMemo(
-    () => getAvailableDatabases(databases, workspace.databases),
+    () => getAvailableDatabases(databases, workspace.databases ?? []),
     [databases, workspace.databases],
   );
 
@@ -179,12 +179,13 @@ function UpdateDatabaseForm({
   onClose,
 }: UpdateDatabaseFormProps) {
   const database = databases.find((db) => db.id === databaseId);
-  const workspaceDatabase = workspace.databases.find(
+  const workspaceDatabase = (workspace.databases ?? []).find(
     (db) => db.database_id === databaseId,
   );
   const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
   const availableDatabases = useMemo(
-    () => getAvailableDatabases(databases, workspace.databases, databaseId),
+    () =>
+      getAvailableDatabases(databases, workspace.databases ?? [], databaseId),
     [databases, workspace.databases, databaseId],
   );
 
@@ -299,7 +300,7 @@ function DatabaseSchemaSelect({
   return (
     <FormMultiSelect
       name="inputSchemas"
-      label={t`Readable schemas`}
+      label={t`Schemas`}
       placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
       data={availableSchemas}
       searchable

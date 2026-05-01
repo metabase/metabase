@@ -86,3 +86,55 @@
             (let [ws' (mt/user-http-request :crowberto :delete 200
                                             (str "ee/workspace-manager/" (:id ws) "/database/" (mt/id)))]
               (is (empty? (:databases ws'))))))))))
+
+(deftest access-key-endpoints-test
+  (testing "POST creates a key and returns the plaintext exactly once"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                     {:name "Access Key Test"})]
+        (testing "create returns plaintext :key"
+          (let [ak (mt/user-http-request :crowberto :post 200
+                                         (str "ee/workspace-manager/" (:id ws) "/access-key")
+                                         {:name "primary"})]
+            (is (= "primary" (:name ak)))
+            (is (some? (:key ak)))
+            (is (uuid? (parse-uuid (:key ak))))
+            (is (= (:id ws) (:workspace_id ak)))
+            (is (some? (:creator ak)))
+
+            (testing "GET /:id hydrates :access_keys without :key"
+              (let [ws' (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" (:id ws)))]
+                (is (= 1 (count (:access_keys ws'))))
+                (let [hydrated (first (:access_keys ws'))]
+                  (is (= "primary" (:name hydrated)))
+                  (is (= (:id ak) (:id hydrated)))
+                  (is (some? (:creator hydrated)))
+                  (is (not (contains? hydrated :key))
+                      "plaintext :key must never be returned outside the create response"))))
+
+            (testing "PUT renames"
+              (let [renamed (mt/user-http-request :crowberto :put 200
+                                                  (str "ee/workspace-manager/" (:id ws) "/access-key/" (:id ak))
+                                                  {:name "renamed"})]
+                (is (= "renamed" (:name renamed)))
+                (is (not (contains? renamed :key)))))
+
+            (testing "DELETE drops the row"
+              (let [res (mt/user-http-request :crowberto :delete 200
+                                              (str "ee/workspace-manager/" (:id ws) "/access-key/" (:id ak)))]
+                (is (true? (:deleted res))))
+              (let [ws' (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" (:id ws)))]
+                (is (empty? (:access_keys ws'))))))))))
+
+  (testing "non-admins are 403 on every access-key endpoint"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                     {:name "Auth Test"})]
+        (mt/user-http-request :rasta :post 403
+                              (str "ee/workspace-manager/" (:id ws) "/access-key")
+                              {:name "rejected"})
+        (mt/user-http-request :rasta :put 403
+                              (str "ee/workspace-manager/" (:id ws) "/access-key/1")
+                              {:name "rejected"})
+        (mt/user-http-request :rasta :delete 403
+                              (str "ee/workspace-manager/" (:id ws) "/access-key/1"))))))

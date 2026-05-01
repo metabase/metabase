@@ -83,7 +83,7 @@ function WorkspaceInstanceOverviewBody({
       />
       <TitleSection
         label={t`Database isolation`}
-        description={t`Readable schemas and the isolation schema configured for each database in this workspace.`}
+        description={t`Schemas configured for each database in this workspace.`}
       >
         <DatabaseOverviewTable
           entries={databaseEntries}

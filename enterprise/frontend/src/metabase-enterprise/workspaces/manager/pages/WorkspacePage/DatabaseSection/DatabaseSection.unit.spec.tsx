@@ -42,7 +42,6 @@ function setup({
       createMockWorkspaceDatabase({
         database_id: 1,
         input_schemas: ["public"],
-        output_schema: "workspace",
       }),
     ],
   }),

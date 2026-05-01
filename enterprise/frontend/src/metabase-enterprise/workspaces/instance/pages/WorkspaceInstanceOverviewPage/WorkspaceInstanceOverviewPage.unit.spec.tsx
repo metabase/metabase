@@ -107,12 +107,10 @@ describe("WorkspaceInstanceOverviewPage", () => {
           1: createMockWorkspaceInstanceDatabase({
             name: "Sample DB",
             input_schemas: ["public", "raw"],
-            output_schema: "workspace_a",
           }),
           2: createMockWorkspaceInstanceDatabase({
             name: "Analytics DB",
             input_schemas: ["events"],
-            output_schema: "workspace_b",
           }),
         },
       }),
@@ -141,7 +139,6 @@ describe("WorkspaceInstanceOverviewPage", () => {
           99: createMockWorkspaceInstanceDatabase({
             name: "Config-only DB",
             input_schemas: ["public"],
-            output_schema: "iso",
           }),
         },
       }),

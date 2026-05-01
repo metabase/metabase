@@ -1,140 +1,72 @@
-import { useClipboard } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Icon,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
-import {
-  useDeleteWorkspaceAccessKeyMutation,
-  useSetWorkspaceAccessKeyMutation,
-} from "metabase-enterprise/api";
+import { Button } from "metabase/ui";
+import { useDeleteWorkspaceAccessKeyMutation } from "metabase-enterprise/api";
 import { TitleSection } from "metabase-enterprise/workspaces/common/components/TitleSection";
-import type { Workspace, WorkspaceId } from "metabase-types/api";
+import type { Workspace, WorkspaceAccessKey } from "metabase-types/api";
+
+import { CreateAccessKeyModal, EditAccessKeyModal } from "./AccessKeyModal";
+import { AccessKeyTable } from "./AccessKeyTable";
 
 type AccessKeySectionProps = {
   workspace: Workspace;
 };
 
 export function AccessKeySection({ workspace }: AccessKeySectionProps) {
-  return (
-    <TitleSection
-      label={t`Access key`}
-      description={t`Create an access key to be able to download workspace configuration without a user session.`}
-    >
-      {workspace.access_key == null ? (
-        <CreateAccessKeySection workspaceId={workspace.id} />
-      ) : (
-        <ManageAccessKeySection
-          workspaceId={workspace.id}
-          accessKey={workspace.access_key}
-        />
-      )}
-    </TitleSection>
-  );
-}
-
-type CreateAccessKeySectionProps = {
-  workspaceId: WorkspaceId;
-};
-
-function CreateAccessKeySection({ workspaceId }: CreateAccessKeySectionProps) {
-  const [setAccessKey, { isLoading }] = useSetWorkspaceAccessKeyMutation();
-
-  const handleCreate = async () => {
-    await setAccessKey(workspaceId).unwrap();
-  };
-
-  return (
-    <Box p="md">
-      <Button loading={isLoading} onClick={handleCreate}>
-        {t`Create access key`}
-      </Button>
-    </Box>
-  );
-}
-
-type ManageAccessKeySectionProps = {
-  workspaceId: WorkspaceId;
-  accessKey: string;
-};
-
-function ManageAccessKeySection({
-  workspaceId,
-  accessKey,
-}: ManageAccessKeySectionProps) {
-  const [setAccessKey] = useSetWorkspaceAccessKeyMutation();
+  const accessKeys = workspace.access_keys ?? [];
+  const [isCreateOpen, { open: openCreate, close: closeCreate }] =
+    useDisclosure(false);
+  const [editingKey, setEditingKey] = useState<WorkspaceAccessKey | null>(null);
   const [deleteAccessKey] = useDeleteWorkspaceAccessKeyMutation();
-  const { modalContent, show } = useConfirmation();
-  const clipboard = useClipboard({ timeout: 2000 });
+  const { modalContent: deleteModalContent, show: showDeleteConfirmation } =
+    useConfirmation();
 
-  const handleCopy = () => {
-    clipboard.copy(accessKey);
-  };
+  const handleEditOpen = (accessKey: WorkspaceAccessKey) =>
+    setEditingKey(accessKey);
+  const handleEditClose = () => setEditingKey(null);
 
-  const handleRegenerate = () => {
-    show({
-      title: t`Regenerate access key`,
-      message: t`We will replace the existing access key with a new key. You won't be able to recover the old key.`,
-      confirmButtonText: t`Regenerate`,
-      confirmButtonProps: { variant: "filled", color: "brand" },
-      onConfirm: async () => {
-        await setAccessKey(workspaceId).unwrap();
-      },
-    });
-  };
-
-  const handleDelete = () => {
-    show({
-      title: t`Delete access key`,
-      message: t`You won't be able to recover a deleted access key. You'll have to create a new key.`,
-      confirmButtonText: t`Delete access key`,
+  const handleDelete = (accessKey: WorkspaceAccessKey) => {
+    showDeleteConfirmation({
+      title: t`Delete ${accessKey.name}?`,
+      message: t`Anyone using this key will lose access. This cannot be undone.`,
+      confirmButtonText: t`Delete`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        await deleteAccessKey(workspaceId).unwrap();
+        await deleteAccessKey({
+          workspace_id: workspace.id,
+          id: accessKey.id,
+        }).unwrap();
       },
     });
   };
 
   return (
     <>
-      <Group p="md" gap="sm" wrap="nowrap" align="center">
-        <TextInput value={accessKey} readOnly maw="22.5rem" flex={1} />
-        <Tooltip label={clipboard.copied ? t`Copied` : t`Copy`}>
-          <ActionIcon
-            variant="subtle"
-            aria-label={t`Copy`}
-            onClick={handleCopy}
-          >
-            <Icon name={clipboard.copied ? "check" : "copy"} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label={t`Regenerate access key`}>
-          <ActionIcon
-            variant="subtle"
-            aria-label={t`Regenerate access key`}
-            onClick={handleRegenerate}
-          >
-            <Icon name="pencil" />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label={t`Delete access key`}>
-          <ActionIcon
-            variant="subtle"
-            aria-label={t`Delete access key`}
-            onClick={handleDelete}
-          >
-            <Icon name="trash" />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-      {modalContent}
+      <TitleSection
+        label={t`Access keys`}
+        description={t`Create access keys to download workspace configuration without a user session.`}
+        rightSection={<Button onClick={openCreate}>{t`Add access key`}</Button>}
+      >
+        <AccessKeyTable
+          accessKeys={accessKeys}
+          onEdit={handleEditOpen}
+          onDelete={handleDelete}
+        />
+      </TitleSection>
+      {isCreateOpen && (
+        <CreateAccessKeyModal workspace={workspace} onClose={closeCreate} />
+      )}
+      {editingKey != null && (
+        <EditAccessKeyModal
+          workspace={workspace}
+          accessKey={editingKey}
+          onClose={handleEditClose}
+        />
+      )}
+      {deleteModalContent}
     </>
   );
 }

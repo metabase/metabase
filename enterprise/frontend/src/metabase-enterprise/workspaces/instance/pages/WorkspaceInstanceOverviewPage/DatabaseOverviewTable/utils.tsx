@@ -28,18 +28,9 @@ export function getOverviewColumns(): TreeTableColumnDef<WorkspaceOverviewDataba
     },
     {
       id: "input_schemas",
-      header: t`Readable schemas`,
-      width: "auto",
+      header: t`Schemas`,
       minWidth: 200,
       accessorFn: (row) => row.config.input_schemas.join(", "),
-      cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
-    },
-    {
-      id: "output_schema",
-      header: t`Isolation schema`,
-      width: "auto",
-      minWidth: 200,
-      accessorFn: (row) => row.config.output_schema,
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
     },
   ];

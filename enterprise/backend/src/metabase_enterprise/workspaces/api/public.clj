@@ -13,11 +13,17 @@
 ;;; ------------------------------------------------ Helpers -------------------------------------------------------
 
 (defn- workspace-by-access-key
-  "Look up a workspace by its access key. Returns the workspace (hydrated with
-   :databases and :creator) or nil."
-  [access-key]
-  (when-let [ws (t2/select-one :model/Workspace :access_key access-key)]
-    (t2/hydrate ws :creator :databases)))
+  "Look up a workspace by the plaintext of one of its access keys. Because the
+   stored `key` column is encrypted with a non-deterministic cipher, we can't
+   query by ciphertext — we fetch every row and let toucan decrypt them in-process,
+   then match against `plaintext`. This is O(n) over the whole `workspace_access_key`
+   table; if traffic grows, consider adding a deterministic `key_hash` column."
+  [plaintext]
+  (when-let [ak (->> (t2/select :model/WorkspaceAccessKey)
+                     (filter #(= plaintext (:key %)))
+                     first)]
+    (when-let [ws (t2/select-one :model/Workspace :id (:workspace_id ak))]
+      (t2/hydrate ws :creator :databases))))
 
 ;;; ------------------------------------------------ Endpoints -----------------------------------------------------
 

@@ -1,12 +1,14 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
+   [metabase-enterprise.workspaces.models.workspace-access-key]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
+(comment metabase-enterprise.workspaces.models.workspace-access-key/keep-me
+         metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
@@ -36,17 +38,30 @@
                               :id [:in ids]))))
    :creator_id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Workspace :access_keys]
+  [_model k workspaces]
+  (mi/instances-with-hydrated-data
+   workspaces k
+   (fn []
+     (when-let [ids (seq (map :id workspaces))]
+       (group-by :workspace_id
+                 (t2/select :model/WorkspaceAccessKey
+                            :workspace_id [:in ids]
+                            {:order-by [[:id :asc]]}))))
+   :id
+   {:default []}))
+
 (defn list-workspaces
-  "Return every Workspace with its `:databases` and `:creator` hydrated."
+  "Return every Workspace with its `:creator` hydrated."
   []
-  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator :databases))
+  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator))
 
 (defn get-workspace
-  "Return the Workspace with the given id and its `:databases` + `:creator` hydrated,
+  "Return the Workspace with the given id and its `:databases` + `:access_keys` + `:creator` hydrated,
   or nil if none exists."
   [id]
   (when-let [ws (t2/select-one :model/Workspace :id id)]
-    (t2/hydrate ws :creator :databases)))
+    (t2/hydrate ws :creator :databases [:access_keys :creator])))
 
 (defn get-workspace-by-name
   "Return the Workspace with the given name and its `:databases` + `:creator` hydrated,

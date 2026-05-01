@@ -4,7 +4,6 @@ import type { TableId } from "./table";
 export type WorkspaceInstanceDatabase = {
   name: string;
   input_schemas: string[];
-  output_schema: string;
 };
 
 export type WorkspaceInstance = {

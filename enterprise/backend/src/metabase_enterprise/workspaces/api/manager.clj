@@ -3,6 +3,7 @@
    Validation, auth, and presentation only — all logic lives in
    [[metabase-enterprise.workspaces.core]]."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
@@ -33,7 +34,7 @@
    [:name {:optional true} ms/NonBlankString]])
 
 (def ^:private WorkspaceDatabaseResponse
-  [:map
+  [:map {:closed true}
    [:database_id      ms/PositiveInt]
    [:database_details :map]
    [:output_schema    :string]
@@ -41,7 +42,7 @@
    [:status           WorkspaceStatus]])
 
 (def ^:private CreatorResponse
-  [:map
+  [:map {:closed true}
    [:id          ms/PositiveInt]
    [:first_name  [:maybe :string]]
    [:last_name   [:maybe :string]]
@@ -53,15 +54,30 @@
    (ms/InstanceOfClass java.time.OffsetDateTime)
    (ms/InstanceOfClass java.time.ZonedDateTime)])
 
+(def ^:private AccessKeyResponse
+  "Access key as exposed to the API — never includes the plaintext `:key`. The
+  plaintext is only returned by the create endpoint, in a separate `[:map [:key ...]]`
+  response that wraps this one."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:workspace_id ms/PositiveInt]
+   [:name        ms/NonBlankString]
+   [:creator     [:maybe CreatorResponse]]
+   [:created_at  Timestamp]
+   [:updated_at  Timestamp]])
+
 (def ^:private WorkspaceResponse
-  [:map
+  [:map {:closed true}
    [:id          ms/PositiveInt]
    [:name        ms/NonBlankString]
    [:creator     [:maybe CreatorResponse]]
-   [:access_key [:maybe ms/UUIDString]]
    [:created_at  Timestamp]
    [:updated_at  Timestamp]
-   [:databases   [:sequential WorkspaceDatabaseResponse]]])
+   ;; `:databases` and `:access_keys` are only included when hydrated (i.e. the
+   ;; GET /:id endpoint). The list endpoint omits them — clients should treat a
+   ;; missing array as `[]`.
+   [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]
+   [:access_keys {:optional true} [:sequential AccessKeyResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
@@ -73,11 +89,30 @@
   (when creator
     (select-keys creator [:id :first_name :last_name :email :common_name])))
 
+(defn- present-access-key
+  "Strip the plaintext `:key` from an access-key row. The plaintext only escapes
+  via [[present-access-key-with-secret]], which is reserved for the create
+  endpoint."
+  [ak]
+  (some-> ak
+          (select-keys [:id :workspace_id :name :creator :created_at :updated_at])
+          (update :creator present-creator)))
+
+(defn- present-access-key-with-secret
+  "Like [[present-access-key]] but keeps the plaintext `:key`. Used **only** by
+  the create endpoint so the caller can capture the key once; subsequent reads
+  never expose it."
+  [ak]
+  (some-> ak
+          (select-keys [:id :workspace_id :name :creator :created_at :updated_at :key])
+          (update :creator present-creator)))
+
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases :access_key])
+          (select-keys [:id :name :creator :created_at :updated_at :databases :access_keys])
           (update :creator present-creator)
-          (update :databases #(mapv present-workspace-database %))))
+          (m/update-existing :databases   #(mapv present-workspace-database %))
+          (m/update-existing :access_keys #(mapv present-access-key %))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -151,24 +186,64 @@
 
 ;;; ------------------------------------------ Access key endpoints ---------------------------------------------
 
-(api.macros/defendpoint :post "/:id/access-key"
-  :- [:map [:access_key ms/UUIDString]]
-  "Set or rotate the access key for a workspace. Returns the new key."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (let [new-key (str (random-uuid))]
-    (t2/update! :model/Workspace :id id {:access_key new-key})
-    {:access_key new-key}))
+(def ^:private CreateAccessKeyParams
+  [:map {:closed true}
+   [:name ms/NonBlankString]])
 
-(api.macros/defendpoint :delete "/:id/access-key"
-  :- [:map [:access_key :nil]]
-  "Remove the access key from a workspace, disabling unauthenticated access."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+(def ^:private UpdateAccessKeyParams
+  [:map {:closed true}
+   [:name ms/NonBlankString]])
+
+(def ^:private AccessKeyWithSecretResponse
+  "Create-only response: same shape as `AccessKeyResponse` plus the plaintext `:key`."
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:workspace_id ms/PositiveInt]
+   [:name         ms/NonBlankString]
+   [:creator      [:maybe CreatorResponse]]
+   [:created_at   Timestamp]
+   [:updated_at   Timestamp]
+   [:key          ms/UUIDString]])
+
+(api.macros/defendpoint :post "/:id/access-key"
+  :- AccessKeyWithSecretResponse
+  "Create a new access key for a workspace. **The returned `:key` is the only
+  time the plaintext is exposed** — store it immediately, the API never returns it
+  again."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   params :- CreateAccessKeyParams]
   (api/check-superuser)
   (api/check-404 (ws/get-workspace id))
-  (t2/update! :model/Workspace :id id {:access_key nil})
-  {:access_key nil})
+  (let [plaintext (str (random-uuid))
+        ak-id     (t2/insert-returning-pk! :model/WorkspaceAccessKey
+                                           {:workspace_id id
+                                            :name         (:name params)
+                                            :key          plaintext
+                                            :creator_id   api/*current-user-id*})
+        ak        (t2/hydrate (t2/select-one :model/WorkspaceAccessKey :id ak-id) :creator)]
+    (present-access-key-with-secret (assoc ak :key plaintext))))
+
+(api.macros/defendpoint :put "/:id/access-key/:key-id"
+  :- AccessKeyResponse
+  "Rename an existing access key. Cannot rotate the key itself — to change the
+  underlying secret, delete this row and create a new one."
+  [{:keys [id key-id]} :- [:map [:id ms/PositiveInt] [:key-id ms/PositiveInt]]
+   _query-params
+   params :- UpdateAccessKeyParams]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/WorkspaceAccessKey :id key-id :workspace_id id))
+  (t2/update! :model/WorkspaceAccessKey :id key-id {:name (:name params)})
+  (present-access-key (t2/hydrate (t2/select-one :model/WorkspaceAccessKey :id key-id) :creator)))
+
+(api.macros/defendpoint :delete "/:id/access-key/:key-id"
+  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
+  "Delete an access key by id. Future requests using this key will 404."
+  [{:keys [id key-id]} :- [:map [:id ms/PositiveInt] [:key-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/WorkspaceAccessKey :id key-id :workspace_id id))
+  (t2/delete! :model/WorkspaceAccessKey :id key-id)
+  {:id key-id :deleted true})
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

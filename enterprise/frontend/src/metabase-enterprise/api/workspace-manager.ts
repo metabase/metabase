@@ -1,10 +1,15 @@
 import type {
+  CreateWorkspaceAccessKeyRequest,
   CreateWorkspaceDatabaseRequest,
   CreateWorkspaceRequest,
+  DeleteWorkspaceAccessKeyRequest,
   DeleteWorkspaceDatabaseRequest,
+  UpdateWorkspaceAccessKeyRequest,
   UpdateWorkspaceDatabaseRequest,
   UpdateWorkspaceRequest,
   Workspace,
+  WorkspaceAccessKey,
+  WorkspaceAccessKeyWithSecret,
   WorkspaceId,
 } from "metabase-types/api";
 
@@ -104,29 +109,45 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspace_id),
         ]),
     }),
-    setWorkspaceAccessKey: builder.mutation<
-      { access_key: string },
-      WorkspaceId
+    createWorkspaceAccessKey: builder.mutation<
+      WorkspaceAccessKeyWithSecret,
+      CreateWorkspaceAccessKeyRequest
     >({
-      query: (workspace_id) => ({
+      query: ({ workspace_id, name }) => ({
         method: "POST",
         url: `/api/ee/workspace-manager/${workspace_id}/access-key`,
+        body: { name },
       }),
-      invalidatesTags: (_, error, workspace_id) =>
+      invalidatesTags: (_, error, { workspace_id }) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", workspace_id),
+        ]),
+    }),
+    updateWorkspaceAccessKey: builder.mutation<
+      WorkspaceAccessKey,
+      UpdateWorkspaceAccessKeyRequest
+    >({
+      query: ({ workspace_id, id, name }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace-manager/${workspace_id}/access-key/${id}`,
+        body: { name },
+      }),
+      invalidatesTags: (_, error, { workspace_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
           idTag("workspace", workspace_id),
         ]),
     }),
     deleteWorkspaceAccessKey: builder.mutation<
-      { access_key: null },
-      WorkspaceId
+      { id: number; deleted: boolean },
+      DeleteWorkspaceAccessKeyRequest
     >({
-      query: (workspace_id) => ({
+      query: ({ workspace_id, id }) => ({
         method: "DELETE",
-        url: `/api/ee/workspace-manager/${workspace_id}/access-key`,
+        url: `/api/ee/workspace-manager/${workspace_id}/access-key/${id}`,
       }),
-      invalidatesTags: (_, error, workspace_id) =>
+      invalidatesTags: (_, error, { workspace_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
           idTag("workspace", workspace_id),
@@ -144,6 +165,7 @@ export const {
   useCreateWorkspaceDatabaseMutation,
   useUpdateWorkspaceDatabaseMutation,
   useDeleteWorkspaceDatabaseMutation,
-  useSetWorkspaceAccessKeyMutation,
+  useCreateWorkspaceAccessKeyMutation,
+  useUpdateWorkspaceAccessKeyMutation,
   useDeleteWorkspaceAccessKeyMutation,
 } = workspaceManagerApi;

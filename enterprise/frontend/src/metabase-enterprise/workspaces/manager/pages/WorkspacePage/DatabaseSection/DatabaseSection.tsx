@@ -80,7 +80,7 @@ export function DatabaseSection({
         }
       >
         <DatabaseTable
-          workspaceDatabases={workspace.databases}
+          workspaceDatabases={workspace.databases ?? []}
           databases={databases}
           onEdit={handleUpdateOpen}
           onDelete={handleDelete}
@@ -120,10 +120,9 @@ function AddDatabaseButton({
   onClick,
 }: AddDatabaseButtonProps) {
   const availableDatabases = useMemo(
-    () => getAvailableDatabases(databases, workspace.databases),
+    () => getAvailableDatabases(databases, workspace.databases ?? []),
     [databases, workspace.databases],
   );
-  const isEmpty = workspace.databases.length === 0;
   const isDisabled = availableDatabases.length === 0;
 
   return (
@@ -131,11 +130,7 @@ function AddDatabaseButton({
       label={t`All supported databases are already added.`}
       disabled={!isDisabled}
     >
-      <Button
-        variant={isEmpty ? "filled" : "default"}
-        disabled={isDisabled}
-        onClick={onClick}
-      >
+      <Button disabled={isDisabled} onClick={onClick}>
         {t`Add database`}
       </Button>
     </Tooltip>
