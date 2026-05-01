@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,
   GetActionRequest,
@@ -18,6 +19,7 @@ import {
   provideActionListTags,
   provideActionTags,
 } from "./tags";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const actionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,6 +30,7 @@ export const actionApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (collections = []) => provideActionListTags(collections),
+      onQueryStarted: hydrateLegacyEntities([ActionSchema]),
     }),
     getAction: builder.query<WritebackAction, GetActionRequest>({
       query: ({ id }) => ({
@@ -35,6 +38,7 @@ export const actionApi = Api.injectEndpoints({
         url: `/api/action/${id}`,
       }),
       providesTags: (action) => (action ? provideActionTags(action) : []),
+      onQueryStarted: hydrateLegacyEntities(ActionSchema),
     }),
     createAction: builder.mutation<WritebackAction, CreateActionRequest>({
       query: (body) => ({
