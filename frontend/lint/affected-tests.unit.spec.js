@@ -1,46 +1,61 @@
+const { createAffectedTests } = require("./affected-tests");
+
+// Fixture isolated from the real module-boundaries config so reshuffles there
+// don't cascade into these tests.
+const ELEMENTS = [
+  { type: "lib/utils", pattern: "src/utils/**" },
+  { type: "lib/types", pattern: "src/types/**" },
+  { type: "feature/foo", pattern: "src/foo/**" },
+  { type: "feature/bar", pattern: "src/bar/**" },
+  { type: "feature/super", pattern: "src/super/**" },
+  { type: "app/main", pattern: "src/app.js" },
+  { type: "shared/other", pattern: "src/*/**" }, // catch-all, must be last
+];
+
+const RULES = [
+  ...ELEMENTS.map((el) => ({ from: [el.type], allow: [el.type] })),
+  { from: ["lib/*"], allow: ["lib/*"] },
+  { from: ["feature/*"], allow: ["lib/*"] },
+  { from: ["feature/super"], allow: ["feature/*"] },
+  { from: ["app/*"], allow: ["lib/*", "feature/*", "app/*"] },
+];
+
 const {
   affectedModules,
   computeStats,
   directlyTouchedModules,
   fileToModule,
   selectTests,
-} = require("./affected-tests");
+} = createAffectedTests(ELEMENTS, RULES);
 
 describe("fileToModule", () => {
   it.each([
-    ["frontend/src/metabase/dashboard/components/Foo.tsx", "feature/dashboard"],
-    ["frontend/src/metabase/utils/colors.ts", "lib/utils"],
-    ["frontend/src/metabase/ui/Button.tsx", "basic/ui"],
-    ["frontend/src/metabase-types/api/dashboard.ts", "lib/types"],
-    ["frontend/src/metabase/schema.js", "lib/schema"],
-    ["frontend/src/metabase/env.ts", "lib/env"],
-    ["frontend/src/metabase-lib/v1/foo.ts", "basic/mlv1"],
-    ["frontend/src/metabase-lib/v2/expressions.ts", "lib/mlv2"],
-    ["frontend/src/metabase/admin/components/Foo.tsx", "feature/admin"],
-    [
-      "enterprise/frontend/src/metabase-enterprise/foo.ts",
-      "feature/enterprise",
-    ],
-    ["frontend/src/metabase/something-random/file.ts", "shared/other"],
+    ["src/utils/colors.ts", "lib/utils"],
+    ["src/types/api.ts", "lib/types"],
+    ["src/foo/foo.tsx", "feature/foo"],
+    ["src/bar/bar.tsx", "feature/bar"],
+    ["src/super/index.ts", "feature/super"],
+    ["src/app.js", "app/main"],
+    ["src/randomthing/file.ts", "shared/other"], // matches catch-all
   ])("maps %s → %s", (path, expected) => {
     expect(fileToModule(path)).toBe(expected);
   });
 
-  it("returns null for files outside the module patterns", () => {
+  it("returns null for files outside any pattern", () => {
     expect(fileToModule("docs/foo.md")).toBe(null);
     expect(fileToModule("README.md")).toBe(null);
   });
 });
 
 describe("directlyTouchedModules", () => {
-  it("returns the set of modules whose files changed", () => {
+  it("returns the unique set of modules whose files changed", () => {
     const result = directlyTouchedModules([
-      "frontend/src/metabase/utils/colors.ts",
-      "frontend/src/metabase/dashboard/x.ts",
-      "frontend/src/metabase/dashboard/y.ts",
+      "src/utils/colors.ts",
+      "src/foo/x.ts",
+      "src/foo/y.ts",
       "docs/unrelated.md",
     ]);
-    expect([...result].sort()).toEqual(["feature/dashboard", "lib/utils"]);
+    expect([...result].sort()).toEqual(["feature/foo", "lib/utils"]);
   });
 
   it("returns an empty set when no file maps to a module", () => {
@@ -49,24 +64,22 @@ describe("directlyTouchedModules", () => {
 });
 
 describe("affectedModules", () => {
-  it("includes downstream modules per the idealized graph", () => {
-    // Touching a feature only ripples to enterprise (which can import any
-    // feature) and the app modules — not other unrelated features.
-    const result = affectedModules(["frontend/src/metabase/dashboard/x.ts"]);
+  it("includes feature/super and app/main but not feature/bar when feature/foo changes", () => {
+    const result = affectedModules(["src/foo/x.ts"]);
     expect([...result].sort()).toEqual([
-      "app/misc",
-      "feature/dashboard",
-      "feature/enterprise",
+      "app/main",
+      "feature/foo",
+      "feature/super",
     ]);
   });
 
   it("ripples broadly when a lib module changes", () => {
-    const result = affectedModules(["frontend/src/metabase/utils/colors.ts"]);
+    const result = affectedModules(["src/utils/colors.ts"]);
     expect(result.has("lib/utils")).toBe(true);
-    expect(result.has("basic/ui")).toBe(true);
-    expect(result.has("shared/common")).toBe(true);
-    expect(result.has("feature/dashboard")).toBe(true);
-    expect(result.has("app/misc")).toBe(true);
+    expect(result.has("feature/foo")).toBe(true);
+    expect(result.has("feature/bar")).toBe(true);
+    expect(result.has("feature/super")).toBe(true);
+    expect(result.has("app/main")).toBe(true);
   });
 
   it("returns empty when no file maps to a module", () => {
@@ -76,16 +89,16 @@ describe("affectedModules", () => {
 
 describe("selectTests", () => {
   it("keeps only tests inside affected modules", () => {
-    const affected = new Set(["feature/dashboard", "lib/utils"]);
+    const affected = new Set(["feature/foo", "lib/utils"]);
     const tests = [
-      "frontend/src/metabase/dashboard/dashboard.unit.spec.ts",
-      "frontend/src/metabase/utils/colors.unit.spec.ts",
-      "frontend/src/metabase/admin/admin.unit.spec.ts",
+      "src/foo/foo.unit.spec.ts",
+      "src/utils/colors.unit.spec.ts",
+      "src/bar/bar.unit.spec.ts",
       "docs/unrelated.unit.spec.ts",
     ];
     expect(selectTests(affected, tests)).toEqual([
-      "frontend/src/metabase/dashboard/dashboard.unit.spec.ts",
-      "frontend/src/metabase/utils/colors.unit.spec.ts",
+      "src/foo/foo.unit.spec.ts",
+      "src/utils/colors.unit.spec.ts",
     ]);
   });
 });
@@ -93,22 +106,19 @@ describe("selectTests", () => {
 describe("computeStats", () => {
   it("aggregates module + test counts", () => {
     const stats = computeStats({
-      changedFiles: ["frontend/src/metabase/dashboard/x.ts"],
+      changedFiles: ["src/foo/x.ts"],
       unitTestFiles: [
-        "frontend/src/metabase/dashboard/a.unit.spec.ts",
-        "frontend/src/metabase/dashboard/b.unit.spec.ts",
-        "frontend/src/metabase/admin/c.unit.spec.ts",
-        "frontend/src/metabase/utils/d.unit.spec.ts",
+        "src/foo/a.unit.spec.ts",
+        "src/foo/b.unit.spec.ts",
+        "src/bar/c.unit.spec.ts",
+        "src/utils/d.unit.spec.ts",
       ],
-      storyFiles: [
-        "frontend/src/metabase/dashboard/Foo.stories.tsx",
-        "frontend/src/metabase/admin/Bar.stories.tsx",
-      ],
+      storyFiles: ["src/foo/Foo.stories.tsx", "src/bar/Bar.stories.tsx"],
     });
     expect(stats).toEqual({
       modules_directly_touched: 1,
-      modules_affected: 3, // dashboard + enterprise + app/misc
-      affected_modules: ["app/misc", "feature/dashboard", "feature/enterprise"],
+      modules_affected: 3,
+      affected_modules: ["app/main", "feature/foo", "feature/super"],
       unit_tests_total: 4,
       unit_tests_to_run: 2,
       unit_tests_to_skip: 2,

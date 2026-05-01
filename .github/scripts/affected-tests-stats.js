@@ -1,13 +1,18 @@
-// Reads a base/head ref pair from env, computes affected-module stats for the
-// PR diff, and prints the result as JSON to stdout. Wired up by
-// .github/workflows/affected-tests-stats.yml.
-//
-// Test files (unit specs, stories) are listed via `git ls-files` so the count
-// matches what's tracked in the PR's HEAD revision — no glob libs needed.
+// Used by the compute-affected-tests job in .github/workflows/run-tests.yml.
+// Test files are listed via `git ls-files` (no glob lib needed) so counts
+// match what's tracked at HEAD.
 
 const { execFileSync } = require("node:child_process");
 
-const { computeStats } = require("../../frontend/lint/affected-tests");
+const {
+  elements,
+  rules,
+} = require("../../frontend/lint/module-boundaries");
+const {
+  createAffectedTests,
+} = require("../../frontend/lint/affected-tests");
+
+const { computeStats } = createAffectedTests(elements, rules);
 
 const BASE_SHA = process.env.BASE_SHA;
 const HEAD_SHA = process.env.HEAD_SHA ?? "HEAD";
