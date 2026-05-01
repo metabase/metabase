@@ -33,6 +33,8 @@
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method start-promise user-id]}]
+   ;; `:target` is already workspace-rewritten — `resolve-transform-target` runs in
+   ;; `metabase.transforms.execute/execute!` before dispatch.
    (try
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)

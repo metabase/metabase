@@ -70,7 +70,8 @@
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default false)
+  :default false
+  :can-read-from-env? true)
 
 (defsetting remote-sync-auto-import-rate
   (deferred-tru "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
@@ -78,7 +79,8 @@
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default 5)
+  :default 5
+  :can-read-from-env? true)
 
 (defsetting remote-sync-task-time-limit-ms
   (deferred-tru "The maximum amount of time a remote sync task will be given to complete")
