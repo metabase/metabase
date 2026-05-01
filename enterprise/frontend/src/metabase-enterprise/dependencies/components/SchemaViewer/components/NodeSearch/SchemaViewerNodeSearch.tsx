@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
-import { useZoomToNodes } from "../../hooks/useZoomToNodes";
+import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
 
 import S from "./SchemaViewerNodeSearch.module.css";
@@ -30,7 +30,7 @@ type SearchItem = {
 };
 
 export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
-  const zoomToNodes = useZoomToNodes();
+  const { zoomToNode } = useSchemaViewerContext();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
 
@@ -85,7 +85,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
     if (item == null) {
       return;
     }
-    zoomToNodes([item.id]);
+    zoomToNode(item.id);
     setQuery(item.text);
     combobox.closeDropdown();
     inputRef.current?.blur();

@@ -7,14 +7,7 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -46,13 +39,8 @@ import { FIT_VIEW_OPTIONS, MAX_ZOOM, MIN_ZOOM } from "./constants";
 import { useCanvasLayout } from "./hooks/useCanvasLayout";
 import { useEdgeZoom } from "./hooks/useEdgeZoom";
 import { useGraphSync } from "./hooks/useGraphSync";
-import { zoomToNodes } from "./hooks/useZoomToNodes";
-import type {
-  PendingViewportFit,
-  SchemaViewerFlowEdge,
-  SchemaViewerFlowNode,
-  ViewportFitAction,
-} from "./types";
+import { useSchemaViewerZoomMethods } from "./hooks/useSchemaViewerZoomMethods";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
 import { markSelectedEdge } from "./utils/flow-graph";
 
@@ -67,26 +55,6 @@ const EDGE_TYPES = {
 const PRO_OPTIONS = {
   hideAttribution: true,
 };
-
-// Animation duration shared with `zoomToNodes` so every camera move has the
-// same feel (matches DURATION_MS in useZoomToNodes.ts).
-const VIEWPORT_FIT_DURATION_MS = 500;
-
-function viewportFitReducer(
-  _state: PendingViewportFit | null,
-  action: ViewportFitAction,
-): PendingViewportFit | null {
-  switch (action.type) {
-    case "fitAll":
-      return { kind: "all" };
-    case "fitNodes":
-      return action.nodeIds.length === 0
-        ? null
-        : { kind: "nodes", nodeIds: action.nodeIds };
-    case "clear":
-      return null;
-  }
-}
 
 type SchemaViewerProps = {
   databaseId: DatabaseId | undefined;
@@ -111,7 +79,7 @@ export function SchemaViewer({
 }: SchemaViewerProps) {
   const { colorScheme } = useColorScheme();
 
-  // ReactFlow instance and state
+  // ReactFlow node/edge state + the instance captured via `onInit`.
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     SchemaViewerFlowNode,
     SchemaViewerFlowEdge
@@ -123,12 +91,8 @@ export function SchemaViewer({
     [],
   );
 
-  // Viewport-fit channel — sync/layout layer dispatches actions, the effect
-  // below drains the resolved state using the captured ReactFlow instance.
-  const [pendingViewportFit, dispatchViewportFit] = useReducer(
-    viewportFitReducer,
-    null,
-  );
+  const { zoomToNode, zoomToCanvas, cancelZoom } =
+    useSchemaViewerZoomMethods(reactFlowInstance);
 
   // Target table IDs whose FK-expansion fetch is still in flight. Field rows
   // use this to swap the database-type text for a loader until the new table
@@ -205,7 +169,7 @@ export function SchemaViewer({
   );
 
   const hasDbSelected = databaseId != null;
-  const { registerPendingEdgeSelection } = useGraphSync({
+  const { registerPendingExpansion } = useGraphSync({
     hasDbSelected,
     error,
     isFetching,
@@ -215,44 +179,30 @@ export function SchemaViewer({
     setNodes,
     setEdges,
     setExpandingTableIds,
-    dispatchCameraFit: dispatchViewportFit,
+    zoomToNode,
+    zoomToCanvas,
   });
 
-  const { relayout, focusOnNode } = useCanvasLayout({
+  const { resetLayout, focusOnNode } = useCanvasLayout({
     nodes,
     edges,
     setNodes,
     setEdges,
-    dispatchViewportFit: dispatchViewportFit,
+    zoomToNode,
+    zoomToCanvas,
   });
 
   const { handleEdgeClick } = useEdgeZoom({
-    dispatchViewportFit,
+    zoomToNode,
   });
-
-  // Drain the pending viewport-fit request once React Flow has committed the
-  // corresponding node/position changes. `requestAnimationFrame` lets
-  // ReactFlow flush layout before we measure / fit.
-  useEffect(() => {
-    if (pendingViewportFit == null || reactFlowInstance == null) {
-      return;
-    }
-    const handle = requestAnimationFrame(() => {
-      if (pendingViewportFit.kind === "all") {
-        reactFlowInstance.fitView({ duration: VIEWPORT_FIT_DURATION_MS });
-      } else if (pendingViewportFit.nodeIds.length > 0) {
-        zoomToNodes(reactFlowInstance, pendingViewportFit.nodeIds);
-      }
-      dispatchViewportFit({ type: "clear" });
-    });
-    return () => cancelAnimationFrame(handle);
-  }, [pendingViewportFit, reactFlowInstance]);
 
   // --- Handlers -------------------------------------------------------------
 
   // FK click: persist the new focal table, mark its fetch as in-flight, and
-  // queue the FK edge that triggered the expansion for auto-selection on
-  // the next graph-sync run.
+  // register a pending expansion target so graph sync can auto-select the FK
+  // edge AND zoom to the new table once the next ERD response merges. If
+  // multiple FK clicks land before the response, the last registration wins
+  // (zoom follows the most recent click).
   const handleExpandToTable = useCallback(
     (
       tableId: ConcreteTableId,
@@ -270,14 +220,14 @@ export function SchemaViewer({
         next.add(tableId);
         return next;
       });
-      if (
-        candidateEdgeIdsToSelect != null &&
-        candidateEdgeIdsToSelect.length > 0
-      ) {
-        registerPendingEdgeSelection(candidateEdgeIdsToSelect);
-      }
+      registerPendingExpansion(tableId, candidateEdgeIdsToSelect);
     },
-    [databaseId, onExtraTableIdAdd, registerPendingEdgeSelection],
+    [
+      databaseId,
+      onExtraTableIdAdd,
+      setExpandingTableIds,
+      registerPendingExpansion,
+    ],
   );
 
   // Focus button: apply focal layout + remember last-focused so the button
@@ -313,8 +263,8 @@ export function SchemaViewer({
   // any pending camera fit so the new context starts clean.
   const handleSchemaChange = useCallback(() => {
     setSelectedNodeId(null);
-    dispatchViewportFit({ type: "clear" });
-  }, []);
+    cancelZoom();
+  }, [cancelZoom]);
 
   const schemaViewerContextValue = useMemo(
     () => ({
@@ -323,6 +273,7 @@ export function SchemaViewer({
       onExpandToTable: handleExpandToTable,
       selectedNodeId,
       onSelectNode: handleSelectNode,
+      zoomToNode,
     }),
     [
       visibleTableIds,
@@ -330,6 +281,7 @@ export function SchemaViewer({
       handleExpandToTable,
       selectedNodeId,
       handleSelectNode,
+      zoomToNode,
     ],
   );
 
@@ -373,7 +325,7 @@ export function SchemaViewer({
         {nodes.length > 0 && (
           <Panel position="bottom-left">
             <Group gap="sm">
-              <AutoLayoutButton onClick={relayout} />
+              <AutoLayoutButton onClick={resetLayout} />
               {selectedNodeId != null && (
                 <Button
                   bg="background-primary"

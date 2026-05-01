@@ -6,7 +6,6 @@ import type { ConcreteTableId, ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import { ROW_HEIGHT } from "../../constants";
-import { useZoomToNodes } from "../../hooks/useZoomToNodes";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../../types";
 import { getNodeId } from "../../utils";
 
@@ -54,9 +53,8 @@ export function SchemaViewerFieldRow({
   isSelfRefTarget,
   isSelectedInEdge,
 }: SchemaViewerFieldRowProps) {
-  const { visibleTableIds, expandingTableIds, onExpandToTable } =
+  const { visibleTableIds, expandingTableIds, onExpandToTable, zoomToNode } =
     useSchemaViewerContext();
-  const zoomToNodes = useZoomToNodes();
   const { setEdges } = useReactFlow<
     SchemaViewerFlowNode,
     SchemaViewerFlowEdge
@@ -117,7 +115,7 @@ export function SchemaViewerFieldRow({
       const targetNodeId = getNodeId({
         table_id: field.fk_target_table_id,
       });
-      zoomToNodes([targetNodeId]);
+      zoomToNode(targetNodeId);
 
       // Also highlight the connecting edge — the same visual treatment
       // the user would get from clicking the edge directly. We try both

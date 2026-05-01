@@ -1,10 +1,6 @@
-import { type Dispatch, useCallback } from "react";
+import { useCallback } from "react";
 
-import type {
-  SchemaViewerFlowEdge,
-  SchemaViewerFlowNode,
-  ViewportFitAction,
-} from "../types";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 import { focusNodeLayout, getNodesWithPositions } from "../utils";
 
 type UseCanvasLayoutArgs = {
@@ -12,7 +8,8 @@ type UseCanvasLayoutArgs = {
   edges: SchemaViewerFlowEdge[];
   setNodes: React.Dispatch<React.SetStateAction<SchemaViewerFlowNode[]>>;
   setEdges: React.Dispatch<React.SetStateAction<SchemaViewerFlowEdge[]>>;
-  dispatchViewportFit: Dispatch<ViewportFitAction>;
+  zoomToNode: (nodeId: string) => void;
+  zoomToCanvas: () => void;
 };
 
 type UseCanvasLayoutResult = {
@@ -20,7 +17,7 @@ type UseCanvasLayoutResult = {
    * Re-run default nodes placement over the entire canvas. No-op when the canvas
    * is empty.
    */
-  relayout: () => void;
+  resetLayout: () => void;
   /**
    * Apply a focal layout centered on `nodeId`: incoming neighbors stack to
    * the left of the focal node, outgoing to the right, the rest place
@@ -38,16 +35,17 @@ export function useCanvasLayout({
   edges,
   setNodes,
   setEdges,
-  dispatchViewportFit,
+  zoomToNode,
+  zoomToCanvas,
 }: UseCanvasLayoutArgs): UseCanvasLayoutResult {
-  const relayout = useCallback(() => {
+  const resetLayout = useCallback(() => {
     if (nodes.length === 0) {
       return;
     }
     const laidOut = getNodesWithPositions(nodes, edges);
     setNodes(laidOut);
-    dispatchViewportFit({ type: "fitAll" });
-  }, [nodes, edges, setNodes, dispatchViewportFit]);
+    zoomToCanvas();
+  }, [nodes, edges, setNodes, zoomToCanvas]);
 
   const focusOnNode = useCallback(
     (nodeId: string) => {
@@ -65,12 +63,12 @@ export function useCanvasLayout({
       setEdges((currentEdges) =>
         currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
       );
-      // Zoom in on the focal node itself — useZoomToNodes clamps to ≥0.5 so
+      // Zoom in on the focal node itself — zoomToNode clamps to ≥0.5 so
       // the table stays legible, and keeps the node's header in view.
-      dispatchViewportFit({ type: "fitNodes", nodeIds: [nodeId] });
+      zoomToNode(nodeId);
     },
-    [edges, setNodes, setEdges, dispatchViewportFit],
+    [edges, setNodes, setEdges, zoomToNode],
   );
 
-  return { relayout, focusOnNode };
+  return { resetLayout, focusOnNode };
 }

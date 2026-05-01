@@ -1,13 +1,19 @@
-import { type Dispatch, useCallback, useEffect, useRef } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 
 import type { ConcreteTableId } from "metabase-types/api";
 
-import type {
-  SchemaViewerFlowEdge,
-  SchemaViewerFlowNode,
-  ViewportFitAction,
-} from "../types";
-import { getNodesWithPositions, mergeWithExistingPositions } from "../utils";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
+import {
+  getNodeId,
+  getNodesWithPositions,
+  mergeWithExistingPositions,
+} from "../utils";
 
 type UseGraphSyncArgs = {
   /** True once a databaseId has been picked — without it we render nothing. */
@@ -27,15 +33,16 @@ type UseGraphSyncArgs = {
   contextKey: string | null;
   setNodes: (nodes: SchemaViewerFlowNode[]) => void;
   setEdges: (edges: SchemaViewerFlowEdge[]) => void;
-  setExpandingTableIds: React.Dispatch<
-    React.SetStateAction<Set<ConcreteTableId>>
-  >;
-  /**
-   * Reducer dispatch for the pending camera-fit channel: fresh layouts
-   * dispatch `fitAll` to reframe the whole canvas, incremental adds
-   * dispatch `fitNodes` to pan/zoom to the newly-added tables.
-   */
-  dispatchCameraFit: Dispatch<ViewportFitAction>;
+  setExpandingTableIds: Dispatch<SetStateAction<Set<ConcreteTableId>>>;
+  zoomToNode: (nodeId: string) => void;
+  zoomToCanvas: () => void;
+};
+
+type PendingExpansion = {
+  /** Node ID of the table the user expanded into — zoom target. */
+  targetNodeId: string;
+  /** Candidate edge IDs to auto-select (both possible orderings). */
+  candidateEdgeIds: readonly string[];
 };
 
 /**
@@ -48,12 +55,10 @@ type UseGraphSyncArgs = {
  *    current canvas to preserve positions of tables that were already
  *    placed, falling back to a fresh Dagre layout for first loads, schema
  *    switches, removals, or disconnected new nodes.
- *  - Auto-selects the FK edge that triggered an expansion once it shows up
- *    in the graph (caller registers candidate edge IDs via
- *    `registerPendingEdgeSelection`).
+ *  - On FK expansion: once the new graph arrives, auto-selects the FK edge
+ *    that triggered the expansion (caller registers via
+ *    `registerPendingExpansion`) AND zooms onto the new target table.
  *  - Clears in-flight expansion markers for tables that have arrived.
- *  - Queues a fitView on newly-added tables for incremental adds, so the
- *    camera pans to wherever they landed.
  */
 export function useGraphSync({
   hasDbSelected,
@@ -65,23 +70,28 @@ export function useGraphSync({
   setNodes,
   setEdges,
   setExpandingTableIds,
-  dispatchCameraFit,
+  zoomToNode,
+  zoomToCanvas,
 }: UseGraphSyncArgs) {
-  // When the user expands a new table via FK click, these candidate IDs
-  // hold the edge that should be auto-selected once the new graph arrives.
-  const pendingEdgeIdsToSelectRef = useRef<readonly string[] | null>(null);
+  // Latest registered expansion. Fresh registrations overwrite the previous
+  // one — if the user expands several FKs in quick succession, we follow
+  // the most recent click.
+  const pendingExpansionRef = useRef<PendingExpansion | null>(null);
 
   /**
-   * Register the candidate edge IDs that should be auto-selected once they
-   * show up in the next ERD response. Both source-first and target-first
-   * orderings should be passed since the backend's source/target convention
-   * for edge IDs isn't fixed.
+   * Register the FK-expansion target. Once the next ERD response includes
+   * a node for `targetTableId`, graph sync auto-selects the connecting
+   * edge (from `candidateEdgeIds`) and zooms onto that node.
+   *
+   * `candidateEdgeIds` should include both source-first and target-first
+   * orderings since the backend's source/target convention isn't fixed.
    */
-  const registerPendingEdgeSelection = useCallback(
-    (candidateEdgeIds: readonly string[]) => {
-      if (candidateEdgeIds.length > 0) {
-        pendingEdgeIdsToSelectRef.current = candidateEdgeIds;
-      }
+  const registerPendingExpansion = useCallback(
+    (targetTableId: ConcreteTableId, candidateEdgeIds?: readonly string[]) => {
+      pendingExpansionRef.current = {
+        targetNodeId: getNodeId({ table_id: targetTableId }),
+        candidateEdgeIds: candidateEdgeIds ?? [],
+      };
     },
     [],
   );
@@ -107,6 +117,7 @@ export function useGraphSync({
     setNodes([]);
     setEdges([]);
     setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
+    pendingExpansionRef.current = null;
   }
 
   useEffect(() => {
@@ -125,16 +136,15 @@ export function useGraphSync({
     // plumbing (stroke color, node `.selected` class, z-index lift) will
     // light up the connecting edge AND both connected nodes automatically.
     let nextEdges: SchemaViewerFlowEdge[] = graph.edges;
-    const pendingEdgeIds = pendingEdgeIdsToSelectRef.current;
-    if (pendingEdgeIds != null) {
-      const matchedId = pendingEdgeIds.find((candidate) =>
+    const pending = pendingExpansionRef.current;
+    if (pending != null && pending.candidateEdgeIds.length > 0) {
+      const matchedId = pending.candidateEdgeIds.find((candidate) =>
         graph.edges.some((e) => e.id === candidate),
       );
       if (matchedId != null) {
         nextEdges = graph.edges.map((e) =>
           e.id === matchedId ? { ...e, selected: true } : e,
         );
-        pendingEdgeIdsToSelectRef.current = null;
       }
     }
     setEdges(nextEdges);
@@ -145,7 +155,6 @@ export function useGraphSync({
     // fresh full-canvas Dagre layout for first loads, schema switches,
     // removals, or disconnected new nodes.
     const currentNodes = nodesRef.current;
-    const currentById = new Map(currentNodes.map((n) => [n.id, n]));
     const merged = mergeWithExistingPositions(
       graph.nodes,
       currentNodes,
@@ -177,20 +186,22 @@ export function useGraphSync({
     });
 
     if (merged != null) {
-      // Incremental add: queue a fitView on newly-added tables so the camera
-      // pans to wherever they landed (≥0.5 zoom, header in viewport).
-      if (currentNodes.length > 0) {
-        const addedIds = nextNodes
-          .filter((n) => !currentById.has(n.id))
-          .map((n) => n.id);
-        if (addedIds.length > 0) {
-          dispatchCameraFit({ type: "fitNodes", nodeIds: addedIds });
-        }
+      // Incremental add: zoom onto the user-clicked target if it's now in
+      // the graph. We skip the zoom for any other added tables (e.g. ones
+      // the backend brings in alongside) — only the clicked one is the
+      // user's focal intent.
+      if (
+        pending != null &&
+        nextNodes.some((n) => n.id === pending.targetNodeId)
+      ) {
+        zoomToNode(pending.targetNodeId);
+        pendingExpansionRef.current = null;
       }
     } else {
       // Fresh layout: fit the whole canvas (uses ReactFlow's default fitView
       // bounds, so wide schemas can zoom out below the per-node-fit floor).
-      dispatchCameraFit({ type: "fitAll" });
+      zoomToCanvas();
+      pendingExpansionRef.current = null;
     }
   }, [
     hasDbSelected,
@@ -200,8 +211,9 @@ export function useGraphSync({
     setNodes,
     setEdges,
     setExpandingTableIds,
-    dispatchCameraFit,
+    zoomToNode,
+    zoomToCanvas,
   ]);
 
-  return { registerPendingEdgeSelection };
+  return { registerPendingExpansion };
 }

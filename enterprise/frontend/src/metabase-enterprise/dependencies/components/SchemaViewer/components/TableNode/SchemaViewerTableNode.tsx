@@ -5,7 +5,6 @@ import { memo, useCallback } from "react";
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
-import { useZoomToNodes } from "../../hooks/useZoomToNodes";
 import type { SchemaViewerFlowNode } from "../../types";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
@@ -17,8 +16,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   id,
   data,
 }: SchemaViewerTableNodeProps) {
-  const zoomToNodes = useZoomToNodes();
-  const { selectedNodeId, onSelectNode } = useSchemaViewerContext();
+  const { selectedNodeId, onSelectNode, zoomToNode } = useSchemaViewerContext();
   // Highlight this node when any edge that touches it is selected. Uses a
   // React Flow store selector (rather than useEdges()) so the node only
   // re-renders when its own connection-selected state actually flips, not
@@ -62,8 +60,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const handleDoubleClick = useCallback(() => {
     // Focus on this node using the shared zoom rules (≥0.5 zoom, header
     // kept in the viewport).
-    zoomToNodes([id]);
-  }, [id, zoomToNodes]);
+    zoomToNode(id);
+  }, [id, zoomToNode]);
 
   const handleHeaderClick = useCallback(
     (event: React.MouseEvent) => {

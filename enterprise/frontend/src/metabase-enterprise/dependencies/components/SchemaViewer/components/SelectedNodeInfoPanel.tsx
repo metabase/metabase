@@ -13,7 +13,7 @@ import type {
 
 import { GraphInfoPanel } from "../../DependencyGraph/GraphInfoPanel";
 import S from "../SchemaViewer.module.css";
-import { useZoomToNodes } from "../hooks/useZoomToNodes";
+import { useSchemaViewerContext } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
 
 type SelectedNodeInfoPanelProps = {
@@ -36,7 +36,7 @@ export function SelectedNodeInfoPanel({
   selectedNodeId,
   onClose,
 }: SelectedNodeInfoPanelProps) {
-  const zoomToNodes = useZoomToNodes();
+  const { zoomToNode } = useSchemaViewerContext();
 
   const { data: databasesResponse } = useListDatabasesQuery({
     include: "schemas",
@@ -70,9 +70,9 @@ export function SelectedNodeInfoPanel({
 
   const handleTitleClick = useCallback(() => {
     if (selectedNode != null) {
-      zoomToNodes([selectedNode.id]);
+      zoomToNode(selectedNode.id);
     }
-  }, [selectedNode, zoomToNodes]);
+  }, [selectedNode, zoomToNode]);
 
   const renderFieldExtras = useCallback(
     (field: Field) => {
@@ -96,7 +96,7 @@ export function SelectedNodeInfoPanel({
           <UnstyledButton
             className={S.fkLink}
             c="brand"
-            onClick={() => zoomToNodes([targetNode.id])}
+            onClick={() => zoomToNode(targetNode.id)}
           >
             <Group gap={4} wrap="nowrap" display="inline-flex">
               <FixedSizeIcon name="table2" />
@@ -106,7 +106,7 @@ export function SelectedNodeInfoPanel({
         </Group>
       );
     },
-    [selectedNode, nodesByTableId, zoomToNodes],
+    [selectedNode, nodesByTableId, zoomToNode],
   );
 
   if (dependencyNode == null) {

@@ -1,5 +1,4 @@
-import { type ReactFlowInstance, useReactFlow } from "@xyflow/react";
-import { useCallback } from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import { MAX_ZOOM, NODE_WIDTH } from "../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
@@ -93,12 +92,4 @@ export function zoomToNodes(instance: ZoomTarget, nodeIds: readonly string[]) {
   const centerY = minY + (rect.height / 2 - TOP_MARGIN_PX) / zoom;
 
   instance.setCenter(centerX, centerY, { zoom, duration: DURATION_MS });
-}
-
-export function useZoomToNodes() {
-  const instance = useReactFlow<SchemaViewerFlowNode, SchemaViewerFlowEdge>();
-  return useCallback(
-    (nodeIds: readonly string[]) => zoomToNodes(instance, nodeIds),
-    [instance],
-  );
 }
