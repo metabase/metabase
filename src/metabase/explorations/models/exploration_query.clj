@@ -37,3 +37,13 @@
           (t2/select [:model/ExplorationQueryResult :exploration_query_id :interestingness_score]
                      :exploration_query_id [:in (map :id queries)]))
    :id))
+
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :contextual_interestingness_score]
+  [_model k queries]
+  (mi/instances-with-hydrated-data
+   queries k
+   #(into {} (map (juxt :exploration_query_id :contextual_interestingness_score))
+          (t2/select [:model/ExplorationQueryResult
+                      :exploration_query_id :contextual_interestingness_score]
+                     :exploration_query_id [:in (map :id queries)]))
+   :id))

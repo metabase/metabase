@@ -21,6 +21,7 @@
 ;; When adding a value here, add it to those six SQL files too so users see a nicer name in ai analytics.
 (def ^:private known-sources
   #{"metabot_agent"
+    "contextual_interestingness"
     "document_generate_content"
     "example_question_generation_batch"
     "slack"

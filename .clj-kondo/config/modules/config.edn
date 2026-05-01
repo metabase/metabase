@@ -662,6 +662,13 @@
    :model-exports #{:model/ModerationReview}
    :model-imports #{:model/Card :model/Dashboard}}
 
+  contextual-interestingness
+  {:team "UX West"
+   :api  #{metabase.contextual-interestingness.core}
+   :uses #{interestingness
+           metabot
+           util}}
+
   core
   {:team "UX West"
    :api  #{}
@@ -968,6 +975,8 @@
            metabase.explorations.init}
    :uses #{api
            app-db
+           contextual-interestingness
+           interestingness
            lib
            lib-be
            lib-metric

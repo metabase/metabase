@@ -165,24 +165,26 @@
 
 (mr/def ::ExplorationQuerySummary
   "Schema for a query row in API responses. The result blob and `dataset_query` aren't
-   asserted here; `interestingness_score` is left-joined (in `/:id/queries`) or
-   batched-hydrated (in `/:id`) from `exploration_query_result` and may be nil for pending
-   or errored queries."
+   asserted here; `interestingness_score` and `contextual_interestingness_score` are
+   left-joined (in `/:id/queries`) or batched-hydrated (in `/:id`) from
+   `exploration_query_result` and may be nil for pending/errored queries or — for the
+   contextual score — when the LLM is unconfigured or the thread had no prompt."
   [:map
-   [:id                    ms/PositiveInt]
-   [:exploration_thread_id ms/PositiveInt]
-   [:card_id               ms/PositiveInt]
-   [:segment_id            {:optional true} [:maybe ms/PositiveInt]]
-   [:dimension_id          [:maybe :string]]
-   [:name                  {:optional true} [:maybe :string]]
-   [:position              ms/IntGreaterThanOrEqualToZero]
-   [:status                :string]
-   [:error_message         {:optional true} [:maybe :string]]
-   [:started_at            {:optional true} [:maybe :any]]
-   [:finished_at           {:optional true} [:maybe :any]]
-   [:user_interestingness  {:optional true} [:maybe [:enum 0 1 2]]]
-   [:entity_id             {:optional true} [:maybe :string]]
-   [:interestingness_score {:optional true} [:maybe number?]]])
+   [:id                               ms/PositiveInt]
+   [:exploration_thread_id            ms/PositiveInt]
+   [:card_id                          ms/PositiveInt]
+   [:segment_id                       {:optional true} [:maybe ms/PositiveInt]]
+   [:dimension_id                     [:maybe :string]]
+   [:name                             {:optional true} [:maybe :string]]
+   [:position                         ms/IntGreaterThanOrEqualToZero]
+   [:status                           :string]
+   [:error_message                    {:optional true} [:maybe :string]]
+   [:started_at                       {:optional true} [:maybe :any]]
+   [:finished_at                      {:optional true} [:maybe :any]]
+   [:user_interestingness             {:optional true} [:maybe [:enum 0 1 2]]]
+   [:entity_id                        {:optional true} [:maybe :string]]
+   [:interestingness_score            {:optional true} [:maybe number?]]
+   [:contextual_interestingness_score {:optional true} [:maybe number?]]])
 
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
@@ -326,7 +328,7 @@
 
 (def ^:private query-summary-columns
   "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the
-  result blob, joins `interestingness_score` from `exploration_query_result`."
+  result blob, joins both interestingness scores from `exploration_query_result`."
   [:exploration_query.id :exploration_query.exploration_thread_id
    :exploration_query.card_id :exploration_query.segment_id
    :exploration_query.dimension_id
@@ -335,7 +337,8 @@
    :exploration_query.started_at :exploration_query.finished_at
    :exploration_query.user_interestingness
    :exploration_query.entity_id
-   [:exploration_query_result.interestingness_score :interestingness_score]])
+   [:exploration_query_result.interestingness_score            :interestingness_score]
+   [:exploration_query_result.contextual_interestingness_score :contextual_interestingness_score]])
 
 (defn- query-summary
   "Fetch a single `::ExplorationQuerySummary` row by `exploration_query.id`."

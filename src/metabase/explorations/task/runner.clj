@@ -5,7 +5,9 @@
   transaction. Crash recovery is automatic: a JVM kill drops the connection, the DB rolls back
   the tx, and the row is left as `pending` for another worker to pick up."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.query-processor :as qp]
@@ -72,6 +74,24 @@
                  (:id exploration-query))
       nil)))
 
+(defn- safe-contextual-score
+  "Best-effort contextual interestingness score for `qp-result` against the thread's `prompt`.
+  Returns nil whenever scoring isn't applicable (no prompt, no chart-config) or anything throws,
+  so a scoring failure can never break the query lifecycle. Same fail-soft contract as
+  `safe-score`."
+  [exploration-query qp-result]
+  (try
+    (when-let [thread-id (:exploration_thread_id exploration-query)]
+      (let [prompt (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))]
+        (when-not (str/blank? prompt)
+          (when-let [chart-config (explorations.interestingness/qp-result->chart-config
+                                   exploration-query qp-result)]
+            (contextual-interestingness/contextual-chart-interestingness chart-config prompt)))))
+    (catch Throwable e
+      (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
+                 (:id exploration-query))
+      nil)))
+
 (defn- run-one-iteration!
   "Try to claim and execute a single pending query. Returns truthy when work was done so the
   caller knows whether to sleep."
@@ -83,11 +103,13 @@
           (let [qp-result (qp/process-query
                            (qp/userland-query-with-default-constraints (:dataset_query row)))
                 bytes     (serialize-result qp-result)
-                score     (safe-score row qp-result)]
+                score     (safe-score row qp-result)
+                ctx-score (safe-contextual-score row qp-result)]
             (t2/insert! :model/ExplorationQueryResult
-                        {:exploration_query_id  (:id row)
-                         :result_data           bytes
-                         :interestingness_score score})
+                        {:exploration_query_id             (:id row)
+                         :result_data                      bytes
+                         :interestingness_score            score
+                         :contextual_interestingness_score ctx-score})
             (t2/update! :model/ExplorationQuery (:id row)
                         {:status      "done"
                          :started_at  started
