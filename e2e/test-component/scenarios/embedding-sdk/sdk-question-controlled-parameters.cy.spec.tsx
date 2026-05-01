@@ -164,7 +164,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       columnValue: "AR",
     });
 
-    cy.findByText("switch to TX").click();
+    cy.contains("button", "switch to TX").click();
 
     cy.wait("@cardQuery");
 
@@ -269,7 +269,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       .its("firstCall.args.0")
       .should("include", { source: "initial-state" });
 
-    cy.findByText("push WA").click();
+    cy.contains("button", "push WA").click();
 
     cy.wait("@cardQuery");
 
@@ -341,7 +341,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
     cy.wait("@getCard");
     cy.wait("@cardQuery");
 
-    cy.findByText("clear city").click();
+    cy.contains("button", "clear city").click();
     cy.wait("@cardQuery");
 
     cy.get("@onSqlParametersChange")
@@ -395,7 +395,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
 
     findParameterWidget("City").should("contain.text", "El Paso");
 
-    cy.findByText("clear city").click();
+    cy.contains("button", "clear city").click();
 
     cy.wait("@cardQuery");
 

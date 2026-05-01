@@ -14,7 +14,6 @@ import {
   RESET_PARAMETERS,
   SET_PARAMETER_VALUE,
   fetchDashboard,
-  type setParameterValue,
 } from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
@@ -40,18 +39,17 @@ const PARAMETER_CHANGE_ACTION_TYPES = new Set<string>([
   REMOVE_PARAMETER,
 ]);
 
-type SetParameterValueAction = Awaited<
-  ReturnType<ReturnType<typeof setParameterValue>>
->;
-
+// Keep the action payload shape inline rather than inferring it from
+// the `setParameterValue` thunk creator: `Awaited<ReturnType<ReturnType<…>>>`
+// over a `createThunkAction` result composes a deep enough type to push
+// other reducers' instantiation past TS's depth limit (TS2589).
 const isParameterSetAction = (action: {
   type: string;
   payload?: unknown;
 }): boolean =>
   action.type === SET_PARAMETER_VALUE &&
   // We must not fire `change` handler on draft parameter updates
-  (action.payload as SetParameterValueAction["payload"] | undefined)
-    ?.isDraft === false;
+  (action.payload as { isDraft?: boolean } | undefined)?.isDraft === false;
 
 export const useSdkControlledParameters = ({
   parameters,

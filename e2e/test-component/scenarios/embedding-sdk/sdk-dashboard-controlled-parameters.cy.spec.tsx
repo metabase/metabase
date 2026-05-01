@@ -131,7 +131,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
       expect(request.body?.parameters?.[0]?.value).to.equal("past30days");
     });
 
-    cy.findByText("switch to this year").click();
+    cy.contains("button", "switch to this year").click();
 
     cy.wait("@dashcardQuery").then(({ request }) => {
       expect(request.body?.parameters?.[0]?.value).to.equal("thisyear");
@@ -255,7 +255,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
       .its("firstCall.args.0")
       .should("include", { source: "initial-state" });
 
-    cy.findByText("push thisyear").click();
+    cy.contains("button", "push thisyear").click();
 
     cy.wait("@dashcardQuery");
 
@@ -321,7 +321,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
 
     cy.wait("@dashcardQuery");
 
-    cy.findByText("clear date").click();
+    cy.contains("button", "clear date").click();
 
     cy.wait("@dashcardQuery").then(({ request }) => {
       // A cleared parameter may either be omitted from the body or sent
@@ -367,7 +367,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     });
 
     cy.wait("@dashcardQuery");
-    cy.findByText("clear date").click();
+    cy.contains("button", "clear date").click();
     cy.wait("@dashcardQuery");
 
     cy.get("@onParametersChange")
