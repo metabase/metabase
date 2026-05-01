@@ -44,6 +44,13 @@ const STORY_GLOBS = [
   "enterprise/frontend/**/*.stories.tsx",
 ];
 
+const E2E_GLOBS = [
+  "e2e/test/scenarios/**/*.cy.spec.js",
+  "e2e/test/scenarios/**/*.cy.spec.jsx",
+  "e2e/test/scenarios/**/*.cy.spec.ts",
+  "e2e/test/scenarios/**/*.cy.spec.tsx",
+];
+
 function git(args) {
   return execFileSync("git", args, { encoding: "utf8" });
 }
@@ -63,7 +70,13 @@ const changedFiles = gitLines([
 
 const unitTestFiles = gitLines(["ls-files", "--", ...UNIT_GLOBS]);
 const storyFiles = gitLines(["ls-files", "--", ...STORY_GLOBS]);
+const e2eTestFiles = gitLines(["ls-files", "--", ...E2E_GLOBS]);
 
-const stats = computeStats({ changedFiles, unitTestFiles, storyFiles });
+const stats = computeStats({
+  changedFiles,
+  unitTestFiles,
+  storyFiles,
+  e2eTestFiles,
+});
 
 console.log(JSON.stringify(stats));

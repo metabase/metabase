@@ -1,14 +1,23 @@
 const { createAffectedTests } = require("./affected-tests");
 
-// Fixture isolated from the real module-boundaries config so reshuffles there
-// don't cascade into these tests.
 const ELEMENTS = [
   { type: "lib/utils", pattern: "src/utils/**" },
   { type: "lib/types", pattern: "src/types/**" },
+  // Nested-pattern pair: lib/inner is inside lib/outer. Order matters — the
+  // inner pattern must be listed first so first-match-wins picks it up.
+  // Mirrors the mlv1-inside-mlv2 case in the real module-boundaries config.
+  { type: "lib/inner", pattern: "src/shared/v1/**" },
+  { type: "lib/outer", pattern: "src/shared/**" },
   { type: "feature/foo", pattern: "src/foo/**" },
   { type: "feature/bar", pattern: "src/bar/**" },
   { type: "feature/super", pattern: "src/super/**" },
+  // Different folder root from the rest — mirrors feature/enterprise's
+  // enterprise/frontend/src/metabase-enterprise/** pattern in the real config.
+  { type: "feature/external", pattern: "external/lib/**" },
+  // app/main appears twice with different exact-path patterns — mirrors how
+  // app/misc is declared once per app entry point in the real config.
   { type: "app/main", pattern: "src/app.js" },
+  { type: "app/main", pattern: "src/embed.tsx" },
   { type: "shared/other", pattern: "src/*/**" }, // catch-all, must be last
 ];
 
@@ -36,7 +45,12 @@ describe("fileToModule", () => {
     ["src/bar/bar.tsx", "feature/bar"],
     ["src/super/index.ts", "feature/super"],
     ["src/app.js", "app/main"],
-    ["src/randomthing/file.ts", "shared/other"], // matches catch-all
+    ["src/randomthing/file.ts", "shared/other"],
+    ["src/shared/v1/expr.ts", "lib/inner"],
+    ["src/shared/v2/expr.ts", "lib/outer"],
+    ["src/shared/index.ts", "lib/outer"],
+    ["external/lib/foo.ts", "feature/external"],
+    ["src/embed.tsx", "app/main"],
   ])("maps %s → %s", (path, expected) => {
     expect(fileToModule(path)).toBe(expected);
   });
@@ -44,6 +58,7 @@ describe("fileToModule", () => {
   it("returns null for files outside any pattern", () => {
     expect(fileToModule("docs/foo.md")).toBe(null);
     expect(fileToModule("README.md")).toBe(null);
+    expect(fileToModule("external/notlib/foo.ts")).toBe(null);
   });
 });
 
@@ -114,6 +129,11 @@ describe("computeStats", () => {
         "src/utils/d.unit.spec.ts",
       ],
       storyFiles: ["src/foo/Foo.stories.tsx", "src/bar/Bar.stories.tsx"],
+      e2eTestFiles: [
+        "e2e/test/scenarios/a.cy.spec.ts",
+        "e2e/test/scenarios/b.cy.spec.ts",
+        "e2e/test/scenarios/c.cy.spec.ts",
+      ],
     });
     expect(stats).toEqual({
       modules_directly_touched: 1,
@@ -125,6 +145,9 @@ describe("computeStats", () => {
       loki_stories_total: 2,
       loki_stories_to_run: 1,
       loki_stories_to_skip: 1,
+      e2e_tests_total: 3,
+      e2e_tests_to_run: 3,
+      e2e_tests_to_skip: 0,
     });
   });
 });

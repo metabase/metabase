@@ -101,14 +101,17 @@ jobs:
               'PR': Number(process.env.PR_NUMBER),
               'Head SHA': process.env.HEAD_SHA,
               'Base SHA': process.env.BASE_SHA,
-              'Modules directly touched': stats.modules_directly_touched,
+              'Modules Changed': stats.modules_directly_touched,
               'Modules affected': stats.modules_affected,
-              'Unit tests total': stats.unit_tests_total,
-              'Unit tests to run': stats.unit_tests_to_run,
-              'Unit tests to skip': stats.unit_tests_to_skip,
+              'FE Unit tests total': stats.unit_tests_total,
+              'FE Unit tests run': stats.unit_tests_to_run,
+              'FE Unit tests skipped': stats.unit_tests_to_skip,
               'Loki stories total': stats.loki_stories_total,
-              'Loki stories to run': stats.loki_stories_to_run,
-              'Loki stories to skip': stats.loki_stories_to_skip,
+              'Loki stories run': stats.loki_stories_to_run,
+              'Loki stories skipped': stats.loki_stories_to_skip,
+              'E2E tests total': stats.e2e_tests_total,
+              'E2E tests run': stats.e2e_tests_to_run,
+              'E2E tests skipped': stats.e2e_tests_to_skip,
             };
 
             uploadCsvToMb({
