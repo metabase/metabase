@@ -1,7 +1,9 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  Box,
   Icon,
   Loader,
   Stack,
@@ -25,17 +27,32 @@ interface ExplorationSidebarProps {
   setSelectedQueryId: (queryId: ExplorationQueryId) => void;
 }
 
+// todo fixme
+window.Metabase.INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
+
 export function ExplorationSidebar({
   exploration,
   selectedQueryId,
   setSelectedQueryId,
 }: ExplorationSidebarProps) {
+  const threadsWithSortedQueries = useMemo(() => {
+    return exploration.threads?.map((thread) => {
+      return {
+        ...thread,
+        queries: thread.queries?.toSorted(
+          (a, b) =>
+            (b.interestingness_score ?? -1) - (a.interestingness_score ?? -1),
+        ),
+      };
+    });
+  }, [exploration.threads]);
+
   return (
     <Stack h="100%" gap="lg">
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>
-      {exploration.threads?.map((thread, i) => (
+      {threadsWithSortedQueries?.map((thread, i) => (
         <Stack mih={0} key={thread.id} gap="md">
           <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
           {thread.queries && thread.queries.length > 0 ? (
@@ -86,9 +103,21 @@ function ExplorationQueryRow({
       onClick={onSelect}
     >
       <ExplorationQueryStatusIcon status={query.status} />
-      <Text component="span" lineClamp={1}>
+      <Text flex={1} component="span" lineClamp={1}>
         {query.name}
       </Text>
+      {(query.interestingness_score ?? 0) >
+        window.Metabase.INTERESTINGNESS_SCORE_THRESHOLD && (
+        <Tooltip label={t`Potentially interesting`}>
+          <Box
+            aria-hidden
+            w={6}
+            h={6}
+            bg="interesting"
+            className={S.interestingnessIndicator}
+          />
+        </Tooltip>
+      )}
     </UnstyledButton>
   );
 

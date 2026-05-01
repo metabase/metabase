@@ -18,6 +18,10 @@ export function TimelineDropdown({
 }: TimelineDropdownProps) {
   const combobox = useCombobox();
 
+  if (availableTimelines.length === 0) {
+    return null;
+  }
+
   return (
     <Combobox
       store={combobox}
