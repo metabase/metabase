@@ -689,7 +689,7 @@
 
       (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
         (with-current-user-perms-for-collections! [a b c d e f g]
-          (is (= #{:name :id :description}
+          (is (= #{:name :id :description :type}
                  (set (keys (first (collection/effective-children a))))))))
 
       (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
@@ -3312,11 +3312,8 @@
                                                                             non-archived-card]))))))))
 
 (deftest create-library
-  (mt/with-discard-model-updates! [:model/Collection]
+  (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
-      (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-data-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-metrics-collection-type {:type nil})
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
@@ -3363,7 +3360,7 @@
 (deftest serdes-descendants-includes-published-tables-test
   (testing "Collection descendants includes published tables"
     (mt/with-temp [:model/Database   db              {:name "Test DB"}
-                   :model/Collection coll            {:name "Test Collection"}
+                   :model/Collection coll            {:name "Test Collection", :type "library-data"}
                    :model/Table      pub-table       {:name          "Published Table"
                                                       :db_id         (:id db)
                                                       :is_published  true
@@ -3386,7 +3383,7 @@
 (deftest serdes-descendants-skip-archived-tables-test
   (testing "Collection descendants with skip-archived handles published tables"
     (mt/with-temp [:model/Database   db             {:name "Test DB"}
-                   :model/Collection coll           {:name "Test Collection"}
+                   :model/Collection coll           {:name "Test Collection", :type "library-data"}
                    :model/Table      active-table   {:name          "Active Published Table"
                                                      :db_id         (:id db)
                                                      :is_published  true
