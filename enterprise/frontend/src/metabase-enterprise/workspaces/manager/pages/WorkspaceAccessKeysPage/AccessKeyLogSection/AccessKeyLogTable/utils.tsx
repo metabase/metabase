@@ -10,6 +10,7 @@ export function getAccessKeyColumn(): TreeTableColumnDef<WorkspaceAccessKeyLog> 
     header: t`Access key`,
     width: "auto",
     minWidth: 200,
+    enableSorting: false,
     accessorFn: (row) => row.workspace_access_key?.name ?? t`(deleted)`,
     cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
@@ -21,6 +22,7 @@ export function getTimestampColumn(): TreeTableColumnDef<WorkspaceAccessKeyLog> 
     header: t`Timestamp`,
     width: "auto",
     minWidth: 200,
+    enableSorting: false,
     accessorFn: (row) => row.timestamp,
     cell: ({ getValue }) => <DateTime value={String(getValue())} />,
   };
@@ -32,6 +34,7 @@ export function getContextColumn(): TreeTableColumnDef<WorkspaceAccessKeyLog> {
     header: t`Context`,
     width: "auto",
     minWidth: 160,
+    enableSorting: false,
     accessorFn: (row) => row.context,
     cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
