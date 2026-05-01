@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -28,6 +28,7 @@ import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat"
 import { AddMetricsModal } from "./AddMetricsModal";
 import { AddTimelinesModal } from "./AddTimelinesModal";
 import S from "./NewExplorationData.module.css";
+import { groupDimensionsBySource } from "./utils";
 
 export interface NewExplorationDataProps {
   metrics: ExplorationMetric[];
@@ -109,6 +110,11 @@ export function NewExplorationData({
 
   const canStart = metrics.length > 0 && dimensions.length > 0;
 
+  const groupedDimensions = useMemo(
+    () => groupDimensionsBySource(dimensions),
+    [dimensions],
+  );
+
   return (
     <>
       <Stack
@@ -136,12 +142,23 @@ export function NewExplorationData({
                 />
                 <Text>{t`Dimensions`}</Text>
                 <PillList
-                  items={dimensions.map(dimensionToPillItem)}
-                  onRemove={(id) =>
+                  items={groupedDimensions}
+                  onRemove={(groupId) => {
+                    const group = groupedDimensions.find(
+                      (group) => group.id === groupId,
+                    );
+                    if (!group) {
+                      return;
+                    }
+                    const dimensionsToRemove = new Set(
+                      group.dimensions.map((dimension) => dimension.id),
+                    );
                     setDimensions(
-                      dimensions.filter((dimension) => dimension.id !== id),
-                    )
-                  }
+                      dimensions.filter(
+                        (dimension) => !dimensionsToRemove.has(dimension.id),
+                      ),
+                    );
+                  }}
                 />
               </>
             ) : (
@@ -218,7 +235,7 @@ function NewExplorationSection({
   children,
 }: NewExplorationSectionProps) {
   return (
-    <Stack h="100%" px="md" pt="sm" className={S.section}>
+    <Stack h="100%" px="md" py="sm" className={S.section}>
       <Group justify="space-between" align="center">
         <Text size="lg" fw="bold">
           {title}
@@ -235,13 +252,6 @@ function NewExplorationSection({
 interface PillItem {
   id: number | string;
   name: string;
-}
-
-function dimensionToPillItem(item: MetricDimension): PillItem {
-  return {
-    id: item.id,
-    name: item.display_name,
-  };
 }
 
 interface PillListProps {
@@ -269,6 +279,8 @@ function PillList({ items, onRemove }: PillListProps) {
             py="xs"
             removeButtonProps={{
               mr: 0,
+              "aria-hidden": false,
+              "aria-label": t`Remove`,
             }}
           >
             {item.name}

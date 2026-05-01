@@ -145,3 +145,36 @@ export function groupDimensionsBySemanticType(
   }
   return rows;
 }
+
+/**
+ * TODO: this relies on the assumption that each dimension has exactly one source which isn't future proof
+ * we should expose a method in LibMetric to do this safely
+ * also, should we be reaching into MetricDimension internals like this?
+ */
+export function groupDimensionsBySource(dimensions: MetricDimension[]) {
+  const fieldIdToDimensions: Record<number, MetricDimension[]> = {};
+
+  for (const dimension of dimensions) {
+    const fieldId = dimension.sources?.[0]?.["field-id"];
+    if (!fieldId) {
+      continue;
+    }
+    const dimensions = fieldIdToDimensions[fieldId];
+    if (dimensions) {
+      dimensions.push(dimension);
+    } else {
+      fieldIdToDimensions[fieldId] = [dimension];
+    }
+  }
+
+  return Object.values(fieldIdToDimensions).map((dimensions) => {
+    const head = dimensions[0];
+    return {
+      id: head.id,
+      name: head.group?.display_name
+        ? `${head.group.display_name} - ${head.display_name}`
+        : head.display_name,
+      dimensions,
+    };
+  });
+}
