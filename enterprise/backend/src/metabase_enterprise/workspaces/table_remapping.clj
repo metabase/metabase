@@ -264,6 +264,22 @@
                          :pk-table-name   (second (to->from pk-key))))))
             rows))))
 
+(defenterprise canonical-schema+name
+  "Enterprise impl: invert an active workspace remapping. Given a
+   workspace-side `(to-schema, to-name)` pair, return `[from-schema from-name]`
+   when a TableRemapping row records that pair as the destination of a canonical
+   table; nil otherwise. Mirror of `workspace-remap-schema+name` for write-side
+   callers that already have the rewritten target on hand and need the canonical
+   slot before touching `:model/Table` rows."
+  :feature :none
+  [db-id schema table-name]
+  (let [to->from (into {}
+                       (map (fn [[[_from-db from-schema from-name]
+                                  [_to-db to-schema to-name]]]
+                              [[to-schema to-name] [from-schema from-name]]))
+                       (all-mappings-for-db db-id))]
+    (to->from [schema table-name])))
+
 ;;; -------------------------------------------- Write API --------------------------------------------
 ;;;
 ;;; The convenience layer over [[metabase-enterprise.workspaces.remapping.core]]. Accepts

@@ -51,3 +51,17 @@
   metabase-enterprise.workspaces.table-remapping
   [rows _db-id]
   rows)
+
+(defenterprise canonical-schema+name
+  "Inverse of `workspace-remap-schema+name`. Given an isolation-schema
+  `(to-schema, to-name)` pair, return `[from-schema from-name]` if a
+  `TableRemapping` row records that pair as the workspace destination of a
+  canonical table; return nil otherwise.
+
+  Use at write-side `:model/Table` lookups where the transform pipeline has
+  already mutated `:target.schema` to the workspace output schema, but the
+  app-db Table row lives at the canonical schema. OSS fallback is nil so
+  callers fall through to the unchanged identity."
+  metabase-enterprise.workspaces.table-remapping
+  [_db-id _schema _name]
+  nil)

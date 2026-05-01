@@ -2318,7 +2318,8 @@
            query-processor
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :friends #{transforms
               enterprise/transforms-python}}
 
