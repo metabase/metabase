@@ -1569,29 +1569,35 @@
              details
              (database/sensitive-fields-for-db database))))))
 
+(def ^:private connection-marker-key->details-column
+  {:write-data-connection "write_data_details"
+   :admin-connection      "admin_details"})
+
 (defn- validate-overlay-details!
   "Common guardrails for overlay-details (write_data_details, admin_details).
-   Throws 400 on violation. `article-noun` (e.g. \"a write\", \"an admin\") and `conn-noun`
-   (e.g. \"write\", \"admin\") are interpolated into the error messages."
+   Throws 400 on violation."
   [existing-database overlay-details
-   {:keys [marker-key overlay-key-name article-noun conn-noun hidden-fields-fn]}]
-  (let [marker-name (name marker-key)]
+   {:keys [marker-key article+noun hidden-fields-fn]}]
+  (let [[article noun] article+noun
+        marker-name    (name marker-key)
+        column-name    (connection-marker-key->details-column marker-key)
+        article-noun   (str article " " noun)]
     (api/check-400 (not (:router_database_id existing-database))
                    (tru "Cannot configure {0} connection on a destination database" article-noun))
     (api/check-400 (not (t2/exists? :model/Database :router_database_id (:id existing-database)))
                    (tru "Cannot configure {0} connection on a router database" article-noun))
     (when-not (get overlay-details marker-key)
-      (throw (ex-info (tru "{0} must be set in {1}" marker-name overlay-key-name)
+      (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
                       {:status-code 400})))
     (when (:destination-database overlay-details)
-      (throw (ex-info (tru "destination-database must be false in {0}" overlay-key-name)
+      (throw (ex-info (tru "destination-database must be false in {0}" column-name)
                       {:status-code 400})))
     (when-let [hidden-fields (not-empty (hidden-fields-fn (keyword (:engine existing-database))))]
       (let [hidden-kws      (into #{} (map keyword) hidden-fields)
             disallowed-keys (filterv #(contains? hidden-kws %) (keys overlay-details))]
         (when (seq disallowed-keys)
           (throw (ex-info (tru "{0} must not contain fields hidden for {1} connections: {2}"
-                               overlay-key-name conn-noun (str/join ", " (sort (map name disallowed-keys))))
+                               column-name noun (str/join ", " (sort (map name disallowed-keys))))
                           {:status-code     400
                            :disallowed-keys disallowed-keys})))))))
 
@@ -1601,9 +1607,7 @@
   (validate-overlay-details!
    existing-database write-data-details
    {:marker-key       :write-data-connection
-    :overlay-key-name "write_data_details"
-    :article-noun     "a write"
-    :conn-noun        "write"
+    :article+noun     ["a" "write"]
     :hidden-fields-fn driver.u/fields-hidden-for-write-data-connection}))
 
 (defn- validate-admin-details!
@@ -1612,9 +1616,7 @@
   (validate-overlay-details!
    existing-database admin-details
    {:marker-key       :admin-connection
-    :overlay-key-name "admin_details"
-    :article-noun     "an admin"
-    :conn-noun        "admin"
+    :article+noun     ["an" "admin"]
     :hidden-fields-fn driver.u/fields-hidden-for-admin-connection}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

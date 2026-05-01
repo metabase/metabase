@@ -3357,7 +3357,6 @@
                                                   :admin_details {:host "admin-host"
                                                                   :password "secret-admin-pass"}}]
         (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
-          (is (some? (:admin_details response)))
           (is (= "admin-host" (get-in response [:admin_details :host])))
           (is (= secret/protected-password (get-in response [:admin_details :password]))))))
     (testing "Regular users do not see admin_details"
