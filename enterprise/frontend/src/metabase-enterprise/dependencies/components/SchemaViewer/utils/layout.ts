@@ -462,32 +462,56 @@ function focusNodeLayout(
   placeColumn(incomingIds, focal.position.x - NODE_WIDTH - DAGRE_RANK_SEP);
   placeColumn(outgoingIds, focal.position.x + focalWidth + DAGRE_RANK_SEP);
 
-  // Anything not directly connected to the focal node: place it next to a
-  // neighbor that's already positioned. Iterate in passes — just like the
-  // FK-expansion merge path — so chains keep growing outward.
-  const adjacency = buildAdjacency(edges);
-  const remaining = placeNodesByAdjacency(
-    nodes.filter((n) => !placedById.has(n.id)),
-    placedById,
-    adjacency,
-    placementState,
-  );
+  // Everything not in the focal cluster (indirect nodes + fully disconnected
+  // ones) is laid out as a separate Dagre subgraph and dropped to the right
+  // of the focal cluster. This keeps the side cluster dense and rectangular
+  // instead of stretching into a long collision-walk chain when the rest of
+  // the schema is large. Cross-cluster edges (focal-cluster ↔ side-cluster)
+  // are intentionally excluded from the side Dagre call so the side
+  // cluster's internal shape is driven by its own connectivity, not pulled
+  // toward the already-placed focal cluster.
+  const restNodes = nodes.filter((n) => !placedById.has(n.id));
+  if (restNodes.length > 0) {
+    const restIds = new Set(restNodes.map((n) => n.id));
+    const restEdges = edges.filter(
+      (e) => restIds.has(e.source) && restIds.has(e.target),
+    );
+    const laidOutRest = getNodesWithPositions(restNodes, restEdges);
 
-  // Fully disconnected leftovers: drop them in a fresh column to the right
-  // of everything that's already placed, stacked top-down. This keeps them
-  // out of the focal layout while still making them reachable via pan.
-  if (remaining.length > 0) {
-    let cursorY = focal.position.y;
-    for (const node of remaining) {
+    // Bounding box of the laid-out side cluster (in its own Dagre coords).
+    let restMinX = Infinity;
+    let restMinY = Infinity;
+    let restMaxY = -Infinity;
+    for (const node of laidOutRest) {
       const { height } = getNodeDimensions(node, placementState.dimensionsById);
+      if (node.position.x < restMinX) {
+        restMinX = node.position.x;
+      }
+      if (node.position.y < restMinY) {
+        restMinY = node.position.y;
+      }
+      if (node.position.y + height > restMaxY) {
+        restMaxY = node.position.y + height;
+      }
+    }
+
+    // Translate so the side cluster sits one extra rank-gap to the right of
+    // the focal cluster (a wider gap than the normal Dagre rank separation
+    // signals "separate cluster" visually) and is vertically centered on
+    // the focal node.
+    const dx = placementState.maxRight + DAGRE_RANK_SEP * 2 - restMinX;
+    const dy = focalCenterY - (restMinY + restMaxY) / 2;
+
+    for (const node of laidOutRest) {
       const positionedNode = {
         ...node,
-        position: { x: placementState.maxRight + DAGRE_RANK_SEP, y: cursorY },
-        style: { ...node.style, opacity: 1 },
+        position: {
+          x: node.position.x + dx,
+          y: node.position.y + dy,
+        },
       };
       placedById.set(node.id, positionedNode);
       registerPlacedNode(positionedNode, placementState);
-      cursorY += height + columnGap;
     }
   }
 
