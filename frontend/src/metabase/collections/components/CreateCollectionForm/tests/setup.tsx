@@ -9,6 +9,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
+  CollectionId,
   CollectionNamespace,
   TokenFeatures,
   User,
@@ -33,6 +34,7 @@ export interface SetupOpts {
   showAuthorityLevelPicker?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   parentCollectionNamespace?: CollectionNamespace | null;
+  initialCollectionId?: CollectionId;
 }
 
 export const setup = ({
@@ -41,6 +43,7 @@ export const setup = ({
   showAuthorityLevelPicker,
   enterprisePlugins,
   parentCollectionNamespace,
+  initialCollectionId,
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
@@ -60,6 +63,17 @@ export const setup = ({
       ? [ROOT_COLLECTION, parentCollection]
       : [ROOT_COLLECTION];
 
+  const initialCollection = initialCollectionId
+    ? createMockCollection({
+        id: initialCollectionId,
+        name: "Data",
+        can_write: true,
+      })
+    : null;
+  const endpointCollections = initialCollection
+    ? [...collections, initialCollection]
+    : collections;
+
   if (enterprisePlugins) {
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
@@ -71,7 +85,7 @@ export const setup = ({
 
   // Mock individual collection fetches
   setupCollectionByIdEndpoint({
-    collections,
+    collections: endpointCollections,
   });
 
   renderWithProviders(
@@ -79,6 +93,7 @@ export const setup = ({
       onCancel={onCancel}
       showAuthorityLevelPicker={showAuthorityLevelPicker}
       collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
+      initialCollectionId={initialCollectionId}
     />,
     {
       storeInitialState: createMockState({

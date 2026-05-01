@@ -2,6 +2,7 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { getCollectionPathAsArray } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -14,7 +15,7 @@ import {
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
 
@@ -65,11 +66,9 @@ export const CreateMenu = ({
             setOpenModalWithProps({
               id: "collection",
               props: {
-                collectionId: dataCollectionId,
                 initialCollectionId: dataCollectionId,
                 pickerOptions: libraryCollectionPickerOptions,
                 showAuthorityLevelPicker: false,
-                visitOnCreate: false,
               },
             }),
           )
@@ -117,6 +116,17 @@ export const CreateMenu = ({
     return null;
   }
 
+  const onSnippetFolderSaved = (collection: Collection) => {
+    closeModal();
+    dispatch(
+      push(
+        Urls.dataStudioLibrary({
+          expandedIds: getCollectionPathAsArray(collection),
+        }),
+      ),
+    );
+  };
+
   return (
     <>
       <Menu position="bottom-end">
@@ -132,7 +142,7 @@ export const CreateMenu = ({
           description: null,
         }}
         onClose={closeModal}
-        onSaved={closeModal}
+        onSaved={onSnippetFolderSaved}
       />
       <PublishTableModal
         opened={modal === "publish-table"}

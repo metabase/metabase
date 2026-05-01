@@ -287,7 +287,9 @@ describe("scenarios > data studio > snippets", () => {
 
       cy.wait("@createSnippet");
 
-      H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
+      H.DataStudio.breadcrumbs()
+        .findByRole("link", { name: /Test Folder/ })
+        .click();
       H.DataStudio.Library.libraryPage()
         .findByText("Folder snippet")
         .should("be.visible");
@@ -325,6 +327,8 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Archive").click();
+      cy.log("Clicks archive button on confirmation modal");
+      H.modal().findByRole("button", { name: "Archive" }).click();
 
       cy.wait("@updateCollection");
 
@@ -453,15 +457,13 @@ describe("scenarios > data studio > snippets", () => {
               name: "Deep Snippet",
               content: "SELECT 1",
               collection_id: childFolder.id,
+            }).then(({ body: snippet }) => {
+              H.DataStudio.Snippets.visitSnippet(snippet.id);
             });
           });
         });
       });
 
-      H.DataStudio.Library.visit();
-
-      cy.log("Navigate to the deeply nested snippet");
-      H.DataStudio.Library.libraryPage().findByText("Deep Snippet").click();
       H.DataStudio.Snippets.editPage().should("be.visible");
 
       cy.log(

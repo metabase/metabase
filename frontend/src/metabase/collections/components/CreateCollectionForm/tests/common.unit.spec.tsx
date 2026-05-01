@@ -21,6 +21,13 @@ describe("CreateCollectionForm", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
+  it("uses the explicit initial collection id", async () => {
+    setup({ initialCollectionId: 2 });
+
+    expect(await screen.findByText("Data")).toBeInTheDocument();
+    expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+  });
+
   it("can't submit if name is empty", () => {
     setup();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();

@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type { SnippetFormModalProps } from "metabase/plugins";
 import { Modal } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
 
 import SnippetCollectionForm from "./SnippetCollectionForm";
 
@@ -16,8 +17,8 @@ function SnippetFormModal({
     ? t`Editing ${collection.name}`
     : t`Create your new folder`;
 
-  const handleSave = () => {
-    onSaved?.();
+  const handleSave = (collection: Collection) => {
+    onSaved?.(collection);
     onClose();
   };
 

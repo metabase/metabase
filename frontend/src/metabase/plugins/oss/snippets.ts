@@ -39,7 +39,7 @@ export type SnippetCollectionPickerModalProps = {
 export type SnippetFormModalProps = {
   collection: Partial<Collection>;
   onClose: () => void;
-  onSaved?: () => void;
+  onSaved?: (collection: Collection) => void;
   opened?: boolean;
 };
 

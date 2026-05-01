@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
+import { useGetCurrentApp } from "metabase/nav/components/AppSwitcher/useGetCurrentApp";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Modal } from "metabase/ui";
@@ -14,6 +15,7 @@ import type { Collection } from "metabase-types/api";
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
+import { getCollectionPathAsArray } from "../utils";
 
 export interface CreateCollectionModalOwnProps extends Omit<
   CreateCollectionFormOwnProps,
@@ -21,7 +23,6 @@ export interface CreateCollectionModalOwnProps extends Omit<
 > {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
-  visitOnCreate?: boolean;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -43,9 +44,9 @@ function CreateCollectionModal({
   onChangeLocation,
   onClose,
   handleCreateCollection,
-  visitOnCreate = true,
   ...props
 }: Props) {
+  const currentApp = useGetCurrentApp();
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
       const action = await handleCreateCollection(values);
@@ -55,18 +56,24 @@ function CreateCollectionModal({
         onCreate(collection);
       } else {
         onClose();
-        if (visitOnCreate) {
-          onChangeLocation(Urls.collection(collection));
+        let visitUrl: string | undefined;
+
+        if (currentApp === "data-studio") {
+          visitUrl = Urls.dataStudioLibrary({
+            expandedIds: getCollectionPathAsArray(collection),
+          });
+        }
+
+        if (currentApp === "main") {
+          visitUrl = Urls.collection(collection);
+        }
+
+        if (visitUrl) {
+          onChangeLocation(visitUrl);
         }
       }
     },
-    [
-      handleCreateCollection,
-      onCreate,
-      onClose,
-      visitOnCreate,
-      onChangeLocation,
-    ],
+    [handleCreateCollection, onCreate, onClose, currentApp, onChangeLocation],
   );
 
   useEscapeToCloseModal(onClose);

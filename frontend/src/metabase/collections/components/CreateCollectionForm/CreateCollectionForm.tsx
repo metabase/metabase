@@ -73,6 +73,7 @@ const mapDispatchToProps = {
 
 function CreateCollectionForm({
   collectionId,
+  initialCollectionId: explicitInitialCollectionId,
   location,
   params,
   onSubmit,
@@ -82,11 +83,13 @@ function CreateCollectionForm({
   pickerOptions,
   showAuthorityLevelPicker = true,
 }: Props) {
-  const initialCollectionId = useInitialCollectionId({
+  const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,
     params,
   });
+  const initialCollectionId =
+    explicitInitialCollectionId ?? defaultInitialCollectionId;
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
