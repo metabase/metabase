@@ -113,6 +113,7 @@ export const {
   useListActionsQuery,
   useListPublicActionsQuery,
   useUpdateActionMutation,
+  useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
   endpoints: {
     listPublicActions,
