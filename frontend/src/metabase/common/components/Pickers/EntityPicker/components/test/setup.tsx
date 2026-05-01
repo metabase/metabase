@@ -19,6 +19,7 @@ import type {
   Collection,
   CollectionItem,
   Database,
+  LibraryCollection,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
@@ -102,6 +103,26 @@ const mockSearchResults = createMockSearchResults({
       id: 610,
     }),
   ],
+});
+
+const createMockLibraryCollectionItem = (
+  collection: Collection,
+): LibraryCollection => ({
+  ...createMockCollectionItem({
+    id: Number(collection.id),
+    name: collection.name,
+    description: collection.description,
+    archived: collection.archived,
+    model: "collection",
+    type: collection.type,
+    can_write: collection.can_write,
+    location: collection.location,
+    effective_location: collection.effective_location,
+    here: collection.here,
+    below: collection.below,
+    collection_id: collection.parent_id ?? null,
+  }),
+  effective_children: [],
 });
 const mockRecentItems = [
   createMockRecentCollectionItem({
@@ -351,8 +372,12 @@ export const setup = async ({
 
   setupDatabasesEndpoints(databases ?? mockDatabases);
 
+  const libraryCollectionItem = libraryCollection
+    ? createMockLibraryCollectionItem(libraryCollection)
+    : undefined;
+
   PLUGIN_LIBRARY.useGetLibraryCollection = () => ({
-    data: libraryCollection,
+    data: libraryCollectionItem,
     isLoading: false,
   });
 

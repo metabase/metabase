@@ -6,6 +6,7 @@ import type {
   CollectionId,
   CollectionItem,
   CollectionNamespace,
+  CollectionType,
   DashboardId,
   DatabaseId,
   Measure,

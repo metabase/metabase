@@ -4,13 +4,19 @@ import type { CollectionItem } from "metabase-types/api";
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerCollectionItem, OmniPickerItem } from "../../types";
 import {
+  type LibrarySectionType,
   getCollectionItemsOptions,
   getSyntheticLibrarySectionItem,
-  isLibrarySectionType,
   librarySectionTypes,
 } from "../../utils";
 
 import { ItemList } from "./ItemList";
+
+type LibrarySectionCollectionItem = CollectionItem &
+  OmniPickerCollectionItem & {
+    model: "collection";
+    type: LibrarySectionType;
+  };
 
 export const CollectionItemList = ({
   parentItem,
@@ -87,8 +93,8 @@ function getLibraryRootItems(
   items: CollectionItem[],
 ): OmniPickerItem[] {
   return librarySectionTypes.flatMap((type) => {
-    const sectionItems = items.filter(
-      (item) => item.model === "collection" && item.type === type,
+    const sectionItems = items.filter((item) =>
+      isLibrarySectionCollectionItem(item, type),
     );
 
     const realRoot = sectionItems.find((item) => item.is_library_root);
@@ -96,10 +102,17 @@ function getLibraryRootItems(
       return [realRoot];
     }
 
-    if (sectionItems.some((item) => isLibrarySectionType(item.type))) {
+    if (sectionItems.length > 0) {
       return [getSyntheticLibrarySectionItem({ libraryCollection, type })];
     }
 
     return [];
   });
+}
+
+function isLibrarySectionCollectionItem(
+  item: CollectionItem,
+  type: LibrarySectionType,
+): item is LibrarySectionCollectionItem {
+  return item.model === "collection" && item.type === type;
 }

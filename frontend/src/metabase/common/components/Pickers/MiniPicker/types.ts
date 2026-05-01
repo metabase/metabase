@@ -10,12 +10,16 @@ import type {
 
 export type MiniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below" | "display" | "collection" | "type"
+  "name" | "model" | "here" | "below" | "display" | "collection" | "type"
 > & {
   id: CollectionItem["id"] | CollectionId;
   sourceCollectionId?: CollectionItem["id"] | CollectionId;
   /** When set, CollectionItemList only shows children whose type matches */
   childTypeFilter?: NonNullable<CollectionType>;
+};
+
+export type MiniPickerCollectionFolderItem = MiniPickerCollectionItem & {
+  model: "collection";
 };
 
 export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
@@ -81,7 +85,7 @@ export type MiniPickerItem =
 export type MiniPickerFolderItem =
   | MiniPickerDatabaseItem
   | MiniPickerSchemaItem
-  | (MiniPickerCollectionItem & { model: "collection" });
+  | MiniPickerCollectionFolderItem;
 
 // this omits intermediate/folder types that cannot ultimately be picked
 export type MiniPickerPickableItem =

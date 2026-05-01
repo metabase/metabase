@@ -32,7 +32,7 @@ export type CollectionId =
   | "tenant"
   | "trash";
 
-export type CollectionContentModel = "card" | "dataset" | "metric";
+export type CollectionContentModel = CollectionItemModel;
 
 export type CollectionAuthorityLevel = "official" | null;
 

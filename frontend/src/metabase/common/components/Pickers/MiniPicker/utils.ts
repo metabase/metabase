@@ -10,6 +10,7 @@ import type { CollectionType, SchemaName } from "metabase-types/api";
 import type { DataPickerValue } from "../DataPicker";
 
 import {
+  type MiniPickerCollectionFolderItem,
   type MiniPickerCollectionItem,
   type MiniPickerFolderItem,
   MiniPickerFolderModel,
@@ -18,7 +19,7 @@ import {
   type MiniPickerTableItem,
 } from "./types";
 
-export const getOurAnalytics = (): MiniPickerFolderItem => ({
+export const getOurAnalytics = (): MiniPickerCollectionFolderItem => ({
   model: "collection",
   id: "root" as any, // cmon typescript
   name: t`Our analytics`,
@@ -234,7 +235,7 @@ function isLibrarySectionType(
 function getSyntheticLibrarySectionItem(
   libraryCollection: MiniPickerCollectionItem,
   type: "library-data" | "library-metrics",
-): MiniPickerCollectionItem {
+): MiniPickerCollectionFolderItem {
   return {
     id: `${type}-${libraryCollection.id}`,
     sourceCollectionId: libraryCollection.id,
