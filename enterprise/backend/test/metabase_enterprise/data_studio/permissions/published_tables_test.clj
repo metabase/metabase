@@ -13,7 +13,7 @@
 (deftest can-access-via-collection?-returns-false-for-non-published-tables-test
   (testing "Returns false for non-published tables"
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection collection {}
+      (mt/with-temp [:model/Collection collection {:type "library-data"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
@@ -25,7 +25,7 @@
 (deftest can-access-via-collection?-returns-true-with-collection-access-test
   (testing "Returns true for published tables when user has collection access"
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection collection {}
+      (mt/with-temp [:model/Collection collection {:type "library-data"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
@@ -37,7 +37,7 @@
 (deftest can-access-via-collection?-returns-false-without-collection-access-test
   (testing "Returns false for published tables when user lacks collection access"
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection collection {}
+      (mt/with-temp [:model/Collection collection {:type "library-data"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
@@ -63,8 +63,8 @@
 (deftest published-table-visible-clause-filters-by-collection-perms-test
   (testing "Returns clause that only includes published tables in readable collections"
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection {allowed-coll-id :id} {}
-                     :model/Collection {blocked-coll-id :id} {}
+      (mt/with-temp [:model/Collection {allowed-coll-id :id} {:type "library-data"}
+                     :model/Collection {blocked-coll-id :id} {:type "library-data"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}

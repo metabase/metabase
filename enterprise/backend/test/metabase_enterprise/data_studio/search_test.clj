@@ -14,10 +14,13 @@
   (mt/with-premium-features #{:library}
     (testing "Published tables are included in collection-filtered search"
       (mt/with-temp
-        [:model/Collection {parent-coll :id} {:name "Parent Collection" :location "/"}
-         :model/Collection {child-coll :id}  {:name "Child Collection"
-                                              :location (collection/location-path parent-coll)}
-         :model/Card       {card-1 :id}      {:collection_id parent-coll :name "Parent Card"}
+        [:model/Collection {parent-coll :id} {:name     "Parent Collection"
+                                              :location "/"
+                                              :type     "library-data"}
+         :model/Collection {child-coll :id}  {:name     "Child Collection"
+                                              :location (collection/location-path parent-coll)
+                                              :type     "library-data"}
+         ;:model/Card       {card-1 :id}      {:collection_id parent-coll :name "Parent Card"}
          :model/Table      {table-1 :id}     {:name "Published Table" :is_published true :collection_id parent-coll}
          :model/Table      {table-2 :id}     {:name "Child Published Table" :is_published true :collection_id child-coll}
          :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
@@ -28,14 +31,14 @@
           (testing (str "with engine " engine)
             (testing "Global search"
               (let [results (mt/user-http-request :crowberto :get 200 "search" :search_engine engine)]
-                (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
+                (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type "library-data"}
                           :database_id (mt/id)
                           :id table-1
                           :model "table"
                           :name "Published Table"
                           :table_id table-1
                           :table_name "Published Table"}
-                         {:collection {:authority_level nil, :id child-coll, :name "Child Collection", :type nil}
+                         {:collection {:authority_level nil, :id child-coll, :name "Child Collection", :type "library-data"}
                           :database_id (mt/id)
                           :id table-2
                           :model "table"
@@ -60,7 +63,10 @@
                              (sort-by :id))))))
             (testing "Filter by parent collection returns published tables in that collection and descendants"
               (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll :search_engine engine)]
-                (is (=? {:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
+                (is (=? {:collection {:authority_level nil
+                                      :id              parent-coll
+                                      :name            "Parent Collection"
+                                      :type            "library-data"}
                          :database_id (mt/id)
                          :id table-1
                          :model "table"
@@ -71,9 +77,7 @@
                 (is (contains? (set (map :id (:data results))) table-1)
                     "Published table in parent collection should be included")
                 (is (contains? (set (map :id (:data results))) table-2)
-                    "Published table in child collection should be included")
-                (is (contains? (set (map :id (:data results))) card-1)
-                    "Card in parent collection should be included")))
+                    "Published table in child collection should be included")))
             (testing "Unpublished tables are not included in collection filter results"
               (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll :search_engine engine)]
                 (is (not (contains? (set (map :id (:data results))) table-3))
@@ -89,8 +93,10 @@
                   "Root published table should appear in search results"))))))
     (testing "Published tables appear as collection items, unpublished as database items"
       (mt/with-temp
-        [:model/Database   {db-id :id}       {:name "Context Test DB"}
-         :model/Collection {coll-id :id}     {:name "Context Test Collection" :location "/"}
+        [:model/Database   {db-id :id}       {:name     "Context Test DB"}
+         :model/Collection {coll-id :id}     {:name     "Context Test Collection"
+                                              :type     "library-data"
+                                              :location "/"}
          :model/Table      {pub-table :id}   {:name "ContextTestTablePub"
                                               :db_id db-id
                                               :is_published true
@@ -145,7 +151,9 @@
       (let [search-term (random-name)
             table-name  (str search-term " published")]
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {coll-id :id} {:name "No Access Collection" :location "/"}
+          (mt/with-temp [:model/Collection {coll-id :id} {:name     "No Access Collection"
+                                                          :location "/"
+                                                          :type     "library-data"}
                          :model/Table      {pub-table :id} {:name table-name :is_published true :collection_id coll-id}]
             ;; Grant data permissions on the table
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)

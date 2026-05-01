@@ -1096,7 +1096,6 @@
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
 
-
   lib-be
   {:team "Querying Platform"
    :api  #{metabase.lib-be.core
@@ -2491,6 +2490,7 @@
            api
            app-db
            audit-app
+           collections
            driver
            lib
            lib-be

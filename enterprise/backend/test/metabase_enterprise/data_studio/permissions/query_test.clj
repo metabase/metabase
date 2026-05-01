@@ -28,7 +28,7 @@
                 (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                                :model/User {user-id :id} {}
                                :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                               :model/Collection {collection-id :id} {}]
+                               :model/Collection {collection-id :id} {:type "library-data"}]
                   ;; Ensure All Users group has no create-queries permission and matching view-data
                   ;; (user is automatically in this group)
                   (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/view-data      view-data)
@@ -64,7 +64,7 @@
         (t2/with-transaction [_conn nil {:rollback-only true}]
           ;; Create a test user that only belongs to all-users group (no extra permissions)
           (mt/with-temp [:model/User       {user-id :id} {:email "view-data-test@example.com"}
-                         :model/Collection collection {}]
+                         :model/Collection collection    {:type "library-data"}]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
@@ -96,7 +96,7 @@
       (testing "POST /api/dataset in EE: published table access GRANTS database access"
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test@example.com"}
-                         :model/Collection collection {}]
+                         :model/Collection collection    {:type "library-data"}]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
@@ -118,7 +118,7 @@
       (testing "POST /api/dataset in EE: without collection permission, published table does NOT grant access"
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test2@example.com"}
-                         :model/Collection collection {}]
+                         :model/Collection collection    {:type "library-data"}]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
