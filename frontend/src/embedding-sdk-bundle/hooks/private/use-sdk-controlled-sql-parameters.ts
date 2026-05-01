@@ -16,7 +16,7 @@ import type { ParameterValuesMap } from "metabase-types/api";
 import type { SqlParameterValues } from "../../types";
 
 type Options = {
-  sqlParameters: SqlParameterValues | undefined;
+  sqlParameters: SqlParameterValues | null | undefined;
   onSqlParametersChange:
     | ((payload: SqlParameterChangePayload) => void)
     | undefined;
@@ -67,7 +67,7 @@ const usePushControlled = ({
   appliedParameterValues,
   updateParameterValues,
 }: {
-  sqlParameters: SqlParameterValues | undefined;
+  sqlParameters: SqlParameterValues | null | undefined;
   parameterDefinitions: UiParameter[];
   appliedParameterValues: ParameterValuesMap;
   updateParameterValues: (next: ParameterValuesMap) => void;
@@ -77,7 +77,7 @@ const usePushControlled = ({
   const lastDispatchedRef = useRef<SqlParameterValues | undefined>(undefined);
 
   useEffect(() => {
-    if (sqlParameters === undefined) {
+    if (sqlParameters === null || sqlParameters === undefined) {
       lastDispatchedRef.current = undefined;
 
       return;

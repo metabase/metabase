@@ -27,7 +27,7 @@ import {
 } from "metabase/redux/dashboard";
 
 type Options = {
-  parameters: ParameterValues | undefined;
+  parameters: ParameterValues | null | undefined;
   onParametersChange:
     | ((payload: DashboardParameterChangePayload) => void)
     | undefined;
@@ -56,7 +56,7 @@ export const useSdkControlledParameters = ({
 };
 
 const usePushControlledParameters = (
-  parameters: ParameterValues | undefined,
+  parameters: ParameterValues | null | undefined,
 ) => {
   const dispatch = useSdkDispatch();
   const parameterDefinitions = useSdkSelector(getParameters);
@@ -66,7 +66,7 @@ const usePushControlledParameters = (
   const lastDispatchedRef = useRef<ParameterValues | undefined>(undefined);
 
   useEffect(() => {
-    if (parameters === undefined) {
+    if (parameters === null || parameters === undefined) {
       lastDispatchedRef.current = undefined;
 
       return;
