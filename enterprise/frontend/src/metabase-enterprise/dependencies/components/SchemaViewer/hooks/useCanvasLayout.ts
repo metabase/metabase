@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import { focusNodeLayout, getNodesWithPositions } from "../utils";
+import { applyLayout } from "../utils/layout";
 
 type UseCanvasLayoutArgs = {
   nodes: SchemaViewerFlowNode[];
@@ -42,7 +42,7 @@ export function useCanvasLayout({
     if (nodes.length === 0) {
       return;
     }
-    const laidOut = getNodesWithPositions(nodes, edges);
+    const { nodes: laidOut } = applyLayout({ mode: "fresh", nodes, edges });
     setNodes(laidOut);
     zoomToCanvas();
   }, [nodes, edges, setNodes, zoomToCanvas]);
@@ -50,11 +50,12 @@ export function useCanvasLayout({
   const focusOnNode = useCallback(
     (nodeId: string) => {
       setNodes((currentNodes) => {
-        const laidOut = focusNodeLayout(
-          nodeId,
-          currentNodes,
-          edges.map((edge) => ({ source: edge.source, target: edge.target })),
-        );
+        const { nodes: laidOut } = applyLayout({
+          mode: "focus",
+          focalId: nodeId,
+          nodes: currentNodes,
+          edges,
+        });
         // Clear any previous node selection so the fresh layout starts from
         // a clean slate.
         return laidOut.map((n) => (n.selected ? { ...n, selected: false } : n));

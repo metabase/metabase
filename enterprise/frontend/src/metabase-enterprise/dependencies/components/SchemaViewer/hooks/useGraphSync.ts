@@ -9,11 +9,7 @@ import {
 import type { ConcreteTableId } from "metabase-types/api";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import {
-  getNodeId,
-  getNodesWithPositions,
-  mergeWithExistingPositions,
-} from "../utils";
+import { applyLayout, getNodeId } from "../utils";
 
 type UseGraphSyncArgs = {
   /** True once a databaseId has been picked — without it we render nothing. */
@@ -151,16 +147,17 @@ export function useGraphSync({
 
     // Merge incoming nodes with current positions so an incremental expansion
     // (e.g. clicking an FK to fetch a related table) doesn't blank the canvas
-    // by replacing every node with a fresh opacity-0 copy. Falls back to a
-    // fresh full-canvas Dagre layout for first loads, schema switches,
-    // removals, or disconnected new nodes.
+    // by replacing every node with a fresh opacity-0 copy. `applyLayout`
+    // falls back to a fresh full-canvas Dagre layout for first loads, schema
+    // switches, removals, or disconnected new nodes.
     const currentNodes = nodesRef.current;
-    const merged = mergeWithExistingPositions(
-      graph.nodes,
-      currentNodes,
-      graph.edges,
-    );
-    const nextNodes = merged ?? getNodesWithPositions(graph.nodes, graph.edges);
+    const layout = applyLayout({
+      mode: "merge",
+      incoming: graph.nodes,
+      current: currentNodes,
+      edges: graph.edges,
+    });
+    const nextNodes = layout.nodes;
     setNodes(nextNodes);
 
     // Clear any expand-in-flight markers for tables that just arrived in the
@@ -185,7 +182,7 @@ export function useGraphSync({
       return changed ? next : prev;
     });
 
-    if (merged != null) {
+    if (layout.preservedExistingPositions) {
       // Incremental add: zoom onto the user-clicked target if it's now in
       // the graph. We skip the zoom for any other added tables (e.g. ones
       // the backend brings in alongside) — only the clicked one is the

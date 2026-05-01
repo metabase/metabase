@@ -14,7 +14,7 @@ type UseEdgeZoomArgs = {
  *
  * The first click — the one that selects the edge — is left alone, so the
  * zoom only kicks in once the user has clearly chosen that edge. The edge
- * stays selected — fitView doesn't touch React Flow's selection state.
+ * stays selected.
  */
 export function useEdgeZoom({ zoomToNode }: UseEdgeZoomArgs) {
   // Per-edge memory of which endpoint the viewport last zoomed to, so

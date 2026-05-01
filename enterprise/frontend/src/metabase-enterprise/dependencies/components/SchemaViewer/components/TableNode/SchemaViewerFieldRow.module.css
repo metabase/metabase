@@ -7,10 +7,6 @@
     border-bottom: none;
   }
 
-  /* Both expandable (FK target not on canvas) and zoom-to (target already on
-     canvas) fields share the same affordance: background highlight + brand
-     text on hover. Distinguishing them visually would suggest the click does
-     different things — but to the user they're both "jump to that table". */
   &[data-clickable]:hover {
     background-color: var(--mb-color-background-hover);
   }

@@ -40,7 +40,7 @@ type PlacementState = {
   maxRight: number;
 };
 
-export function getNodesWithPositions(
+function getNodesWithPositions(
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
 ): SchemaViewerFlowNode[] {
@@ -94,7 +94,7 @@ export function getNodesWithPositions(
  * fall back to the fresh `incoming` nodes and let the normal Dagre layout
  * path handle them.
  */
-export function mergeWithExistingPositions(
+function mergeWithExistingPositions(
   incoming: SchemaViewerFlowNode[],
   current: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
@@ -393,7 +393,7 @@ function placeNodesByAdjacency(
  * {@link mergeWithExistingPositions} uses for FK expansion. The focal node
  * stays put so the user's camera position remains meaningful.
  */
-export function focusNodeLayout(
+function focusNodeLayout(
   focalId: string,
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
@@ -493,4 +493,83 @@ export function focusNodeLayout(
 
   // Preserve original node order.
   return nodes.map((n) => placedById.get(n.id) ?? n);
+}
+
+type LayoutEdge = { source: string; target: string };
+
+/**
+ * Layout request shape consumed by {@link applyLayout}. Three modes cover the
+ * full set of canvas-layout actions in the schema viewer:
+ *
+ *  - `fresh`: lay everything out from scratch via Dagre (manual auto-layout
+ *    button, or fallback when an incremental merge isn't possible).
+ *  - `focus`: rearrange around `focalId` — incoming neighbors stack on the
+ *    left, outgoing on the right, the rest place relative to neighbors.
+ *  - `merge`: try to preserve existing positions when the underlying graph
+ *    changes incrementally (e.g. FK click adds a new table). Falls back to
+ *    `fresh` automatically if the merge isn't viable; the result reports
+ *    via `preservedExistingPositions` which path was taken.
+ */
+export type LayoutRequest =
+  | {
+      mode: "fresh";
+      nodes: SchemaViewerFlowNode[];
+      edges: LayoutEdge[];
+    }
+  | {
+      mode: "focus";
+      focalId: string;
+      nodes: SchemaViewerFlowNode[];
+      edges: LayoutEdge[];
+    }
+  | {
+      mode: "merge";
+      incoming: SchemaViewerFlowNode[];
+      current: SchemaViewerFlowNode[];
+      edges: LayoutEdge[];
+    };
+
+export type LayoutResult = {
+  nodes: SchemaViewerFlowNode[];
+  /**
+   * `true` only when `mode: "merge"` succeeded and existing nodes kept their
+   * positions. `false` for `fresh`, `focus`, and any merge that fell back
+   * to a fresh Dagre layout. Callers use this to decide between zooming to
+   * a specific incremental target vs fitting the whole canvas.
+   */
+  preservedExistingPositions: boolean;
+};
+
+/**
+ * Single entry point for every canvas-layout action. Dispatches to the
+ * appropriate internal primitive based on `mode` and reports back whether
+ * any existing positions were preserved.
+ */
+export function applyLayout(req: LayoutRequest): LayoutResult {
+  switch (req.mode) {
+    case "fresh":
+      return {
+        nodes: getNodesWithPositions(req.nodes, req.edges),
+        preservedExistingPositions: false,
+      };
+    case "focus":
+      return {
+        nodes: focusNodeLayout(req.focalId, req.nodes, req.edges),
+        preservedExistingPositions: false,
+      };
+    case "merge": {
+      const merged = mergeWithExistingPositions(
+        req.incoming,
+        req.current,
+        req.edges,
+      );
+      if (merged != null) {
+        return { nodes: merged, preservedExistingPositions: true };
+      }
+      return {
+        nodes: getNodesWithPositions(req.incoming, req.edges),
+        preservedExistingPositions: false,
+      };
+    }
+  }
 }
