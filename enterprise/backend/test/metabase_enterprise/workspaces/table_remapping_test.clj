@@ -74,7 +74,7 @@
    (fn []
      (ws.table-remapping/add-mapping!
       (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"})
-     (ws.table-remapping/remove-mapping! (mt/id) "PUBLIC" "ORDERS")
+     (ws.table-remapping/remove-mapping! (mt/id) {:schema "PUBLIC" :table "ORDERS"})
      (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))
 
 (deftest clear-mappings-for-db!-test
@@ -89,15 +89,15 @@
      (is (= {} (ws.table-remapping/all-mappings-for-db (mt/id)))))))
 
 (deftest add-mapping!-is-idempotent-test
-  (testing "duplicate inserts swallow the SQLSTATE 23505 unique-constraint violation"
+  (testing "duplicate inserts no-op via app-db/update-or-insert! (no exception, no extra row)"
     (clean-db-fixture!
      (mt/id)
      (fn []
        (ws.table-remapping/add-mapping!
         (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"})
-       (is (nil? (ws.table-remapping/add-mapping!
-                  (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"}))
-           "second identical insert no-ops instead of throwing")
+       (is (some? (ws.table-remapping/add-mapping!
+                   (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"}))
+           "second identical insert resolves cleanly without throwing")
        (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_schema" "orders_copy"]}
               (ws.table-remapping/all-mappings-for-db (mt/id)))
            "only one row persists")))))
@@ -379,7 +379,7 @@
             {:schema "ws_schema" :table "orders_copy"})
            (let [post-insert (cache-config-invalidated-at (mt/id))]
              (Thread/sleep (long 10)) ; ensure timestamp clock advances
-             (ws.table-remapping/remove-mapping! (mt/id) "PUBLIC" "ORDERS")
+             (ws.table-remapping/remove-mapping! (mt/id) {:schema "PUBLIC" :table "ORDERS"})
              (let [post-delete (cache-config-invalidated-at (mt/id))]
                (is (t/after? post-delete post-insert)
                    "delete bumped invalidated_at past its post-insert value")))))))))

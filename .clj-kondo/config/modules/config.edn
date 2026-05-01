@@ -3460,7 +3460,8 @@
   enterprise/workspaces
   {:team "Graphy"
    :api  #{}
-   :uses #{cache
+   :uses #{app-db
+           cache
            driver
            lib
            models

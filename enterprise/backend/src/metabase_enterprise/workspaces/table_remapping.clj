@@ -49,11 +49,11 @@
   (:require
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.table-remapping]
+   [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -130,23 +130,32 @@
      :table  (:name table)}))
 
 ;;; -------------------------------------------- Read API --------------------------------------------
+;;;
+;;; All reads route through the active store ([[ws.remapping/*remapping-store*]]) so tests
+;;; can swap in a [[ws.remapping/map-store]] without app-DB access. The store always returns
+;;; canonical 3-tuple shapes; the helpers below project them into the various per-call shapes
+;;; production callers want.
 
 (defn remap-table
   "Returns `[to-schema to-table-name]` for the canonical `[from-schema from-table-name]`
    pair on `database-id`, or nil if no remapping exists.
 
-   Matches by `(from_schema, from_table_name)` only — `from_db` is ignored. This is
-   correct for current production callers (workspace transforms on Postgres-family
-   drivers, where `from_db = \"\"` always) and for ClickHouse (where `from_db = \"\"`
-   too — its db-name lives in `from_schema`). It is **not yet correct for BigQuery**:
-   when BigQuery support lands, callers will need a 4-arg form that filters by `from_db`
-   so two projects with same-named datasets don't collide."
+   **Hot path** -- called per-table during sync via the `workspace-remap-schema+name`
+   defenterprise hook. Routes through the store's targeted [[ws.remapping/get-mapping]]
+   so the AppDB impl uses an indexed select-one (matches the unique constraint on
+   `(database_id, from_db, from_schema, from_table_name)`) and the MapStore impl is a
+   hash-map get. O(1) per call.
+
+   Matches by `(from_schema, from_table_name)` only -- `from_db` is hardcoded to the
+   `\"\"` sentinel. Correct for current production callers: Postgres-family drivers
+   (where `from_db = \"\"` always) and ClickHouse (where `from_db = \"\"` too -- its
+   db-name lives in `from_schema`). **Not yet correct for BigQuery**: when BigQuery
+   workspaces land, callers will need a 4-arg form that filters by `from_db` so two
+   projects with same-named datasets don't collide."
   [database-id from-schema from-table-name]
-  (when-let [mapping (t2/select-one :model/TableRemapping
-                                    :database_id database-id
-                                    :from_schema (normalize-level from-schema)
-                                    :from_table_name from-table-name)]
-    [(:to_schema mapping) (:to_table_name mapping)]))
+  (when-let [[_to-db to-schema to-table]
+             (ws.remapping/get-mapping database-id [no-level (normalize-level from-schema) from-table-name])]
+    [to-schema to-table]))
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `[to-schema to-name]` for the
@@ -168,11 +177,7 @@
    indicate \"this driver does not emit this level\" and should be dropped before being
    handed to SQLGlot — see [[metabase-enterprise.workspaces.query-processor.middleware]]."
   [database-id]
-  (into {}
-        (map (fn [m]
-               [[(:from_db m) (:from_schema m) (:from_table_name m)]
-                [(:to_db m) (:to_schema m) (:to_table_name m)]]))
-        (t2/select :model/TableRemapping :database_id database-id)))
+  (ws.remapping/remappings-for-db database-id))
 
 (defenterprise filter-workspace-side-tables
   "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
@@ -259,32 +264,30 @@
             rows))))
 
 ;;; -------------------------------------------- Write API --------------------------------------------
+;;;
+;;; The convenience layer over [[metabase-enterprise.workspaces.remapping.core]]. Accepts
+;;; `::table-spec` maps, normalizes `nil`/missing slots to the `""` sentinel, hands
+;;; pre-normalized 3-tuples to the active store. The store handles persistence
+;;; (Toucan2 against `:model/TableRemapping` in production, atom in tests).
+;;;
+;;; Public callers should reach for these wrappers, NOT the raw store -- the wrappers
+;;; enforce the `::table-spec` contract and the sentinel normalization at the boundary.
 
-(defn- unique-violation?
-  "True if `e` or any cause is a SQL unique-constraint violation. Handles Postgres and H2
-   via SQLSTATE `23505` (SQL:2003 standard) and MySQL/MariaDB via SQLSTATE `23000` plus
-   vendor error code 1062. Walks past non-matching `SQLException`s in the cause chain so
-   a shallow wrap can't mask a deeper constraint violation."
-  [^Throwable e]
-  (loop [^Throwable cause e]
-    (cond
-      (nil? cause) false
-      (instance? java.sql.SQLException cause)
-      (let [sql-ex ^java.sql.SQLException cause]
-        (or (case (.getSQLState sql-ex)
-              "23505" true
-              "23000" (= 1062 (.getErrorCode sql-ex))
-              false)
-            (recur (.getCause cause))))
-      :else (recur (.getCause cause)))))
+(defn- spec->tuple
+  "Normalize a `::table-spec` map to a `[db schema table]` 3-tuple with `\"\"` sentinels.
+   The boundary between user-facing maps and the store's tuple shape."
+  [spec]
+  [(normalize-level (:db spec))
+   (normalize-level (:schema spec))
+   (:table spec)])
 
 (mu/defn add-mapping!
-  "Insert a single `table_remapping` row.
+  "Idempotently ensure a remapping row exists, via the active store.
 
-   Idempotent: a duplicate insert (unique-constraint violation on
-   `(database_id, from_db, from_schema, from_table_name)`) is swallowed and the fn
-   returns nil. Makes concurrent writers race-free at the DB level — no
-   check-then-insert TOCTOU window.
+   Idempotent on the unique key `(database_id, from_db, from_schema, from_table_name)`:
+   a duplicate is a no-op (the existing row is left untouched). Concurrent-insert races
+   are handled portably by [[metabase.app-db.core/update-or-insert!]]. Returns truthy when
+   the remapping is in place after the call.
 
    `from-spec` and `to-spec` are `::table-spec` maps. Nil/missing identifier levels
    are normalized to the empty-string sentinel before insert.
@@ -300,35 +303,18 @@
   [database-id :- :int
    from-spec   :- ::table-spec
    to-spec     :- ::table-spec]
-  (try
-    (t2/insert! :model/TableRemapping
-                {:database_id     database-id
-                 :from_db         (normalize-level (:db from-spec))
-                 :from_schema     (normalize-level (:schema from-spec))
-                 :from_table_name (:table from-spec)
-                 :to_db           (normalize-level (:db to-spec))
-                 :to_schema       (normalize-level (:schema to-spec))
-                 :to_table_name   (:table to-spec)})
-    (catch Exception e
-      (if (unique-violation? e)
-        nil
-        (throw e)))))
+  (ws.remapping/insert-mapping! database-id (spec->tuple from-spec) (spec->tuple to-spec)))
 
-(defn remove-mapping!
-  "Remove a remapping row by source `(schema, table-name)`. Matches rows where
-   `from_db = \"\"` — the only callers today are Postgres-family drivers and ClickHouse,
-   where that always holds."
-  [database-id from-schema from-table-name]
-  (t2/delete! :model/TableRemapping
-              :database_id database-id
-              :from_db no-level
-              :from_schema (normalize-level from-schema)
-              :from_table_name from-table-name))
+(mu/defn remove-mapping!
+  "Remove a remapping row by source `from-spec`. Returns the number of rows removed (0 or 1)."
+  [database-id :- :int
+   from-spec   :- ::table-spec]
+  (ws.remapping/remove-mapping! database-id (spec->tuple from-spec)))
 
 (defn clear-mappings-for-db!
-  "Remove all remappings for a given database."
+  "Remove all remappings for a given database. Returns the number of rows removed."
   [database-id]
-  (t2/delete! :model/TableRemapping :database_id database-id))
+  (ws.remapping/clear-for-db! database-id))
 
 (defn add-transform-target-mapping!
   "Register a remapping for a transform target on a workspaced database. Resolves the
