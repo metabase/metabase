@@ -1049,5 +1049,5 @@
                       ::did-not-throw
                       (catch Exception e e))]
       (is (instance? clojure.lang.ExceptionInfo result))
-      (is (partial= {:cause "Malicious keys detected"}
+      (is (partial= {:cause "Potentially dangerous keys in additional options"}
                     (Throwable->map result))))))
