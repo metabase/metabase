@@ -107,3 +107,18 @@
       (is (= {} (ws.remapping/remappings-for-db 1)))
       (is (= {["" "other" "x"] ["" "ws" "x"]} (ws.remapping/remappings-for-db 2))
           "other db's remappings untouched"))))
+
+(deftest display-context-suppresses-remapping-test
+  (testing "with-display-context binds *skip-remapping?* true so enabled-for-db? returns false
+            even when remap rows exist; restores the binding on exit"
+    (require 'metabase.workspaces.table-remapping)
+    (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                              {1 {["" "public" "orders"] ["" "mb_iso" "orders"]}})]
+      (is (true? (ws.remapping/enabled-for-db? 1))
+          "baseline: remapping is enabled outside the display context")
+      ((requiring-resolve 'metabase.workspaces.table-remapping/call-with-display-context)
+       (fn []
+         (is (false? (ws.remapping/enabled-for-db? 1))
+             "inside the display context, remapping is suppressed")))
+      (is (true? (ws.remapping/enabled-for-db? 1))
+          "binding restored after the display context exits"))))
