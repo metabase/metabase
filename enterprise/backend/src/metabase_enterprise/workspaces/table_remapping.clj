@@ -270,7 +270,12 @@
    when a TableRemapping row records that pair as the destination of a canonical
    table; nil otherwise. Mirror of `workspace-remap-schema+name` for write-side
    callers that already have the rewritten target on hand and need the canonical
-   slot before touching `:model/Table` rows."
+   slot before touching `:model/Table` rows.
+
+   `:db` slot is intentionally ignored on both sides today (matches the
+   Postgres-shaped to-side `add-transform-target-mapping!` writes — H7
+   second half pending). When that lands, both this lookup and the
+   `to->from` index must widen to 3-tuples."
   :feature :none
   [db-id schema table-name]
   (let [to->from (into {}
@@ -279,6 +284,16 @@
                               [[to-schema to-name] [from-schema from-name]]))
                        (all-mappings-for-db db-id))]
     (to->from [schema table-name])))
+
+(defenterprise call-with-display-context
+  "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
+   (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. Used by display
+   paths (e.g. the QB's `POST /api/dataset/native` SQL preview) so users see canonical
+   SQL instead of the isolation schema. Deliberately ungated on premium features."
+  :feature :none
+  [thunk]
+  (binding [ws.remapping/*skip-remapping?* true]
+    (thunk)))
 
 ;;; -------------------------------------------- Write API --------------------------------------------
 ;;;

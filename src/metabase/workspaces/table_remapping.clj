@@ -52,6 +52,29 @@
   [rows _db-id]
   rows)
 
+(defenterprise call-with-display-context
+  "Invoke `thunk` with workspace remapping suppressed. Used by display-only paths
+  (the QB's `POST /api/dataset/native` SQL preview, anywhere we surface compiled
+  SQL to the user) so users see canonical-schema SQL instead of the workspace
+  isolation schema. The query still executes against the isolation schema at
+  warehouse time -- this only affects what the user *sees* in the SQL preview.
+
+  OSS fallback: just calls the thunk. EE impl binds
+  `ws.remapping/*skip-remapping?*` true around it, which short-circuits both
+  Phase 1 (metadata override) and Phase 2 (SQLGlot rewrite).
+
+  Use [[with-display-context]] for the macro form."
+  metabase-enterprise.workspaces.table-remapping
+  [thunk]
+  (thunk))
+
+(defmacro with-display-context
+  "Suppress workspace remapping inside `body` so compiled SQL surfaces in canonical
+  vocabulary instead of isolation-schema vocabulary. Wrapper around
+  [[call-with-display-context]]."
+  [& body]
+  `(call-with-display-context (fn [] ~@body)))
+
 (defenterprise canonical-schema+name
   "Inverse of `workspace-remap-schema+name`. Given an isolation-schema
   `(to-schema, to-name)` pair, return `[from-schema from-name]` if a
@@ -61,7 +84,16 @@
   Use at write-side `:model/Table` lookups where the transform pipeline has
   already mutated `:target.schema` to the workspace output schema, but the
   app-db Table row lives at the canonical schema. OSS fallback is nil so
-  callers fall through to the unchanged identity."
+  callers fall through to the unchanged identity.
+
+  Caveats (tracked separately):
+  - Trusts the active `TableRemapping` row set. If a `WorkspaceDatabase`
+    deprovision leaves stale rows behind, this hook will still translate
+    against them. See the deprovision-clears-remappings cleanup in
+    `workspaces-v2.md` worklog.
+  - Keys on `(schema, name)` only. The H7 second half (cross-DB workspaces
+    on Snowflake / BigQuery) will require widening to `(db, schema, name)`
+    once the YAML transmission shape carries `output_db`."
   metabase-enterprise.workspaces.table-remapping
   [_db-id _schema _name]
   nil)
