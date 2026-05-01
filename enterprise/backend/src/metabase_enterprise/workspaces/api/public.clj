@@ -18,7 +18,7 @@
   [{raw-access-key :access-key} :- [:map [:access-key ms/UUIDString]]]
   (let [access-key (api/check-404 (ws.access-key/get-access-key raw-access-key))
         workspace  (api/check-404 (ws/get-workspace (:workspace_id access-key)))
-        _          (ws.access-key-log/log-access-key-usage! access-key "config")
+        _          (ws.access-key-log/log-access-key-usage! access-key :config)
         config     (ws.config/build-workspace-config (:id workspace))]
     {:status  200
      :headers {"Content-Type"        "application/x-yaml"

@@ -1,1 +1,1 @@
-export * from "./WorkspacePage";
+export * from "./WorkspaceSetupPage";

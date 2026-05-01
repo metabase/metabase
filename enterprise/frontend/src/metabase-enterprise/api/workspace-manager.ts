@@ -4,6 +4,8 @@ import type {
   CreateWorkspaceRequest,
   DeleteWorkspaceAccessKeyRequest,
   DeleteWorkspaceDatabaseRequest,
+  ListWorkspaceAccessKeyLogsRequest,
+  ListWorkspaceAccessKeyLogsResponse,
   UpdateWorkspaceAccessKeyRequest,
   UpdateWorkspaceDatabaseRequest,
   UpdateWorkspaceRequest,
@@ -153,6 +155,16 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspace_id),
         ]),
     }),
+    listWorkspaceAccessKeyLogs: builder.query<
+      ListWorkspaceAccessKeyLogsResponse,
+      ListWorkspaceAccessKeyLogsRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/ee/workspace-manager/${id}/access-key-log`,
+        params,
+      }),
+    }),
   }),
 });
 
@@ -168,4 +180,5 @@ export const {
   useCreateWorkspaceAccessKeyMutation,
   useUpdateWorkspaceAccessKeyMutation,
   useDeleteWorkspaceAccessKeyMutation,
+  useListWorkspaceAccessKeyLogsQuery,
 } = workspaceManagerApi;

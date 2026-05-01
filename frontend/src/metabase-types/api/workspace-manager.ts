@@ -78,3 +78,30 @@ export type DeleteWorkspaceAccessKeyRequest = {
   workspace_id: WorkspaceId;
   id: WorkspaceAccessKeyId;
 };
+
+export type WorkspaceAccessKeyLogId = number;
+
+export type WorkspaceAccessKeyLog = {
+  id: WorkspaceAccessKeyLogId;
+  workspace_id: WorkspaceId | null;
+  workspace_access_key_id: WorkspaceAccessKeyId | null;
+  context: string;
+  timestamp: string;
+  /** Hydrated; null when the workspace was deleted. */
+  workspace?: Pick<Workspace, "id" | "name"> | null;
+  /** Hydrated; null when the access key was deleted. */
+  workspace_access_key?: WorkspaceAccessKey | null;
+};
+
+export type ListWorkspaceAccessKeyLogsRequest = {
+  id: WorkspaceId;
+  offset?: number;
+  limit?: number;
+};
+
+export type ListWorkspaceAccessKeyLogsResponse = {
+  data: WorkspaceAccessKeyLog[];
+  limit: number;
+  offset: number;
+  total: number;
+};

@@ -36,7 +36,7 @@
           (let [log-row (t2/select-one :model/WorkspaceAccessKeyLog
                                        :workspace_access_key_id (:id ak))]
             (is (some? log-row))
-            (is (= "config" (:context log-row)))
+            (is (= :config (:context log-row)))
             (is (= (:id ws) (:workspace_id log-row)))))))))
 
 (deftest public-invalid-key-test

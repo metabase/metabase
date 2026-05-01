@@ -10,6 +10,7 @@
    [metabase-enterprise.workspaces.models.workspace-access-key :as ws.access-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -240,6 +241,42 @@
   (api/check-404 (t2/select-one :model/WorkspaceAccessKey :id key-id :workspace_id id))
   (t2/delete! :model/WorkspaceAccessKey :id key-id)
   {:id key-id :deleted true})
+
+;;; --------------------------------------- Access key log endpoint ----------------------------------------------
+
+(defn- present-access-key-log [log]
+  (-> log
+      (select-keys [:id :workspace_id :workspace_access_key_id :context :timestamp
+                    :workspace :workspace_access_key])
+      (m/update-existing :workspace #(some-> % (select-keys [:id :name])))
+      (m/update-existing :workspace_access_key
+                         #(some-> % (select-keys [:id :workspace_id :name :created_at :updated_at :creator])))))
+
+(api.macros/defendpoint :get "/:id/access-key-log"
+  :- [:map {:closed true}
+      [:data   [:sequential :map]]
+      [:limit  pos-int?]
+      [:offset :int]
+      [:total  :int]]
+  "Paginated access-key usage log for the workspace, newest first. Rows whose
+  `workspace_id` was SET NULL by a workspace delete are not returned here."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (ws/get-workspace id))
+  (let [offset (request/offset)
+        limit  (request/limit)
+        where  [:= :workspace_id id]
+        total  (t2/count :model/WorkspaceAccessKeyLog {:where where})
+        rows   (-> (t2/select :model/WorkspaceAccessKeyLog
+                              {:where    where
+                               :order-by [[:timestamp :desc] [:id :desc]]
+                               :limit    limit
+                               :offset   offset})
+                   (t2/hydrate :workspace :workspace_access_key))]
+    {:data   (mapv present-access-key-log rows)
+     :limit  limit
+     :offset offset
+     :total  total}))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

@@ -11,6 +11,10 @@ export function workspace(workspaceId: WorkspaceId) {
   return `${WORKSPACES_ROOT}/${workspaceId}`;
 }
 
+export function workspaceAccessKeys(workspaceId: WorkspaceId) {
+  return `${WORKSPACES_ROOT}/${workspaceId}/access-keys`;
+}
+
 export function workspaceInstance() {
   return WORKSPACE_INSTANCE_ROOT;
 }

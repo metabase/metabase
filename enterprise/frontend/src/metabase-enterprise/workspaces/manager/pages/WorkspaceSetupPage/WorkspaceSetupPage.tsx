@@ -6,17 +6,16 @@ import * as Urls from "metabase/urls";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
-import { AccessKeySection } from "./AccessKeySection";
 import { DatabaseSection } from "./DatabaseSection";
 import { SetupSection } from "./SetupSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceMoreMenu } from "./WorkspaceMoreMenu";
 
-type WorkspacePageProps = {
+type WorkspaceSetupPageProps = {
   params: { workspaceId: string };
 };
 
-export function WorkspacePage({ params }: WorkspacePageProps) {
+export function WorkspaceSetupPage({ params }: WorkspaceSetupPageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
   const {
     data: workspace,
@@ -40,15 +39,18 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
     );
   }
 
-  return <WorkspacePageBody workspace={workspace} databases={databases} />;
+  return <WorkspaceSetupPageBody workspace={workspace} databases={databases} />;
 }
 
-type WorkspacePageBodyProps = {
+type WorkspaceSetupPageBodyProps = {
   workspace: Workspace;
   databases: Database[];
 };
 
-function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
+function WorkspaceSetupPageBody({
+  workspace,
+  databases,
+}: WorkspaceSetupPageBodyProps) {
   return (
     <PageContainer data-testid="workspace-page" gap="2.5rem">
       <WorkspaceHeader
@@ -57,7 +59,6 @@ function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
       />
       <Stack gap="3.25rem">
         <DatabaseSection workspace={workspace} databases={databases} />
-        <AccessKeySection workspace={workspace} />
         <SetupSection workspace={workspace} />
       </Stack>
     </PageContainer>

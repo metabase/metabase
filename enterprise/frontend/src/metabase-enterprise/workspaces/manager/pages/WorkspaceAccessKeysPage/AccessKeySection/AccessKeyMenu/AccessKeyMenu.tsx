@@ -33,7 +33,7 @@ export function AccessKeyMenu({
             leftSection={<Icon name="pencil" />}
             onClick={() => onEdit(accessKey)}
           >
-            {t`Edit`}
+            {t`Rename`}
           </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="trash" />}
