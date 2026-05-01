@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useLatest } from "react-use";
 import { isEqual } from "underscore";
 
@@ -9,7 +9,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { startSdkListening } from "embedding-sdk-bundle/store/listener-middleware";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import type { DashboardParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import {
   REMOVE_PARAMETER,
   RESET_PARAMETERS,
@@ -29,9 +29,7 @@ import {
 
 type Options = {
   parameters: ParameterValues | null | undefined;
-  onParametersChange:
-    | ((payload: DashboardParameterChangePayload) => void)
-    | undefined;
+  onParametersChange: ((payload: ParameterChangePayload) => void) | undefined;
 };
 
 const PARAMETER_CHANGE_ACTION_TYPES = new Set<string>([
@@ -92,65 +90,85 @@ const usePushControlledParameters = (
 };
 
 const useObserveAppliedParameters = (
-  onParametersChange:
-    | ((payload: DashboardParameterChangePayload) => void)
-    | undefined,
+  onParametersChange: ((payload: ParameterChangePayload) => void) | undefined,
 ) => {
   const callbackRef = useLatest(onParametersChange);
+
+  const emitFromState = useCallback(
+    (state: SdkStoreState, source: ParameterChangePayload["source"]) => {
+      const payload = buildDashboardChangePayload(state, source);
+      if (payload) {
+        callbackRef.current?.(payload);
+      }
+    },
+    [callbackRef],
+  );
+
+  const handleInitialStateAction = useCallback<
+    Parameters<typeof startSdkListening>[0] extends { effect: infer E }
+      ? E & ((...args: any[]) => void)
+      : never
+  >(
+    (_action, store) => emitFromState(store.getState(), "initial-state"),
+    [emitFromState],
+  );
+
+  const isParameterValueChangeAction = useCallback<
+    NonNullable<
+      Parameters<typeof startSdkListening>[0] extends { predicate?: infer P }
+        ? P
+        : never
+    >
+  >((action, currentState, previousState) => {
+    const isParameterChangeAction =
+      PARAMETER_CHANGE_ACTION_TYPES.has(action.type) ||
+      isParameterSetAction(action);
+
+    if (!isParameterChangeAction) {
+      return false;
+    }
+
+    return !isEqual(
+      getParameterValues(currentState),
+      getParameterValues(previousState),
+    );
+  }, []);
+
+  const handleManualChangeAction = useCallback<
+    Parameters<typeof startSdkListening>[0] extends { effect: infer E }
+      ? E & ((...args: any[]) => void)
+      : never
+  >(
+    (_action, store) => emitFromState(store.getState(), "manual-change"),
+    [emitFromState],
+  );
 
   useEffect(() => {
     const unsubInitial = startSdkListening({
       actionCreator: fetchDashboard.fulfilled,
-      effect: (_action, store) => {
-        const payload = buildDashboardChangePayload(
-          store.getState(),
-          "initial-state",
-        );
-
-        if (payload) {
-          callbackRef.current?.(payload);
-        }
-      },
+      effect: handleInitialStateAction,
     });
 
     const unsubManual = startSdkListening({
-      predicate: (action, currentState, previousState) => {
-        const isParameterChangeAction =
-          PARAMETER_CHANGE_ACTION_TYPES.has(action.type) ||
-          isParameterSetAction(action);
-
-        if (!isParameterChangeAction) {
-          return false;
-        }
-
-        return !isEqual(
-          getParameterValues(currentState),
-          getParameterValues(previousState),
-        );
-      },
-      effect: (_action, store) => {
-        const payload = buildDashboardChangePayload(
-          store.getState(),
-          "manual-change",
-        );
-
-        if (payload) {
-          callbackRef.current?.(payload);
-        }
-      },
+      predicate: isParameterValueChangeAction,
+      effect: handleManualChangeAction,
     });
 
     return () => {
       unsubInitial();
       unsubManual();
     };
-  }, [callbackRef]);
+  }, [
+    handleInitialStateAction,
+    isParameterValueChangeAction,
+    handleManualChangeAction,
+  ]);
 };
 
 const buildDashboardChangePayload = (
   state: SdkStoreState,
-  source: DashboardParameterChangePayload["source"],
-): DashboardParameterChangePayload | null => {
+  source: ParameterChangePayload["source"],
+): ParameterChangePayload | null => {
   const dashboard = getDashboardComplete(state);
 
   if (!dashboard) {

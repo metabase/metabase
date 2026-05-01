@@ -4,7 +4,7 @@ import {
   ParametersPlayground,
   useControlledParametersPlaygroundState,
 } from "embedding-sdk-bundle/test/ParametersPlayground";
-import type { DashboardParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { SegmentedControl, Stack, Text } from "metabase/ui";
 
@@ -61,8 +61,8 @@ const ControlledParametersEmbedJsPlayground = () => {
     let onParametersChange: ((event: Event) => void) | null = null;
     if (mode === "controlled") {
       onParametersChange = (event: Event) => {
-        const detail = (event as CustomEvent<DashboardParameterChangePayload>)
-          .detail;
+        const detail = (event as CustomEvent<ParameterChangePayload>).detail;
+
         playground.handleParametersChange(detail);
       };
 

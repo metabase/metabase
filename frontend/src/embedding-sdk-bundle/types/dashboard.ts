@@ -99,7 +99,7 @@ export type CreateDashboardValues = Omit<
  *
  * @category Dashboard
  */
-export type DashboardParameterChangeSource = "initial-state" | "manual-change";
+export type ParameterChangeSource = "initial-state" | "manual-change";
 
 /**
  * Payload delivered to dashboard-side `onParametersChange` callbacks and
@@ -107,9 +107,9 @@ export type DashboardParameterChangeSource = "initial-state" | "manual-change";
  *
  * @category Dashboard
  */
-export type DashboardParameterChangePayload = {
+export type ParameterChangePayload = {
   /** Post-load `'initial-state'` snapshot (fired once) or subsequent `'manual-change'` (user edit / programmatic push). */
-  source: DashboardParameterChangeSource;
+  source: ParameterChangeSource;
   /** Currently applied values, slug-keyed. */
   parameters: ParameterValues;
   /** BE-provided defaults, slug-keyed. */

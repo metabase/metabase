@@ -1,6 +1,10 @@
 /* eslint-disable i18next/no-literal-string -- Storybook */
 import { type ReactNode, useState } from "react";
 
+import type {
+  ParameterChangeSource,
+  SqlParameterChangeSource,
+} from "embedding-sdk-bundle/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import {
   Box,
@@ -220,7 +224,7 @@ export const formatLogEntry = (entry: string) =>
   `${new Date().toLocaleTimeString()} — ${entry}`;
 
 type ChangePayload = {
-  source: string;
+  source: ParameterChangeSource | SqlParameterChangeSource;
   parameters: ParameterValues;
   defaultParameters: ParameterValues;
   lastUsedParameters?: ParameterValues;

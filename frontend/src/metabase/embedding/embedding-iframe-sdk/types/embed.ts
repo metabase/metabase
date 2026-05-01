@@ -7,7 +7,7 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
-import type { DashboardParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import type {
   SdkIframeDashboardEmbedSettings,
@@ -98,7 +98,7 @@ export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
 export type SdkIframeEmbedComponentTagMessage =
   | {
       type: "metabase.embed.parametersChange";
-      data: DashboardParameterChangePayload;
+      data: ParameterChangePayload;
     }
   | {
       type: "metabase.embed.sqlParametersChange";

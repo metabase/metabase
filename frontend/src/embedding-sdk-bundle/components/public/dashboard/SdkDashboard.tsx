@@ -42,7 +42,7 @@ import {
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type {
   DashboardEventHandlersProps,
-  DashboardParameterChangePayload,
+  ParameterChangePayload,
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -153,7 +153,7 @@ export type SdkDashboardProps = PropsWithChildren<
     /**
      * Fires on every applied parameter change — user edits, pushes via {@link SdkDashboardProps.parameters | parameters}, or default resolution on load.
      */
-    onParametersChange?: (payload: DashboardParameterChangePayload) => void;
+    onParametersChange?: (payload: ParameterChangePayload) => void;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
     EditableDashboardOwnProps
