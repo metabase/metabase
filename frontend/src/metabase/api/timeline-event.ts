@@ -1,3 +1,4 @@
+import { TimelineEventSchema } from "metabase/schema";
 import type {
   CreateTimelineEventRequest,
   TimelineEvent,
@@ -13,6 +14,7 @@ import {
   provideTimelineEventTags,
   tag,
 } from "./tags";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const timelineEventApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -22,6 +24,7 @@ export const timelineEventApi = Api.injectEndpoints({
         url: `/api/timeline-event/${id}`,
       }),
       providesTags: (event) => (event ? provideTimelineEventTags(event) : []),
+      onQueryStarted: hydrateLegacyEntities(TimelineEventSchema),
     }),
     createTimelineEvent: builder.mutation<
       TimelineEvent,

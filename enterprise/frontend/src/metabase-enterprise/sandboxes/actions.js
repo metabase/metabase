@@ -6,17 +6,14 @@ import {
   UPDATE_DATA_PERMISSION,
   updateDataPermission,
 } from "metabase/admin/permissions/permissions";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
+import { DataPermissionType } from "metabase/admin/permissions/types";
 import {
   combineReducers,
   createAction,
   createThunkAction,
   handleActions,
 } from "metabase/redux";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
 

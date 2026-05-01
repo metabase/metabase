@@ -181,7 +181,7 @@
                  :source              source
                  :tag                 tag})
                (usage/log-ai-usage!
-                {:source            (or tag source "unknown")
+                {:source            (or source tag "unknown")
                  :model             model
                  :prompt-tokens     prompt
                  :completion-tokens completion
@@ -273,7 +273,7 @@
    (if-let [limit-msg (usage/check-usage-limits!)]
      (reify clojure.lang.IReduceInit
        (reduce [_ rf init]
-         (rf init {:type :text :text limit-msg})))
+         (rf init {:type :error :error {:message limit-msg :error-code "ai_usage_limit_reached"}})))
      (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
        (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                 :tool-choice tool-choice :ai-proxy? ai-proxy?})

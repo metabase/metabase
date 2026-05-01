@@ -65,9 +65,17 @@ export const PERSONAL_COLLECTION_BASE = createMockCollection({
   originalName: "John's Personal Collection",
 });
 
+export const NESTED_COLLECTION = createMockCollection({
+  id: 3,
+  name: "Nested collection",
+  location: "/2/",
+  parent_id: 2,
+});
+
 export const TEST_COLLECTION = createMockCollection({
   id: 2,
   name: "Test collection",
+  children: [NESTED_COLLECTION],
 });
 
 export async function setup({
@@ -141,7 +149,7 @@ export async function setup({
     currentUserId: user?.id,
   });
   setupCollectionByIdEndpoint({
-    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
+    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);

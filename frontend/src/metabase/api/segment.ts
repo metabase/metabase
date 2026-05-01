@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { SegmentSchema } from "metabase/schema";
 import type {
   CreateSegmentRequest,
@@ -16,7 +15,7 @@ import {
   provideSegmentTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -26,10 +25,7 @@ export const segmentApi = Api.injectEndpoints({
         url: "/api/segment",
       }),
       providesTags: (segments = []) => provideSegmentListTags(segments),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [SegmentSchema])),
-        ),
+      onQueryStarted: hydrateLegacyEntities([SegmentSchema]),
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: (id) => ({
@@ -37,10 +33,7 @@ export const segmentApi = Api.injectEndpoints({
         url: `/api/segment/${id}`,
       }),
       providesTags: (segment) => (segment ? provideSegmentTags(segment) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, SegmentSchema)),
-        ),
+      onQueryStarted: hydrateLegacyEntities(SegmentSchema),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: (body) => ({

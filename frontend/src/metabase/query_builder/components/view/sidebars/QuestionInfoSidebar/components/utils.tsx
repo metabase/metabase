@@ -1,5 +1,5 @@
+import { getIcon } from "metabase/common/utils/icon";
 import { getUrl } from "metabase/querying/notebook/components/NotebookDataPicker/utils";
-import { getIcon } from "metabase/utils/icon";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
