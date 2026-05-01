@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defenterprise user-published-table-permission
@@ -61,3 +62,26 @@
               {}
               {:current-user-id user-id
                :is-superuser?   is-superuser?})]}])
+
+(defenterprise published-table-perm-grant-rows
+  "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are
+  published into a collection the user can read. The grant supplies `:perms/create-queries
+  :query-builder`; `:perms/view-data` is intentionally not synthesized — view-data must come from
+  real `data_permissions` entries.
+
+  Returns nil when the caller's permission mapping does not include `:perms/create-queries`."
+  :feature :library
+  [{:keys [user-id is-superuser?]} perm-types active-only?]
+  (when (contains? (set perm-types) :perms/create-queries)
+    {:select [[:mt.id :id]
+              [(h2x/literal :perms/create-queries) :perm_type]
+              [(h2x/literal :query-builder) :perm_value]]
+     :from   [[:metabase_table :mt]]
+     :where  (cond-> [:and
+                      [:= :mt.is_published true]
+                      (collection/visible-collection-filter-clause
+                       :mt.collection_id
+                       {}
+                       {:current-user-id user-id
+                        :is-superuser?   is-superuser?})]
+               active-only? (conj [:= :mt.active true]))}))

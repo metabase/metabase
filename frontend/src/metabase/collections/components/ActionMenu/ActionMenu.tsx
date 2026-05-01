@@ -23,6 +23,8 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
+import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
+import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { entityForObject } from "metabase/entities/utils";
@@ -86,7 +88,9 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
   const [sendToast] = useToast();
+  const setCollectionPreview = useSetCollectionPreview();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canBookmark = canBookmarkItem(item);
@@ -110,9 +114,10 @@ function ActionMenu({
     onMove?.([item]);
   }, [item, onMove]);
 
-  const handleArchive = useCallback(() => {
-    return item.setArchived ? item.setArchived(true) : Promise.resolve();
-  }, [item]);
+  const handleArchive = useCallback(
+    () => archive(item as ArchivableItem, true),
+    [archive, item],
+  );
 
   const handleToggleBookmark = useMemo(() => {
     if (!createBookmark && !deleteBookmark) {
@@ -132,8 +137,8 @@ function ActionMenu({
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   const handleTogglePreview = useCallback(() => {
-    item?.setCollectionPreview?.(!isPreviewEnabled(item));
-  }, [item]);
+    setCollectionPreview(item.id, !isPreviewEnabled(item));
+  }, [item, setCollectionPreview]);
 
   const handleRestore = useCallback(async () => {
     const Entity = entityForObject(item);

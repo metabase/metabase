@@ -2,6 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { cardApi } from "metabase/api";
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
@@ -554,13 +555,18 @@ export const trashDashboardQuestion = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     async (dispatch) => {
+      if (cardId == null) {
+        return;
+      }
       await dispatch(
-        Questions.actions.setArchived({ id: cardId }, true, {
-          notify: {
-            action: () =>
-              dispatch(undoTrashDashboardQuestion({ dashcardId, cardId })),
-            undo: false,
-          },
+        cardApi.endpoints.updateCard.initiate({ id: cardId, archived: true }),
+      );
+      dispatch(
+        addUndo({
+          subject: t`question`,
+          verb: t`trashed`,
+          action: () =>
+            dispatch(undoTrashDashboardQuestion({ dashcardId, cardId })),
         }),
       );
       dispatch(removeCardFromDashboard({ dashcardId, cardId }));
@@ -577,13 +583,18 @@ const undoTrashDashboardQuestion = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     async (dispatch) => {
+      if (cardId == null) {
+        return;
+      }
       await dispatch(
-        Questions.actions.setArchived({ id: cardId }, false, {
-          notify: {
-            action: () =>
-              dispatch(trashDashboardQuestion({ dashcardId, cardId })),
-            undo: false,
-          },
+        cardApi.endpoints.updateCard.initiate({ id: cardId, archived: false }),
+      );
+      dispatch(
+        addUndo({
+          subject: t`question`,
+          verb: t`restored`,
+          action: () =>
+            dispatch(trashDashboardQuestion({ dashcardId, cardId })),
         }),
       );
       dispatch(undoRemoveCardFromDashboard({ dashcardId }));

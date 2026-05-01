@@ -75,13 +75,6 @@ export const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: (card, archived, opts) =>
-      Questions.actions.update(
-        { id: card.id },
-        { archived },
-        undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
-      ),
-
     // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
     // this function name is incorrect but maintained for consistency with other entities.
     setCollection: (card, destination, opts) => {
@@ -140,9 +133,6 @@ export const Questions = createEntity({
         },
         opts,
       ),
-
-    setCollectionPreview: ({ id }, collection_preview, opts) =>
-      Questions.actions.update({ id }, { collection_preview }, opts),
   },
 
   selectors: {
@@ -159,7 +149,6 @@ export const Questions = createEntity({
   },
 
   objectSelectors: {
-    getName: (card) => card && card.name,
     getCollection: (card) => card && normalizedCollection(card.collection),
   },
 

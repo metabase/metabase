@@ -1,7 +1,8 @@
+import type { ComponentProps } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { TimelineEvents } from "metabase/entities/timeline-events";
+import { useSetArchive } from "metabase/common/hooks";
 import { Timelines } from "metabase/entities/timelines";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -37,17 +38,23 @@ const mapStateToProps = (state: State, props: TimelineDetailsModalProps) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onArchive: async (event: TimelineEvent) => {
-    await dispatch(TimelineEvents.actions.setArchived(event, true));
-  },
   onGoBack: (timeline: Timeline) => {
     dispatch(push(Urls.timelinesInCollection(timeline.collection)));
   },
 });
+
+function TimelineDetailsModalContainer(
+  props: ComponentProps<typeof TimelineDetailsModal>,
+) {
+  const archive = useSetArchive();
+  const onArchive = (event: TimelineEvent) =>
+    archive({ id: event.id, model: "timeline-event" }, true);
+  return <TimelineDetailsModal {...props} onArchive={onArchive} />;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.load(timelineProps),
   Timelines.loadList(timelinesProps),
   connect(mapStateToProps, mapDispatchToProps),
-)(TimelineDetailsModal);
+)(TimelineDetailsModalContainer);

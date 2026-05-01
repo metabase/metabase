@@ -58,14 +58,6 @@ export const TimelineEvents = createEntity({
         undo(opts, t`event`, t`moved`),
       );
     },
-
-    setArchived: ({ id }, archived, opts) => {
-      return TimelineEvents.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`event`, archived ? t`archived` : t`unarchived`),
-      );
-    },
   },
 });
 

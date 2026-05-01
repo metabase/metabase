@@ -7,6 +7,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { modelToUrl } from "metabase/urls/modelToUrl";
+import { getName } from "metabase/utils/name";
 import type {
   CollectionId,
   Collection as CollectionType,
@@ -59,7 +60,7 @@ const CollectionBadgeInner = ({
       isSingleLine={isSingleLine}
       {...clickActionProps}
     >
-      {tc(collection.getName())}
+      {tc(getName(collection))}
     </Badge>
   );
 };
