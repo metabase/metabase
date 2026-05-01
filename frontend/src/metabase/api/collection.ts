@@ -26,6 +26,12 @@ import {
 } from "./tags";
 import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
+const flattenCollectionTree = (tree: Collection[]): Collection[] =>
+  tree.flatMap((collection) => [
+    collection,
+    ...flattenCollectionTree(collection.children ?? []),
+  ]);
+
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     /**
@@ -57,6 +63,10 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
+      onQueryStarted: hydrateLegacyEntities<Collection[]>(
+        [CollectionSchema],
+        flattenCollectionTree,
+      ),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
