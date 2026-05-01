@@ -2318,7 +2318,8 @@
            query-processor
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -3460,7 +3461,8 @@
   enterprise/workspaces
   {:team "Graphy"
    :api  #{}
-   :uses #{cache
+   :uses #{app-db
+           cache
            driver
            lib
            models

@@ -131,3 +131,117 @@
       (testing (format "tags=%s sql=%.60s..." tags (str/replace sql #"\n" " "))
         (let [error (run-corpus-entry :postgres entry)]
           (is (nil? error) error))))))
+
+;;; ----------------------------- Per-driver SQL emission snapshots ------------------------------
+;;;
+;;; Ground truth: real Metabase-emitted SQL captured from production-ish instances. Sources:
+;;;   - MySQL:      Magento (test) / Admin Assert        (screenshot 2026-04-28 #proj-table-remappings)
+;;;   - ClickHouse: Metabase Cloud Storage / Pa Events   (screenshot 2026-04-28 #proj-table-remappings)
+;;;   - BigQuery:   BigQuery Census (test) / Population By Zip 2010
+;;;   - Snowflake:  representative 3-part identifier shape (db.schema.table)
+;;;
+;;; Each test:
+;;;   1. takes a canonical SQL string emitted by Metabase
+;;;   2. runs it through `sql-tools/replace-names` with a workspace remapping
+;;;   3. parses the rewritten SQL with `sql-tools/referenced-tables-raw`
+;;;   4. asserts the *parsed table references* match expected slot values per driver
+;;;
+;;; Asserting on parsed-AST table refs (not regex on the SQL string) means we sidestep
+;;; quoting/case differences in driver-specific re-emission and verify the semantic
+;;; rewrite directly.
+
+(defn- prune-no-level
+  "Mirrors `metabase-enterprise.workspaces.query-processor.middleware/prune-no-level`.
+   Production strips empty-string sentinels before handing the spec to SQLGlot -- SQLGlot
+   treats absent keys as wildcards but `\"\"` as a literal that won't match anything."
+  [m]
+  (into {} (remove (fn [[_ v]] (= "" v))) m))
+
+(defn- rewrite-and-parse
+  "Run a remapping through the rewriter, then parse the result. Returns the set of
+   `{:db?, :schema?, :table}` references in the rewritten SQL."
+  [driver canonical-sql remappings]
+  (let [rewritten (sql-tools/replace-names driver canonical-sql {:tables remappings} {:allow-unused? true})]
+    {:rewritten rewritten
+     :tables    (set (sql-tools/referenced-tables-raw driver rewritten))}))
+
+(deftest mysql-rewriter-emission-snapshot-test
+  (testing "MySQL: bare-table input gets the workspace schema added at AST :schema"
+    (let [{:keys [tables rewritten]}
+          (rewrite-and-parse
+           :mysql
+           "SELECT `admin_assert`.`assert_id` FROM `admin_assert`"
+           {(prune-no-level {:db "" :schema "" :table "admin_assert"})
+            (prune-no-level {:db "" :schema "ws_alice" :table "admin_assert"})})]
+      (is (contains? tables {:schema "ws_alice" :table "admin_assert"})
+          (str "expected workspace-qualified ref in parsed tables; got: " tables
+               "\n  rewritten SQL: " rewritten))
+      (is (not-any? #(= % {:table "admin_assert"}) tables)
+          (str "expected bare `admin_assert` to be gone from parsed tables; got: " tables)))))
+
+(deftest clickhouse-rewriter-emission-snapshot-test
+  (testing "ClickHouse: db-name lives at AST :schema; rewrite swaps it"
+    (let [{:keys [tables rewritten]}
+          (rewrite-and-parse
+           :clickhouse
+           "SELECT `db_c6633c128ed24e74`.`pa_events`.`tag` FROM `db_c6633c128ed24e74`.`pa_events`"
+           {(prune-no-level {:db "" :schema "db_c6633c128ed24e74" :table "pa_events"})
+            (prune-no-level {:db "" :schema "ws_alice" :table "pa_events"})})]
+      (is (contains? tables {:schema "ws_alice" :table "pa_events"})
+          (str "expected workspace db-as-schema ref in parsed tables; got: " tables
+               "\n  rewritten SQL: " rewritten))
+      (is (not-any? #(= (:schema %) "db_c6633c128ed24e74") tables)
+          (str "expected canonical db-name gone from parsed tables; got: " tables)))))
+
+;;; For 3-slot drivers (Snowflake, BigQuery), `referenced-tables-raw` returns 2-slot
+;;; specs (`{:schema, :table}`) -- it doesn't populate the `:db` slot even when the
+;;; SQL has 3 levels. The `:db` rewrite still happens inside `replace-names` (the
+;;; rewritten SQL string contains the right catalog name), the parser is just lossy.
+;;; For these drivers we assert on parsed `:schema`/`:table` AND verify the `:db`
+;;; substitution by string presence/absence in the rewritten SQL.
+
+(deftest bigquery-rewriter-emission-snapshot-test
+  (testing "BigQuery: project.dataset.table input gets all three slots rewritten"
+    (let [{:keys [tables rewritten]}
+          (rewrite-and-parse
+           :bigquery-cloud-sdk
+           "SELECT `bigquery-public-data.census_bureau_usa.population_by_zip_2010`.`geo_id` FROM `bigquery-public-data.census_bureau_usa.population_by_zip_2010`"
+           {(prune-no-level {:db "bigquery-public-data" :schema "census_bureau_usa" :table "population_by_zip_2010"})
+            (prune-no-level {:db "ws-project" :schema "ws_alice" :table "population_by_zip_2010"})})]
+      ;; parsed table refs (no :db slot from the parser) -- confirms dataset+table swapped:
+      (is (contains? tables {:schema "ws_alice" :table "population_by_zip_2010"})
+          (str "expected workspace dataset+table in parsed refs; got: " tables
+               "\n  rewritten SQL: " rewritten))
+      (is (not-any? #(= (:schema %) "census_bureau_usa") tables)
+          (str "expected canonical dataset gone from parsed refs; got: " tables))
+      ;; :db slot lives in the rewritten string only (parser doesn't return it).
+      ;; Asserting on FROM clause specifically -- SELECT-clause column refs intentionally
+      ;; keep canonical names because we only declared :tables replacements, not :columns.
+      (let [from-text (re-find #"(?i)\bFROM\b.*$" rewritten)]
+        (is (re-find #"ws-project" from-text)
+            (str "expected workspace project in FROM; got: " from-text))
+        (is (not (re-find #"bigquery-public-data" from-text))
+            (str "expected canonical project gone from FROM; got: " from-text))))))
+
+(deftest snowflake-rewriter-emission-snapshot-test
+  (testing "Snowflake: db.schema.table input gets all three slots rewritten"
+    (let [{:keys [tables rewritten]}
+          (rewrite-and-parse
+           :snowflake
+           "SELECT \"ANALYTICS\".\"PUBLIC\".\"ORDERS\".\"ID\" FROM \"ANALYTICS\".\"PUBLIC\".\"ORDERS\""
+           {(prune-no-level {:db "ANALYTICS" :schema "PUBLIC" :table "ORDERS"})
+            (prune-no-level {:db "WS_DB"     :schema "WS_ALICE" :table "ORDERS"})})]
+      ;; parsed table refs (no :db slot from the parser) -- confirms schema+table swapped:
+      (is (contains? tables {:schema "WS_ALICE" :table "ORDERS"})
+          (str "expected workspace schema+table in parsed refs; got: " tables
+               "\n  rewritten SQL: " rewritten))
+      (is (not-any? #(= (:schema %) "PUBLIC") tables)
+          (str "expected canonical schema gone from parsed refs; got: " tables))
+      ;; :db slot lives in the rewritten string only (parser doesn't return it).
+      ;; Asserting on FROM clause specifically -- SELECT-clause column refs intentionally
+      ;; keep canonical names because we only declared :tables replacements, not :columns.
+      (let [from-text (re-find #"(?i)\bFROM\b.*$" rewritten)]
+        (is (re-find #"WS_DB" from-text)
+            (str "expected workspace db in FROM; got: " from-text))
+        (is (not (re-find #"ANALYTICS" from-text))
+            (str "expected canonical db gone from FROM; got: " from-text))))))

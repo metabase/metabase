@@ -31,6 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -363,23 +364,37 @@
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
+(defn- canonicalize-target
+  "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
+   to-side of an active TableRemapping for `db-id`), return `target` with
+   `:schema` swapped back to canonical. Else return `target` unchanged. The
+   transform pipeline mutates `:target.schema` to the workspace output schema
+   in `metabase.transforms.execute/resolve-target` so writes land in isolation;
+   `:model/Table` rows must stay at the canonical schema, so we invert here."
+  [db-id target]
+  (if-let [[from-schema _from-name] (ws.table-remapping/canonical-schema+name
+                                     db-id (:schema target) (:name target))]
+    (assoc target :schema from-schema)
+    target))
+
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
   ([database target {:keys [create?]}]
-   (when-let [table (or (target-table (:id database) target)
-                        (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     ;; If the table has nil schema, check if the physical table actually lives under
-     ;; the driver's default schema. If so, fix the Table record before syncing.
-     (let [table (if (nil? (:schema table))
-                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
-                         (-> (t2/select-one :model/Table (:id table))
-                             (t2/hydrate :db)))
-                     table)
-                   table)]
-       (sync/sync-table! table)
-       table))))
+   (let [target (canonicalize-target (:id database) target)]
+     (when-let [table (or (target-table (:id database) target)
+                          (when create?
+                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+       ;; If the table has nil schema, check if the physical table actually lives under
+       ;; the driver's default schema. If so, fix the Table record before syncing.
+       (let [table (if (nil? (:schema table))
+                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                       (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                           (-> (t2/select-one :model/Table (:id table))
+                               (t2/hydrate :db)))
+                       table)
+                     table)]
+         (sync/sync-table! table)
+         table)))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
