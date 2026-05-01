@@ -13,8 +13,7 @@ import { FormField } from "metabase/common/components/FormField";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Switch, Tooltip } from "metabase/ui";
@@ -28,22 +27,14 @@ import {
   CopyWidgetContainer,
 } from "./InlineActionSettings.styled";
 
-interface OwnProps {
+type InlineActionSettingsProps = {
   action?: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
   isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
   onClose?: () => void;
   onBack?: () => void;
-}
-
-interface StateProps {
-  siteUrl: string;
-  isAdmin: boolean;
-  isPublicSharingEnabled: boolean;
-}
-
-type ActionSettingsInlineProps = OwnProps & StateProps;
+};
 
 export const ActionSettingsTriggerButton = ({
   onClick,
@@ -61,23 +52,19 @@ export const ActionSettingsTriggerButton = ({
   </Tooltip>
 );
 
-const mapStateToProps = (state: State): StateProps => ({
-  siteUrl: getSetting(state, "site-url"),
-  isAdmin: getUserIsAdmin(state),
-  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
-});
-
 const InlineActionSettings = ({
   action,
   formSettings,
   isEditable,
-  siteUrl,
-  isAdmin,
-  isPublicSharingEnabled,
   onChangeFormSettings,
   onClose,
   onBack,
-}: ActionSettingsInlineProps) => {
+}: InlineActionSettingsProps) => {
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const isAdmin = useSelector((state) => getUserIsAdmin(state));
+  const isPublicSharingEnabled = useSelector((state) =>
+    getSetting(state, "enable-public-sharing"),
+  );
   const id = useUniqueId();
   const [modalOpened, { open: openModal, close: closeModal }] =
     useDisclosure(false);
@@ -173,6 +160,4 @@ const InlineActionSettings = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<StateProps, unknown, OwnProps, State>(mapStateToProps)(
-  InlineActionSettings,
-);
+export default InlineActionSettings;
