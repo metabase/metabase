@@ -8,11 +8,10 @@ type ZoomTarget = Pick<
   "setCenter" | "getNodes"
 >;
 
-// Never zoom in closer than this — below 0.5 tables are unreadable.
 const MIN_ZOOM_FOR_TARGET = 0.5;
 // How far below the viewport's top edge the header of the topmost target
 // node should land, in screen pixels.
-const TOP_MARGIN_PX = 40;
+const TOP_MARGIN_PX = 50;
 // Fractional horizontal padding applied to the bounding-box width when
 // computing the width-based zoom level.
 const HORIZONTAL_PADDING = 0.15;
@@ -38,12 +37,6 @@ const DURATION_MS = 500;
  *    below the viewport's top edge, rather than centered. This keeps the
  *    table name visible whenever you zoom to it, no matter how tall the
  *    table is.
- */
-/**
- * Pure variant of {@link useZoomToNodes} — accepts the React Flow instance
- * directly so it can be called from components OUTSIDE the `<ReactFlow>`
- * subtree (where `useReactFlow()` is unavailable). The hook below wraps
- * this for in-tree callers.
  */
 export function zoomToNodes(instance: ZoomTarget, nodeIds: readonly string[]) {
   if (nodeIds.length === 0) {

@@ -23,9 +23,9 @@ type SelectedNodeInfoPanelProps = {
 };
 
 /**
- * Wraps the shared GraphInfoPanel so it can live inside ReactFlow (where
- * useZoomToNodes is available) and adapt our ErdNode data into the
- * DependencyNode shape that GraphInfoPanel expects. Also handles:
+ * Wraps the shared GraphInfoPanel so it can live inside ReactFlow and adapt
+ * our ErdNode data into the DependencyNode shape that GraphInfoPanel expects.
+ * Also handles:
  *  - onTitleClick: re-zoom onto the selected node
  *  - renderFieldExtras: append a clickable target-table name next to FK
  *    fields; clicking it pans to the linked table without dropping the
