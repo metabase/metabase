@@ -28,6 +28,14 @@ interface ExplorationPageProps {
   params: { id: string };
 }
 
+export type ExplorationQueryWithName = Omit<ExplorationQuery, "name"> & {
+  name: string; // we only render queries with names
+};
+
+export type ThreadsWithSortedQueries = Omit<ExplorationThread, "queries"> & {
+  queries: ExplorationQueryWithName[];
+};
+
 function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   if (!exploration?.threads) {
     return false;
@@ -77,14 +85,35 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     return new Map(allTimelines.map((timeline) => [timeline.id, timeline]));
   }, [allTimelines]);
 
+  const threadsWithSortedQueries: ThreadsWithSortedQueries[] = useMemo(() => {
+    if (!exploration?.threads) {
+      return [];
+    }
+    return exploration.threads.map((thread) => {
+      return {
+        ...thread,
+        queries:
+          thread.queries
+            ?.filter((query): query is ExplorationQueryWithName =>
+              Boolean(query.name),
+            )
+            .toSorted(
+              (a, b) =>
+                (b.interestingness_score ?? -1) -
+                (a.interestingness_score ?? -1),
+            ) ?? [],
+      };
+    });
+  }, [exploration]);
+
   useEffect(() => {
-    if (!exploration || selectedQueryId !== null) {
+    if (selectedQueryId !== null) {
       return;
     }
-    if (exploration?.threads?.[0]?.queries?.[0]?.id) {
-      setSelectedQueryId(exploration.threads[0].queries[0].id);
+    if (threadsWithSortedQueries[0]?.queries[0]?.id) {
+      setSelectedQueryId(threadsWithSortedQueries[0].queries[0].id);
     }
-  }, [exploration, selectedQueryId]);
+  }, [threadsWithSortedQueries, selectedQueryId]);
 
   const queryIdToQueryAndThread: Map<
     ExplorationQueryId,
@@ -149,6 +178,46 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     [selectedThread, selectedTimelineIds, setSelectedTimelineIdsByThreadId],
   );
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest("input, textarea, select, [contenteditable=true]")
+      ) {
+        return;
+      }
+      const sortedQueries = threadsWithSortedQueries.flatMap(
+        (thread) => thread.queries,
+      );
+      if (sortedQueries.length === 0) {
+        return;
+      }
+      const currentQueryIndex = sortedQueries.findIndex(
+        (query) => query.id === selectedQueryId,
+      );
+      const nextQueryIndex =
+        (currentQueryIndex +
+          (event.key === "ArrowRight" ? 1 : -1) +
+          sortedQueries.length) %
+        sortedQueries.length;
+      const nextSelectedQueryId = sortedQueries[nextQueryIndex].id;
+      if (
+        nextSelectedQueryId !== undefined &&
+        nextSelectedQueryId !== selectedQueryId
+      ) {
+        setSelectedQueryId(nextSelectedQueryId);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [threadsWithSortedQueries, selectedQueryId, setSelectedQueryId]);
+
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -171,6 +240,7 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
           exploration={exploration}
           selectedQueryId={selectedQueryId}
           setSelectedQueryId={setSelectedQueryId}
+          threadsWithSortedQueries={threadsWithSortedQueries}
         />
         {selectedQuery && (
           <ExplorationVisualization
