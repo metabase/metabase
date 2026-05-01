@@ -36,7 +36,9 @@ const PINNABLE_MODELS = new Set<PinnableModel>([
   "document",
 ]);
 
-export function isPinnable(item: { model: string }): item is PinnableItem {
+export function isPinnable<T extends { model: string }>(
+  item: T,
+): item is T & { model: PinnableModel } {
   return PINNABLE_MODELS.has(item.model as PinnableModel);
 }
 

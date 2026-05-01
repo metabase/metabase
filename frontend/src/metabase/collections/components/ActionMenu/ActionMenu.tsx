@@ -25,8 +25,8 @@ import { EntityItem } from "metabase/common/components/EntityItem";
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import {
   type ArchivableItem,
-  type PinnableItem,
   canPinItem,
+  isPinnable,
   useSetArchive,
   useSetPinned,
 } from "metabase/common/hooks";
@@ -109,7 +109,9 @@ function ActionMenu({
   const canCopy = onCopy && canCopyItem(item);
 
   const handlePin = useCallback(() => {
-    setPinned(item as PinnableItem, !isItemPinned(item));
+    if (isPinnable(item)) {
+      setPinned(item, !isItemPinned(item));
+    }
   }, [item, setPinned]);
 
   const handleCopy = useCallback(() => {

@@ -12,6 +12,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import {
   type PinnableItem,
+  isPinnable,
   useSetPinned,
   useToast,
 } from "metabase/common/hooks";
@@ -102,7 +103,7 @@ const DragSourceComponent = DragSource(
             );
           } else if (pinIndex !== undefined) {
             await Promise.all(
-              items.map((i) => setPinned(i as PinnableItem, pinIndex)),
+              items.filter(isPinnable).map((i) => setPinned(i, pinIndex)),
             );
           }
 
