@@ -9,11 +9,17 @@ Two deliverables:
 1. **Default bundled app DB swap.** Bare-uberjar startup spins up a local Postgres in a data dir, listens on a loopback port, and uses it as the app DB.
 2. **One-time auto-migration from H2.** Existing users with an H2 file boot the new version once and have their data automatically copied into the embedded Postgres instance with no action required. The original H2 file is preserved as a backup.
 
-The goal is that no shipped Metabase version supports both as concurrent app DBs — H2 lives only as a migration source after the cutover, then is removed entirely a major or two later.
+The goal is that eventually we can remove H2 as a supported driver altogether.
 
 ---
 
 ## Product Implications
+
+The main factors to consider in this decision are:
+
+- Running Embedded Postgres requires having a Postgres binary on the target machine that matches the machine's architecture, e.g. x86_64-apple-darwin. The options are:
+   - Pre-package binaries in the JAR for each platform we want to support. This means an extra ~100-200 MB of JAR size depending on which platforms we select.
+   - Dynamically download the right binary at runtime
 
 ### Platform support coverage change
 
