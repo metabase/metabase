@@ -278,8 +278,6 @@
         ;; can share the same id). Identify items by [:type :id] pairs so cross-model collisions
         ;; don't mask filtering bugs.
         (let [as-pair (fn [type id] [type id])
-              vq1*    (as-pair "question"  vq1)
-              vq2*    (as-pair "question"  vq2)
               vm1*    (as-pair "model"     vm1)
               vm2*    (as-pair "model"     vm2)
               vd*     (as-pair "dashboard" vd)
