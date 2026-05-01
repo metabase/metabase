@@ -3,12 +3,14 @@ import _ from "underscore";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 import { TimelineEvents } from "metabase/entities/timeline-events";
 import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import MoveEventModal from "metabase/timelines/common/components/MoveEventModal";
+import MoveEventModal, {
+  type MoveEventModalProps,
+} from "metabase/timelines/common/components/MoveEventModal";
+import { useSetTimeline } from "metabase/timelines/common/hooks";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-interface MoveEventModalProps {
+interface OwnProps {
   eventId: number;
   collectionId?: number;
   onClose?: () => void;
@@ -19,37 +21,37 @@ const timelinesProps = {
 };
 
 const timelineEventProps = {
-  id: (state: State, props: MoveEventModalProps) => props.eventId,
+  id: (state: State, props: OwnProps) => props.eventId,
   entityAlias: "event",
 };
 
 const collectionProps = {
-  id: (state: State, props: MoveEventModalProps) => {
+  id: (state: State, props: OwnProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
 
-const mapStateToProps = (state: State, { onClose }: MoveEventModalProps) => ({
-  onSubmitSuccess: onClose,
-  onCancel: onClose,
-});
+type ContainerProps = Omit<MoveEventModalProps, "onSubmit" | "onSubmitSuccess">;
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (
-    event: TimelineEvent,
-    newTimeline: Timeline,
-    oldTimeline: Timeline,
-    onClose?: () => void,
-  ) => {
-    await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
-    onClose?.();
-  },
-});
+function MoveEventModalContainer(props: ContainerProps) {
+  const setTimeline = useSetTimeline();
+  const handleSubmit = async (event: TimelineEvent, newTimeline?: Timeline) => {
+    if (newTimeline) {
+      await setTimeline(event, newTimeline);
+    }
+  };
+  return (
+    <MoveEventModal
+      {...props}
+      onSubmit={handleSubmit}
+      onSubmitSuccess={props.onClose}
+    />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.loadList(timelinesProps),
   TimelineEvents.load(timelineEventProps),
   Collections.load(collectionProps),
-  connect(mapStateToProps, mapDispatchToProps),
-)(MoveEventModal);
+)(MoveEventModalContainer);

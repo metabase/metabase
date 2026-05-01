@@ -23,8 +23,8 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { useSetArchive } from "metabase/common/hooks";
 import { Bookmarks } from "metabase/entities/bookmarks";
-import { Questions } from "metabase/entities/questions";
 import { useDispatch } from "metabase/redux";
 import {
   Button,
@@ -331,6 +331,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
   const dispatch = useDispatch();
+  const archive = useSetArchive();
 
   const actions = useMemo(() => {
     if (!metric) {
@@ -387,18 +388,13 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Move to trash`,
         icon: "trash",
         action() {
-          dispatch(
-            Questions.actions.setArchived(
-              { id: metric.id, model: "metric" },
-              true,
-            ),
-          );
+          archive({ id: metric.id, model: "metric" }, true);
         },
       });
     }
 
     return actions;
-  }, [metric, createBookmark, deleteBookmark, dispatch]);
+  }, [metric, createBookmark, deleteBookmark, dispatch, archive]);
 
   return (
     <td

@@ -4,6 +4,7 @@ import _ from "underscore";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
+import { useSetArchive } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
 import {
@@ -124,7 +125,6 @@ const mapDispatchToProps = {
   saveEditingPulse,
   cancelEditingPulse,
   fetchPulseFormInput,
-  setPulseArchived: Pulses.actions.setArchived,
   testPulse,
 };
 
@@ -159,10 +159,6 @@ interface DashboardSubscriptionsSidebarInnerProps {
   cancelEditingPulse: () => void;
   pulses?: DashboardSubscription[];
   onCancel: () => void;
-  setPulseArchived: (
-    pulse: DraftDashboardSubscription,
-    archived: boolean,
-  ) => Promise<void>;
   params?: Record<string, string>;
   loading?: boolean;
 }
@@ -179,9 +175,9 @@ function DashboardSubscriptionsSidebarInner({
   cancelEditingPulse: cancelEditing,
   pulses,
   onCancel,
-  setPulseArchived,
   loading: isSubscriptionListLoading,
 }: DashboardSubscriptionsSidebarInnerProps) {
+  const archive = useSetArchive();
   const [editingMode, setEditingMode] = useState<EditingMode>(
     EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
   );
@@ -380,7 +376,9 @@ function DashboardSubscriptionsSidebarInner({
   );
 
   const handleArchive = useCallback(async () => {
-    await setPulseArchived(pulse, true);
+    if (pulse.id != null) {
+      await archive({ id: pulse.id, model: "pulse" }, true);
+    }
 
     if (isEmbeddingSdk() && pulses?.length === 1) {
       onCancel();
@@ -388,7 +386,7 @@ function DashboardSubscriptionsSidebarInner({
       setEditingMode(EDITING_MODES.LIST_PULSES_OR_NEW_PULSE);
       setReturnMode([]);
     }
-  }, [pulse, pulses, setPulseArchived, onCancel]);
+  }, [pulse.id, pulses, archive, onCancel]);
 
   // Because you can navigate down the sidebar, we need to wrap
   // onCancel from props and either call that or reset back a screen

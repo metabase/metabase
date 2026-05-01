@@ -689,6 +689,12 @@ databaseChangeLog:
                   remarks: Chart interestingness score in [0.0, 1.0]; null when the result can't be meaningfully scored (e.g. empty rows, no numeric measure).
                   constraints:
                     nullable: true
+              - column:
+                  name: contextual_interestingness_score
+                  type: double
+                  remarks: LLM-backed relevance score in [0.0, 1.0] for the chart vs. the thread prompt; null when the LLM is unconfigured, the prompt is blank, or the call failed.
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v62.qresuq

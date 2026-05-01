@@ -422,10 +422,14 @@
           (is (not (contains? s :dataset_query)) "dataset_query must not leak")
           (is (not (contains? s :result_data)) "result blob must not leak")
           (is (contains? s :interestingness_score) "score is included via the result-table left-join")
-          (is (nil? (:interestingness_score s)) "pending queries have no result row, hence nil score"))))))
+          (is (nil? (:interestingness_score s)) "pending queries have no result row, hence nil score")
+          (is (contains? s :contextual_interestingness_score)
+              "contextual score is included via the result-table left-join")
+          (is (nil? (:contextual_interestingness_score s))
+              "pending queries have no result row, hence nil contextual score"))))))
 
 (deftest exploration-list-queries-includes-score-from-result-test
-  (testing "GET /:id/queries surfaces the score on done queries via the result-table left-join"
+  (testing "GET /:id/queries surfaces both interestingness scores via the result-table left-join"
     (mt/with-temp [:model/User u {:email "score-list@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (mt/user-http-request u :post 200 "exploration"
@@ -436,14 +440,16 @@
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)]
         (t2/insert! :model/ExplorationQueryResult
-                    {:exploration_query_id  qid
-                     :result_data           (byte-array [0])
-                     :interestingness_score 0.42})
+                    {:exploration_query_id             qid
+                     :result_data                      (byte-array [0])
+                     :interestingness_score            0.42
+                     :contextual_interestingness_score 0.83})
         (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
-          (is (= 0.42 (:interestingness_score s))))))))
+          (is (= 0.42 (:interestingness_score s)))
+          (is (= 0.83 (:contextual_interestingness_score s))))))))
 
 (deftest exploration-get-includes-interestingness-on-queries-test
-  (testing "GET /:id hydrates user_interestingness and interestingness_score on each nested query"
+  (testing "GET /:id hydrates user_interestingness and both interestingness scores on each nested query"
     (mt/with-temp [:model/User u {:email "get-score@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (mt/user-http-request u :post 200 "exploration"
@@ -456,18 +462,23 @@
             fetch-query (fn []
                           (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
                               :threads first :queries first))]
-        (testing "fresh query: score nil (no result row), user_interestingness nil"
+        (testing "fresh query: scores nil (no result row), user_interestingness nil"
           (let [q (fetch-query)]
             (is (contains? q :interestingness_score))
             (is (nil? (:interestingness_score q)))
+            (is (contains? q :contextual_interestingness_score))
+            (is (nil? (:contextual_interestingness_score q)))
             (is (contains? q :user_interestingness))
             (is (nil? (:user_interestingness q)))))
-        (testing "after a result row is inserted, score surfaces via hydration"
+        (testing "after a result row is inserted, both scores surface via hydration"
           (t2/insert! :model/ExplorationQueryResult
-                      {:exploration_query_id  qid
-                       :result_data           (byte-array [0])
-                       :interestingness_score 0.42})
-          (is (= 0.42 (:interestingness_score (fetch-query)))))
+                      {:exploration_query_id             qid
+                       :result_data                      (byte-array [0])
+                       :interestingness_score            0.42
+                       :contextual_interestingness_score 0.83})
+          (let [q (fetch-query)]
+            (is (= 0.42 (:interestingness_score q)))
+            (is (= 0.83 (:contextual_interestingness_score q)))))
         (testing "user_interestingness on the query column round-trips through GET /:id"
           (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
                                 {:user_interestingness 1})

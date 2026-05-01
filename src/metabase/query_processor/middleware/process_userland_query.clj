@@ -175,16 +175,49 @@
      :result_rows       0
      :start_time_millis (System/currentTimeMillis)}))
 
-(defn- enrich-with-execution-context
-  "Adds fields derived from postprocessing-middleware dynamic vars (`*impersonation-role*`,
-  `*destination-database-id*`) to `execution-info`. Must be called from inside the postprocessing rff, before the
-  async dispatch in [[save-execution-metadata!]] drops dynamic bindings."
-  [execution-info]
+(defn- snapshot-execution-context
+  "Reads the postprocessing-middleware dynamic vars (`*impersonation-role*`, `*destination-database-id*`) and
+  returns a map of fields to merge into the QueryExecution row."
+  []
   (let [destination-db-id (qp.middleware.enterprise/currently-destination-database-id)]
-    (cond-> (assoc execution-info
-                   :is_impersonated (qp.middleware.enterprise/currently-impersonated?)
-                   :is_db_routed    (qp.middleware.enterprise/currently-db-routed?))
+    (cond-> {:is_impersonated (qp.middleware.enterprise/currently-impersonated?)
+             :is_db_routed    (qp.middleware.enterprise/currently-db-routed?)}
       destination-db-id (assoc :database_id destination-db-id))))
+
+(def ^:dynamic ^:private *execution-context-ref*
+  "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
+  [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the
+  EE postprocessing `binding` blocks are still on the stack. The around middleware reads it in both the
+  success-path rff and the error-path catch — the latter is the whole point, since by the time control reaches
+  that catch the EE bindings have already been popped during exception unwind.
+
+  Why a shared mutable ref (atom) instead of just `set!` on the dynamic var: the QP can run on a thread spawned
+  by the streaming response (via `bound-fn` / `binding-conveyor-fn`), and conveyed bindings on that thread are a
+  snapshot — `set!` would mutate only the spawned thread's frame, not the caller's. A shared mutable cell that
+  any thread holding a reference can read/write makes the value flow back to the caller correctly."
+  nil)
+
+(defn capture-execution-context-middleware
+  "Execute middleware. Snapshots impersonation/db-routing dynamic-var values into [[*execution-context-ref*]] (if
+  bound) and forwards. Must be positioned FIRST in the execute middleware list so it runs INNERMOST — i.e. inside
+  the `binding` blocks established by `swap-destination-db-middleware` and
+  `apply-impersonation-postprocessing-middleware`. See the comment block in
+  [[metabase.query-processor.execute/middleware]] explaining the reduce order."
+  [qp]
+  (fn [query rff]
+    (when *execution-context-ref*
+      (reset! *execution-context-ref* (snapshot-execution-context)))
+    (qp query rff)))
+
+(defn- enrich-with-execution-context
+  "Merges the snapshotted execution context (from [[*execution-context-ref*]]) into `execution-info`. Always
+  includes `:is_impersonated` and `:is_db_routed` (defaulting to `false`) so the QueryExecution row has a stable
+  shape even when the snapshot didn't run (e.g. tests that bypass [[capture-execution-context-middleware]])."
+  [execution-info]
+  (merge {:is_impersonated false
+          :is_db_routed    false}
+         execution-info
+         (some-> *execution-context-ref* deref)))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
@@ -206,27 +239,27 @@
     (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
-      (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-            execution-info (query-execution-info query)]
-        (letfn [(rff* [metadata]
-                  (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result (rff (dissoc metadata :preprocessed_query))
-                        ;; Enrich here, while the impersonation / db-routing dynamic var bindings established by
-                        ;; postprocessing middleware are still in effect. Doing this at the top of the around
-                        ;; middleware was wrong — preprocessing hadn't run yet and the bindings weren't set.
-                        execution-info (enrich-with-execution-context execution-info)]
-                    (add-and-save-execution-metadata-xform! execution-info result)))]
-          (try
-            (qp query rff*)
-            (catch Throwable e
-              ;; Same enrichment for the error path: we're still inside `(qp query rff*)` so the postprocessing
-              ;; bindings are in effect.
-              (let [execution-info (enrich-with-execution-context execution-info)]
-                (save-failed-query-execution!
-                 execution-info
-                 (or
-                  (some-> e ex-cause ex-message)
-                  (ex-message e)))
-                (throw (ex-info (ex-message e)
-                                {:query-execution execution-info}
-                                e))))))))))
+      ;; The atom is written from inside [[capture-execution-context-middleware]] (positioned in the execute
+      ;; chain inside the EE postprocessing bindings) and read in both the success-path rff and the error-path
+      ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
+      ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
+      (binding [*execution-context-ref* (atom nil)]
+        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+              execution-info (query-execution-info query)]
+          (letfn [(rff* [metadata]
+                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
+                          result         (rff (dissoc metadata :preprocessed_query))
+                          execution-info (enrich-with-execution-context execution-info)]
+                      (add-and-save-execution-metadata-xform! execution-info result)))]
+            (try
+              (qp query rff*)
+              (catch Throwable e
+                (let [execution-info (enrich-with-execution-context execution-info)]
+                  (save-failed-query-execution!
+                   execution-info
+                   (or
+                    (some-> e ex-cause ex-message)
+                    (ex-message e)))
+                  (throw (ex-info (ex-message e)
+                                  {:query-execution execution-info}
+                                  e)))))))))))

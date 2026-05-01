@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { MetricSchema } from "metabase/schema";
 import type {
   Dataset,
@@ -21,7 +20,7 @@ import {
   provideMetricListTags,
   provideMetricTags,
 } from "./tags/utils";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const metricApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,10 +30,10 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric",
       }),
       providesTags: (response) => provideMetricListTags(response?.data ?? []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data.data, [MetricSchema])),
-        ),
+      onQueryStarted: hydrateLegacyEntities<GetMetricListResponse>(
+        [MetricSchema],
+        (response) => response.data,
+      ),
     }),
     getMetric: builder.query<Metric, MetricId>({
       query: (id) => ({
@@ -42,10 +41,7 @@ export const metricApi = Api.injectEndpoints({
         url: `/api/metric/${id}`,
       }),
       providesTags: (metric) => (metric ? provideMetricTags(metric) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, MetricSchema)),
-        ),
+      onQueryStarted: hydrateLegacyEntities(MetricSchema),
     }),
     getMetricDimensionValues: builder.query<
       GetMetricDimensionValuesResponse,

@@ -1,6 +1,7 @@
 (ns metabase.explorations.task.runner-test
   (:require
    [clojure.test :refer :all]
+   [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.task.runner :as runner]
    [metabase.test :as mt]
@@ -9,13 +10,15 @@
 (def ^:private run-one-iteration! #'runner/run-one-iteration!)
 
 (defn- temp-thread!
-  [user-id]
-  (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                           {:name "runner-test"
-                                                            :creator_id user-id}))]
-    (first (t2/insert-returning-instances! :model/ExplorationThread
-                                           {:exploration_id (:id exploration)
-                                            :position       0}))))
+  ([user-id] (temp-thread! user-id nil))
+  ([user-id prompt]
+   (let [exploration (first (t2/insert-returning-instances! :model/Exploration
+                                                            {:name "runner-test"
+                                                             :creator_id user-id}))]
+     (first (t2/insert-returning-instances! :model/ExplorationThread
+                                            (cond-> {:exploration_id (:id exploration)
+                                                     :position       0}
+                                              prompt (assoc :prompt prompt)))))))
 
 (defn- pending-query!
   [thread-id card-id mbql]
@@ -102,6 +105,70 @@
             (is (some? result))
             (is (pos? (count (:result_data result))))
             (is (nil? (:interestingness_score result)))))))))
+
+(deftest run-one-iteration-writes-contextual-score-test
+  (testing "When the thread has a prompt and the lego returns a score, it lands on the result row"
+    (mt/with-temp [:model/User u {:email "ctx-score@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
+            row    (pending-query! (:id thread) (:id card)
+                                   (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]}))]
+        (with-redefs [contextual-interestingness/contextual-chart-interestingness
+                      (fn [_chart _prompt] 0.73)]
+          (drain-until-terminal! (:id row) 10)
+          (let [result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (= 0.73 (:contextual_interestingness_score result)))))))))
+
+(deftest run-one-iteration-skips-contextual-when-prompt-blank-test
+  (testing "Threads with no prompt → contextual_interestingness_score is nil and the lego is not called"
+    (mt/with-temp [:model/User u {:email "ctx-noprompt@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]}))
+            calls  (atom 0)]
+        (with-redefs [contextual-interestingness/contextual-chart-interestingness
+                      (fn [_chart _prompt] (swap! calls inc) 0.99)]
+          (drain-until-terminal! (:id row) 10)
+          (let [result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (nil? (:contextual_interestingness_score result)))
+            (is (zero? @calls) "lego must not be called when the thread has no prompt")))))))
+
+(deftest run-one-iteration-survives-contextual-failure-test
+  (testing "A throwing contextual scorer leaves the row done, heuristic still scored, contextual nil"
+    (mt/with-temp [:model/User u {:email "ctx-throw@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [thread (temp-thread! (:id u) "anything")
+            row    (pending-query! (:id thread) (:id card)
+                                   (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]}))]
+        (with-redefs [contextual-interestingness/contextual-chart-interestingness
+                      (fn [& _] (throw (ex-info "boom" {})))]
+          (let [final  (drain-until-terminal! (:id row) 10)
+                result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (= "done" (:status final)))
+            (is (some? result))
+            (is (pos? (count (:result_data result))))
+            (is (nil? (:contextual_interestingness_score result)))
+            (is (double? (:interestingness_score result))
+                "heuristic score still computed when contextual fails")))))))
 
 (deftest run-one-iteration-error-path-test
   (testing "A row whose query blows up is marked error, no result row is written"

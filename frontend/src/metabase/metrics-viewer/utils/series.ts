@@ -59,6 +59,23 @@ import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
+export function shouldShowStackSeries(
+  display: MetricsViewerDisplayType,
+  rawSeries: SingleSeries[],
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+): boolean {
+  const hasBreakout = formulaEntities.some(
+    (entity) =>
+      isMetricEntry(entity) &&
+      entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions)),
+  );
+  return (
+    DISPLAY_TYPE_REGISTRY[display].supportsStacking &&
+    (rawSeries.length > 1 || hasBreakout)
+  );
+}
+
 interface BuildSeriesParams {
   formulaEntities: MetricsViewerFormulaEntity[];
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;

@@ -122,15 +122,6 @@ export const Search = createEntity({
   },
 
   objectActions: {
-    setArchived: (object, archived) => {
-      return (dispatch) => {
-        const entity = entityForObject(object);
-        return entity
-          ? dispatch(entity.actions.setArchived(object, archived))
-          : warnEntityAndReturnObject(object);
-      };
-    },
-
     delete: (object) => {
       return (dispatch) => {
         const entity = entityForObject(object);
@@ -141,23 +132,6 @@ export const Search = createEntity({
     },
   },
 
-  objectSelectors: {
-    getCollection: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getCollection?.(object) ??
-            object?.collection ??
-            null)
-        : warnEntityAndReturnObject(object);
-    },
-
-    getName: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
-        : warnEntityAndReturnObject(object);
-    },
-  },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     return (

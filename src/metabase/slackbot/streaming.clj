@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
@@ -197,7 +198,8 @@
         context         (metabot.context/create-context
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
-                          :slack_channel_id           channel-id})
+                          :slack_channel_id           channel-id}
+                         {:metabot-id metabot.config/slackbot-metabot-id})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
         dispatch-xf     (comp

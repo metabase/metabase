@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { type Ref, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,11 +13,15 @@ import {
 } from "metabase/ui";
 import type {
   Exploration,
-  ExplorationQuery,
   ExplorationQueryId,
   ExplorationQueryStatus,
   ExplorationThread,
 } from "metabase-types/api";
+
+import type {
+  ExplorationQueryWithName,
+  ThreadsWithSortedQueries,
+} from "../../pages/ExplorationPage";
 
 import S from "./ExplorationSidebar.module.css";
 
@@ -25,6 +29,7 @@ interface ExplorationSidebarProps {
   exploration: Exploration;
   selectedQueryId: ExplorationQueryId | null;
   setSelectedQueryId: (queryId: ExplorationQueryId) => void;
+  threadsWithSortedQueries: ThreadsWithSortedQueries[];
 }
 
 // todo fixme
@@ -34,39 +39,37 @@ export function ExplorationSidebar({
   exploration,
   selectedQueryId,
   setSelectedQueryId,
+  threadsWithSortedQueries,
 }: ExplorationSidebarProps) {
-  const threadsWithSortedQueries = useMemo(() => {
-    return exploration.threads?.map((thread) => {
-      return {
-        ...thread,
-        queries: thread.queries?.toSorted(
-          (a, b) =>
-            (b.interestingness_score ?? -1) - (a.interestingness_score ?? -1),
-        ),
-      };
+  const selectedQueryRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    selectedQueryRef.current?.scrollIntoView({
+      block: "nearest",
     });
-  }, [exploration.threads]);
+  }, [selectedQueryId]);
 
   return (
     <Stack h="100%" gap="lg">
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>
-      {threadsWithSortedQueries?.map((thread, i) => (
+      {threadsWithSortedQueries.map((thread, i) => (
         <Stack mih={0} key={thread.id} gap="md">
           <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
-          {thread.queries && thread.queries.length > 0 ? (
+          {thread.queries.length > 0 ? (
             <Stack mih={0} gap="xs" pr="md" className={S.threadList}>
-              {thread.queries.map((query) =>
-                query.name ? (
-                  <ExplorationQueryRow
-                    key={query.id}
-                    query={query}
-                    isSelected={selectedQueryId === query.id}
-                    onSelect={() => setSelectedQueryId(query.id)}
-                  />
-                ) : null,
-              )}
+              {thread.queries.map((query) => (
+                <ExplorationQueryRow
+                  key={query.id}
+                  query={query}
+                  isSelected={selectedQueryId === query.id}
+                  buttonRef={
+                    selectedQueryId === query.id ? selectedQueryRef : undefined
+                  }
+                  onSelect={() => setSelectedQueryId(query.id)}
+                />
+              ))}
             </Stack>
           ) : (
             <Text c="text-secondary">{t`No charts were generated.`}</Text>
@@ -78,14 +81,16 @@ export function ExplorationSidebar({
 }
 
 interface ExplorationQueryRowProps {
-  query: ExplorationQuery;
+  query: ExplorationQueryWithName;
   isSelected: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
   onSelect: () => void;
 }
 
 function ExplorationQueryRow({
   query,
   isSelected,
+  buttonRef,
   onSelect,
 }: ExplorationQueryRowProps) {
   const errorMessage =
@@ -95,6 +100,7 @@ function ExplorationQueryRow({
 
   const row = (
     <UnstyledButton
+      ref={buttonRef}
       role="listitem"
       aria-pressed={isSelected}
       className={cx(S.queryRow, {
