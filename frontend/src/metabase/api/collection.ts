@@ -1,4 +1,8 @@
-import { CollectionSchema, ObjectUnionSchema } from "metabase/schema";
+import {
+  CollectionSchema,
+  ObjectUnionSchema,
+  SnippetCollectionSchema,
+} from "metabase/schema";
 import type {
   Collection,
   CreateCollectionRequest,
@@ -32,6 +36,16 @@ const flattenCollectionTree = (tree: Collection[]): Collection[] =>
     ...flattenCollectionTree(collection.children ?? []),
   ]);
 
+// Snippet collections live in their own entity slice (`snippetCollections`),
+// so hydrating them through `CollectionSchema` would clobber regular
+// collections. Hydrate through the matching schema instead.
+const collectionSchemaForRequest = (
+  request: { namespace?: string | null } | void,
+) =>
+  request?.namespace === "snippets"
+    ? SnippetCollectionSchema
+    : CollectionSchema;
+
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     /**
@@ -47,7 +61,11 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
-        onQueryStarted: hydrateLegacyEntities([CollectionSchema]),
+        onQueryStarted: (request, lifecycle) =>
+          hydrateLegacyEntities([collectionSchemaForRequest(request)])(
+            request,
+            lifecycle,
+          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -63,10 +81,11 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
-      onQueryStarted: hydrateLegacyEntities<Collection[]>(
-        [CollectionSchema],
-        flattenCollectionTree,
-      ),
+      onQueryStarted: (request, lifecycle) =>
+        hydrateLegacyEntities<Collection[]>(
+          [collectionSchemaForRequest(request)],
+          flattenCollectionTree,
+        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -97,7 +116,11 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
-      onQueryStarted: hydrateLegacyEntities(CollectionSchema),
+      onQueryStarted: (request, lifecycle) =>
+        hydrateLegacyEntities(collectionSchemaForRequest(request))(
+          request,
+          lifecycle,
+        ),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
