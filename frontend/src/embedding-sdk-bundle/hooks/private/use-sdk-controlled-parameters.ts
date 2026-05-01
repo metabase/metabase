@@ -39,10 +39,6 @@ const PARAMETER_CHANGE_ACTION_TYPES = new Set<string>([
   REMOVE_PARAMETER,
 ]);
 
-// Keep the action payload shape inline rather than inferring it from
-// the `setParameterValue` thunk creator: `Awaited<ReturnType<ReturnType<…>>>`
-// over a `createThunkAction` result composes a deep enough type to push
-// other reducers' instantiation past TS's depth limit (TS2589).
 const isParameterSetAction = (action: {
   type: string;
   payload?: unknown;
@@ -151,13 +147,6 @@ const useObserveAppliedParameters = (
   }, [onParametersChange]);
 };
 
-/**
- * Wraps the shared `buildParametersPayload` with dashboard-specific
- * inputs from Redux state. Returns `null` when the dashboard isn't
- * loaded yet — guards against a stray `parameterValues` mutation firing
- * before `fetchDashboard.fulfilled` (which would silently produce an
- * empty `lastUsedParameters` and confuse hosts).
- */
 const buildDashboardChangePayload = (
   state: SdkStoreState,
   source: DashboardParameterChangePayload["source"],

@@ -90,7 +90,7 @@ export type CreateDashboardValues = Omit<
 };
 
 /**
- * Source of a parameter-change emission. `initial-state` fires exactly
+ * Source of a parameter-change event. `initial-state` fires exactly
  * once per dashboard load — after the backend response has
  * resolved applied parameter values from defaults, last-used, and the
  * host-provided `parameters` prop. All subsequent emissions (user

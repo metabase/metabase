@@ -162,15 +162,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
 
-  /**
-   * Names of attributes currently being written by a property setter (e.g.
-   * `parameters`), so `attributeChangedCallback` can skip the follow-up
-   * `_updateSettings` call — the setter already dispatched it. A `Set`
-   * lets multiple JSON-typed properties reflect concurrently without
-   * stomping on each other.
-   */
-  private _reflectingAttributes: Set<string> = new Set();
-
   ["custom-context"]: unknown;
 
   constructor() {
@@ -290,7 +281,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     window.removeEventListener("message", this._handleMessage);
     this._isEmbedReady = false;
     this._eventHandlers.clear();
-    this._reflectingAttributes.clear();
     this._authManager = null;
 
     if (this._iframe) {
@@ -334,13 +324,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
-    // Skip when the change came from a property setter that already
-    // dispatched `_updateSettings` directly — re-dispatching here would
-    // double the post.
-    if (this._reflectingAttributes.has(attrName)) {
-      return;
-    }
-
     const key = attributeToSettingKey(
       attrName,
     ) as keyof SdkIframeEmbedElementSettings;
@@ -357,25 +340,33 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   /**
-   * Apply a typed value coming from a property setter: dispatch
-   * `_updateSettings` unconditionally (even when the underlying attribute
-   * string would be unchanged after a manual UI edit), and mirror the
-   * value to the attribute for HTML-side observability.
+   * Apply a typed value coming from a property setter (e.g.
+   * `set parameters(values)`). The setter mirrors the value to the
+   * backing HTML attribute; `attributeChangedCallback` is the single
+   * dispatch path.
    */
   protected _applyJsonProperty(
     settingKey: string,
     attrName: string,
     value: unknown,
   ) {
-    this._updateSettings({
-      [settingKey]: value,
-    } as Partial<SdkIframeEmbedElementSettings>);
+    const nextJson = value === undefined ? null : JSON.stringify(value);
+    const currentJson = this.getAttribute(attrName);
 
-    this._reflectingAttributes.add(attrName);
-    try {
-      writeJsonAttribute(this, attrName, value);
-    } finally {
-      this._reflectingAttributes.delete(attrName);
+    if (nextJson === currentJson) {
+      const nextSettings = {
+        [settingKey]: value,
+      } as Partial<SdkIframeEmbedElementSettings>;
+
+      this._updateSettings(nextSettings);
+
+      return;
+    }
+
+    if (nextJson === null) {
+      this.removeAttribute(attrName);
+    } else {
+      this.setAttribute(attrName, nextJson);
     }
   }
 
@@ -725,24 +716,6 @@ function readJsonAttribute<T>(
   }
   const parsed = parseAttributeValue(raw);
   return parsed as T | undefined;
-}
-
-/**
- * Backing writer for JSON-typed attributes. Reflects the typed JS
- * property to the HTML attribute by JSON-serializing; `undefined` clears
- * the attribute. Browser-level string equality on `setAttribute` short-
- * circuits no-op writes, so we don't need an explicit deep-equal guard.
- */
-function writeJsonAttribute(
-  el: HTMLElement,
-  attrName: string,
-  value: unknown,
-): void {
-  if (value === undefined) {
-    el.removeAttribute(attrName);
-    return;
-  }
-  el.setAttribute(attrName, JSON.stringify(value));
 }
 
 function createCustomElement<

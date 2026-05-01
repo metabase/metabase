@@ -34,11 +34,6 @@ export const useSdkControlledSqlParameters = ({
 }: Options) => {
   const metadata = useSelector(getMetadata);
 
-  // `parameterValues` is in deps because `getCardUiParameters` reads
-  // applied values to populate `.value` and resolve dependent-widget
-  // option lists — defs ref churns whenever applied state changes. Push
-  // hook's `lastDispatchedRef` guards against that, observe hook
-  // re-runs but its inner `isEqual` short-circuits no-op cases.
   const parameterDefinitions = useMemo<UiParameter[]>(
     () =>
       question
@@ -123,14 +118,7 @@ const useObserveAppliedSqlParameters = ({
     | ((payload: SqlParameterChangePayload) => void)
     | undefined;
 }) => {
-  // Discriminator for `'initial-state'` vs `'manual-change'`. Tracking
-  // by `question.id()` (or `null` for new/native) instead of the Question
-  // object ref — `mergeQuestionState` produces a new Question reference
-  // multiple times during the normal load + query flow (post-resolve,
-  // post-query-result, etc.), and we'd misclassify each one as a fresh
-  // load. The id stays stable across those mergeQuestionState passes and
-  // only changes on actual question switch (navigateToNewCard,
-  // replaceQuestion).
+  // Tracks question id change, so we can fire event with `source: initial-state`
   const emittedQuestionIdRef = useRef<unknown>(undefined);
   const emittedValuesRef = useRef<ParameterValuesMap | null>(null);
 
