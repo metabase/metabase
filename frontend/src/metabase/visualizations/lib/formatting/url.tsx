@@ -5,13 +5,13 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getDataFromClicked } from "metabase/parameters/utils/click-behavior";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
-import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
+import { removeNewLines } from "metabase/utils/formatting/strings";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
-import { removeNewLines } from "./strings";
-import type { OptionsType } from "./types";
 import { formatValue, getRemappedValue } from "./value";
 
 function isSafeProtocol(protocol: string) {

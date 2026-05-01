@@ -5,13 +5,16 @@ import ReactMarkdown from "react-markdown";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { renderLinkTextForClick } from "metabase/utils/formatting/link";
-import { parseNumber } from "metabase/utils/number";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
+} from "metabase/parameters/utils/click-behavior";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatNumber } from "metabase/utils/formatting/numbers";
+import { removeNewLines } from "metabase/utils/formatting/strings";
+import { formatTime } from "metabase/utils/formatting/time";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { parseNumber } from "metabase/utils/number";
 import {
   isBoolean,
   isCoordinate,
@@ -27,10 +30,7 @@ import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
-import { formatNumber } from "./numbers";
-import { removeNewLines } from "./strings";
-import { formatTime } from "./time";
-import type { OptionsType } from "./types";
+import { renderLinkTextForClick } from "./link";
 import { formatUrl } from "./url";
 
 const MARKDOWN_RENDERERS = {

@@ -5,10 +5,10 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import type { OptionsType } from "./types";
 import { formatValue } from "./value";
 
 const SITE_URL = "http://localhost:3000";
