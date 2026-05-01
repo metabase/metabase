@@ -1,6 +1,6 @@
 import type { Schema } from "normalizr";
 
-import { updateMetadata } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata-typed";
 
 import { handleQueryFulfilled } from "./lifecycle";
 
