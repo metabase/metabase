@@ -160,7 +160,7 @@
                             ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
-                            metabot.context/create-context           identity
+                            metabot.context/create-context           (fn [ctx & _] ctx)
                             metabot.persistence/store-native-parts!  (fn [_conv-id _prof-id parts & _kwargs]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
