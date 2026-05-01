@@ -329,12 +329,12 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("should parse a stringified JSON passed to custom-context", async () => {
         fetchMock.post("path:/mock-provider", { jwt: "refreshed-token" });
 
-        const { triggerIframeMessage } = setupGuestEmbed({
+        const { iframe, triggerIframeMessage } = setupGuestEmbed({
           dashboardId: "1",
           customContext: '{"param":"value","nested":{"a":1}}',
         });
 
-        triggerIframeMessage({
+        triggerIframeMessage(iframe, {
           type: "metabase.embed.requestGuestTokenRefresh",
           data: { expiredToken: "any.expired.token" },
         });
