@@ -22,7 +22,6 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
-import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import {
   type ArchivableItem,
   canPinItem,
@@ -30,6 +29,7 @@ import {
   useSetArchive,
   useSetPinned,
 } from "metabase/common/hooks";
+import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { entityForObject } from "metabase/entities/utils";
