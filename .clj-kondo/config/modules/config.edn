@@ -2147,7 +2147,8 @@
            tracing
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2603,6 +2604,11 @@
                     :model/Field
                     :model/FieldValues
                     :model/Table}}
+
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.table-remapping}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"

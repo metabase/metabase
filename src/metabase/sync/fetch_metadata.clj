@@ -6,69 +6,20 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
-
-(defenterprise workspace-remap-schema+name
-  "In workspace mode, a Table row at `(from-schema, from-name)` may be backed by a
-  physically-different warehouse table at `(to-schema, to-name)` recorded in
-  `table_remapping`. This hook returns `[to-schema to-name]` when a remapping
-  exists so sync asks the driver about the isolated warehouse location; returns
-  nil otherwise (OSS fallback) so the driver is queried at the logical identity."
-  metabase-enterprise.workspaces.table-remapping
-  [_db-id _schema _name]
-  nil)
-
-(defenterprise filter-workspace-side-tables
-  "Drop tuples from a `describe-database` result whose `(schema, name)` matches
-  the to-side of any active TableRemapping for `db-id`. The workspace's physical
-  isolation tables are surfaced by the warehouse driver but must not become
-  `:model/Table` rows in app-db -- they back canonical Tables via remap, not
-  their own identity. OSS fallback is identity (no filtering). See DEV-1898."
-  metabase-enterprise.workspaces.table-remapping
-  [tuples _db-id]
-  tuples)
-
-(defenterprise expand-schema-names-with-workspace
-  "Augment a list of `:schema-names` with workspace-isolation schemas
-  (`to_schema` values) for any remap whose `from_schema` appears in the input.
-  Lets sync's FK fetch reach the warehouse tables that physically back canonical
-  Tables on a workspace child. OSS fallback is identity."
-  metabase-enterprise.workspaces.table-remapping
-  [schema-names _db-id]
-  schema-names)
-
-(defenterprise inject-workspace-canonical-tuples
-  "Augment a `describe-database` result with synthetic canonical-side tuples for
-  any `from_*` remap row whose to-side is materialized in the warehouse. The
-  canonical name doesn't physically exist on a workspace child (only the
-  isolation-schema copy does), so without this it'd be diffed against app-db's
-  Table rows and silently retired. OSS fallback is identity."
-  metabase-enterprise.workspaces.table-remapping
-  [tuples _db-id]
-  tuples)
-
-(defenterprise rewrite-fk-result-canonical
-  "Translate workspace-side identifiers in a `describe-fks` result back to canonical
-  names. When sync redirects FK lookups to the workspace warehouse table, the
-  returned rows reference workspace-side `(schema, name)` on both sides; app-db's
-  view needs them in canonical terms so subsequent FK resolution finds the
-  matching `:model/Table`. OSS fallback is identity (no rewriting)."
-  metabase-enterprise.workspaces.table-remapping
-  [rows _db-id]
-  rows)
 
 (defn- effective-schema+name
   "Pair used when querying the driver for a Table's fields. Lets workspace mode
   redirect to the isolated warehouse table while the app-db row keeps its
   logical identity."
   [database-id schema table-name]
-  (or (workspace-remap-schema+name database-id schema table-name)
+  (or (ws.table-remapping/workspace-remap-schema+name database-id schema table-name)
       [schema table-name]))
 
 (defmacro log-if-error
@@ -187,7 +138,7 @@
           db-id         (:id database)
           expanded-args (cond-> args
                           (:schema-names args)
-                          (update :schema-names expand-schema-names-with-workspace db-id))]
+                          (update :schema-names ws.table-remapping/expand-schema-names-with-workspace db-id))]
       (when (driver.u/supports? driver :metadata/key-constraints database)
         (let [describe-fks-fn (if (driver.u/supports? driver :describe-fks database)
                                 driver/describe-fks
@@ -197,7 +148,7 @@
               ;; Realize the driver result so we can back-translate it as a batch (the
               ;; EE impl builds a per-DB lookup map once per call).
               raw-rows       (vec (describe-fks-fn driver database expanded-args))
-              rewritten-rows (rewrite-fk-result-canonical raw-rows db-id)]
+              rewritten-rows (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)]
           (cond->> rewritten-rows
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
             (mu.fn/instrument-ns? *ns*)

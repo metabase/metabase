@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+    ; TODO: Should we require both oss and ee here? Should we only allow interacting with the API through the OSS surface?
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -412,7 +413,7 @@
      (fn []
        (let [tuples #{{:schema "public" :name "orders"}
                       {:schema "public" :name "users"}}]
-         (is (= tuples (fetch-metadata/filter-workspace-side-tables tuples (mt/id)))))))))
+         (is (= tuples (ws.table-remapping/filter-workspace-side-tables tuples (mt/id)))))))))
 
 (deftest filter-workspace-side-tables-drops-only-to-side-test
   (testing "with a remap row, only the to-side (schema, name) tuple is dropped"
@@ -426,7 +427,7 @@
        (let [tuples   #{{:schema "public"   :name "orders"}
                         {:schema "public"   :name "users"}
                         {:schema "ws_alice" :name "orders"}}
-             filtered (fetch-metadata/filter-workspace-side-tables tuples (mt/id))]
+             filtered (ws.table-remapping/filter-workspace-side-tables tuples (mt/id))]
          (is (= #{{:schema "public" :name "orders"}
                   {:schema "public" :name "users"}}
                 filtered)
@@ -443,7 +444,7 @@
         {:schema "ws_alice" :table "orders"})
        (let [other-db-id 999999
              tuples      #{{:schema "ws_alice" :name "orders"}}]
-         (is (= tuples (fetch-metadata/filter-workspace-side-tables tuples other-db-id))
+         (is (= tuples (ws.table-remapping/filter-workspace-side-tables tuples other-db-id))
              "another database's table-list is untouched"))))))
 
 (deftest sync-tables-and-database-skips-workspace-side-tuples-test
@@ -481,7 +482,7 @@
      (mt/id)
      (fn []
        (is (= ["public" "analytics"]
-              (fetch-metadata/expand-schema-names-with-workspace
+              (ws.table-remapping/expand-schema-names-with-workspace
                ["public" "analytics"] (mt/id))))))))
 
 (deftest expand-schema-names-adds-workspace-schemas-test
@@ -493,7 +494,7 @@
         (mt/id)
         {:schema "public" :table "orders"}
         {:schema "ws_alice" :table "orders"})
-       (let [expanded (fetch-metadata/expand-schema-names-with-workspace
+       (let [expanded (ws.table-remapping/expand-schema-names-with-workspace
                        ["public" "analytics"] (mt/id))]
          (is (= #{"public" "analytics" "ws_alice"} (set expanded))
              "ws_alice is appended; analytics (no remap) untouched"))))))
@@ -507,7 +508,7 @@
         (mt/id)
         {:schema "public" :table "orders"}
         {:schema "ws_alice" :table "orders"})
-       (let [expanded (fetch-metadata/expand-schema-names-with-workspace
+       (let [expanded (ws.table-remapping/expand-schema-names-with-workspace
                        ["public" "ws_alice"] (mt/id))]
          (is (= 2 (count expanded)) "no duplicate ws_alice")
          (is (= #{"public" "ws_alice"} (set expanded))))))))
@@ -521,7 +522,7 @@
      (fn []
        (let [rows [{:fk-table-schema "public" :fk-table-name "orders" :fk-column-name "user_id"
                     :pk-table-schema "public" :pk-table-name "users"  :pk-column-name "id"}]]
-         (is (= rows (fetch-metadata/rewrite-fk-result-canonical rows (mt/id)))))))))
+         (is (= rows (ws.table-remapping/rewrite-fk-result-canonical rows (mt/id)))))))))
 
 (deftest rewrite-fk-translates-both-sides-test
   (testing "FK row referencing workspace identifiers on both ends gets translated"
@@ -538,7 +539,7 @@
         {:schema "ws_alice" :table "users"})
        (let [workspace-row {:fk-table-schema "ws_alice" :fk-table-name "orders" :fk-column-name "user_id"
                             :pk-table-schema "ws_alice" :pk-table-name "users"  :pk-column-name "id"}
-             [out]         (fetch-metadata/rewrite-fk-result-canonical [workspace-row] (mt/id))]
+             [out]         (ws.table-remapping/rewrite-fk-result-canonical [workspace-row] (mt/id))]
          (is (= "public" (:fk-table-schema out)))
          (is (= "orders" (:fk-table-name out)))
          (is (= "public" (:pk-table-schema out)))
@@ -555,7 +556,7 @@
         {:schema "ws_alice" :table "orders"})
        (let [row   {:fk-table-schema "ws_alice" :fk-table-name "orders" :fk-column-name "audit_id"
                     :pk-table-schema "audit"    :pk-table-name "events" :pk-column-name "id"}
-             [out] (fetch-metadata/rewrite-fk-result-canonical [row] (mt/id))]
+             [out] (ws.table-remapping/rewrite-fk-result-canonical [row] (mt/id))]
          (is (= "public" (:fk-table-schema out))
              "remapped fk-side is back-translated")
          (is (= "orders" (:fk-table-name out)))
@@ -574,7 +575,7 @@
         {:schema "ws_alice" :table "employees"})
        (let [row   {:fk-table-schema "ws_alice" :fk-table-name "employees" :fk-column-name "manager_id"
                     :pk-table-schema "ws_alice" :pk-table-name "employees" :pk-column-name "id"}
-             [out] (fetch-metadata/rewrite-fk-result-canonical [row] (mt/id))]
+             [out] (ws.table-remapping/rewrite-fk-result-canonical [row] (mt/id))]
          (is (= "public" (:fk-table-schema out)))
          (is (= "public" (:pk-table-schema out)))
          (is (= "employees" (:fk-table-name out)))
@@ -588,7 +589,7 @@
      (mt/id)
      (fn []
        (let [tuples #{{:schema "public" :name "orders"}}]
-         (is (= tuples (fetch-metadata/inject-workspace-canonical-tuples tuples (mt/id)))))))))
+         (is (= tuples (ws.table-remapping/inject-workspace-canonical-tuples tuples (mt/id)))))))))
 
 (deftest inject-canonical-tuples-adds-from-side-test
   (testing "for each remap row, the from-side tuple is added so the diff doesn't retire the canonical Table"
@@ -602,7 +603,7 @@
        ;; Simulating describe-database AFTER filter-workspace-side-tables ran:
        ;; only canonical input schema is present, no workspace-side tuples.
        (let [tuples   #{{:schema "public" :name "src"}}
-             injected (fetch-metadata/inject-workspace-canonical-tuples tuples (mt/id))]
+             injected (ws.table-remapping/inject-workspace-canonical-tuples tuples (mt/id))]
          (is (contains? injected {:schema "public" :name "src"})
              "non-remapped canonical tuple still present")
          (is (contains? injected {:schema "public" :name "my_transform_output"})
@@ -618,7 +619,7 @@
         {:schema "public" :table "orders"}
         {:schema "ws_alice" :table "orders"})
        (let [tuples   #{{:schema "public" :name "orders"}}
-             injected (fetch-metadata/inject-workspace-canonical-tuples tuples (mt/id))]
+             injected (ws.table-remapping/inject-workspace-canonical-tuples tuples (mt/id))]
          (is (= 1 (count injected)) "set semantics dedupe by value"))))))
 
 (deftest sync-does-not-retire-canonical-tables-with-active-remappings-test
