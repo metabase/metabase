@@ -8,10 +8,7 @@ import {
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import type {
-  ExplorationMetric,
-  MetricDimension,
-} from "metabase/explorations/types";
+import type { ExplorationMetric } from "metabase/explorations/types";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
@@ -23,10 +20,8 @@ import type {
 import { useDispatch } from "metabase/redux";
 import { Box, Stack } from "metabase/ui";
 import type {
-  ExplorationMetric as ApiExplorationMetric,
-  DimensionId,
-  ExplorationDimensionGroup,
-  Metric,
+  GetExplorationDataResponse,
+  MetricDimension,
 } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
@@ -83,48 +78,27 @@ export function NewExplorationChat({
       try {
         const newMetrics: ExplorationMetric[] = [];
         const newDimensions: MetricDimension[] = [];
-        const seenMetricIds = new Set<number>();
-        const seenDimensionIds = new Set<DimensionId>();
 
         for (const message of messages) {
-          const { metrics, dimension_groups } = parseSelectExplorationMetrics(
+          const { metrics, dimension_groups } = JSON.parse(
             message.result,
-          );
-          const dimensionsById = new Map<DimensionId, MetricDimension>();
-          for (const group of dimension_groups) {
-            for (const d of group.dimensions) {
-              dimensionsById.set(d.id, d);
-            }
-          }
-          for (const m of metrics) {
-            if (seenMetricIds.has(m.id)) {
-              continue;
-            }
-            seenMetricIds.add(m.id);
-            const { dimension_ids, ...rest } = m;
-            const resolved: MetricDimension[] = [];
-            for (const id of dimension_ids) {
-              const dim = dimensionsById.get(id);
-              if (dim) {
-                resolved.push(dim);
-                if (!seenDimensionIds.has(dim.id)) {
-                  seenDimensionIds.add(dim.id);
-                  newDimensions.push(dim);
-                }
-              }
-            }
-            newMetrics.push({ ...rest, dimensions: resolved } as Metric);
-          }
+          ) as GetExplorationDataResponse;
+          newMetrics.push(...metrics);
+          newDimensions.push(...dimension_groups.flatMap((g) => g.dimensions));
         }
 
         setMetrics((prev) => {
           const prevIds = new Set(prev.map((m) => m.id));
-          const additions = newMetrics.filter((m) => !prevIds.has(m.id));
+          const additions = Array.from(new Set(newMetrics)).filter(
+            (m) => !prevIds.has(m.id),
+          );
           return additions.length === 0 ? prev : [...prev, ...additions];
         });
         setDimensions((prev) => {
           const prevIds = new Set(prev.map((d) => d.id));
-          const additions = newDimensions.filter((d) => !prevIds.has(d.id));
+          const additions = Array.from(new Set(newDimensions)).filter(
+            (d) => !prevIds.has(d.id),
+          );
           return additions.length === 0 ? prev : [...prev, ...additions];
         });
       } catch (error) {
@@ -145,13 +119,7 @@ export function NewExplorationChat({
         return;
       }
       try {
-        const parsed = JSON.parse(messages[0].result);
-        if (!parsed.name) {
-          throw new Error("Name not found in tool call result");
-        }
-        if (typeof parsed.name !== "string") {
-          throw new Error("Name must be a string");
-        }
+        const parsed = JSON.parse(messages[0].result) as { name: string };
         // ignore repeated calls to this tool
         setName((prev) => prev ?? parsed.name);
       } catch (error) {
@@ -204,6 +172,7 @@ export function NewExplorationChat({
             errorMessages={errorMessages}
             onRetryMessage={retryMessage}
             isDoingScience={isDoingScience}
+            debug={false}
           />
           {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
         </Stack>
@@ -243,18 +212,4 @@ function isSetExplorationNameToolCallMessage(
     !message.is_error &&
     !!message.result
   );
-}
-
-function parseSelectExplorationMetrics(result: string): {
-  metrics: ApiExplorationMetric[];
-  dimension_groups: ExplorationDimensionGroup[];
-} {
-  const parsed = JSON.parse(result);
-  if (!Array.isArray(parsed?.metrics)) {
-    throw new Error("metrics not found in tool call result");
-  }
-  if (!Array.isArray(parsed?.dimension_groups)) {
-    throw new Error("dimension_groups not found in tool call result");
-  }
-  return parsed;
 }

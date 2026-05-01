@@ -1,5 +1,5 @@
-import type { Metric } from "metabase-types/api";
+import type { DimensionId, Metric } from "metabase-types/api";
 
-export type ExplorationMetric = Metric;
-
-export type { MetricDimension, Timeline } from "metabase-types/api";
+export type ExplorationMetric = Metric & {
+  dimension_ids: DimensionId[]; // dimension_ids are required for explorations`
+};

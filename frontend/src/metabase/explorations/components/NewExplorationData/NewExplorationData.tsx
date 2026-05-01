@@ -3,11 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
-import type {
-  ExplorationMetric,
-  MetricDimension,
-  Timeline,
-} from "metabase/explorations/types";
+import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import {
@@ -21,7 +17,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CreateExplorationRequest } from "metabase-types/api";
+import type {
+  CreateExplorationRequest,
+  MetricDimension,
+  Timeline,
+} from "metabase-types/api";
 
 import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat";
 

@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 
 import type {
   ExplorationDimensionGroup,
-  ExplorationMetric,
   Metric,
   MetricDimension,
 } from "metabase-types/api";
@@ -54,14 +53,6 @@ function groupDimensions(metrics: Metric[]): ExplorationDimensionGroup[] {
   });
 }
 
-function toExplorationMetric(metric: Metric): ExplorationMetric {
-  const { dimensions: _dimensions, ...rest } = metric;
-  return {
-    ...rest,
-    dimension_ids: (metric.dimensions ?? []).map((d) => d.id),
-  };
-}
-
 export function setupExplorationDataEndpoint(metrics: Metric[]) {
   fetchMock.get({
     url: "path:/api/exploration/dimensions",
@@ -78,7 +69,7 @@ export function setupExplorationDataEndpoint(metrics: Metric[]) {
               ),
           );
       return {
-        metrics: filtered.map(toExplorationMetric),
+        metrics: filtered,
         dimension_groups: groupDimensions(filtered),
       };
     },

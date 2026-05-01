@@ -1,4 +1,3 @@
-import { setupMetricsEndpoints } from "__support__/server-mocks/metric";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
@@ -6,7 +5,14 @@ import type {
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
-import { createMockMetric } from "metabase-types/api/mocks/metric";
+import type {
+  GetExplorationDataResponse,
+  MetricDimension,
+} from "metabase-types/api";
+import {
+  createMockMetric,
+  createMockMetricDimension,
+} from "metabase-types/api/mocks/metric";
 
 import { NewExplorationChat } from "./NewExplorationChat";
 
@@ -27,16 +33,38 @@ jest.mock("metabase/metabot/hooks", () => ({
   useMetabotAgent: jest.fn(),
 }));
 
-const metricRevenue = createMockMetric({
-  id: 1,
-  name: "Monthly recurring revenue",
-  description: "Revenue per month",
+const revenueDateDimension = createMockMetricDimension({
+  id: "revenue.created_at",
+  name: "created_at",
+  display_name: "Created At",
+  effective_type: "type/DateTime",
+  semantic_type: "type/CreationTimestamp",
 });
-const metricChurn = createMockMetric({
-  id: 2,
-  name: "Churn rate",
-  description: "Customers lost",
+const customerSegmentDimension = createMockMetricDimension({
+  id: "customer.segment",
+  name: "segment",
+  display_name: "Customer Segment",
+  semantic_type: "type/Category",
 });
+
+const metricRevenue: GetExplorationDataResponse["metrics"][number] = {
+  ...createMockMetric({
+    id: 1,
+    name: "Monthly recurring revenue",
+    description: "Revenue per month",
+  }),
+  dimension_ids: [revenueDateDimension.id],
+  dimensions: [revenueDateDimension],
+};
+const metricChurn: GetExplorationDataResponse["metrics"][number] = {
+  ...createMockMetric({
+    id: 2,
+    name: "Churn rate",
+    description: "Customers lost",
+  }),
+  dimension_ids: [customerSegmentDimension.id],
+  dimensions: [customerSegmentDimension],
+};
 
 const userMessage: MetabotChatMessage = {
   id: "user-1",
@@ -54,13 +82,38 @@ const searchToolCallMessage: MetabotDebugToolCallMessage = {
   result: "<search-results></search-results>",
 };
 
-const metricIdsToolCallMessage: MetabotDebugToolCallMessage = {
+const explorationDataResponse: GetExplorationDataResponse = {
+  metrics: [metricRevenue, metricChurn],
+  dimension_groups: [
+    {
+      name: "Created At",
+      dimension_interestingness: null,
+      dimensions: [revenueDateDimension],
+    },
+    {
+      name: "Customer Segment",
+      dimension_interestingness: null,
+      dimensions: [customerSegmentDimension],
+    },
+  ],
+};
+
+const explorationDataToolCallMessage: MetabotDebugToolCallMessage = {
   id: "tool-call-2",
   role: "agent",
   type: "tool_call",
   name: "select_exploration_metrics",
   status: "ended",
-  result: JSON.stringify({ metric_ids: [metricRevenue.id, metricChurn.id] }),
+  result: JSON.stringify(explorationDataResponse),
+};
+
+const setNameToolCallMessage: MetabotDebugToolCallMessage = {
+  id: "tool-call-3",
+  role: "agent",
+  type: "tool_call",
+  name: "set_exploration_name",
+  status: "ended",
+  result: JSON.stringify({ name: "Revenue investigation" }),
 };
 
 const agentMessage: MetabotChatMessage = {
@@ -91,8 +144,6 @@ function mockMetabotAgentState({
 }
 
 function setup() {
-  setupMetricsEndpoints([metricRevenue, metricChurn]);
-
   const setMetrics = jest.fn();
   const setDimensions = jest.fn();
   const setName = jest.fn();
@@ -127,7 +178,7 @@ function setup() {
     );
   };
 
-  return { setMetrics, rerender };
+  return { setMetrics, setDimensions, setName, rerender };
 }
 
 describe("NewExplorationChat", () => {
@@ -135,25 +186,30 @@ describe("NewExplorationChat", () => {
     jest.clearAllMocks();
   });
 
-  it("adds metrics from a metric_ids tool call response", async () => {
-    const { setMetrics, rerender } = setup();
+  it("adds metrics and dimensions from an exploration data tool call response", async () => {
+    const { setMetrics, setDimensions, rerender } = setup();
 
     rerender({
       messages: [userMessage, searchToolCallMessage],
       isDoingScience: true,
     });
     rerender({
-      messages: [userMessage, searchToolCallMessage, metricIdsToolCallMessage],
+      messages: [
+        userMessage,
+        searchToolCallMessage,
+        explorationDataToolCallMessage,
+      ],
       isDoingScience: true,
     });
 
     expect(setMetrics).not.toHaveBeenCalled();
+    expect(setDimensions).not.toHaveBeenCalled();
 
     rerender({
       messages: [
         userMessage,
         searchToolCallMessage,
-        metricIdsToolCallMessage,
+        explorationDataToolCallMessage,
         agentMessage,
       ],
       isDoingScience: false,
@@ -162,10 +218,14 @@ describe("NewExplorationChat", () => {
     await waitFor(() => {
       expect(setMetrics).toHaveBeenCalledWith(expect.any(Function));
     });
+    expect(setDimensions).toHaveBeenCalledWith(expect.any(Function));
 
     const updateMetrics = setMetrics.mock.calls[0][0] as (
       metrics: ExplorationMetric[],
     ) => ExplorationMetric[];
+    const updateDimensions = setDimensions.mock.calls[0][0] as (
+      dimensions: MetricDimension[],
+    ) => MetricDimension[];
 
     expect(updateMetrics([])).toEqual([
       expect.objectContaining({
@@ -177,5 +237,42 @@ describe("NewExplorationChat", () => {
         name: metricChurn.name,
       }),
     ]);
+    expect(updateDimensions([])).toEqual([
+      expect.objectContaining({
+        id: revenueDateDimension.id,
+        display_name: revenueDateDimension.display_name,
+      }),
+      expect.objectContaining({
+        id: customerSegmentDimension.id,
+        display_name: customerSegmentDimension.display_name,
+      }),
+    ]);
+  });
+
+  it("sets the exploration name from a set name tool call response", async () => {
+    const { setName, rerender } = setup();
+
+    rerender({
+      messages: [userMessage, setNameToolCallMessage],
+      isDoingScience: true,
+    });
+
+    expect(setName).not.toHaveBeenCalled();
+
+    rerender({
+      messages: [userMessage, setNameToolCallMessage, agentMessage],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(setName).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    const updateName = setName.mock.calls[0][0] as (
+      name: string | null,
+    ) => string | null;
+
+    expect(updateName(null)).toBe("Revenue investigation");
+    expect(updateName("Existing name")).toBe("Existing name");
   });
 });

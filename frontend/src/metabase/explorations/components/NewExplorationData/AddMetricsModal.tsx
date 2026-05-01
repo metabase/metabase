@@ -4,10 +4,7 @@ import { t } from "ttag";
 import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import type {
-  ExplorationMetric,
-  MetricDimension,
-} from "metabase/explorations/types";
+import type { ExplorationMetric } from "metabase/explorations/types";
 import {
   Box,
   Button,
@@ -20,20 +17,14 @@ import {
 } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
-  ExplorationMetric as ApiExplorationMetric,
   DimensionId,
   ExplorationDimensionGroup,
-  MetricBaseData,
+  MetricDimension,
 } from "metabase-types/api";
 
 import S from "./AddMetricsModal.module.css";
 import { DimensionList } from "./DimensionList";
 import { MetricList } from "./MetricList";
-import { isLibraryMetric } from "./utils";
-
-type MetricWithCollection = ExplorationMetric & {
-  collection?: MetricBaseData["collection"];
-};
 
 export interface AddMetricsModalProps {
   opened: boolean;
@@ -44,23 +35,6 @@ export interface AddMetricsModalProps {
     newMetrics: ExplorationMetric[],
     newDimensions: MetricDimension[],
   ) => void;
-}
-
-function toMetricWithCollection(
-  metric: ApiExplorationMetric,
-  dimensionsById: Map<DimensionId, MetricDimension>,
-): MetricWithCollection {
-  const resolved: MetricDimension[] = [];
-  for (const id of metric.dimension_ids) {
-    const dim = dimensionsById.get(id);
-    if (dim) {
-      resolved.push(dim);
-    }
-  }
-  // Strip dimension_ids from the API shape and attach resolved dimensions so
-  // the rest of the modal can keep working with `ExplorationMetric` (= Metric).
-  const { dimension_ids: _ignored, ...rest } = metric;
-  return { ...rest, dimensions: resolved } as MetricWithCollection;
 }
 
 export function AddMetricsModal({
@@ -97,6 +71,8 @@ export function AddMetricsModal({
     { skip: !opened },
   );
 
+  const visibleMetrics = useMemo(() => response?.metrics ?? [], [response]);
+
   const visibleGroups = useMemo<ExplorationDimensionGroup[]>(
     () => response?.dimension_groups ?? [],
     [response],
@@ -129,14 +105,6 @@ export function AddMetricsModal({
     return { groupByRowId, dimensionsById };
   }, [groupRows, visibleGroups]);
 
-  const rawMetrics = useMemo<MetricWithCollection[]>(
-    () =>
-      (response?.metrics ?? []).map((m) =>
-        toMetricWithCollection(m, dimensionsById),
-      ),
-    [response, dimensionsById],
-  );
-
   // Reset the draft from props whenever the modal opens.
   useEffect(() => {
     if (opened) {
@@ -154,28 +122,15 @@ export function AddMetricsModal({
     onClose();
   }, [selectedMetrics, selectedDimensions, onSelectedItemsChange, onClose]);
 
-  const visibleMetrics = useMemo(
-    () =>
-      [...rawMetrics].sort((a, b) => {
-        const aLib = isLibraryMetric(a);
-        const bLib = isLibraryMetric(b);
-        if (aLib === bLib) {
-          return 0;
-        }
-        return aLib ? -1 : 1;
-      }),
-    [rawMetrics],
-  );
-
   const metricsByDimension = useMemo(() => {
     const map = new Map<DimensionId, ExplorationMetric[]>();
     for (const metric of visibleMetrics) {
-      for (const dimension of metric.dimensions) {
-        const list = map.get(dimension.id);
+      for (const id of metric.dimension_ids) {
+        const list = map.get(id);
         if (list) {
           list.push(metric);
         } else {
-          map.set(dimension.id, [metric]);
+          map.set(id, [metric]);
         }
       }
     }
@@ -189,11 +144,11 @@ export function AddMetricsModal({
         setSelectedMetrics(nextMetrics);
         const stillUsedDimIds = new Set<DimensionId>();
         for (const m of nextMetrics) {
-          for (const d of m.dimensions) {
-            stillUsedDimIds.add(d.id);
+          for (const id of m.dimension_ids) {
+            stillUsedDimIds.add(id);
           }
         }
-        const removedDimIds = new Set(metric.dimensions.map((d) => d.id));
+        const removedDimIds = new Set(metric.dimension_ids);
         const nextDimensions = selectedDimensions.filter(
           (d) => !removedDimIds.has(d.id) || stillUsedDimIds.has(d.id),
         );
@@ -204,9 +159,12 @@ export function AddMetricsModal({
         setSelectedMetrics([...selectedMetrics, metric]);
         const have = new Set(selectedDimensions.map((d) => d.id));
         const merged = [...selectedDimensions];
-        for (const dimension of metric.dimensions) {
-          if (!have.has(dimension.id)) {
-            merged.push(dimension);
+        for (const id of metric.dimension_ids) {
+          if (!have.has(id)) {
+            const dimension = dimensionsById.get(id);
+            if (dimension) {
+              merged.push(dimension);
+            }
           }
         }
         if (merged.length !== selectedDimensions.length) {
@@ -214,7 +172,7 @@ export function AddMetricsModal({
         }
       }
     },
-    [selectedDimensions, selectedMetrics, selectedMetricIds],
+    [selectedDimensions, selectedMetrics, selectedMetricIds, dimensionsById],
   );
 
   const isDimensionSelected = useCallback(
@@ -248,7 +206,9 @@ export function AddMetricsModal({
         const remainingDimIds = new Set(nextDimensions.map((d) => d.id));
         const orphanedIds = new Set(
           connected
-            .filter((m) => !m.dimensions.some((d) => remainingDimIds.has(d.id)))
+            .filter(
+              (m) => !m.dimension_ids.some((id) => remainingDimIds.has(id)),
+            )
             .map((m) => m.id),
         );
         if (orphanedIds.size > 0) {

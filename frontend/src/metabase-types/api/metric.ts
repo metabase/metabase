@@ -18,51 +18,17 @@ export type Metric = {
   id: MetricId;
   name: string;
   description: string | null;
-  dimensions: MetricDimension[];
-  dimension_mappings: DimensionMapping[];
+  dimension_ids?: DimensionId[] | null;
+  dimensions?: MetricDimension[] | null;
+  dimension_mappings?: DimensionMapping[] | null;
   collection_id: CollectionId | null;
+  collection?: Collection | null;
   result_column_name?: string;
 };
 
-export type MetricBaseData = {
-  id: MetricId;
-  name: string;
-  description: string | null;
-  collection_id: CollectionId | null;
-  collection: Collection | null;
-};
-
-export type ExplorationMetric = Omit<Metric, "dimensions"> & {
-  dimension_ids: DimensionId[];
-};
-
-// common shape across Metric, MetricBaseData, and ExplorationMetric
-export type MetricApiResponse = {
-  id: MetricId;
-  name: string;
-  description: string | null;
-  collection_id: CollectionId | null;
-  collection?: Collection | null;
-};
-
 export type GetMetricListResponse = {
-  data: MetricBaseData[];
+  data: Metric[];
 } & PaginationResponse;
-
-export type GetExplorationDataRequest = {
-  q?: string;
-};
-
-export type ExplorationDimensionGroup = {
-  name: string;
-  dimension_interestingness: number | null;
-  dimensions: MetricDimension[];
-};
-
-export type GetExplorationDataResponse = {
-  metrics: ExplorationMetric[];
-  dimension_groups: ExplorationDimensionGroup[];
-};
 
 export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
 export type MathOperator = (typeof MATH_OPERATORS)[number];

@@ -8,7 +8,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import type { Timeline } from "metabase/explorations/types";
+import type { Timeline } from "metabase-types/api";
 import {
   createMockTimeline,
   createMockTimelineEvent,

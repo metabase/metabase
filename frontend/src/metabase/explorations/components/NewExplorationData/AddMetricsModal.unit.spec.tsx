@@ -8,10 +8,8 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import type {
-  ExplorationMetric,
-  MetricDimension,
-} from "metabase/explorations/types";
+import type { ExplorationMetric } from "metabase/explorations/types";
+import type { MetricDimension } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import {
   createMockMetric,
@@ -23,42 +21,49 @@ import { AddMetricsModal } from "./AddMetricsModal";
 const dimRevenue = createMockMetricDimension({
   id: "dim-revenue",
   display_name: "Customer size",
+  sources: [{ type: "field", "field-id": 1 }],
 });
 const dimChurn = createMockMetricDimension({
   id: "dim-churn",
   display_name: "Plan",
+  sources: [{ type: "field", "field-id": 2 }],
 });
 const dimShared = createMockMetricDimension({
   id: "dim-shared",
   display_name: "Country",
+  sources: [{ type: "field", "field-id": 3 }],
 });
 const dimLibrary = createMockMetricDimension({
   id: "dim-library",
   display_name: "Tier",
+  sources: [{ type: "field", "field-id": 4 }],
 });
 
 const metricRevenue = createMockMetric({
   id: 1,
   name: "Monthly recurring revenue",
   description: "Revenue per month",
+  dimension_ids: [dimRevenue.id, dimShared.id],
   dimensions: [dimRevenue, dimShared],
 });
 const metricChurn = createMockMetric({
   id: 2,
   name: "Churn rate",
   description: "Customers lost",
+  dimension_ids: [dimChurn.id, dimShared.id],
   dimensions: [dimChurn, dimShared],
 });
 const metricLibrary = createMockMetric({
   id: 3,
   name: "Active users",
   description: "Daily active users",
+  dimension_ids: [dimLibrary.id],
   dimensions: [dimLibrary],
   collection: createMockCollection({ type: "library-metrics" }),
 });
 
-const revenueAsMetric: ExplorationMetric = metricRevenue;
-const churnAsMetric: ExplorationMetric = metricChurn;
+const revenueAsMetric = metricRevenue as ExplorationMetric;
+const churnAsMetric = metricChurn as ExplorationMetric;
 
 interface SetupOpts {
   initialMetrics?: ExplorationMetric[];
@@ -69,8 +74,6 @@ function setup({
   initialMetrics = [],
   initialDimensions = [],
 }: SetupOpts = {}) {
-  // Library metric is intentionally last in the server response so that the
-  // assertion in "Library metrics first" is meaningful.
   setupMetricsEndpoints([metricRevenue, metricChurn, metricLibrary]);
 
   const onSelectedItemsChange = jest.fn();
@@ -113,26 +116,6 @@ describe("AddMetricsModal", () => {
     expect(screen.getByText("Customer size")).toBeInTheDocument();
     expect(screen.getByText("Plan")).toBeInTheDocument();
     expect(screen.getByText("Country")).toBeInTheDocument();
-  });
-
-  it("displays Library metrics at the top of the list", async () => {
-    setup();
-    await screen.findByText("Active users");
-
-    const items = screen.getAllByRole("listitem");
-    const libIndex = items.findIndex((el) =>
-      within(el).queryByText("Active users"),
-    );
-    const churnIndex = items.findIndex((el) =>
-      within(el).queryByText("Churn rate"),
-    );
-    const revenueIndex = items.findIndex((el) =>
-      within(el).queryByText("Monthly recurring revenue"),
-    );
-
-    expect(libIndex).toBeGreaterThanOrEqual(0);
-    expect(libIndex).toBeLessThan(churnIndex);
-    expect(libIndex).toBeLessThan(revenueIndex);
   });
 
   it("toggles do not call onSelectedItemsChange until Done is clicked", async () => {

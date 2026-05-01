@@ -5,7 +5,6 @@ import { msgid, ngettext, t } from "ttag";
 import { useListTimelinesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getEventCount } from "metabase/common/utils/timelines";
-import type { Timeline } from "metabase/explorations/types";
 import {
   Box,
   Button,
@@ -18,6 +17,7 @@ import {
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
+import type { Timeline } from "metabase-types/api";
 
 import S from "./AddTimelinesModal.module.css";
 

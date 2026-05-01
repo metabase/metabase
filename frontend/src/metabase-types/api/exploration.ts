@@ -1,8 +1,28 @@
 import type { CardId } from "./card";
-import type { DimensionMapping } from "./measure";
+import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
+import type { Metric } from "./metric";
 import type { DatasetQuery } from "./query";
 import type { TimelineId } from "./timeline";
 import type { UserId } from "./user";
+
+export type GetExplorationDataRequest = {
+  q?: string;
+};
+
+export type ExplorationDimensionGroup = {
+  name: string;
+  dimension_interestingness: number | null;
+  dimensions: MetricDimension[];
+};
+
+type MetricWithDimensionIds = Metric & {
+  dimension_ids: DimensionId[];
+};
+
+export type GetExplorationDataResponse = {
+  metrics: MetricWithDimensionIds[];
+  dimension_groups: ExplorationDimensionGroup[];
+};
 
 export type ExplorationId = number;
 export type ExplorationThreadId = number;
@@ -10,7 +30,7 @@ export type ExplorationQueryId = number;
 
 export interface ExplorationMetricSelection {
   card_id: CardId;
-  dimension_mappings?: DimensionMapping[];
+  dimension_mappings?: DimensionMapping[] | null;
 }
 
 export interface ExplorationDimensionSelection {

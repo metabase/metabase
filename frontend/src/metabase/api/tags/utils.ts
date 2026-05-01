@@ -33,7 +33,7 @@ import {
   type LoggerPreset,
   type Measure,
   type MeasureId,
-  type MetricApiResponse,
+  type Metric,
   type MetricId,
   type ModelCacheRefreshStatus,
   type ModelIndex,
@@ -579,14 +579,12 @@ export function provideMeasureDimensionValuesTags(
 }
 
 export function provideMetricListTags(
-  metrics: MetricApiResponse[],
+  metrics: Metric[],
 ): TagDescription<TagType>[] {
   return [listTag("card"), ...metrics.flatMap(provideMetricTags)];
 }
 
-export function provideMetricTags(
-  metric: MetricApiResponse,
-): TagDescription<TagType>[] {
+export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
   return [
     idTag("card", metric.id),
     ...(metric.collection ? provideCollectionTags(metric.collection) : []),

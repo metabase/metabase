@@ -10,13 +10,7 @@ import {
   isString,
   isStringLike,
 } from "metabase-lib/v1/types/utils/isa";
-import type { MetricBaseData, MetricDimension } from "metabase-types/api";
-
-export function isLibraryMetric(metric: {
-  collection?: MetricBaseData["collection"];
-}): boolean {
-  return metric.collection?.type === "library-metrics";
-}
+import type { MetricDimension } from "metabase-types/api";
 
 export type DimensionGroupKey =
   | "date"

@@ -3,10 +3,11 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { Center, Group, Stack } from "metabase/ui";
+import type { MetricDimension, Timeline } from "metabase-types/api";
 
 import { NewExplorationChat } from "../components/NewExplorationChat";
 import { NewExplorationData } from "../components/NewExplorationData";
-import type { ExplorationMetric, MetricDimension, Timeline } from "../types";
+import type { ExplorationMetric } from "../types";
 
 export function NewExplorationPage() {
   const [metrics, setMetrics] = useState<ExplorationMetric[]>([]);
