@@ -1042,12 +1042,17 @@
 
 (deftest ^:parallel only-connect-when-non-malicious-properties
   (testing "Reject connection strings with malicious properties"
-    (let [details (assoc (tx/dbdef->connection-details :mysql :db
-                                                       {:database-name "argent"})
-                         :additional-options "allowLoadLocalInfile=true")
-          result (try (driver/can-connect? :mysql details)
-                      ::did-not-throw
-                      (catch Exception e e))]
-      (is (instance? clojure.lang.ExceptionInfo result))
-      (is (partial= {:cause "Potentially dangerous keys in additional options"}
-                    (Throwable->map result))))))
+    (are [bad-option] (let [details (assoc (tx/dbdef->connection-details :mysql :db
+                                                                         {:database-name "argent"})
+                                           :additional-options bad-option)
+                            result (try (driver/can-connect? :mysql details)
+                                        ::did-not-throw
+                                        (catch Exception e e))]
+                        (is (instance? clojure.lang.ExceptionInfo result))
+                        (is (partial= {:cause "Potentially dangerous keys in additional options"}
+                                      (Throwable->map result))))
+      "allowLoadLocalInfile=true"
+      "allowLoadLocalInfileInPath=1"
+      "allowUrlInLocalInfile=1"
+      "autoDeserialize=1"
+      "serverRSAPublicKeyFile=/path/to/file")))
