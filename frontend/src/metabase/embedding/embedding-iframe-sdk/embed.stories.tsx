@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ParametersPlayground,
@@ -19,6 +19,16 @@ const INSTANCE_URL =
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
+// Module-level init: the custom element reads `window.metabaseConfig`
+// in `connectedCallback`, so it must already be set by the time the
+// element mounts. `useMemo` / `useEffect` aren't suitable — `useMemo`
+// is for memoization (not side effects) and `useEffect` runs after
+// children commit, too late for a child custom element's mount.
+(window as any).metabaseConfig = {
+  instanceUrl: INSTANCE_URL,
+  useExistingUserSession: true,
+};
+
 const ControlledParametersEmbedJsPlayground = () => {
   const elementRef = useRef<MetabaseDashboardElement | null>(null);
 
@@ -33,13 +43,6 @@ const ControlledParametersEmbedJsPlayground = () => {
       }
     },
   });
-
-  useMemo(() => {
-    (window as any).metabaseConfig = {
-      instanceUrl: INSTANCE_URL,
-      useExistingUserSession: true,
-    };
-  }, []);
 
   useEffect(() => {
     const element = elementRef.current;

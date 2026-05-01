@@ -147,8 +147,8 @@ export type SqlParameterValues = Record<
 /**
  * Source of a sql-parameter-change event. `initial-state` fires exactly
  * once per question load — after the backend response has
- * resolved applied parameter values from defaults, last-used, and the
- * host-provided `parameters` prop. All subsequent emissions (user
+ * resolved applied parameter values from defaults and the
+ * host-provided `sqlParameters` prop. All subsequent emissions (user
  * widget edits, programmatic pushes via the controlled prop, default
  * resolution on reload) are tagged `manual-change`
  *

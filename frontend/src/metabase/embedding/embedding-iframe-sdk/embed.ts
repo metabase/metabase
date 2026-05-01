@@ -339,37 +339,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     } as Partial<SdkIframeEmbedElementSettings>);
   }
 
-  /**
-   * Apply a typed value coming from a property setter (e.g.
-   * `set parameters(values)`). The setter mirrors the value to the
-   * backing HTML attribute; `attributeChangedCallback` is the single
-   * dispatch path.
-   */
-  protected _applyJsonProperty(
-    settingKey: string,
-    attrName: string,
-    value: unknown,
-  ) {
-    const nextJson = value === undefined ? null : JSON.stringify(value);
-    const currentJson = this.getAttribute(attrName);
-
-    if (nextJson === currentJson) {
-      const nextSettings = {
-        [settingKey]: value,
-      } as Partial<SdkIframeEmbedElementSettings>;
-
-      this._updateSettings(nextSettings);
-
-      return;
-    }
-
-    if (nextJson === null) {
-      this.removeAttribute(attrName);
-    } else {
-      this.setAttribute(attrName, nextJson);
-    }
-  }
-
   private _emitEvent(event: SdkIframeEmbedEvent) {
     const handlers = this._eventHandlers.get(event.type);
 
@@ -556,7 +525,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
   }
 
-  private reportAuthenticationError(error: unknown) {
+  private _reportAuthenticationError(error: unknown) {
     this.sendMessage("metabase.embed.reportAuthenticationError", {
       error:
         error instanceof MetabaseError
@@ -570,7 +539,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
   private async _authenticate() {
     if (!this._authManager) {
-      this.reportAuthenticationError(SSO_NOT_ALLOWED());
+      this._reportAuthenticationError(SSO_NOT_ALLOWED());
 
       return;
     }
@@ -592,7 +561,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         questionId: undefined,
       });
     } catch (error) {
-      this.reportAuthenticationError(error);
+      this._reportAuthenticationError(error);
       // Send settings without a token so ComponentProvider can mount and display the error.
       this._updateSettings({
         dashboardId: undefined,
@@ -608,7 +577,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         guestToken: token,
       });
     } catch (error) {
-      this.reportAuthenticationError(error);
+      this._reportAuthenticationError(error);
     }
   }
 
@@ -691,6 +660,71 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     return data.jwt;
   }
+
+  // JSON-typed properties (e.g. `parameters`, `sqlParameters`) follow the
+  // attribute-as-source-of-truth pattern: the getter parses the backing
+  // HTML attribute on every read, the setter serializes via
+  // `_writeJsonProperty` below. Lets `<el parameters='...'>` markup work
+  // out of the box and auto-sync with external attribute mutations
+  // (DevTools, framework bindings); trade-off is that ref-identity isn't
+  // preserved across `set` then `get`.
+
+  /** Reads a JSON-typed attribute. `undefined` if absent / not a plain object. */
+  protected _readJsonAttribute<T>(attributeName: string): T | undefined {
+    const rawValue = this.getAttribute(attributeName);
+
+    if (rawValue === null) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue);
+
+      if (
+        parsed === null ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed)
+      ) {
+        return undefined;
+      }
+
+      return parsed as T;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Writes a property-setter value to the backing JSON attribute.
+   * `null`/`undefined` clear it; same-string re-push dispatches
+   * `_updateSettings` directly (browser would otherwise short-circuit
+   * `setAttribute` and skip `attributeChangedCallback`).
+   */
+  protected _writeJsonProperty(
+    settingKey: string,
+    attrName: string,
+    value: unknown,
+  ) {
+    const shouldRemoveValue = value === undefined || value === null;
+    const nextJson = shouldRemoveValue ? null : JSON.stringify(value);
+    const currentJson = this.getAttribute(attrName);
+
+    if (nextJson === currentJson) {
+      const nextSettings = {
+        [settingKey]: shouldRemoveValue ? undefined : value,
+      } as Partial<SdkIframeEmbedElementSettings>;
+
+      this._updateSettings(nextSettings);
+
+      return;
+    }
+
+    if (nextJson === null) {
+      this.removeAttribute(attrName);
+    } else {
+      this.setAttribute(attrName, nextJson);
+    }
+  }
 }
 
 type ConcreteEmbedElementCtor<U extends string[]> = new (
@@ -699,24 +733,6 @@ type ConcreteEmbedElementCtor<U extends string[]> = new (
   _componentName: string;
   _attributeNames: U;
 };
-
-/**
- * Backing reader for component subclass JSON-typed attributes (e.g.
- * `parameters`, `sql-parameters`). Returns `undefined` when the attribute
- * is absent or fails to parse — the underlying `parseAttributeValue`
- * already logs JSON errors.
- */
-function readJsonAttribute<T>(
-  el: HTMLElement,
-  attrName: string,
-): T | undefined {
-  const raw = el.getAttribute(attrName);
-  if (raw === null) {
-    return undefined;
-  }
-  const parsed = parseAttributeValue(raw);
-  return parsed as T | undefined;
-}
 
 function createCustomElement<
   T extends keyof ComponentToAttributes,
@@ -763,10 +779,10 @@ export const MetabaseDashboardElement = createCustomElement(
   (Base) =>
     class extends Base {
       get parameters(): ParameterValues | undefined {
-        return readJsonAttribute<ParameterValues>(this, "parameters");
+        return this._readJsonAttribute<ParameterValues>("parameters");
       }
       set parameters(values: ParameterValues | undefined) {
-        this._applyJsonProperty("parameters", "parameters", values);
+        this._writeJsonProperty("parameters", "parameters", values);
       }
     },
 );
@@ -793,10 +809,10 @@ export const MetabaseQuestionElement = createCustomElement(
   (Base) =>
     class extends Base {
       get sqlParameters(): SqlParameterValues | undefined {
-        return readJsonAttribute<SqlParameterValues>(this, "sql-parameters");
+        return this._readJsonAttribute<SqlParameterValues>("sql-parameters");
       }
       set sqlParameters(values: SqlParameterValues | undefined) {
-        this._applyJsonProperty("sqlParameters", "sql-parameters", values);
+        this._writeJsonProperty("sqlParameters", "sql-parameters", values);
       }
     },
 );
