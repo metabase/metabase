@@ -124,7 +124,7 @@
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
   [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address embed-url]}]
-  (let [enriched-context (metabot.context/create-context context)
+  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])
         external-id      (str (random-uuid))]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
