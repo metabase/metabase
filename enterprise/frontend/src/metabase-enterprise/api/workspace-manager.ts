@@ -20,6 +20,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideWorkspaceAccessKeyLogListTags,
   provideWorkspaceListTags,
   provideWorkspaceTags,
 } from "./tags";
@@ -122,8 +123,8 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { workspace_id }) =>
         invalidateTags(error, [
-          listTag("workspace"),
           idTag("workspace", workspace_id),
+          listTag("workspace-access-key"),
         ]),
     }),
     updateWorkspaceAccessKey: builder.mutation<
@@ -135,10 +136,10 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace-manager/${workspace_id}/access-key/${id}`,
         body: { name },
       }),
-      invalidatesTags: (_, error, { workspace_id }) =>
+      invalidatesTags: (_, error, { workspace_id, id }) =>
         invalidateTags(error, [
-          listTag("workspace"),
           idTag("workspace", workspace_id),
+          idTag("workspace-access-key", id),
         ]),
     }),
     deleteWorkspaceAccessKey: builder.mutation<
@@ -149,10 +150,11 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/workspace-manager/${workspace_id}/access-key/${id}`,
       }),
-      invalidatesTags: (_, error, { workspace_id }) =>
+      invalidatesTags: (_, error, { workspace_id, id }) =>
         invalidateTags(error, [
-          listTag("workspace"),
           idTag("workspace", workspace_id),
+          listTag("workspace-access-key"),
+          idTag("workspace-access-key", id),
         ]),
     }),
     listWorkspaceAccessKeyLogs: builder.query<
@@ -164,6 +166,8 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace-manager/${id}/access-key-log`,
         params,
       }),
+      providesTags: (response) =>
+        provideWorkspaceAccessKeyLogListTags(response?.data ?? []),
     }),
   }),
 });

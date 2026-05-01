@@ -19,6 +19,7 @@ export function getTimestampColumn(): TreeTableColumnDef<WorkspaceAccessKeyLog> 
   return {
     id: "timestamp",
     header: t`Timestamp`,
+    width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.timestamp,
     cell: ({ getValue }) => <DateTime value={String(getValue())} />,
