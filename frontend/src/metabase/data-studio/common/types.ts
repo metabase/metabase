@@ -32,4 +32,5 @@ export type TreeItem = {
       })
     | EmptyStateData;
   children?: TreeItem[];
+  childrenLoaded?: boolean;
 };

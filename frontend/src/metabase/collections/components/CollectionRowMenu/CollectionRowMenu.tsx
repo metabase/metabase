@@ -33,12 +33,18 @@ type CollectionRowMenuProps = {
     previousParentId: CollectionId | null;
     newParentId: CollectionId | null;
   }) => void;
+  onArchive?: (collection: Collection) => void;
   customArchiveMessage?: string;
 };
 
 export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const { collection, onChangePermissions, onSave, customArchiveMessage } =
-    props;
+  const {
+    collection,
+    onArchive,
+    onChangePermissions,
+    onSave,
+    customArchiveMessage,
+  } = props;
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
@@ -78,6 +84,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
         }),
       );
       invalidateTags();
+      onArchive?.(collection);
     } catch (error) {
       void dispatch(
         addUndo({

@@ -43,7 +43,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 import { TableMoreMenu } from "../tables/components/TableHeader/TableMoreMenu";
@@ -240,6 +240,15 @@ function LibraryPageContent() {
     [],
   );
 
+  const getParentCollectionId = useCallback((collection: Collection) => {
+    const parentId =
+      "collection_id" in collection
+        ? collection.collection_id
+        : collection.parent_id;
+
+    return typeof parentId === "number" ? parentId : null;
+  }, []);
+
   const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(
     () => [
       {
@@ -359,6 +368,18 @@ function LibraryPageContent() {
                     ? t`Archiving this collection will also unpublish the tables inside it and archive any other child items.`
                     : undefined
                 }
+                onArchive={(collection) => {
+                  const parentId = getParentCollectionId(collection);
+                  if (parentId == null) {
+                    return;
+                  }
+
+                  if (data.type === "library-metrics") {
+                    refreshMetricCollections([parentId]);
+                  } else {
+                    refreshTableCollections([parentId]);
+                  }
+                }}
               />
             );
           }
@@ -373,6 +394,7 @@ function LibraryPageContent() {
       getAffectedCollectionIds,
       refreshMetricCollections,
       refreshTableCollections,
+      getParentCollectionId,
     ],
   );
 
@@ -441,6 +463,9 @@ function LibraryPageContent() {
       const { model, data, children } = row.original;
       if (model !== "collection") {
         return false;
+      }
+      if (row.original.childrenLoaded) {
+        return children != null && children.length > 0;
       }
       // Already has children populated
       if (children && children.length > 0) {

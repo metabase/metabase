@@ -56,8 +56,9 @@ function buildChildren(
   items: CollectionItem[],
   loadedCollections: Map<CollectionId, CollectionItem[]>,
 ): TreeItem[] {
-  const collections = items.filter((i) => i.model === "collection");
-  const leafItems = items.filter((i) => i.model !== "collection");
+  const visibleItems = items.filter((i) => !i.archived);
+  const collections = visibleItems.filter((i) => i.model === "collection");
+  const leafItems = visibleItems.filter((i) => i.model !== "collection");
 
   return [
     ...collections.map((col): TreeItem => {
@@ -78,6 +79,7 @@ function buildChildren(
         data: col,
         model: "collection",
         children,
+        childrenLoaded: childItems !== undefined,
       };
     }),
     ...leafItems.map(buildItemNode),
@@ -100,7 +102,11 @@ export function useLibraryCollectionTree(
     error,
   } = useListCollectionItemsQuery(
     collection
-      ? { id: collection.id, models: ["metric", "table", "collection"] }
+      ? {
+          id: collection.id,
+          models: ["metric", "table", "collection"],
+          archived: false,
+        }
       : skipToken,
   );
 
@@ -126,12 +132,16 @@ export function useLibraryCollectionTree(
       loadingIds.current.add(key);
 
       const result = await dispatch(
-        collectionApi.endpoints.listCollectionItems.initiate({
-          id: collectionId,
-          models: ["metric", "table", "collection"],
-        }),
+        collectionApi.endpoints.listCollectionItems.initiate(
+          {
+            id: collectionId,
+            models: ["metric", "table", "collection"],
+            archived: false,
+          },
+          { forceRefetch: true },
+        ),
       );
-      const items = result.data?.data ?? [];
+      const items = (result.data?.data ?? []).filter((item) => !item.archived);
       setLoadedCollections((prev) => new Map([...prev, [collectionId, items]]));
     },
     [dispatch],

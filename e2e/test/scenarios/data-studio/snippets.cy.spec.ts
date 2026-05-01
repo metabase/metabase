@@ -362,33 +362,40 @@ describe("scenarios > data studio > snippets", () => {
       H.createSnippetFolder({
         name: "Sibling Folder",
       }).then(({ body: siblingFolder }) => {
-        H.createSnippet({
+        return H.createSnippet({
           name: "Sibling Snippet",
           content: "SELECT 2",
           collection_id: siblingFolder.id,
+        }).then(({ body: snippet }) => {
+          H.DataStudio.Snippets.visitSnippet(snippet.id);
+          H.DataStudio.breadcrumbs()
+            .findByRole("link", { name: "Sibling Folder" })
+            .click();
         });
       });
 
-      H.DataStudio.Library.visit();
-
-      cy.log("Verify all folders and their contents are initially expanded");
+      cy.log(
+        "Verify the path to Sibling Folder is expanded, but child folder is collapsed",
+      );
       H.DataStudio.Library.libraryPage()
         .findByText("Parent Folder")
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByText("Child Folder")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Sibling Folder")
-        .should("be.visible");
+        .should("not.exist");
       H.DataStudio.Library.libraryPage()
         .findByText("Nested Snippet")
+        .should("not.exist");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Folder")
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByText("Sibling Snippet")
         .should("be.visible");
 
       cy.log("Navigate to the nested snippet");
+      H.DataStudio.Library.collectionItem("Parent Folder").click();
+      H.DataStudio.Library.collectionItem("Child Folder").click();
       H.DataStudio.Library.libraryPage().findByText("Nested Snippet").click();
       H.DataStudio.Snippets.editPage().should("be.visible");
 
