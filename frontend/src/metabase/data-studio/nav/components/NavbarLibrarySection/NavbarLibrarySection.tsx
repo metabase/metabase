@@ -76,6 +76,7 @@ function buildSectionTree(
     children,
     nonNavigable: true,
     type: sectionType,
+    is_library_root: true,
     namespace: null,
     location: null,
     can_write: false,
