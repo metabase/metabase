@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -13,27 +11,28 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
+import type { NormalizedDatabase } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import { getError, getLoading } from "../selectors";
 
-const mapStateToProps = (state, props) => ({
-  entities: getDatabases(state, props),
-  loading: getLoading(state, props),
-  loadingError: getError(state, props),
+interface DatabaseListProps {
+  entities: Record<string, NormalizedDatabase>;
+  loading?: boolean;
+  loadingError?: unknown;
+}
+
+const mapStateToProps = (state: any) => ({
+  entities: getDatabases(state),
+  loading: getLoading(state),
+  loadingError: getError(state),
 });
 
 const mapDispatchToProps = {
   ...metadataActions,
 };
 
-class DatabaseList extends Component {
-  static propTypes = {
-    entities: PropTypes.object.isRequired,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-  };
-
+class DatabaseList extends Component<DatabaseListProps> {
   render() {
     const { entities, loadingError, loading } = this.props;
 
@@ -44,7 +43,9 @@ class DatabaseList extends Component {
       })
       .sort((a, b) => {
         const compared = a.name.localeCompare(b.name);
-        return compared !== 0 ? compared : a.engine.localeCompare(b.engine);
+        return compared !== 0
+          ? compared
+          : (a.engine ?? "").localeCompare(b.engine ?? "");
       });
 
     return (
@@ -62,7 +63,9 @@ class DatabaseList extends Component {
                     <ListItem
                       key={database.id}
                       name={database.name}
-                      description={database.description}
+                      description={
+                        (database as { description?: string }).description
+                      }
                       url={`/reference/databases/${database.id}`}
                       icon="database"
                     />
