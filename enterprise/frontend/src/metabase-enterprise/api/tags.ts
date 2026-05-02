@@ -26,8 +26,6 @@ import {
   type TableDependencyNode,
   type TransformDependencyNode,
   type Workspace,
-  type WorkspaceAccessKey,
-  type WorkspaceAccessKeyLog,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -52,8 +50,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "workspace",
-  "workspace-access-key",
-  "workspace-access-key-log",
   "data-complexity-scores",
 ] as const;
 
@@ -258,55 +254,14 @@ export function provideSourceReplacementRunListTags(
   ];
 }
 
-export function provideWorkspaceAccessKeyTags(
-  accessKey: WorkspaceAccessKey,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("workspace-access-key", accessKey.id)];
-}
-
-export function provideWorkspaceAccessKeyListTags(
-  accessKeys: WorkspaceAccessKey[],
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("workspace-access-key"),
-    ...accessKeys.flatMap(provideWorkspaceAccessKeyTags),
-  ];
-}
-
 export function provideWorkspaceTags(
   workspace: Workspace,
 ): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("workspace", workspace.id),
-    ...(workspace.access_keys != null
-      ? provideWorkspaceAccessKeyListTags(workspace.access_keys)
-      : []),
-  ];
+  return [idTag("workspace", workspace.id)];
 }
 
 export function provideWorkspaceListTags(
   workspaces: Workspace[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
-}
-
-export function provideWorkspaceAccessKeyLogTags(
-  log: WorkspaceAccessKeyLog,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("workspace-access-key-log", log.id),
-    ...(log.workspace != null ? [idTag("workspace", log.workspace.id)] : []),
-    ...(log.workspace_access_key != null
-      ? provideWorkspaceAccessKeyTags(log.workspace_access_key)
-      : []),
-  ];
-}
-
-export function provideWorkspaceAccessKeyLogListTags(
-  logs: WorkspaceAccessKeyLog[],
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("workspace-access-key-log"),
-    ...logs.flatMap(provideWorkspaceAccessKeyLogTags),
-  ];
 }

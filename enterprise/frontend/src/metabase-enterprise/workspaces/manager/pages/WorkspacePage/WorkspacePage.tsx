@@ -11,11 +11,11 @@ import { SetupSection } from "./SetupSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceMoreMenu } from "./WorkspaceMoreMenu";
 
-type WorkspaceSetupPageProps = {
+type WorkspacePageProps = {
   params: { workspaceId: string };
 };
 
-export function WorkspaceSetupPage({ params }: WorkspaceSetupPageProps) {
+export function WorkspacePage({ params }: WorkspacePageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
   const {
     data: workspace,
@@ -39,18 +39,15 @@ export function WorkspaceSetupPage({ params }: WorkspaceSetupPageProps) {
     );
   }
 
-  return <WorkspaceSetupPageBody workspace={workspace} databases={databases} />;
+  return <WorkspacePageBody workspace={workspace} databases={databases} />;
 }
 
-type WorkspaceSetupPageBodyProps = {
+type WorkspacePageBodyProps = {
   workspace: Workspace;
   databases: Database[];
 };
 
-function WorkspaceSetupPageBody({
-  workspace,
-  databases,
-}: WorkspaceSetupPageBodyProps) {
+function WorkspacePageBody({ workspace, databases }: WorkspacePageBodyProps) {
   return (
     <PageContainer data-testid="workspace-page" gap="2.5rem">
       <WorkspaceHeader

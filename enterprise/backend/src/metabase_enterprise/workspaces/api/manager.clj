@@ -3,14 +3,11 @@
    Validation, auth, and presentation only — all logic lives in
    [[metabase-enterprise.workspaces.core]]."
   (:require
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.models.workspace-access-key :as ws.access-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -57,18 +54,6 @@
    (ms/InstanceOfClass java.time.OffsetDateTime)
    (ms/InstanceOfClass java.time.ZonedDateTime)])
 
-(def ^:private AccessKeyResponse
-  "Access key as exposed to the API — never includes the plaintext `:key`. The
-  plaintext is only returned by the create endpoint, in a separate
-  `AccessKeyWithSecretResponse` that wraps this one."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:workspace_id ms/PositiveInt]
-   [:name         ms/NonBlankString]
-   [:creator      [:maybe CreatorResponse]]
-   [:created_at   Timestamp]
-   [:updated_at   Timestamp]])
-
 (def ^:private WorkspaceResponse
   [:map {:closed true}
    [:id          ms/PositiveInt]
@@ -76,11 +61,9 @@
    [:creator     [:maybe CreatorResponse]]
    [:created_at  Timestamp]
    [:updated_at  Timestamp]
-   ;; `:databases` and `:access_keys` are only included when hydrated (i.e. the
-   ;; GET /:id endpoint). The list endpoint omits them — clients should treat a
-   ;; missing array as `[]`.
-   [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]
-   [:access_keys {:optional true} [:sequential AccessKeyResponse]]])
+   ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
+   ;; The list endpoint omits it — clients should treat a missing array as `[]`.
+   [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
@@ -92,29 +75,11 @@
   (when creator
     (select-keys creator [:id :first_name :last_name :email :common_name])))
 
-(defn- present-access-key
-  "Strip the stored `key_hash` from an access-key row, exposing only safe fields.
-  The plaintext only escapes via [[present-access-key-with-secret]], which is
-  reserved for the create endpoint."
-  [access-key]
-  (some-> access-key
-          (select-keys [:id :workspace_id :name :creator :created_at :updated_at])
-          (update :creator present-creator)))
-
-(defn- present-access-key-with-secret
-  "Like [[present-access-key]] but adds the plaintext `:key`. Used **only** by
-  the create endpoint so the caller can capture the key once; subsequent reads
-  never expose it (we don't store it)."
-  [access-key plaintext]
-  (-> (present-access-key access-key)
-      (assoc :key plaintext)))
-
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases :access_keys])
+          (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
-          (m/update-existing :databases   #(mapv present-workspace-database %))
-          (m/update-existing :access_keys #(mapv present-access-key %))))
+          (m/update-existing :databases #(mapv present-workspace-database %))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -185,98 +150,6 @@
   (api/check-superuser)
   (present-workspace
    (ws/remove-database! id db-id)))
-
-;;; ------------------------------------------ Access key endpoints ---------------------------------------------
-
-(def ^:private CreateAccessKeyParams
-  [:map {:closed true}
-   [:name ms/NonBlankString]])
-
-(def ^:private UpdateAccessKeyParams
-  [:map {:closed true}
-   [:name ms/NonBlankString]])
-
-(def ^:private AccessKeyWithSecretResponse
-  "Create-only response: `AccessKeyResponse` plus the plaintext UUID `:key`,
-  exposed once at creation."
-  (mut/merge AccessKeyResponse
-             [:map [:key ms/UUIDString]]))
-
-(api.macros/defendpoint :post "/:id/access-key"
-  :- AccessKeyWithSecretResponse
-  "Create a new access key for a workspace. **The returned `:key` is the only
-  time the plaintext is exposed** — store it immediately, the API never returns it
-  again. Only the SHA-256 hex hash of the UUID is kept at rest in `key_hash`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   params :- CreateAccessKeyParams]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (let [plaintext     (str (random-uuid))
-        access-key-id (t2/insert-returning-pk! :model/WorkspaceAccessKey
-                                               {:workspace_id id
-                                                :name         (:name params)
-                                                :key_hash     (ws.access-key/key-hash plaintext)
-                                                :creator_id   api/*current-user-id*})
-        access-key    (t2/hydrate (t2/select-one :model/WorkspaceAccessKey :id access-key-id) :creator)]
-    (present-access-key-with-secret access-key plaintext)))
-
-(api.macros/defendpoint :put "/:id/access-key/:key-id"
-  :- AccessKeyResponse
-  "Rename an existing access key. Cannot rotate the key itself — to change the
-  underlying secret, delete this row and create a new one."
-  [{:keys [id key-id]} :- [:map [:id ms/PositiveInt] [:key-id ms/PositiveInt]]
-   _query-params
-   params :- UpdateAccessKeyParams]
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/WorkspaceAccessKey :id key-id :workspace_id id))
-  (t2/update! :model/WorkspaceAccessKey :id key-id {:name (:name params)})
-  (present-access-key (t2/hydrate (t2/select-one :model/WorkspaceAccessKey :id key-id) :creator)))
-
-(api.macros/defendpoint :delete "/:id/access-key/:key-id"
-  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Delete an access key by id. Future requests using this key will 404."
-  [{:keys [id key-id]} :- [:map [:id ms/PositiveInt] [:key-id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/WorkspaceAccessKey :id key-id :workspace_id id))
-  (t2/delete! :model/WorkspaceAccessKey :id key-id)
-  {:id key-id :deleted true})
-
-;;; --------------------------------------- Access key log endpoint ----------------------------------------------
-
-(defn- present-access-key-log [log]
-  (-> log
-      (select-keys [:id :workspace_id :workspace_access_key_id :context :timestamp
-                    :workspace :workspace_access_key])
-      (m/update-existing :workspace #(some-> % (select-keys [:id :name])))
-      (m/update-existing :workspace_access_key
-                         #(some-> % (select-keys [:id :workspace_id :name :created_at :updated_at :creator])))))
-
-(api.macros/defendpoint :get "/:id/access-key-log"
-  :- [:map {:closed true}
-      [:data   [:sequential :map]]
-      [:limit  pos-int?]
-      [:offset :int]
-      [:total  :int]]
-  "Paginated access-key usage log for the workspace, newest first. Rows whose
-  `workspace_id` was SET NULL by a workspace delete are not returned here."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (ws/get-workspace id))
-  (let [offset (request/offset)
-        limit  (request/limit)
-        where  [:= :workspace_id id]
-        total  (t2/count :model/WorkspaceAccessKeyLog {:where where})
-        rows   (-> (t2/select :model/WorkspaceAccessKeyLog
-                              {:where    where
-                               :order-by [[:timestamp :desc] [:id :desc]]
-                               :limit    limit
-                               :offset   offset})
-                   (t2/hydrate :workspace :workspace_access_key))]
-    {:data   (mapv present-access-key-log rows)
-     :limit  limit
-     :offset offset
-     :total  total}))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

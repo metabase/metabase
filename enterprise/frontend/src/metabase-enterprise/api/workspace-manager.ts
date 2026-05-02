@@ -1,17 +1,10 @@
 import type {
-  CreateWorkspaceAccessKeyRequest,
   CreateWorkspaceDatabaseRequest,
   CreateWorkspaceRequest,
-  DeleteWorkspaceAccessKeyRequest,
   DeleteWorkspaceDatabaseRequest,
-  ListWorkspaceAccessKeyLogsRequest,
-  ListWorkspaceAccessKeyLogsResponse,
-  UpdateWorkspaceAccessKeyRequest,
   UpdateWorkspaceDatabaseRequest,
   UpdateWorkspaceRequest,
   Workspace,
-  WorkspaceAccessKey,
-  WorkspaceAccessKeyWithSecret,
   WorkspaceId,
 } from "metabase-types/api";
 
@@ -20,7 +13,6 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideWorkspaceAccessKeyLogListTags,
   provideWorkspaceListTags,
   provideWorkspaceTags,
 } from "./tags";
@@ -112,63 +104,6 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
           idTag("workspace", workspace_id),
         ]),
     }),
-    createWorkspaceAccessKey: builder.mutation<
-      WorkspaceAccessKeyWithSecret,
-      CreateWorkspaceAccessKeyRequest
-    >({
-      query: ({ workspace_id, name }) => ({
-        method: "POST",
-        url: `/api/ee/workspace-manager/${workspace_id}/access-key`,
-        body: { name },
-      }),
-      invalidatesTags: (_, error, { workspace_id }) =>
-        invalidateTags(error, [
-          idTag("workspace", workspace_id),
-          listTag("workspace-access-key"),
-        ]),
-    }),
-    updateWorkspaceAccessKey: builder.mutation<
-      WorkspaceAccessKey,
-      UpdateWorkspaceAccessKeyRequest
-    >({
-      query: ({ workspace_id, id, name }) => ({
-        method: "PUT",
-        url: `/api/ee/workspace-manager/${workspace_id}/access-key/${id}`,
-        body: { name },
-      }),
-      invalidatesTags: (_, error, { workspace_id, id }) =>
-        invalidateTags(error, [
-          idTag("workspace", workspace_id),
-          idTag("workspace-access-key", id),
-        ]),
-    }),
-    deleteWorkspaceAccessKey: builder.mutation<
-      { id: number; deleted: boolean },
-      DeleteWorkspaceAccessKeyRequest
-    >({
-      query: ({ workspace_id, id }) => ({
-        method: "DELETE",
-        url: `/api/ee/workspace-manager/${workspace_id}/access-key/${id}`,
-      }),
-      invalidatesTags: (_, error, { workspace_id, id }) =>
-        invalidateTags(error, [
-          idTag("workspace", workspace_id),
-          listTag("workspace-access-key"),
-          idTag("workspace-access-key", id),
-        ]),
-    }),
-    listWorkspaceAccessKeyLogs: builder.query<
-      ListWorkspaceAccessKeyLogsResponse,
-      ListWorkspaceAccessKeyLogsRequest
-    >({
-      query: ({ id, ...params }) => ({
-        method: "GET",
-        url: `/api/ee/workspace-manager/${id}/access-key-log`,
-        params,
-      }),
-      providesTags: (response) =>
-        provideWorkspaceAccessKeyLogListTags(response?.data ?? []),
-    }),
   }),
 });
 
@@ -181,8 +116,4 @@ export const {
   useCreateWorkspaceDatabaseMutation,
   useUpdateWorkspaceDatabaseMutation,
   useDeleteWorkspaceDatabaseMutation,
-  useCreateWorkspaceAccessKeyMutation,
-  useUpdateWorkspaceAccessKeyMutation,
-  useDeleteWorkspaceAccessKeyMutation,
-  useListWorkspaceAccessKeyLogsQuery,
 } = workspaceManagerApi;

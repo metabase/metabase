@@ -19,7 +19,7 @@ import {
   createMockWorkspaceDatabase,
 } from "metabase-types/api/mocks";
 
-import { WorkspaceSetupPage } from "./WorkspaceSetupPage";
+import { WorkspacePage } from "./WorkspacePage";
 
 type SetupOpts = {
   workspace?: Workspace;
@@ -48,7 +48,7 @@ function setup({
   return renderWithProviders(
     <Route
       path="/data-studio/workspaces/:workspaceId"
-      component={WorkspaceSetupPage}
+      component={WorkspacePage}
     />,
     {
       withRouter: true,
@@ -57,7 +57,7 @@ function setup({
   );
 }
 
-describe("WorkspaceSetupPage", () => {
+describe("WorkspacePage", () => {
   beforeEach(() => {
     fetchMock.removeRoutes();
     fetchMock.clearHistory();

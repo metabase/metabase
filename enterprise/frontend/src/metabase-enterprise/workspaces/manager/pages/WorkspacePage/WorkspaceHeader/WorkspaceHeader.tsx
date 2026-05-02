@@ -7,7 +7,6 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import {
   PaneHeader,
   PaneHeaderInput,
-  PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
@@ -54,17 +53,6 @@ export function WorkspaceHeader({ workspace, menu }: WorkspaceHeaderProps) {
         />
       }
       menu={menu}
-      tabs={
-        <PaneHeaderTabs
-          tabs={[
-            { label: t`Setup`, to: Urls.workspace(workspace.id) },
-            {
-              label: t`Access keys`,
-              to: Urls.workspaceAccessKeys(workspace.id),
-            },
-          ]}
-        />
-      }
       showMetabotButton
     />
   );
