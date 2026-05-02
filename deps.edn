@@ -420,7 +420,11 @@
 
   ;; include EE source code.
   :ee
-  {:extra-paths ["enterprise/backend/src"]}
+  {:extra-paths ["enterprise/backend/src"]
+   ;; make sure these stay in lockstep with their respective modules
+   :extra-deps {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.9.0.25.07"}
+                com.vertica.jdbc/vertica-jdbc
+                ^:antq/exclude  {:mvn/version "23.4.0-0"}}}
 
   ;; Include EE tests.
   ;; for EE dev:   `clojure -X:dev:ee:ee-dev`
