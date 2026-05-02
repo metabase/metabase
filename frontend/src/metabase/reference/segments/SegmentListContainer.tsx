@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -13,9 +11,9 @@ import { SegmentList } from "metabase/reference/segments/SegmentList";
 
 import { getDatabaseId, getIsEditing } from "../selectors";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -23,28 +21,28 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class SegmentListContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface SegmentListContainerProps {
+  params: any;
+  location: { pathname: string };
+  databaseId: number;
+  isEditing?: boolean;
+}
 
+class SegmentListContainer extends Component<SegmentListContainerProps> {
   async fetchContainerData() {
-    await actions.wrappedFetchSegments(this.props);
+    await actions.wrappedFetchSegments(this.props as any);
   }
 
   UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: SegmentListContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -56,7 +54,8 @@ class SegmentListContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<BaseSidebar />}
       >
-        <SegmentList {...this.props} />
+        {}
+        <SegmentList {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -66,4 +65,4 @@ class SegmentListContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentListContainer);
+)(SegmentListContainer as unknown as React.ComponentType);
