@@ -274,14 +274,7 @@ export const CollectionContentView = ({
             await dispatch(Bookmarks.actions.invalidateLists());
           }}
           onMove={({ id }) =>
-            setCollection(
-              {
-                model: "collection",
-                id: collectionId,
-                parent_id: collection.parent_id,
-              },
-              { id },
-            )
+            setCollection({ model: "collection", id: collectionId }, { id })
           }
           onDeletePermanently={() =>
             dispatch(deletePermanently(Collections.actions.delete(actionId)))

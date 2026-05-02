@@ -31,14 +31,7 @@ export const DocumentArchivedEntityBanner = () => {
         await dispatch(Bookmarks.actions.invalidateLists());
       }}
       onMove={({ id }) =>
-        setCollection(
-          {
-            model: "document",
-            id: document.id,
-            collection_id: document.collection_id,
-          },
-          { id },
-        )
+        setCollection({ model: "document", id: document.id }, { id })
       }
       onDeletePermanently={() => {
         const deleteAction = Documents.actions.delete({ id: document.id });

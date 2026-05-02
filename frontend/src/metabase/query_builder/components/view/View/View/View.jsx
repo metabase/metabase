@@ -46,13 +46,10 @@ const ViewInner = forwardRef(function ViewInnerImpl(propsIn, ref) {
   const props = {
     ...propsIn,
     onMove: async (question, newCollection) => {
-      const card = question.card();
       const updated = await setCollection(
         {
           model: getEntityTypeFromCardType(question.type()),
           id: question.id(),
-          collection_id: card.collection_id,
-          dashboard_id: card.dashboard_id,
         },
         newCollection,
         { notify: false },

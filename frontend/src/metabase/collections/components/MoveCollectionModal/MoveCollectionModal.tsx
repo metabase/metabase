@@ -80,11 +80,7 @@ export const MoveCollectionModal = ({
       collection={collection}
       onMove={async (source, destination) => {
         await setCollection(
-          {
-            model: "collection",
-            id: source.id,
-            parent_id: "parent_id" in source ? source.parent_id : undefined,
-          },
+          { model: "collection", id: source.id },
           destination,
         );
       }}

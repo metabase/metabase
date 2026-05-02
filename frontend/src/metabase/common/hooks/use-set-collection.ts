@@ -3,6 +3,11 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  cardApi,
+  collectionApi,
+  dashboardApi,
+  documentApi,
+  timelineApi,
   useUpdateCardMutation,
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
@@ -40,20 +45,14 @@ type Movable<
 } & Pick<T, K>;
 
 export type MovableItem =
-  | Movable<"card", Card, "collection_id" | "dashboard_id">
-  | Movable<"dataset", Card, "collection_id" | "dashboard_id">
-  | Movable<"metric", Card, "collection_id" | "dashboard_id">
-  | Movable<"dashboard", Dashboard, "collection_id">
-  | Movable<"collection", Collection, "parent_id">
-  | Movable<"snippet-collection", Collection, "parent_id">
-  | Movable<"document", Document, "collection_id">
-  | Movable<
-      "timeline",
-      Timeline,
-      "name" | "default" | "collection" | "collection_id"
-    >;
-
-type TimelineMovable = Extract<MovableItem, { model: "timeline" }>;
+  | Movable<"card", Card>
+  | Movable<"dataset", Card>
+  | Movable<"metric", Card>
+  | Movable<"dashboard", Dashboard>
+  | Movable<"collection", Collection>
+  | Movable<"snippet-collection", Collection>
+  | Movable<"document", Document>
+  | Movable<"timeline", Timeline>;
 
 export type MovableModel = MovableItem["model"];
 
@@ -93,12 +92,6 @@ const LABELS = {
 export type SetCollectionOptions = {
   notify?: boolean;
 };
-
-function getMovableTimelineName(timeline: TimelineMovable): string {
-  return timeline.default && timeline.collection
-    ? getDefaultTimelineName(timeline.collection)
-    : timeline.name;
-}
 
 function isCollectionDestination(
   destination: SetCollectionDestination,
@@ -180,13 +173,19 @@ export function useSetCollection() {
             parent_id: canonicalCollectionId(destination.id),
           }).unwrap();
         })
-        .with({ model: "timeline" }, (timeline) => {
+        .with({ model: "timeline" }, async ({ id }) => {
           if (!isCollectionDestination(destination)) {
             throw new Error("Cannot move a timeline into a dashboard");
           }
+          const timeline = await dispatch(
+            timelineApi.endpoints.getTimeline.initiate({ id }),
+          ).unwrap();
           return updateTimeline({
-            id: timeline.id,
-            name: getMovableTimelineName(timeline),
+            id,
+            name:
+              timeline.default && timeline.collection
+                ? getDefaultTimelineName(timeline.collection)
+                : timeline.name,
             collection_id: canonicalCollectionId(destination.id),
             default: false,
           }).unwrap();
@@ -194,6 +193,7 @@ export function useSetCollection() {
         .exhaustive();
     },
     [
+      dispatch,
       updateCard,
       updateDashboard,
       updateCollection,
@@ -202,37 +202,81 @@ export function useSetCollection() {
     ],
   );
 
-  const undoMove = useCallback(
-    (item: MovableItem) =>
+  const captureUndoAction = useCallback(
+    (item: MovableItem): Promise<() => Promise<unknown>> =>
       match(item)
         .with(
           { model: "card" },
           { model: "dataset" },
           { model: "metric" },
-          ({ id, collection_id, dashboard_id }) =>
-            updateCard({ id, collection_id, dashboard_id, archived: false }),
+          async ({ id }) => {
+            const card = await dispatch(
+              cardApi.endpoints.getCard.initiate({ id }),
+            ).unwrap();
+            return () =>
+              updateCard({
+                id,
+                collection_id: card.collection_id,
+                dashboard_id: card.dashboard_id,
+                archived: card.archived,
+              });
+          },
         )
-        .with({ model: "dashboard" }, ({ id, collection_id }) =>
-          updateDashboard({ id, collection_id, archived: false }),
+        .with({ model: "dashboard" }, async ({ id }) => {
+          const dashboard = await dispatch(
+            dashboardApi.endpoints.getDashboard.initiate({ id }),
+          ).unwrap();
+          return () =>
+            updateDashboard({
+              id,
+              collection_id: dashboard.collection_id,
+              archived: dashboard.archived,
+            });
+        })
+        .with({ model: "document" }, async ({ id }) => {
+          const document = await dispatch(
+            documentApi.endpoints.getDocument.initiate({ id }),
+          ).unwrap();
+          return () =>
+            updateDocument({
+              id,
+              collection_id: document.collection_id,
+              archived: document.archived,
+            });
+        })
+        .with(
+          { model: "collection" },
+          { model: "snippet-collection" },
+          async ({ id }) => {
+            const collection = await dispatch(
+              collectionApi.endpoints.getCollection.initiate({ id }),
+            ).unwrap();
+            return () =>
+              updateCollection({
+                id,
+                parent_id: collection.parent_id ?? null,
+                archived: collection.archived ?? false,
+              });
+          },
         )
-        .with({ model: "document" }, ({ id, collection_id }) =>
-          updateDocument({ id, collection_id, archived: false }),
-        )
-        .with({ model: "collection" }, ({ id, parent_id }) =>
-          updateCollection({ id, parent_id, archived: false }),
-        )
-        .with({ model: "snippet-collection" }, ({ id, parent_id }) =>
-          updateCollection({ id, parent_id }),
-        )
-        .with({ model: "timeline" }, (timeline) =>
-          updateTimeline({
-            id: timeline.id,
-            name: getMovableTimelineName(timeline),
-            collection_id: timeline.collection_id,
-          }),
-        )
+        .with({ model: "timeline" }, async ({ id }) => {
+          const timeline = await dispatch(
+            timelineApi.endpoints.getTimeline.initiate({ id }),
+          ).unwrap();
+          return () =>
+            updateTimeline({
+              id,
+              name:
+                timeline.default && timeline.collection
+                  ? getDefaultTimelineName(timeline.collection)
+                  : timeline.name,
+              collection_id: timeline.collection_id,
+              default: timeline.default,
+            });
+        })
         .exhaustive(),
     [
+      dispatch,
       updateCard,
       updateDashboard,
       updateCollection,
@@ -247,21 +291,23 @@ export function useSetCollection() {
       destination: SetCollectionDestination,
       { notify = true }: SetCollectionOptions = {},
     ) => {
+      const undoAction = notify ? await captureUndoAction(item) : null;
+
       const result = await setCollection(item, destination);
 
-      if (notify) {
+      if (undoAction) {
         dispatch(
           addUndo({
             subject: LABELS[item.model](),
             verb: t`moved`,
-            actions: [() => undoMove(item)],
+            actions: [undoAction],
           }),
         );
       }
 
       return result;
     },
-    [dispatch, setCollection, undoMove],
+    [dispatch, setCollection, captureUndoAction],
   );
 }
 

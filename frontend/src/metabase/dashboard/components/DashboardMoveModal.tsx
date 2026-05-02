@@ -42,11 +42,7 @@ function DashboardMoveModal({
       }}
       onMove={async (destination) => {
         await setCollection(
-          {
-            model: "dashboard",
-            id: dashboard.id,
-            collection_id: dashboard.collection_id,
-          },
+          { model: "dashboard", id: dashboard.id },
           destination,
           { notify: false },
         );

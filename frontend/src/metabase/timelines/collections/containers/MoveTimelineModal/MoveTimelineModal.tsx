@@ -34,14 +34,7 @@ function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
   const handleSubmit = useCallback(
     async (timeline: Timeline, collectionId: CollectionId) => {
       await setCollection(
-        {
-          model: "timeline",
-          id: timeline.id,
-          name: timeline.name,
-          default: timeline.default,
-          collection: timeline.collection,
-          collection_id: timeline.collection_id,
-        },
+        { model: "timeline", id: timeline.id },
         { id: collectionId },
       );
       const { data: collection } = await dispatch(
