@@ -1,8 +1,5 @@
-/* eslint "react/prop-types": "warn" */
-/* eslint-disable react/no-unknown-property */
 import cx from "classnames";
 import { useFormik } from "formik";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -17,6 +14,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
+import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 
 import {
@@ -32,18 +30,18 @@ const emptyStateData = {
   get message() {
     return t`Fields in this table will appear here as they're added`;
   },
-  icon: "fields",
+  icon: "fields" as const,
 };
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: any, props: any) => {
   const data = getFieldsByTable(state, props);
   return {
     table: getTable(state, props),
     entities: data,
-    loading: getLoading(state, props),
-    loadingError: getError(state, props),
-    user: getUser(state, props),
-    isEditing: getIsEditing(state, props),
+    loading: getLoading(state),
+    loadingError: getError(state),
+    user: getUser(state),
+    isEditing: getIsEditing(state),
   };
 };
 
@@ -53,25 +51,35 @@ const mapDispatchToProps = {
   onSubmit: actions.rUpdateFields,
 };
 
-const propTypes = {
-  style: PropTypes.object.isRequired,
-  entities: PropTypes.object.isRequired,
-  isEditing: PropTypes.bool,
-  startEditing: PropTypes.func.isRequired,
-  endEditing: PropTypes.func.isRequired,
-  startLoading: PropTypes.func.isRequired,
-  endLoading: PropTypes.func.isRequired,
-  setError: PropTypes.func.isRequired,
-  updateField: PropTypes.func.isRequired,
-  user: PropTypes.object.isRequired,
-  table: PropTypes.object.isRequired,
-  loading: PropTypes.bool,
-  loadingError: PropTypes.object,
-  onSubmit: PropTypes.func.isRequired,
-  "data-testid": PropTypes.string,
-};
+interface FieldListProps {
+  style: React.CSSProperties;
 
-const FieldList = (props) => {
+  entities: Record<string, any>;
+  isEditing?: boolean;
+  startEditing: () => void;
+  endEditing: () => void;
+  startLoading: () => void;
+  endLoading: () => void;
+  setError: (error: unknown) => void;
+
+  updateField: (...args: any[]) => any;
+
+  user: any;
+
+  table: any;
+  loading?: boolean;
+  loadingError?: unknown;
+
+  onSubmit: (
+    entities: Record<string, unknown>,
+    fields: Record<string, unknown>,
+
+    props: any,
+  ) => void;
+  "data-testid"?: string;
+}
+
+const FieldList = (props: FieldListProps) => {
   const {
     style,
     entities,
@@ -91,18 +99,19 @@ const FieldList = (props) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik({
+  } = useFormik<Record<string, unknown>>({
     initialValues: {},
-    onSubmit: (fields) =>
-      onSubmit(entities, fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields): void => {
+      onSubmit(entities, fields, { ...props, resetForm: handleReset });
+    },
   });
 
-  const getFormField = (name) => ({
+  const getFormField = (name: string) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
 
-  const getNestedFormField = (id) => ({
+  const getNestedFormField = (id: string | number) => ({
     display_name: getFormField(`${id}.display_name`),
     description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
@@ -115,12 +124,12 @@ const FieldList = (props) => {
       style={style}
       className={CS.full}
       onSubmit={handleSubmit}
-      testID={props["data-testid"]}
+      {...({ testID: props["data-testid"] } as Record<string, unknown>)}
     >
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
-          reinitializeForm={handleReset}
+          reinitializeForm={() => handleReset(undefined)}
           endEditing={endEditing}
           submitting={isSubmitting}
         />
@@ -176,7 +185,7 @@ const FieldList = (props) => {
                               databaseId={table.db_id}
                               field={entity}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
-                              icon={getIconForField(entity)}
+                              icon={getIconForField(entity) as IconName}
                               isEditing={isEditing}
                               formField={getNestedFormField(entity.id)}
                             />
@@ -197,7 +206,8 @@ const FieldList = (props) => {
   );
 };
 
-FieldList.propTypes = propTypes;
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(FieldList);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(FieldList as unknown as React.ComponentType);
