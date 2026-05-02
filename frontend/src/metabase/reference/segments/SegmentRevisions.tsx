@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -30,14 +29,14 @@ const emptyStateData = {
   },
 };
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: any, props: any) => {
   return {
     revisions: getSegmentRevisions(state, props),
     segment: getSegment(state, props),
     tables: getTables(state, props),
-    user: getUser(state, props),
-    loading: getLoading(state, props),
-    loadingError: getError(state, props),
+    user: getUser(state),
+    loading: getLoading(state),
+    loadingError: getError(state),
   };
 };
 
@@ -45,17 +44,19 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-class SegmentRevisions extends Component {
-  static propTypes = {
-    style: PropTypes.object.isRequired,
-    revisions: PropTypes.object.isRequired,
-    segment: PropTypes.object.isRequired,
-    tables: PropTypes.object.isRequired,
-    user: PropTypes.object.isRequired,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-  };
+type EntityLike = any;
 
+interface SegmentRevisionsProps {
+  style: React.CSSProperties;
+  revisions: Record<string, EntityLike>;
+  segment: EntityLike;
+  tables: Record<string, EntityLike>;
+  user: EntityLike;
+  loading?: boolean;
+  loadingError?: unknown;
+}
+
+class SegmentRevisions extends Component<SegmentRevisionsProps> {
   render() {
     const { style, revisions, segment, tables, user, loading, loadingError } =
       this.props;
@@ -70,7 +71,7 @@ class SegmentRevisions extends Component {
             ),
             user.id,
           )
-        : {};
+        : ({} as Record<string | number, string>);
 
     return (
       <div style={style} className={CS.full} data-testid="segment-revisions">
@@ -106,7 +107,7 @@ class SegmentRevisions extends Component {
                             currentUser={user || {}}
                             userColor={
                               userColorAssignments[
-                                getIn(revision, ["user", "id"])
+                                getIn(revision, ["user", "id"]) as string
                               ]
                             }
                           />
@@ -129,4 +130,7 @@ class SegmentRevisions extends Component {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentRevisions);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentRevisions as unknown as React.ComponentType);
