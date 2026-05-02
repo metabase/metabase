@@ -5,20 +5,11 @@ import {
   useGetDashboardQuery,
   useListDashboardsQuery,
 } from "metabase/api/dashboard";
-import {
-  canonicalCollectionId,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
 import { getCollectionType } from "metabase/entities/collections/utils";
 import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-  withRequestState,
-} from "./utils";
+import { createEntity, entityCompatibleQuery, withRequestState } from "./utils";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
@@ -88,16 +79,6 @@ export const Dashboards = createEntity({
   },
 
   objectActions: {
-    setCollection: ({ id }, collection, opts) =>
-      Dashboards.actions.update(
-        { id },
-        {
-          collection_id: canonicalCollectionId(collection && collection.id),
-          archived: isRootTrashCollection(collection),
-        },
-        undo(opts, "dashboard", "moved"),
-      ),
-
     // TODO move into more common area as copy is implemented for more entities
     copy: compose(
       withAction(COPY_ACTION),

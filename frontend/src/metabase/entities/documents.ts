@@ -1,14 +1,9 @@
 import { t } from "ttag";
 
 import { documentApi, useGetDocumentQuery } from "metabase/api";
-import {
-  canonicalCollectionId,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
 import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
 import type {
-  Collection,
   CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
@@ -17,7 +12,7 @@ import type {
   UpdateDocumentRequest,
 } from "metabase-types/api";
 
-import { createEntity, entityCompatibleQuery, undo } from "./utils";
+import { createEntity, entityCompatibleQuery } from "./utils";
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -70,19 +65,6 @@ export const Documents = createEntity({
   },
 
   objectActions: {
-    setCollection: (
-      { id }: Document,
-      collection: Pick<Collection, "type" | "id">,
-    ) =>
-      Documents.actions.update(
-        { id },
-        {
-          collection_id: canonicalCollectionId(collection && collection.id),
-          archived: isRootTrashCollection(collection),
-        },
-        undo({}, t`document`, t`moved`),
-      ),
-
     copy:
       ({ id }: Document, overrides: Omit<CopyDocumentRequest, "id">) =>
       async (dispatch: Dispatch) => {

@@ -1,22 +1,14 @@
 import { updateIn } from "icepick";
-import { t } from "ttag";
 
 import { cardApi, useGetCardQuery, useListCardsQuery } from "metabase/api";
-import {
-  canonicalCollectionId,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
-import { Collections, getCollectionType } from "metabase/entities/collections";
-import {
-  API_UPDATE_QUESTION,
-  SOFT_RELOAD_CARD,
-} from "metabase/redux/query-builder";
+import { getCollectionType } from "metabase/entities/collections";
+import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-import { createEntity, entityCompatibleQuery, undo } from "./utils";
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
@@ -68,57 +60,6 @@ export const Questions = createEntity({
     },
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
-  },
-
-  objectActions: {
-    // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
-    // this function name is incorrect but maintained for consistency with other entities.
-    setCollection: (card, destination, opts) => {
-      return async (dispatch) => {
-        const archived =
-          destination.model === "collection" &&
-          isRootTrashCollection(destination);
-
-        const update =
-          destination.model === "dashboard"
-            ? {
-                dashboard_id: destination.id,
-                archived,
-                delete_old_dashcards: true,
-              }
-            : {
-                collection_id: canonicalCollectionId(destination.id),
-                dashboard_id: null,
-                archived,
-              };
-
-        const result = await dispatch(
-          Questions.actions.update(
-            { id: card.id },
-            update,
-            undo(opts, getLabel(card), t`moved`),
-          ),
-        );
-
-        dispatch(
-          Collections.actions.fetchList(
-            {
-              tree: true,
-              "exclude-archived": true,
-            },
-            { reload: true },
-          ),
-        );
-
-        const updatedCard = result?.payload?.question;
-
-        if (updatedCard) {
-          dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
-        }
-
-        return result;
-      };
-    },
   },
 
   selectors: {
@@ -185,15 +126,3 @@ export const Questions = createEntity({
     return type && `collection=${type}`;
   },
 });
-
-function getLabel(card) {
-  if (card.type === "model" || card.model === "dataset") {
-    return t`model`;
-  }
-
-  if (card.type === "metric" || card.model === "metric") {
-    return t`metric`;
-  }
-
-  return t`question`;
-}
