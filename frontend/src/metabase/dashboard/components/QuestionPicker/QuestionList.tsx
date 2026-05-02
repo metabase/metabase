@@ -29,7 +29,6 @@ import type {
   CollectionItem,
   SearchResult,
 } from "metabase-types/api";
-import type { WrappedEntity } from "metabase-types/entities";
 
 import S from "./QuestionList.module.css";
 import { trackVisualizeAnotherWayClicked } from "./analytics";
@@ -115,7 +114,7 @@ export function QuestionList({
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
-  const list: WrappedEntity<SearchResult | CollectionItem>[] = useMemo(() => {
+  const list: (SearchResult | CollectionItem)[] = useMemo(() => {
     return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 

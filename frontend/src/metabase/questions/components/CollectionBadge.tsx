@@ -12,7 +12,6 @@ import type {
   CollectionId,
   Collection as CollectionType,
 } from "metabase-types/api";
-import type { WrappedEntity } from "metabase-types/entities";
 
 const IRREGULAR_ICON_WIDTH = 16;
 const IRREGULAR_ICON_PROPS = {
@@ -25,7 +24,7 @@ const IRREGULAR_ICON_PROPS = {
 
 type CollectionBadgeProps = {
   className?: string;
-  collection: WrappedEntity<CollectionType>;
+  collection: CollectionType;
   isSingleLine?: boolean;
   onClick?: () => void;
 };
