@@ -124,7 +124,6 @@ const SNAPSHOT_NAME = "metrics-explorer-snapshot";
  */
 const addMetric = (name: string, runExpression: boolean = true) => {
   // for some reason `type` clicks in the middle of the input first
-  // so we use `{end}` to make sure we type at the end
   H.MetricsViewer.searchInput().type(`{end}, ${name}`, {
     waitForAnimations: true,
   });
@@ -138,7 +137,6 @@ const addMetricMath = (
   expression: ({ metricName: string } | string)[],
   runExpression: boolean = true,
 ) => {
-  H.MetricsViewer.searchInput().type("{end}, ");
   for (const item of expression) {
     if (typeof item === "string") {
       H.MetricsViewer.searchInput().type(`{end}${item}`, {
@@ -402,7 +400,9 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       cy.log("no results");
-      H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
+      H.MetricsViewer.searchInput().type("{end}xyznonexistent", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().should(
         "contain.text",
         "No search results",
@@ -452,10 +452,27 @@ describe("scenarios > metrics > explorer", () => {
       });
     });
 
+    it("should add multiple metrics one by one using metrics dropdown", () => {
+      H.MetricsViewer.goToViewer();
+
+      addMetric("Count of products", false);
+      H.MetricsViewer.searchResults().findByText("Count of orders").click();
+      H.MetricsViewer.searchResults()
+        .findByText("Count of orders over time")
+        .click();
+      H.MetricsViewer.searchResults().findByText("Orders model metric").click();
+      H.MetricsViewer.runButton().click();
+
+      cy.wait("@dataset");
+      verifyMetricCount(4);
+    });
+
     it("should not show me metrics that live in collections I do not have permissions to see", () => {
       cy.signIn("nocollection");
       H.MetricsViewer.goToViewer();
-      H.MetricsViewer.searchInput().type("Count of");
+      H.MetricsViewer.searchInput().type("Count of", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().should(
         "contain.text",
         "No search results",
@@ -468,7 +485,9 @@ describe("scenarios > metrics > explorer", () => {
     it("should not show me measures that live in tables I do not have permissions to see", () => {
       cy.signIn("nodata");
       H.MetricsViewer.goToViewer();
-      H.MetricsViewer.searchInput().type("Test Measure");
+      H.MetricsViewer.searchInput().type("Test Measure", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().should(
         "contain.text",
         "No search results",
@@ -740,7 +759,9 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Enter formula edit mode and append a new metric");
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(", Count of products");
+      H.MetricsViewer.searchInput().type("Count of products", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
@@ -821,15 +842,11 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Create expression: Count of orders + Count of products");
       cy.findByTestId("metrics-formula-input").click();
 
-      H.MetricsViewer.searchInput().type(", Count of orders");
-      H.MetricsViewer.searchResults().findByText("Count of orders").click();
-      cy.wait("@getMetric");
-
-      H.MetricsViewer.searchInput().type(" + Count of products");
-      H.MetricsViewer.searchResults().findByText("Count of products").click();
-      cy.wait("@getMetric");
-
-      cy.findByTestId("run-expression-button").click();
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
       cy.wait("@dataset");
 
       cy.log(
@@ -888,7 +905,9 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.findByTestId("metrics-formula-input").click();
 
-      H.MetricsViewer.searchInput().type(" + Count of products");
+      H.MetricsViewer.searchInput().type(" + Count of products", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
@@ -1181,10 +1200,10 @@ describe("scenarios > metrics > explorer", () => {
           "The surviving identity carries the custom name.",
       );
       cy.findByTestId("metrics-formula-input").click();
-      // Cursor at end → one {backspace} deletes the atomic "Test Measure"
-      // token, the next three delete " + " char-by-char. The first metric
-      // token in the expression ("Count of orders") is untouched and its
-      // MetricIdentity (with customName) survives.
+      // One {backspace} deletes the atomic "Test Measure" token, then three
+      // delete " + " char-by-char. The first metric token in the expression
+      // ("Count of orders") is untouched and its MetricIdentity (with
+      // customName) survives.
       H.MetricsViewer.searchInput().type(
         "{end}{backspace}{backspace}{backspace}{backspace} * Count of products",
         { waitForAnimations: true },
@@ -2191,7 +2210,10 @@ describe("scenarios > metrics > explorer", () => {
       assertMetricMath();
 
       cy.log("edit formula and assert again");
-      H.MetricsViewer.searchInput().type("{end} + 0", { delay: 100 });
+      H.MetricsViewer.searchInput().type("{end} + 0", {
+        waitForAnimations: true,
+        delay: 100,
+      });
       H.MetricsViewer.runButton().click();
       assertMetricMath();
     });
@@ -2215,7 +2237,9 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Sum metric '123' with itself — both selected from dropdown");
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(`+ ${NUMERIC_METRIC_NAME}`);
+      H.MetricsViewer.searchInput().type(` + ${NUMERIC_METRIC_NAME}`, {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
       H.MetricsViewer.runButton().click();
       cy.wait("@dataset");
@@ -2225,7 +2249,9 @@ describe("scenarios > metrics > explorer", () => {
         "Append literal number 123 — typed without selecting from dropdown",
       );
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type("+ 123");
+      H.MetricsViewer.searchInput().type(" + 123", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.runButton().click();
       cy.wait("@dataset");
       H.MetricsViewer.getMetricVisualization().should("exist");

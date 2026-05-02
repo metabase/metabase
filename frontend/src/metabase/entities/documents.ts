@@ -70,13 +70,6 @@ export const Documents = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }: Document, archived: boolean) =>
-      Documents.actions.update(
-        { id },
-        { archived },
-        undo({}, t`document`, archived ? t`trashed` : t`restored`),
-      ),
-
     setCollection: (
       { id }: Document,
       collection: Pick<Collection, "type" | "id">,
@@ -90,14 +83,6 @@ export const Documents = createEntity({
         undo({}, t`document`, t`moved`),
       ),
 
-    setPinned: ({ id }: Document, pinned: number | boolean) =>
-      Documents.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-      ),
     copy:
       ({ id }: Document, overrides: Omit<CopyDocumentRequest, "id">) =>
       async (dispatch: Dispatch) => {
@@ -106,9 +91,5 @@ export const Documents = createEntity({
         );
         return (result as { data: Document }).data;
       },
-  },
-
-  objectSelectors: {
-    getName: (document: Document) => document && document.name,
   },
 });

@@ -453,7 +453,7 @@ export interface UpdateCardRequest {
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;

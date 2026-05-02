@@ -6,7 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getIcon } from "metabase/common/utils/icon";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";
@@ -54,7 +54,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
       {filtered.map((card) => {
         return (
           <Link
-            to={Urls.question(card)}
+            to={Urls.card(card)}
             aria-label={card.name}
             variant="brand"
             key={card.id}

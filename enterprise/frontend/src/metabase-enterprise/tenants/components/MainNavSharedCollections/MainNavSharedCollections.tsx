@@ -22,7 +22,7 @@ import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import {
   tenantSpecificCollections,
   tenantUsersPersonalCollections,
-} from "metabase/utils/urls";
+} from "metabase/urls";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 import type { Collection } from "metabase-types/api";

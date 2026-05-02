@@ -4,12 +4,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-/* eslint-disable no-restricted-imports */
-import {
-  type SerializeCardOptions,
-  serializeCardForUrl,
-} from "metabase/common/utils/card";
-import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -34,7 +28,6 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
-  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
   ParameterValuesMap,
@@ -43,7 +36,6 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../query/types";
 
@@ -128,6 +120,16 @@ class Question {
     return this._doNotCallSerializableCard();
   }
 
+  /**
+   * returns the card but normalizes the dataset_query field.
+   */
+  cardWithNormalizedQuery() {
+    return {
+      ...this.card(),
+      dataset_query: Lib.toJsQuery(this.query()),
+    };
+  }
+
   _doNotCallSerializableCard() {
     return this._card;
   }
@@ -146,21 +148,6 @@ class Question {
         .dissoc("description")
         .value(),
     );
-  }
-
-  omitTransientCardIds() {
-    let question = this;
-
-    const card = question.card();
-    const { id, original_card_id } = card;
-    if (isTransientCardId(id)) {
-      question = question.setCard(_.omit(question.card(), "id"));
-    }
-    if (isTransientCardId(original_card_id)) {
-      question = question.setCard(_.omit(question.card(), "original_card_id"));
-    }
-
-    return question;
   }
 
   /**
@@ -673,17 +660,6 @@ class Question {
     );
   }
 
-  serializeForUrl(opts: SerializeCardOptions = {}) {
-    const card = {
-      ...this.card(),
-      dataset_query: Lib.toJsQuery(this.query()),
-    };
-    return serializeCardForUrl(card, {
-      ...opts,
-      parameterValues: this._parameterValues,
-    });
-  }
-
   // Internal methods
   _getValueForComparison() {
     const value = {
@@ -711,51 +687,6 @@ class Question {
     }
 
     return res;
-  }
-
-  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
-    const query = this.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
-
-    if (isNative) {
-      return this;
-    }
-
-    // If the query is composed (models or metrics) we cannot add filters to the underlying query since that query is used for data source.
-    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
-    const queryWithExtraStage =
-      !isComposed && this.display() !== "pivot"
-        ? Lib.ensureFilterStage(query)
-        : query;
-    const queryWithFilters = this.parameters().reduce((newQuery, parameter) => {
-      const stageIndex =
-        isDimensionTarget(parameter.target) && !isComposed
-          ? getParameterDimensionTargetStageIndex(parameter.target)
-          : -1;
-      return applyParameter(
-        newQuery,
-        stageIndex,
-        parameter.type,
-        parameter.target,
-        parameter.value,
-      );
-    }, queryWithExtraStage);
-    const queryWithFiltersWithoutExtraStage =
-      Lib.dropEmptyStages(queryWithFilters);
-
-    const newQuestion = this.setQuery(queryWithFiltersWithoutExtraStage)
-      .setParameters(undefined)
-      .setParameterValues(undefined);
-
-    const hasQueryBeenAltered = queryWithExtraStage !== queryWithFilters;
-    return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
-
-    function getParameterDimensionTargetStageIndex(
-      target: ParameterDimensionTarget,
-    ) {
-      const [_type, _variableTarget, options] = target;
-      return options?.["stage-number"] ?? -1;
-    }
   }
 
   query(): Query {
@@ -868,10 +799,6 @@ class Question {
 
     return new Question(card, metadata, parameterValues);
   }
-}
-
-export function isTransientCardId(id: CardId | string | null | undefined) {
-  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
