@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -21,12 +19,12 @@ import {
 
 import SegmentSidebar from "./SegmentSidebar";
 
-const mapStateToProps = (state, props) => ({
-  user: getUser(state, props),
+const mapStateToProps = (state: any, props: any) => ({
+  user: getUser(state),
   segment: getSegment(state, props),
   segmentId: getSegmentId(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -35,20 +33,22 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class SegmentQuestionsContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    user: PropTypes.object.isRequired,
-    segment: PropTypes.object.isRequired,
-    segmentId: PropTypes.number.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface SegmentQuestionsContainerProps {
+  params: any;
+  location: { pathname: string };
+  databaseId: number;
 
+  user: any;
+
+  segment: any;
+  segmentId: number;
+  isEditing?: boolean;
+}
+
+class SegmentQuestionsContainer extends Component<SegmentQuestionsContainerProps> {
   async fetchContainerData() {
     await actions.wrappedFetchSegmentQuestions(
-      this.props,
+      this.props as any,
       this.props.segmentId,
     );
   }
@@ -57,12 +57,12 @@ class SegmentQuestionsContainer extends Component {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: SegmentQuestionsContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -74,7 +74,8 @@ class SegmentQuestionsContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<SegmentSidebar segment={segment} user={user} />}
       >
-        <SegmentQuestions {...this.props} />
+        {}
+        <SegmentQuestions {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -84,4 +85,4 @@ class SegmentQuestionsContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentQuestionsContainer);
+)(SegmentQuestionsContainer as unknown as React.ComponentType);
