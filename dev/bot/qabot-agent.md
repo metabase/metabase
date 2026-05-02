@@ -38,18 +38,18 @@ APP_DB: postgres
 
 Before gathering diffs, verify the branch actually contains changes:
 
-1. Run `./bin/mage -bot-git-readonly git log --oneline origin/master..HEAD` — if empty, the branch may be at master with no local commits.
-2. If no commits beyond master, check if a remote branch exists: `./bin/mage -bot-git-readonly git log --oneline HEAD..origin/<branch-name>`
-3. If the remote has commits the local branch doesn't, reset to remote: `./bin/mage -bot-git-readonly git merge --ff-only origin/<branch-name>` — if this fails, note in the report that the local branch diverges from remote and dynamic testing may not reflect PR changes.
+1. Run `git log --oneline origin/master..HEAD` — if empty, the branch may be at master with no local commits.
+2. If no commits beyond master, check if a remote branch exists: `git log --oneline HEAD..origin/<branch-name>`
+3. If the remote has commits the local branch doesn't, reset to remote: `git merge --ff-only origin/<branch-name>` — if this fails, note in the report that the local branch diverges from remote and dynamic testing may not reflect PR changes.
 
 ### Gather the changes
 
-1. Run `./bin/mage -bot-git-readonly git diff origin/master...HEAD` to see all committed changes on the branch.
-2. Run `./bin/mage -bot-git-readonly git diff` to see any uncommitted changes.
-3. Run `./bin/mage -bot-git-readonly git diff --cached` to see any staged but uncommitted changes.
-4. Run `./bin/mage -bot-git-readonly git log --oneline origin/master..HEAD` to see the commit history.
+1. Run `git diff origin/master...HEAD` to see all committed changes on the branch.
+2. Run `git diff` to see any uncommitted changes.
+3. Run `git diff --cached` to see any staged but uncommitted changes.
+4. Run `git log --oneline origin/master..HEAD` to see the commit history.
 
-**IMPORTANT:** You must run all three diff commands. `git diff origin/master...HEAD` only shows committed changes — if there are uncommitted modifications (check `./bin/mage -bot-git-readonly git status`), `git diff` will catch them. Analyze ALL changes together.
+**IMPORTANT:** You must run all three diff commands. `git diff origin/master...HEAD` only shows committed changes — if there are uncommitted modifications (check `git status`), `git diff` will catch them. Analyze ALL changes together.
 
 ### Organize
 
@@ -620,7 +620,7 @@ If a consumer can't handle any stderr chatter at all, pass `--raw` to suppress t
 ## Important Rules
 
 - **Read-only**: Do NOT modify any source code. You are analyzing and testing, not fixing.
-- **Use wrapper commands**: Always use `./bin/mage -bot-git-readonly` for all `git` and `gh` commands. Use `./bin/mage -bot-api-call` for all API calls. Only fall back to bare commands if the wrapper fails.
+- **Use wrapper commands**: Use `./bin/mage -bot-api-call` for all API calls. Use `git`/`gh` directly for source control and GitHub queries.
 - **Evidence-based**: Every finding must have evidence — a screenshot, API response, or specific code reference.
 - **No style reviews**: Focus on functional correctness, security, and user experience. Do not report code style issues.
 - **Balanced reporting**: Note what works well, not just what's broken.
