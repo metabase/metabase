@@ -1,7 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import { useFormik } from "formik";
-import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -25,7 +23,7 @@ import {
   getUser,
 } from "../selectors";
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: any, props: any) => {
   const entity = getDatabase(state, props) || {};
   const fields = getFields(state, props);
 
@@ -33,12 +31,12 @@ const mapStateToProps = (state, props) => {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    loading: getLoading(state, props),
+    loading: getLoading(state),
     // naming this 'error' will conflict with redux form
-    loadingError: getError(state, props),
-    user: getUser(state, props),
-    isEditing: getIsEditing(state, props),
-    isFormulaExpanded: getIsFormulaExpanded(state, props),
+    loadingError: getError(state),
+    user: getUser(state),
+    isEditing: getIsEditing(state),
+    isFormulaExpanded: getIsFormulaExpanded(state),
   };
 };
 
@@ -49,24 +47,29 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-const propTypes = {
-  style: PropTypes.object.isRequired,
-  entity: PropTypes.object.isRequired,
-  table: PropTypes.object,
-  user: PropTypes.object.isRequired,
-  isEditing: PropTypes.bool,
-  startEditing: PropTypes.func.isRequired,
-  endEditing: PropTypes.func.isRequired,
-  startLoading: PropTypes.func.isRequired,
-  endLoading: PropTypes.func.isRequired,
-  setError: PropTypes.func.isRequired,
-  updateField: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-  loadingError: PropTypes.object,
-  onSubmit: PropTypes.func.isRequired,
-};
+interface DatabaseDetailProps {
+  style: React.CSSProperties;
 
-const DatabaseDetail = (props) => {
+  entity: any;
+
+  table?: any;
+
+  user: any;
+  isEditing?: boolean;
+  startEditing: () => void;
+  endEditing: () => void;
+  startLoading: () => void;
+  endLoading: () => void;
+  setError: (error: unknown) => void;
+
+  updateField: (...args: any[]) => any;
+  loading?: boolean;
+  loadingError?: unknown;
+
+  onSubmit: (fields: Record<string, unknown>, props: any) => any;
+}
+
+const DatabaseDetail = (props: DatabaseDetailProps) => {
   const {
     style,
     entity,
@@ -86,13 +89,14 @@ const DatabaseDetail = (props) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik({
+  } = useFormik<Record<string, unknown>>({
     initialValues: {},
-    onSubmit: (fields) =>
-      onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields): void => {
+      onSubmit(fields, { ...props, resetForm: handleReset });
+    },
   });
 
-  const getFormField = (name) => ({
+  const getFormField = (name: string) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -104,7 +108,7 @@ const DatabaseDetail = (props) => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset}
+          reinitializeForm={() => handleReset(undefined)}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -144,7 +148,6 @@ const DatabaseDetail = (props) => {
               <ul>
                 <li className={CS.relative}>
                   <Detail
-                    id="description"
                     name={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
@@ -154,7 +157,6 @@ const DatabaseDetail = (props) => {
                 </li>
                 <li className={CS.relative}>
                   <Detail
-                    id="points_of_interest"
                     name={t`Why this database is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
@@ -164,7 +166,6 @@ const DatabaseDetail = (props) => {
                 </li>
                 <li className={CS.relative}>
                   <Detail
-                    id="caveats"
                     name={t`Things to be aware of about this database`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
@@ -180,8 +181,6 @@ const DatabaseDetail = (props) => {
     </form>
   );
 };
-
-DatabaseDetail.propTypes = propTypes;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(DatabaseDetail);
