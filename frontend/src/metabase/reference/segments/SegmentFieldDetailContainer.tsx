@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -14,11 +12,11 @@ import { getField, getIsEditing, getSegment, getSegmentId } from "../selectors";
 
 import SegmentFieldSidebar from "./SegmentFieldSidebar";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   segment: getSegment(state, props),
   segmentId: getSegmentId(state, props),
   field: getField(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -26,31 +24,36 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class SegmentFieldDetailContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    segment: PropTypes.object.isRequired,
-    segmentId: PropTypes.number.isRequired,
-    field: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface SegmentFieldDetailContainerProps {
+  params: any;
+  location: { pathname: string };
+  databaseId: number;
 
+  segment: any;
+  segmentId: number;
+
+  field: any;
+  isEditing?: boolean;
+}
+
+class SegmentFieldDetailContainer extends Component<SegmentFieldDetailContainerProps> {
   async fetchContainerData() {
-    await actions.wrappedFetchSegmentFields(this.props, this.props.segmentId);
+    await actions.wrappedFetchSegmentFields(
+      this.props as any,
+      this.props.segmentId,
+    );
   }
 
   UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: SegmentFieldDetailContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -62,7 +65,8 @@ class SegmentFieldDetailContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<SegmentFieldSidebar segment={segment} field={field} />}
       >
-        <SegmentFieldDetail {...this.props} />
+        {}
+        <SegmentFieldDetail {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -72,4 +76,4 @@ class SegmentFieldDetailContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentFieldDetailContainer);
+)(SegmentFieldDetailContainer as unknown as React.ComponentType);
