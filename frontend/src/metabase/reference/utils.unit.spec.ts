@@ -24,8 +24,9 @@ describe("Reference utils.js", () => {
         6: { id: 6, name: "Buffalo", schema_name: "bar" },
       };
 
-      const createSchemaSeparator = (table) => table.schema_name;
-      const createListItem = (table) => table;
+      const createSchemaSeparator = (table: { schema_name: string }) =>
+        table.schema_name;
+      const createListItem = <T>(table: T) => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
         tables,
@@ -50,7 +51,7 @@ describe("Reference utils.js", () => {
     const segment = createMockSegment({ table_id: tableId });
     const segmentId = segment.id;
     const field = createMockField({ table_id: tableId });
-    const fieldId = field.id;
+    const fieldId = field.id as number;
     const table = createMockTable({
       id: tableId,
       db_id: dbId,
@@ -106,7 +107,7 @@ describe("Reference utils.js", () => {
       });
 
       const query = new Question(card).query();
-      expect(card.display).toBe("bar");
+      expect(card?.display).toBe("bar");
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
@@ -122,7 +123,7 @@ describe("Reference utils.js", () => {
       });
 
       const query = new Question(card).query();
-      expect(card.display).toBe("pie");
+      expect(card?.display).toBe("pie");
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
