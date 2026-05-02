@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -19,11 +17,11 @@ import {
 
 import TableSidebar from "./TableSidebar";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -31,19 +29,21 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class FieldListContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    table: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface FieldListContainerProps {
+  params: any;
+  location: { pathname: string };
 
+  database: any;
+  databaseId: number;
+
+  table: any;
+  isEditing?: boolean;
+}
+
+class FieldListContainer extends Component<FieldListContainerProps> {
   async fetchContainerData() {
     await actions.wrappedFetchDatabaseMetadata(
-      this.props,
+      this.props as any,
       this.props.databaseId,
     );
   }
@@ -52,12 +52,12 @@ class FieldListContainer extends Component {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: FieldListContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -69,11 +69,15 @@ class FieldListContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<TableSidebar database={database} table={table} />}
       >
-        <FieldList {...this.props} />
+        {}
+        <FieldList {...(this.props as any)} />
       </SidebarLayout>
     );
   }
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(FieldListContainer);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(FieldListContainer as unknown as React.ComponentType);
