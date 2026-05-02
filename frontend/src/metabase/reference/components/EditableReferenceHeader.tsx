@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -7,13 +6,44 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
 import { Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
 
+interface FormField {
+  name: string;
+  onChange: (...args: unknown[]) => void;
+}
+
+interface EditableReferenceHeaderEntity {
+  schema?: string;
+  name?: string;
+  display_name?: string;
+}
+
+interface EditableReferenceHeaderUser {
+  is_superuser?: boolean;
+}
+
+interface EditableReferenceHeaderProps {
+  entity?: EditableReferenceHeaderEntity;
+  table?: unknown;
+  type?: string;
+  headerIcon?: IconName;
+  headerLink?: string;
+  name?: string;
+  user?: EditableReferenceHeaderUser;
+  isEditing?: boolean;
+  hasSingleSchema?: boolean;
+  hasDisplayName?: boolean;
+  startEditing?: () => void;
+  displayNameFormField?: FormField;
+  nameFormField?: FormField;
+}
+
 const EditableReferenceHeader = ({
   entity = {},
-  table,
   type,
   headerIcon,
   headerLink,
@@ -25,7 +55,7 @@ const EditableReferenceHeader = ({
   startEditing,
   displayNameFormField,
   nameFormField,
-}) => (
+}: EditableReferenceHeaderProps) => (
   <div className={CS.wrapper}>
     <div className={cx(CS.relative, L.header)}>
       <div className={cx(CS.flex, CS.alignCenter, CS.mr1)}>
@@ -47,21 +77,22 @@ const EditableReferenceHeader = ({
             className={S.headerTextInput}
             type="text"
             name={
-              hasDisplayName ? displayNameFormField.name : nameFormField.name
+              hasDisplayName ? displayNameFormField?.name : nameFormField?.name
             }
             placeholder={entity.name}
             onChange={
               hasDisplayName
-                ? displayNameFormField.onChange
-                : nameFormField.onChange
+                ? displayNameFormField?.onChange
+                : nameFormField?.onChange
             }
+            value={undefined}
             defaultValue={hasDisplayName ? entity.display_name : entity.name}
           />
         ) : (
           [
             <Ellipsified
               key="1"
-              className={!headerLink && CS.flexFull}
+              className={!headerLink ? CS.flexFull : undefined}
               tooltipProps={{ w: "auto" }}
             >
               {name === "Details"
@@ -72,6 +103,7 @@ const EditableReferenceHeader = ({
             </Ellipsified>,
             headerLink && (
               <Button
+                key="2"
                 primary
                 className={cx(CS.flex, CS.flexAlignRight, CS.mr2)}
                 style={{ fontSize: 14 }}
@@ -95,21 +127,6 @@ const EditableReferenceHeader = ({
     </div>
   </div>
 );
-EditableReferenceHeader.propTypes = {
-  entity: PropTypes.object,
-  table: PropTypes.object,
-  type: PropTypes.string,
-  headerIcon: PropTypes.string,
-  headerLink: PropTypes.string,
-  name: PropTypes.string,
-  user: PropTypes.object,
-  isEditing: PropTypes.bool,
-  hasSingleSchema: PropTypes.bool,
-  hasDisplayName: PropTypes.bool,
-  startEditing: PropTypes.func,
-  displayNameFormField: PropTypes.object,
-  nameFormField: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(EditableReferenceHeader);
