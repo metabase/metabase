@@ -1,7 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import dayjs from "dayjs";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -16,6 +14,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
@@ -26,10 +25,12 @@ import {
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 
-const emptyStateData = (table, metadata) => {
+type EntityLike = any;
+
+const emptyStateData = (table: EntityLike, metadata: Metadata) => {
   return {
     message: t`Questions about this table will appear here as they're added`,
-    icon: "folder",
+    icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
       dbId: table.db_id,
@@ -39,11 +40,11 @@ const emptyStateData = (table, metadata) => {
   };
 };
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   table: getTable(state, props),
   entities: getTableQuestions(state, props),
-  loading: getLoading(state, props),
-  loadingError: getError(state, props),
+  loading: getLoading(state),
+  loadingError: getError(state),
   metadata: getMetadata(state),
 });
 
@@ -51,15 +52,15 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-class TableQuestions extends Component {
-  static propTypes = {
-    table: PropTypes.object.isRequired,
-    metadata: PropTypes.object.isRequired,
-    entities: PropTypes.object.isRequired,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-  };
+interface TableQuestionsProps {
+  table: EntityLike;
+  metadata: Metadata;
+  entities: EntityLike[];
+  loading?: boolean;
+  loadingError?: unknown;
+}
 
+class TableQuestions extends Component<TableQuestionsProps> {
   render() {
     const { entities, loadingError, loading, table, metadata } = this.props;
 
@@ -90,7 +91,7 @@ class TableQuestions extends Component {
                             entity.created_at,
                           ).fromNow()} by ${entity.creator.common_name}`}
                           url={Urls.card(entity)}
-                          icon={visualizations.get(entity.display).iconName}
+                          icon={visualizations.get(entity.display)?.iconName}
                         />
                       ),
                   )}
@@ -109,4 +110,7 @@ class TableQuestions extends Component {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(TableQuestions);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TableQuestions as unknown as React.ComponentType);
