@@ -2,7 +2,7 @@ import { assoc } from "icepick";
 
 import { createAction, handleActions } from "metabase/redux";
 
-import { filterUntouchedFields, isEmptyObject } from "./utils.js";
+import { filterUntouchedFields, isEmptyObject } from "./utils";
 
 export const SET_ERROR = "metabase/reference/SET_ERROR";
 export const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
@@ -36,10 +36,54 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
+interface FetchProps {
+  clearError: () => void;
+  startLoading: () => void;
+  endLoading: () => void;
+  setError: (error: unknown) => void;
+}
+
+interface UpdateProps extends FetchProps {
+  resetForm: () => void;
+  endEditing: () => void;
+  entity: Record<string, unknown>;
+}
+
+interface DatabaseFetchProps extends FetchProps {
+  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
+  fetchQuestions: () => Promise<unknown>;
+  fetchRealDatabases: (args: unknown) => Promise<unknown>;
+}
+
+interface SegmentFetchProps extends FetchProps {
+  fetchSegments: (id?: number) => Promise<unknown>;
+  fetchSegmentTable: (id: number) => Promise<unknown>;
+  fetchSegmentRevisions: (id: number) => Promise<unknown>;
+  fetchSegmentFields: (id: number) => Promise<unknown>;
+  fetchQuestions: () => Promise<unknown>;
+}
+
+interface ClearStateProps {
+  endEditing: () => void;
+  endLoading: () => void;
+  clearError: () => void;
+  collapseFormula: () => void;
+}
+
+interface UpdateEntityProps extends UpdateProps {
+  updateSegment: (entity: Record<string, unknown>) => Promise<unknown>;
+  updateField: (entity: Record<string, unknown>) => Promise<unknown>;
+  updateDatabase: (entity: Record<string, unknown>) => Promise<unknown>;
+  updateTable: (entity: Record<string, unknown>) => Promise<unknown>;
+}
+
 // Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
 
-const fetchDataWrapper = (props, fn) => {
-  return async (argument) => {
+const fetchDataWrapper = <T>(
+  props: FetchProps,
+  fn: (argument: T) => Promise<unknown>,
+) => {
+  return async (argument: T) => {
     props.clearError();
     props.startLoading();
     try {
@@ -53,40 +97,52 @@ const fetchDataWrapper = (props, fn) => {
   };
 };
 
-export const wrappedFetchDatabaseMetadata = (props, databaseID) => {
+export const wrappedFetchDatabaseMetadata = (
+  props: DatabaseFetchProps,
+  databaseID: number,
+) => {
   fetchDataWrapper(props, props.fetchDatabaseMetadata)(databaseID);
 };
 
 export const wrappedFetchDatabaseMetadataAndQuestion = async (
-  props,
-  databaseID,
+  props: DatabaseFetchProps,
+  databaseID: number,
 ) => {
-  fetchDataWrapper(props, async (dbID) => {
+  fetchDataWrapper(props, async (dbID: number) => {
     await Promise.all([
       props.fetchDatabaseMetadata(dbID),
       props.fetchQuestions(),
     ]);
   })(databaseID);
 };
-export const wrappedFetchDatabases = (props) => {
+export const wrappedFetchDatabases = (props: DatabaseFetchProps) => {
   fetchDataWrapper(props, props.fetchRealDatabases)({});
 };
-export const wrappedFetchSegments = (props) => {
-  fetchDataWrapper(props, props.fetchSegments)({});
+export const wrappedFetchSegments = (props: SegmentFetchProps) => {
+  fetchDataWrapper(props, props.fetchSegments)(undefined);
 };
 
-export const wrappedFetchSegmentDetail = (props, segmentID) => {
+export const wrappedFetchSegmentDetail = (
+  props: SegmentFetchProps,
+  segmentID: number,
+) => {
   fetchDataWrapper(props, props.fetchSegmentTable)(segmentID);
 };
 
-export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
-  fetchDataWrapper(props, async (sID) => {
+export const wrappedFetchSegmentQuestions = async (
+  props: SegmentFetchProps,
+  segmentID: number,
+) => {
+  fetchDataWrapper(props, async (sID: number) => {
     await props.fetchSegments(sID);
     await Promise.all([props.fetchSegmentTable(sID), props.fetchQuestions()]);
   })(segmentID);
 };
-export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
-  fetchDataWrapper(props, async (sID) => {
+export const wrappedFetchSegmentRevisions = async (
+  props: SegmentFetchProps,
+  segmentID: number,
+) => {
+  fetchDataWrapper(props, async (sID: number) => {
     await props.fetchSegments(sID);
     await Promise.all([
       props.fetchSegmentRevisions(sID),
@@ -94,8 +150,11 @@ export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
     ]);
   })(segmentID);
 };
-export const wrappedFetchSegmentFields = async (props, segmentID) => {
-  fetchDataWrapper(props, async (sID) => {
+export const wrappedFetchSegmentFields = async (
+  props: SegmentFetchProps,
+  segmentID: number,
+) => {
+  fetchDataWrapper(props, async (sID: number) => {
     await props.fetchSegments(sID);
     await Promise.all([
       props.fetchSegmentFields(sID),
@@ -107,7 +166,7 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
 // This is called when a component gets a new set of props.
 // I *think* this is un-necessary in all cases as we're using multiple
 // components where the old code re-used the same component
-export const clearState = (props) => {
+export const clearState = (props: ClearStateProps) => {
   props.endEditing();
   props.endLoading();
   props.clearError();
@@ -115,7 +174,7 @@ export const clearState = (props) => {
 };
 
 // This is called on the success or failure of a form triggered update
-const resetForm = (props) => {
+const resetForm = (props: UpdateProps) => {
   props.resetForm();
   props.endLoading();
   props.endEditing();
@@ -127,8 +186,11 @@ const resetForm = (props) => {
 // dispatch directly, since there is no actual dependence with the props
 // of that component
 
-const updateDataWrapper = (props, fn) => {
-  return async (fields) => {
+const updateDataWrapper = (
+  props: UpdateProps,
+  fn: (entity: Record<string, unknown>) => Promise<unknown>,
+) => {
+  return async (fields: Record<string, unknown>) => {
     props.clearError();
     props.startLoading();
     try {
@@ -145,23 +207,46 @@ const updateDataWrapper = (props, fn) => {
   };
 };
 
-export const rUpdateSegmentDetail = (formFields, props) => {
+export const rUpdateSegmentDetail = (
+  formFields: Record<string, unknown>,
+  props: UpdateEntityProps,
+) => {
   return () => updateDataWrapper(props, props.updateSegment)(formFields);
 };
-export const rUpdateSegmentFieldDetail = (formFields, props) => {
+export const rUpdateSegmentFieldDetail = (
+  formFields: Record<string, unknown>,
+  props: UpdateEntityProps,
+) => {
   return () => updateDataWrapper(props, props.updateField)(formFields);
 };
-export const rUpdateDatabaseDetail = (formFields, props) => {
+export const rUpdateDatabaseDetail = (
+  formFields: Record<string, unknown>,
+  props: UpdateEntityProps,
+) => {
   return () => updateDataWrapper(props, props.updateDatabase)(formFields);
 };
-export const rUpdateTableDetail = (formFields, props) => {
+export const rUpdateTableDetail = (
+  formFields: Record<string, unknown>,
+  props: UpdateEntityProps,
+) => {
   return () => updateDataWrapper(props, props.updateTable)(formFields);
 };
-export const rUpdateFieldDetail = (formFields, props) => {
+export const rUpdateFieldDetail = (
+  formFields: Record<string, unknown>,
+  props: UpdateEntityProps,
+) => {
   return () => updateDataWrapper(props, props.updateField)(formFields);
 };
 
-export const rUpdateFields = (fields, formFields, props) => {
+interface UpdateFieldsProps extends UpdateProps {
+  updateField: (field: Record<string, unknown>) => Promise<unknown>;
+}
+
+export const rUpdateFields = (
+  fields: Record<string, Record<string, unknown>>,
+  formFields: Record<string, Record<string, unknown>>,
+  props: UpdateFieldsProps,
+) => {
   return async () => {
     props.startLoading();
     try {
@@ -173,7 +258,7 @@ export const rUpdateFields = (fields, formFields, props) => {
             fields[fieldId],
           ),
         }))
-        .filter(({ field, formField }) => !isEmptyObject(formField))
+        .filter(({ formField }) => !isEmptyObject(formField))
         .map(({ field, formField }) => ({ ...field, ...formField }));
 
       await Promise.all(updatedFields.map(props.updateField));
@@ -186,7 +271,15 @@ export const rUpdateFields = (fields, formFields, props) => {
   };
 };
 
-const initialState = {
+interface ReferenceState {
+  error: unknown;
+  isLoading: boolean;
+  isEditing: boolean;
+  isFormulaExpanded: boolean;
+  isDashboardModalOpen: boolean;
+}
+
+const initialState: ReferenceState = {
   error: null,
   isLoading: false,
   isEditing: false,
@@ -197,34 +290,37 @@ const initialState = {
 export default handleActions(
   {
     [SET_ERROR]: {
-      throw: (state, { payload }) => assoc(state, "error", payload),
+      throw: (state: ReferenceState, { payload }: { payload: unknown }) =>
+        assoc(state, "error", payload),
     },
     [CLEAR_ERROR]: {
-      next: (state) => assoc(state, "error", null),
+      next: (state: ReferenceState) => assoc(state, "error", null),
     },
     [START_LOADING]: {
-      next: (state) => assoc(state, "isLoading", true),
+      next: (state: ReferenceState) => assoc(state, "isLoading", true),
     },
     [END_LOADING]: {
-      next: (state) => assoc(state, "isLoading", false),
+      next: (state: ReferenceState) => assoc(state, "isLoading", false),
     },
     [START_EDITING]: {
-      next: (state) => assoc(state, "isEditing", true),
+      next: (state: ReferenceState) => assoc(state, "isEditing", true),
     },
     [END_EDITING]: {
-      next: (state) => assoc(state, "isEditing", false),
+      next: (state: ReferenceState) => assoc(state, "isEditing", false),
     },
     [EXPAND_FORMULA]: {
-      next: (state) => assoc(state, "isFormulaExpanded", true),
+      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", true),
     },
     [COLLAPSE_FORMULA]: {
-      next: (state) => assoc(state, "isFormulaExpanded", false),
+      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", false),
     },
     [SHOW_DASHBOARD_MODAL]: {
-      next: (state) => assoc(state, "isDashboardModalOpen", true),
+      next: (state: ReferenceState) =>
+        assoc(state, "isDashboardModalOpen", true),
     },
     [HIDE_DASHBOARD_MODAL]: {
-      next: (state) => assoc(state, "isDashboardModalOpen", false),
+      next: (state: ReferenceState) =>
+        assoc(state, "isDashboardModalOpen", false),
     },
   },
   initialState,
