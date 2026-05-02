@@ -152,7 +152,14 @@
       (u/step (format "Copy resources from %s" path)
         (b/copy-dir {:target-dir class-dir
                      :src-dirs   [path]
-                     :ignores    resource-ignore-patterns})))))
+                     :ignores    resource-ignore-patterns})))
+    ;; Drivers excluded from AOT need their source files in the jar so they can be compiled lazily at runtime.
+    (doseq [driver drivers-excluded-from-aot]
+      (let [src-dir (u/filename u/project-root-directory "modules" "drivers" driver "src")]
+        (when (.isDirectory (io/file src-dir))
+          (u/step (format "Copy source for non-AOT driver %s" driver)
+            (b/copy-dir {:target-dir class-dir
+                         :src-dirs   [src-dir]})))))))
 
 (def ^:private dependency-ignore-patterns
   "Files to ignore when copying resources from our dependencies."
