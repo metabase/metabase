@@ -1,7 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import { useFormik } from "formik";
-import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -19,6 +17,7 @@ import {
   getShallowFields as getFields,
   getMetadata,
 } from "metabase/selectors/metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
   getError,
@@ -31,11 +30,13 @@ import {
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 
-const interestingQuestions = (table, metadata) => {
+type EntityLike = any;
+
+const interestingQuestions = (table: EntityLike, metadata: Metadata) => {
   return [
     {
       text: t`Count of ${table.display_name}`,
-      icon: "number",
+      icon: "number" as const,
       link: getQuestionUrl({
         dbId: table.db_id,
         tableId: table.id,
@@ -45,7 +46,7 @@ const interestingQuestions = (table, metadata) => {
     },
     {
       text: t`See raw data for ${table.display_name}`,
-      icon: "table2",
+      icon: "table2" as const,
       link: getQuestionUrl({
         dbId: table.db_id,
         tableId: table.id,
@@ -54,7 +55,8 @@ const interestingQuestions = (table, metadata) => {
     },
   ];
 };
-const mapStateToProps = (state, props) => {
+
+const mapStateToProps = (state: any, props: any) => {
   const entity = getTable(state, props) || {};
   const fields = getFields(state, props);
 
@@ -63,13 +65,13 @@ const mapStateToProps = (state, props) => {
     table: getTable(state, props),
     metadataFields: fields,
     metadata: getMetadata(state),
-    loading: getLoading(state, props),
+    loading: getLoading(state),
     // naming this 'error' will conflict with redux form
-    loadingError: getError(state, props),
-    user: getUser(state, props),
-    isEditing: getIsEditing(state, props),
+    loadingError: getError(state),
+    user: getUser(state),
+    isEditing: getIsEditing(state),
     hasSingleSchema: getHasSingleSchema(state, props),
-    isFormulaExpanded: getIsFormulaExpanded(state, props),
+    isFormulaExpanded: getIsFormulaExpanded(state),
   };
 };
 
@@ -80,29 +82,30 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-const propTypes = {
-  style: PropTypes.object.isRequired,
-  entity: PropTypes.object.isRequired,
-  table: PropTypes.object,
-  user: PropTypes.object.isRequired,
-  isEditing: PropTypes.bool,
-  startEditing: PropTypes.func.isRequired,
-  endEditing: PropTypes.func.isRequired,
-  startLoading: PropTypes.func.isRequired,
-  endLoading: PropTypes.func.isRequired,
-  setError: PropTypes.func.isRequired,
-  updateField: PropTypes.func.isRequired,
-  handleSubmit: PropTypes.func.isRequired,
-  resetForm: PropTypes.func.isRequired,
-  fields: PropTypes.object.isRequired,
-  hasSingleSchema: PropTypes.bool,
-  loading: PropTypes.bool,
-  loadingError: PropTypes.object,
-  metadata: PropTypes.object.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-};
+interface TableDetailProps {
+  style: React.CSSProperties;
+  entity: EntityLike;
+  table?: EntityLike;
+  user: EntityLike;
+  isEditing?: boolean;
+  startEditing: () => void;
+  endEditing: () => void;
+  startLoading: () => void;
+  endLoading: () => void;
+  setError: (error: unknown) => void;
 
-const TableDetail = (props) => {
+  updateField: (...args: any[]) => any;
+
+  fields: any;
+  hasSingleSchema?: boolean;
+  loading?: boolean;
+  loadingError?: unknown;
+  metadata: Metadata;
+
+  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+}
+
+const TableDetail = (props: TableDetailProps) => {
   const {
     style,
     entity,
@@ -124,13 +127,14 @@ const TableDetail = (props) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik({
+  } = useFormik<Record<string, unknown>>({
     initialValues: {},
-    onSubmit: (fields) =>
-      onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields): void => {
+      onSubmit(fields, { ...props, resetForm: handleReset });
+    },
   });
 
-  const getFormField = (name) => ({
+  const getFormField = (name: string) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -142,7 +146,7 @@ const TableDetail = (props) => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset}
+          reinitializeForm={() => handleReset(undefined)}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -187,7 +191,6 @@ const TableDetail = (props) => {
               <ul>
                 <li>
                   <Detail
-                    id="description"
                     name={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
@@ -198,7 +201,6 @@ const TableDetail = (props) => {
                 {!isEditing && (
                   <li>
                     <Detail
-                      id="name"
                       name={t`Actual name in database`}
                       description={entity.name}
                       subtitleClass={S.tableActualName}
@@ -207,7 +209,6 @@ const TableDetail = (props) => {
                 )}
                 <li>
                   <Detail
-                    id="points_of_interest"
                     name={t`Why this table is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
@@ -217,7 +218,6 @@ const TableDetail = (props) => {
                 </li>
                 <li>
                   <Detail
-                    id="caveats"
                     name={t`Things to be aware of about this table`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
@@ -241,7 +241,8 @@ const TableDetail = (props) => {
   );
 };
 
-TableDetail.propTypes = propTypes;
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(TableDetail);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TableDetail as unknown as React.ComponentType);
