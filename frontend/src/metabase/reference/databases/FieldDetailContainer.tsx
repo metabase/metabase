@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -21,13 +19,13 @@ import {
 
 import FieldSidebar from "./FieldSidebar";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
   field: getField(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
-  metadata: getMetadata(state, props),
+  isEditing: getIsEditing(state),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
@@ -35,21 +33,25 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class FieldDetailContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    table: PropTypes.object.isRequired,
-    field: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
-    metadata: PropTypes.object,
-  };
+interface FieldDetailContainerProps {
+  params: any;
+  location: { pathname: string };
 
+  database: any;
+  databaseId: number;
+
+  table: any;
+
+  field: any;
+  isEditing?: boolean;
+
+  metadata?: any;
+}
+
+class FieldDetailContainer extends Component<FieldDetailContainerProps> {
   async fetchContainerData() {
     await actions.wrappedFetchDatabaseMetadata(
-      this.props,
+      this.props as any,
       this.props.databaseId,
     );
   }
@@ -58,12 +60,12 @@ class FieldDetailContainer extends Component {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: FieldDetailContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -77,7 +79,8 @@ class FieldDetailContainer extends Component {
           <FieldSidebar database={database} table={table} field={field} />
         }
       >
-        <FieldDetail {...this.props} />
+        {}
+        <FieldDetail {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -87,4 +90,4 @@ class FieldDetailContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(FieldDetailContainer);
+)(FieldDetailContainer as unknown as React.ComponentType);
