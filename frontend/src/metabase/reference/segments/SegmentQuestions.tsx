@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
@@ -16,15 +14,22 @@ import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import { getSegment, getTableBySegment } from "../selectors";
 import { getDescription, getQuestionUrl } from "../utils";
 
-const emptyStateData = (table, segment, metadata) => {
+type EntityLike = any;
+
+const emptyStateData = (
+  table: EntityLike,
+  segment: EntityLike,
+  metadata: Metadata,
+) => {
   return {
     message: t`Questions about this segment will appear here as they're added`,
-    icon: "folder",
+    icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
       dbId: table && table.db_id,
@@ -34,7 +39,8 @@ const emptyStateData = (table, segment, metadata) => {
     }),
   };
 };
-const mapStateToProps = (state, props) => ({
+
+const mapStateToProps = (state: any, props: any) => ({
   segment: getSegment(state, props),
   table: getTableBySegment(state, props),
   metadata: getMetadata(state),
@@ -44,13 +50,25 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
+interface SegmentQuestionsInnerProps {
+  style: React.CSSProperties;
+  table?: EntityLike;
+  segment: EntityLike;
+  metadata: Metadata;
+}
+
+const SegmentQuestionsInner = ({
+  style,
+  table,
+  segment,
+  metadata,
+}: SegmentQuestionsInnerProps) => {
   const {
     data = [],
     isLoading,
     error,
   } = useQuestionListQuery({
-    query: { f: "using_segment", model_id: segment.id },
+    query: { f: "using_segment" as any, model_id: segment.id },
   });
 
   return (
@@ -71,10 +89,10 @@ const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
                     question.displayName() && (
                       <ListItem
                         key={question.id()}
-                        name={question.displayName()}
+                        name={question.displayName() ?? ""}
                         description={getDescription(question)}
                         url={Urls.card(question.card())}
-                        icon={visualizations.get(question.display()).iconName}
+                        icon={visualizations.get(question.display())?.iconName}
                       />
                     ),
                 )}
@@ -93,14 +111,7 @@ const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
   );
 };
 
-SegmentQuestionsInner.propTypes = {
-  table: PropTypes.object,
-  segment: PropTypes.object.isRequired,
-  style: PropTypes.object.isRequired,
-  metadata: PropTypes.object.isRequired,
-};
-
 export const SegmentQuestions = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentQuestionsInner);
+)(SegmentQuestionsInner as unknown as React.ComponentType);
