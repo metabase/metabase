@@ -28,9 +28,8 @@ import {
   getTable,
   getUser,
 } from "../selectors";
+import type { EntityLike } from "../types";
 import { getQuestionUrl } from "../utils";
-
-type EntityLike = any;
 
 const interestingQuestions = (table: EntityLike, metadata: Metadata) => {
   return [

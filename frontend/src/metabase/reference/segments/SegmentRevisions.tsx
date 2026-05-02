@@ -22,6 +22,7 @@ import {
   getSegmentRevisions,
   getUser,
 } from "../selectors";
+import type { EntityLike } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -43,8 +44,6 @@ const mapStateToProps = (state: any, props: any) => {
 const mapDispatchToProps = {
   ...metadataActions,
 };
-
-type EntityLike = any;
 
 interface SegmentRevisionsProps {
   style: React.CSSProperties;

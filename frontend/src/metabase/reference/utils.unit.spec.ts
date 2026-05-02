@@ -26,7 +26,7 @@ describe("Reference utils.js", () => {
 
       const createSchemaSeparator = (table: { schema_name: string }) =>
         table.schema_name;
-      const createListItem = <T>(table: T) => table;
+      const createListItem = (table: { schema_name: string }) => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
         tables,

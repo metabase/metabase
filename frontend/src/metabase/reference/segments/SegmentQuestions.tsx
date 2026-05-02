@@ -18,9 +18,8 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import { getSegment, getTableBySegment } from "../selectors";
+import type { EntityLike } from "../types";
 import { getDescription, getQuestionUrl } from "../utils";
-
-type EntityLike = any;
 
 const emptyStateData = (
   table: EntityLike,

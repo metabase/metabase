@@ -143,10 +143,11 @@ export const getTableQuestions = createSelector(
   },
 );
 
-export const getLoading = (state: StateWithReference) =>
-  state.reference.isLoading;
+export const getLoading = (state: State) =>
+  (state as StateWithReference).reference.isLoading;
 
-export const getError = (state: StateWithReference) => state.reference.error;
+export const getError = (state: State) =>
+  (state as StateWithReference).reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
@@ -159,8 +160,8 @@ export const getHasSingleSchema = createSelector(
       : true,
 );
 
-export const getIsEditing = (state: StateWithReference) =>
-  state.reference.isEditing;
+export const getIsEditing = (state: State) =>
+  (state as StateWithReference).reference.isEditing;
 
 export const getIsFormulaExpanded = (state: StateWithReference) =>
   state.reference.isFormulaExpanded;

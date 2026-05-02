@@ -23,9 +23,8 @@ import {
   getTable,
   getTableQuestions,
 } from "../selectors";
+import type { EntityLike } from "../types";
 import { getQuestionUrl } from "../utils";
-
-type EntityLike = any;
 
 const emptyStateData = (table: EntityLike, metadata: Metadata) => {
   return {

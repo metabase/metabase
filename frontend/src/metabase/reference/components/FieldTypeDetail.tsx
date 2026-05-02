@@ -18,14 +18,9 @@ import type {
   FieldId,
 } from "metabase-types/api";
 
+import type { FormFieldEntry } from "../types";
+
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
-
-interface FormFieldEntry<T = unknown> {
-  name: string;
-  value?: T;
-
-  onChange: (...args: any[]) => void;
-}
 
 interface FieldTypeDetailProps {
   databaseId: DatabaseId;

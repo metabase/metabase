@@ -22,15 +22,10 @@ import type {
   FieldId,
 } from "metabase-types/api";
 
+import type { FormFieldEntry } from "../types";
+
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
-
-interface FormFieldEntry<T = unknown> {
-  name: string;
-  value?: T;
-
-  onChange: (...args: any[]) => void;
-}
 
 interface FieldFormFields {
   display_name: FormFieldEntry<string>;
