@@ -79,16 +79,20 @@
    (ns.deps/graph)
    ns-decls))
 
+(def ^:private drivers-excluded-from-aot
+  "Drivers whose JDBC dependencies are not bundled due to licensing restrictions (users must supply the JDBC driver JAR
+  themselves). These drivers are included as source on the classpath and compiled lazily at runtime when their JDBC
+  driver is present in the plugins directory."
+  #{"oracle" "vertica"})
+
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
-       (filter (fn [^File d]                                        ;
+       (filter (fn [^File d]
                  (and
-                  ;; watch for errant DS_Store files on os_x
                   (.isDirectory d)
-                  ;; ignore stuff like .cpcache
                   (not (.isHidden d))
-                  ;; only consider a directory to be a driver if it contains a lein or deps build file
-                  (.exists (io/file d "deps.edn")))))
+                  (.exists (io/file d "deps.edn"))
+                  (not (contains? drivers-excluded-from-aot (.getName d))))))
        (map (comp symbol #(str "metabase.driver." %) #(.getName ^File %)))))
 
 (defn- metabase-namespaces-in-topo-order [basis]
