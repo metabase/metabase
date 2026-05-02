@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -8,6 +6,23 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 
 import S from "./Detail.module.css";
+
+interface DetailField {
+  name: string;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  error?: string;
+  touched?: boolean;
+}
+
+interface DetailProps {
+  name: string;
+  description?: string;
+  placeholder?: string;
+  subtitleClass?: string;
+  url?: string;
+  isEditing?: boolean;
+  field?: DetailField;
+}
 
 const Detail = ({
   name,
@@ -17,7 +32,7 @@ const Detail = ({
   url,
   isEditing,
   field,
-}) => (
+}: DetailProps) => (
   <div className={cx(S.detail)}>
     <div className={isEditing ? cx(S.detailBody, CS.flexFull) : S.detailBody}>
       <div className={S.detailTitle}>
@@ -26,7 +41,7 @@ const Detail = ({
       <div
         className={cx(description ? S.detailSubtitle : S.detailSubtitleLight)}
       >
-        {isEditing ? (
+        {isEditing && field ? (
           <textarea
             className={S.detailTextarea}
             name={field.name}
@@ -41,23 +56,13 @@ const Detail = ({
             {description || placeholder || t`No description yet`}
           </span>
         )}
-        {isEditing && field.error && field.touched && (
+        {isEditing && field?.error && field?.touched && (
           <span className={CS.textError}>{field.error}</span>
         )}
       </div>
     </div>
   </div>
 );
-
-Detail.propTypes = {
-  name: PropTypes.string.isRequired,
-  url: PropTypes.string,
-  description: PropTypes.string,
-  placeholder: PropTypes.string,
-  subtitleClass: PropTypes.string,
-  isEditing: PropTypes.bool,
-  field: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(Detail);
