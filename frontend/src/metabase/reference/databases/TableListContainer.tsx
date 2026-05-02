@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -14,10 +12,10 @@ import { getDatabase, getDatabaseId, getIsEditing } from "../selectors";
 
 import DatabaseSidebar from "./DatabaseSidebar";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   database: getDatabase(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -25,18 +23,19 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class TableListContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface TableListContainerProps {
+  params: any;
+  location: { pathname: string };
 
+  database: any;
+  databaseId: number;
+  isEditing?: boolean;
+}
+
+class TableListContainer extends Component<TableListContainerProps> {
   async fetchContainerData() {
     await actions.wrappedFetchDatabaseMetadata(
-      this.props,
+      this.props as any,
       this.props.databaseId,
     );
   }
@@ -45,12 +44,12 @@ class TableListContainer extends Component {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: TableListContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -62,11 +61,15 @@ class TableListContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<DatabaseSidebar database={database} />}
       >
-        <TableList {...this.props} />
+        {}
+        <TableList {...(this.props as any)} />
       </SidebarLayout>
     );
   }
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(TableListContainer);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TableListContainer as unknown as React.ComponentType);
