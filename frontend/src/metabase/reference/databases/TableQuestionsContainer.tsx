@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -20,11 +18,11 @@ import {
 
 import TableSidebar from "./TableSidebar";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -33,19 +31,21 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class TableQuestionsContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    table: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface TableQuestionsContainerProps {
+  params: any;
+  location: { pathname: string };
 
+  database: any;
+  databaseId: number;
+
+  table: any;
+  isEditing?: boolean;
+}
+
+class TableQuestionsContainer extends Component<TableQuestionsContainerProps> {
   async fetchContainerData() {
     await actions.wrappedFetchDatabaseMetadataAndQuestion(
-      this.props,
+      this.props as any,
       this.props.databaseId,
     );
   }
@@ -54,12 +54,12 @@ class TableQuestionsContainer extends Component {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: TableQuestionsContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -71,7 +71,8 @@ class TableQuestionsContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<TableSidebar database={database} table={table} />}
       >
-        <TableQuestions {...this.props} />
+        {}
+        <TableQuestions {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -81,4 +82,4 @@ class TableQuestionsContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(TableQuestionsContainer);
+)(TableQuestionsContainer as unknown as React.ComponentType);
