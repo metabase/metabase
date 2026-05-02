@@ -1,7 +1,6 @@
 import type {
   BaseEntityId,
   CollectionEssentials,
-  Dashboard,
   DashboardId,
   PaginationRequest,
   PaginationResponse,
@@ -139,9 +138,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  setCollection?: (
-    collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
-  ) => void;
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
   is_remote_synced?: boolean;
