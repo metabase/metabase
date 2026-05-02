@@ -1,11 +1,11 @@
 (ns metabase.driver.druid.query-processor
   (:refer-clojure :exclude [every? mapv some get-in])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.druid.js :as druid.js]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -627,7 +627,7 @@
 (defn- create-aggregation-clause
   [output-name ag-type ag-field args]
   (let [output-name-kwd (keyword output-name)]
-    (match [ag-type ag-field]
+    (driver-api/match-one [ag-type ag-field]
       ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name
       ;; it :___count so it gets discarded automatically
       [nil     nil]    [[(or output-name-kwd :___count)] {:aggregations [(ag:count (or output-name :___count))]}]
@@ -1009,7 +1009,7 @@
                             [(ag-type :guard keyword?) & _]       ag-type)]
     (when-not sort-by-breakout?
       (assert ag-field))
-    (assoc-in druid-query [:query :metric] (match [sort-by-breakout? direction]
+    (assoc-in druid-query [:query :metric] (driver-api/match-one [sort-by-breakout? direction]
                                              [true  :asc]  {:type :alphaNumeric}
                                              [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}
                                              [false :asc]  {:type :inverted, :metric ag-field}
@@ -1171,7 +1171,7 @@
                     (contains? timeseries-units (:unit (first breakout-fields)))
                     ;; (excludes queries with LIMIT)
                     (nil? limit)))]
-    (match [breakouts agg? ts?]
+    (driver-api/match-one [breakouts agg? ts?]
       [:none  false    _] ::scan
       [:none  true     _] ::total
       [:one   _     true] ::grouped-timeseries

@@ -1,10 +1,10 @@
 (ns metabase.lib.parameters.parse
   (:refer-clojure :exclude [mapv])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv]]))
@@ -76,22 +76,22 @@
            normalize-card-tag))
 
 (defn- ->param [value]
-  (match [value]
-    [s :guard string?]
+  (lib.util.match/match-one value
+    (s :guard string?)
     s
 
-    [{:type :metabase.lib.parse/param
-      :name param-name}]
+    {:type :metabase.lib.parse/param
+     :name param-name}
     (lib.params.parse.types/param {:k (or (match-and-normalize-tag-name param-name)
                                           (str/trim param-name))})
 
-    [{:type :metabase.lib.parse/function-param
-      :name param-name
-      :args args}]
+    {:type :metabase.lib.parse/function-param
+     :name param-name
+     :args args}
     (lib.params.parse.types/function-param {:function-name param-name, :args (mapv ->param args)})
 
-    [{:type     :metabase.lib.parse/optional
-      :contents contents}]
+    {:type     :metabase.lib.parse/optional
+     :contents contents}
     (lib.params.parse.types/optional {:args (mapv ->param contents)})))
 
 (mu/defn parse :- [:sequential ::parsed-token]

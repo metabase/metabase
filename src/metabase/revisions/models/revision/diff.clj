@@ -1,12 +1,12 @@
 (ns metabase.revisions.models.revision.diff
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.data :as data]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (defn- match-1 [k v1 v2 identifier]
-  (match [k v1 v2]
+  (lib.util.match/match-one [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
 
@@ -44,12 +44,10 @@
     (deferred-tru "changed the filters")
 
     [:embedding_params _ _]
-    (deferred-tru "changed the embedding parameters")
-
-    :else nil))
+    (deferred-tru "changed the embedding parameters")))
 
 (defn- match-2 [k v1 v2 identifier]
-  (match [k v1 v2]
+  (lib.util.match/match-one [k v1 v2]
     [:archived _ after]
     (if after
       (deferred-tru "trashed {0}" identifier)
@@ -120,9 +118,7 @@
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]
-    nil
-
-    :else nil))
+    nil))
 
 (defn- diff-string [k v1 v2 identifier]
   (or (match-1 k v1 v2 identifier)
