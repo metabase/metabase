@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -19,11 +17,11 @@ import {
 
 import TableSidebar from "./TableSidebar";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -31,19 +29,21 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class TableDetailContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-    table: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
-  };
+interface TableDetailContainerProps {
+  params: any;
+  location: { pathname: string };
 
+  database: any;
+  databaseId: number;
+
+  table: any;
+  isEditing?: boolean;
+}
+
+class TableDetailContainer extends Component<TableDetailContainerProps> {
   async fetchContainerData() {
     await actions.wrappedFetchDatabaseMetadata(
-      this.props,
+      this.props as any,
       this.props.databaseId,
     );
   }
@@ -52,12 +52,12 @@ class TableDetailContainer extends Component {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: TableDetailContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -69,7 +69,8 @@ class TableDetailContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<TableSidebar database={database} table={table} />}
       >
-        <TableDetail {...this.props} />
+        {}
+        <TableDetail {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -79,4 +80,4 @@ class TableDetailContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(TableDetailContainer);
+)(TableDetailContainer as unknown as React.ComponentType);
