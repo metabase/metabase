@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -28,26 +26,36 @@ const emptyStateData = {
   get message() {
     return t`Tables in this database will appear here as they're added`;
   },
-  icon: "table2",
+  icon: "table2" as const,
 };
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   database: getDatabase(state, props),
   entities: getTablesByDatabase(state, props),
   hasSingleSchema: getHasSingleSchema(state, props),
-  loading: getLoading(state, props),
-  loadingError: getError(state, props),
+  loading: getLoading(state),
+  loadingError: getError(state),
 });
 
 const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const createListItem = (table) => (
+interface TableLike {
+  id?: number | string;
+  name?: string;
+  display_name?: string;
+  description?: string;
+  initial_sync_status?: string;
+  db_id?: number;
+  schema_name?: string;
+}
+
+const createListItem = (table: TableLike) => (
   <ListItem
     data-testid="table-list-item"
     key={table.id}
-    name={table.display_name || table.name}
+    name={table.display_name || table.name || ""}
     description={table.description}
     disabled={table.initial_sync_status !== "complete"}
     url={`/reference/databases/${table.db_id}/tables/${table.id}`}
@@ -55,18 +63,18 @@ const createListItem = (table) => (
   />
 );
 
-const createSchemaSeparator = (table) => (
+const createSchemaSeparator = (table: TableLike) => (
   <li className={R.schemaSeparator}>{table.schema_name}</li>
 );
 
-export const separateTablesBySchema = (
-  tables,
-  createSchemaSeparator,
-  createListItem,
-) => {
+export const separateTablesBySchema = <T extends TableLike>(
+  tables: Record<string, T> | T[],
+  createSchemaSeparator: (table: T) => React.ReactNode,
+  createListItem: (table: T) => React.ReactNode,
+): Array<React.ReactNode | undefined> => {
   const sortedTables = _.chain(tables)
-    .sortBy((t) => t.name)
-    .sortBy((t) => t.schema_name)
+    .sortBy((table) => table.name)
+    .sortBy((table) => table.schema_name)
     .value();
 
   return sortedTables.map((table, index, sortedTables) => {
@@ -76,21 +84,22 @@ export const separateTablesBySchema = (
     // add schema header for first element and if schema is different from previous
     const previousTableId = Object.keys(sortedTables)[index - 1];
     return index === 0 ||
-      sortedTables[previousTableId].schema_name !== table.schema_name
+      (sortedTables as unknown as Record<string, T>)[previousTableId]
+        .schema_name !== table.schema_name
       ? [createSchemaSeparator(table), createListItem(table)]
       : createListItem(table);
   });
 };
 
-class TableList extends Component {
-  static propTypes = {
-    entities: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    hasSingleSchema: PropTypes.bool,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-  };
+interface TableListProps {
+  entities: Record<string, TableLike>;
+  database: { name?: string };
+  hasSingleSchema?: boolean;
+  loading?: boolean;
+  loadingError?: unknown;
+}
 
+class TableList extends Component<TableListProps> {
   render() {
     const { entities, database, hasSingleSchema, loadingError, loading } =
       this.props;
@@ -140,4 +149,7 @@ class TableList extends Component {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(TableList);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TableList as unknown as React.ComponentType);
