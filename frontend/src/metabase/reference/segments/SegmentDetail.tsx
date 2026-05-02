@@ -1,7 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import { useFormik } from "formik";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -21,6 +19,8 @@ import {
   getShallowFields as getFields,
   getMetadata,
 } from "metabase/selectors/metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Segment } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
 import {
@@ -34,11 +34,17 @@ import {
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 
-const interestingQuestions = (table, segment, metadata) => {
+type EntityLike = any;
+
+const interestingQuestions = (
+  table: EntityLike,
+  segment: EntityLike,
+  metadata: Metadata,
+) => {
   return [
     {
       text: t`Number of ${segment.name}`,
-      icon: "number",
+      icon: "number" as const,
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,
@@ -49,7 +55,7 @@ const interestingQuestions = (table, segment, metadata) => {
     },
     {
       text: t`See all ${segment.name}`,
-      icon: "table2",
+      icon: "table2" as const,
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,
@@ -60,7 +66,7 @@ const interestingQuestions = (table, segment, metadata) => {
   ];
 };
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: any, props: any) => {
   const entity = getSegment(state, props) || {};
   const fields = getFields(state, props);
 
@@ -69,12 +75,12 @@ const mapStateToProps = (state, props) => {
     table: getTable(state, props),
     metadataFields: fields,
     metadata: getMetadata(state),
-    loading: getLoading(state, props),
+    loading: getLoading(state),
     // naming this 'error' will conflict with redux form
-    loadingError: getError(state, props),
-    user: getUser(state, props),
-    isEditing: getIsEditing(state, props),
-    isFormulaExpanded: getIsFormulaExpanded(state, props),
+    loadingError: getError(state),
+    user: getUser(state),
+    isEditing: getIsEditing(state),
+    isFormulaExpanded: getIsFormulaExpanded(state),
   };
 };
 
@@ -84,33 +90,35 @@ const mapDispatchToProps = {
   onSubmit: actions.rUpdateSegmentDetail,
 };
 
-const validate = (values) =>
+const validate = (values: { revision_message?: string }) =>
   !values.revision_message
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-const propTypes = {
-  style: PropTypes.object.isRequired,
-  entity: PropTypes.object.isRequired,
-  table: PropTypes.object,
-  user: PropTypes.object.isRequired,
-  isEditing: PropTypes.bool,
-  startEditing: PropTypes.func.isRequired,
-  endEditing: PropTypes.func.isRequired,
-  startLoading: PropTypes.func.isRequired,
-  endLoading: PropTypes.func.isRequired,
-  expandFormula: PropTypes.func.isRequired,
-  collapseFormula: PropTypes.func.isRequired,
-  setError: PropTypes.func.isRequired,
-  updateField: PropTypes.func.isRequired,
-  isFormulaExpanded: PropTypes.bool,
-  loading: PropTypes.bool,
-  loadingError: PropTypes.object,
-  metadata: PropTypes.object.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-};
+interface SegmentDetailProps {
+  style: React.CSSProperties;
+  entity: EntityLike;
+  table?: EntityLike;
+  user: EntityLike;
+  isEditing?: boolean;
+  startEditing: () => void;
+  endEditing: () => void;
+  startLoading: () => void;
+  endLoading: () => void;
+  expandFormula: () => void;
+  collapseFormula: () => void;
+  setError: (error: unknown) => void;
 
-const SegmentDetail = (props) => {
+  updateField: (...args: any[]) => any;
+  isFormulaExpanded?: boolean;
+  loading?: boolean;
+  loadingError?: unknown;
+  metadata: Metadata;
+
+  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+}
+
+const SegmentDetail = (props: SegmentDetailProps) => {
   const {
     style,
     entity,
@@ -134,15 +142,16 @@ const SegmentDetail = (props) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik({
+  } = useFormik<Record<string, unknown>>({
     validate,
     initialValues: {},
     initialErrors: validate({}),
-    onSubmit: (fields) =>
-      onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields): void => {
+      onSubmit(fields, { ...props, resetForm: handleReset });
+    },
   });
 
-  const getFormField = (name) => ({
+  const getFormField = (name: string) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -154,7 +163,7 @@ const SegmentDetail = (props) => {
           hasRevisionHistory={true}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset}
+          reinitializeForm={() => handleReset(undefined)}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -227,7 +236,6 @@ const SegmentDetail = (props) => {
                 </li>
                 <li className={CS.relative}>
                   <Detail
-                    id="description"
                     name={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
@@ -237,7 +245,6 @@ const SegmentDetail = (props) => {
                 </li>
                 <li className={CS.relative}>
                   <Detail
-                    id="points_of_interest"
                     name={t`Why this Segment is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
@@ -247,7 +254,6 @@ const SegmentDetail = (props) => {
                 </li>
                 <li className={CS.relative}>
                   <Detail
-                    id="caveats"
                     name={t`Things to be aware of about this Segment`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
@@ -266,9 +272,8 @@ const SegmentDetail = (props) => {
                   <li className={cx(CS.relative, CS.mb4)}>
                     <Formula
                       type="segment"
-                      entity={entity}
-                      table={table}
-                      isExpanded={isFormulaExpanded}
+                      entity={entity as Segment}
+                      isExpanded={Boolean(isFormulaExpanded)}
                       expandFormula={expandFormula}
                       collapseFormula={collapseFormula}
                     />
@@ -283,7 +288,8 @@ const SegmentDetail = (props) => {
   );
 };
 
-SegmentDetail.propTypes = propTypes;
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentDetail);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentDetail as unknown as React.ComponentType);
