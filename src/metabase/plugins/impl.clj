@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
@@ -14,7 +13,7 @@
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
-   (java.nio.file Files Path)))
+   (java.nio.file Files FileVisitOption Path Paths)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,12 +64,6 @@
   []
   (:path (plugins-dir-info)))
 
-(defn- extract-system-modules! []
-  (when (io/resource "modules")
-    (let [plugins-path (plugins-dir)]
-      (u.files/with-open-path-to-resource [modules-path "modules"]
-        (u.files/copy-files! modules-path plugins-path)))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          loading/initializing plugins                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -115,40 +108,36 @@
                              "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))]
     path))
 
-(when (not config/is-prod?)
-  (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
+(defn- load-plugin-manifest! [path]
+  (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
-  (defn- driver-manifest-paths
-    "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
-    []
-    ;; only include plugin manifests if they're on the system classpath.
-    (concat
-     (for [^File file (classpath/system-classpath)
-           :when      (and (.isDirectory file)
-                           (not (.isHidden file))
-                           (str/includes? (str file) "modules/drivers")
-                           (or (str/ends-with? (str file) "resources")
-                               (str/ends-with? (str file) "resources-ee")))
-           :let       [manifest-file (io/file file "metabase-plugin.yaml")]
-           :when      (.exists manifest-file)]
-       manifest-file)
-     ;; for hacking on 3rd-party drivers locally: set
-     ;; `-Dmb.dev.additional.driver.manifest.paths=/path/to/whatever/metabase-plugin.yaml` or
-     ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
-     ;; multiple plugin manifests by comma-separating them.
-     (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
-       (map u.files/get-path (str/split additional-paths #",")))))
+(defn- bundled-driver-manifest-paths
+  "Return a sequence of paths (URIs when running from a jar, Paths in dev) for `metabase-plugin.yaml` plugin manifests
+  for drivers on the classpath. Driver manifests live at `metabase/<driver-name>/metabase-plugin.yaml` on the classpath."
+  []
+  (if (u.files/running-from-jar?)
+    (u.files/find-in-current-jar "glob:/metabase/*/metabase-plugin.yaml")
+    (let [matcher (.getPathMatcher (java.nio.file.FileSystems/getDefault) "glob:**/metabase/*/metabase-plugin.yaml")]
+      (for [^File f (classpath/system-classpath)
+            :when (.isDirectory f)
+            founds [(-> (.toURI f)
+                        (Paths/get)
+                        (Files/find 3
+                                    (fn [path _attr] (.matches matcher path))
+                                    (make-array FileVisitOption 0))
+                        (.collect (java.util.stream.Collectors/toList)))]
+            f founds]
+        f))))
 
-  (defn- load-local-plugin-manifests!
-    "Load local plugin manifest files when not running in a production mode, to simulate what would happen when loading those
-  same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
-  aren't defined elsewhere."
-    []
-    ;; TODO - this should probably do an actual search in case we ever add any additional directories
-    (doseq [manifest-path (driver-manifest-paths)]
-      (log/infof "Loading local plugin manifest at %s" (str manifest-path))
-      (load-local-plugin-manifest! manifest-path))))
+(defn- load-bundled-driver-plugin-manifests!
+  "Find and load driver plugin manifests from the classpath. In the uberjar, driver classes are flattened directly into
+  the jar (rather than shipped as nested JARs in a `modules/` directory) and their manifests live at
+  `metabase/<driver>/metabase-plugin.yaml`. In dev, the same manifests are found via the driver resource directories on
+  the classpath."
+  []
+  (doseq [manifest-path (bundled-driver-manifest-paths)]
+    (log/infof "Loading driver plugin manifest at %s" (str manifest-path))
+    (load-plugin-manifest! manifest-path)))
 
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (u.files/file-exists-in-archive? path "metabase-plugin.yaml")))
@@ -166,29 +155,29 @@
         (log/errorf e "Failed to initialize plugin %s" (.getFileName path))))))
 
 (defn- load! []
+  ;; Load any user-supplied plugin JARs from the plugins directory (e.g. Oracle JDBC driver).
+  ;; System/bundled drivers are no longer extracted to disk — they are flattened into the uberjar
+  ;; and their manifests are loaded from the classpath via load-driver-plugin-manifests! below.
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
-  (extract-system-modules!)
   (let [paths (plugins-paths)]
     (init-plugins! paths))
-  (when (not config/is-prod?)
-    (load-local-plugin-manifests!)))
+  (load-bundled-driver-plugin-manifests!))
 
 (defonce ^:private loaded? (atom false))
 
 (defn load-plugins!
-  "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the
-  source for these JARs is under the `modules` directory); and others manually added by users to the Metabase plugins
-  directory, which defaults to `./plugins`.
+  "Load Metabase plugins. Bundled drivers are compiled directly into the uberjar and their plugin manifests are
+  discovered on the classpath at `metabase/<driver>/metabase-plugin.yaml`. User-supplied plugins (e.g. Oracle JDBC
+  driver JARs) are loaded from the plugins directory, which defaults to `./plugins`.
 
   When loading plugins, Metabase performs the following steps:
 
   *  Metabase creates the plugins directory if it does not already exist.
-  *  Any plugins that are shipped as part of Metabase itself are extracted from the Metabase uberjar (or `resources`
-     directory when running with the Clojure CLI) into the plugins directory.
   *  Each JAR in the plugins directory that *does not* include a Metabase plugin manifest is added to the classpath.
   *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), a lazy-loading Metabase driver
      is registered; when the driver is initialized (automatically, when certain methods are called) the JAR is added
-     to the classpath and the driver namespace is loaded
+     to the classpath and the driver namespace is loaded.
+  *  Bundled driver plugin manifests are loaded from the classpath (not from disk).
 
   This function will only perform loading steps the first time it is called — it is safe to call this function more
   than once."
