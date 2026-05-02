@@ -1,7 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import { getIn } from "icepick";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { Link } from "react-router";
 import { P, match } from "ts-pattern";
@@ -15,13 +13,51 @@ import {
   SemanticTypePicker,
 } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
+import type { IconName } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Field as ApiField,
+  DatabaseId,
+  FieldId,
+} from "metabase-types/api";
 
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
 
-const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
+interface FormFieldEntry<T = unknown> {
+  name: string;
+  value?: T;
+
+  onChange: (...args: any[]) => void;
+}
+
+interface FieldFormFields {
+  display_name: FormFieldEntry<string>;
+  description: FormFieldEntry<string | null>;
+  semantic_type: FormFieldEntry<string | null>;
+  fk_target_field_id: FormFieldEntry<FieldId | null>;
+  settings: FormFieldEntry<Record<string, unknown>>;
+}
+
+interface FieldProps {
+  databaseId: DatabaseId;
+  field: ApiField;
+  url: string;
+  placeholder?: string;
+  icon?: IconName;
+  isEditing?: boolean;
+  formField: FieldFormFields;
+}
+
+const Field = ({
+  databaseId,
+  field,
+  url,
+  icon,
+  isEditing,
+  formField,
+}: FieldProps) => {
   const semanticType =
     typeof formField.semantic_type.value !== "undefined"
       ? formField.semantic_type.value
@@ -82,7 +118,7 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
                 <span
                   className={
                     getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                      field.semantic_type,
+                      field.semantic_type ?? "",
                       "name",
                     ])
                       ? CS.textMedium
@@ -90,7 +126,7 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
                   }
                 >
                   {getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                    field.semantic_type,
+                    field.semantic_type ?? "",
                     "name",
                   ]) || t`No field type`}
                 </span>
@@ -106,7 +142,9 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
                 databaseId={databaseId}
                 field={field}
                 value={
-                  formField.fk_target_field_id.value || field.fk_target_field_id
+                  formField.fk_target_field_id.value ||
+                  field.fk_target_field_id ||
+                  null
                 }
                 onChange={(value) => {
                   formField.fk_target_field_id.onChange({
@@ -121,10 +159,12 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
           )}
 
           {isEditing && isTypeCurrency(semanticType) && (
-            <Box Box mt="sm">
+            <Box mt="sm">
               <CurrencyPicker
                 value={getFieldCurrency(
-                  formField.settings.value ?? field.settings,
+                  (formField.settings.value ?? field.settings) as Parameters<
+                    typeof getFieldCurrency
+                  >[0],
                 )}
                 fw="bold"
                 onChange={(currency) => {
@@ -141,12 +181,14 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
 
           {match({ description: field.description, isEditing })
             .with({ isEditing: true }, () => {
+              const { value: _descriptionValue, ...descriptionRest } =
+                formField.description;
               return (
                 <input
                   className={cx(F.fieldTextInput, CS.mb2, CS.mt1)}
                   type="text"
                   placeholder={t`No column description yet`}
-                  {...formField.description}
+                  {...descriptionRest}
                   defaultValue={field.description ?? ""}
                 />
               );
@@ -161,16 +203,6 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
       </div>
     </div>
   );
-};
-
-Field.propTypes = {
-  databaseId: PropTypes.number.isRequired,
-  field: PropTypes.object.isRequired,
-  url: PropTypes.string.isRequired,
-  placeholder: PropTypes.string,
-  icon: PropTypes.string,
-  isEditing: PropTypes.bool,
-  formField: PropTypes.object,
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
