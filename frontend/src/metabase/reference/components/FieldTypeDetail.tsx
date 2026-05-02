@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -13,8 +12,29 @@ import { getFieldCurrency } from "metabase/metadata/utils/field";
 import D from "metabase/reference/components/Detail.module.css";
 import { Box } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Field as ApiField,
+  DatabaseId,
+  FieldId,
+} from "metabase-types/api";
 
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
+
+interface FormFieldEntry<T = unknown> {
+  name: string;
+  value?: T;
+
+  onChange: (...args: any[]) => void;
+}
+
+interface FieldTypeDetailProps {
+  databaseId: DatabaseId;
+  field: ApiField;
+  fieldTypeFormField: FormFieldEntry<string | null>;
+  foreignKeyFormField: FormFieldEntry<FieldId | null>;
+  fieldSettingsFormField: FormFieldEntry<Record<string, unknown>>;
+  isEditing: boolean;
+}
 
 const FieldTypeDetail = ({
   databaseId,
@@ -23,7 +43,7 @@ const FieldTypeDetail = ({
   foreignKeyFormField,
   fieldSettingsFormField,
   isEditing,
-}) => {
+}: FieldTypeDetailProps) => {
   const semanticType =
     typeof fieldTypeFormField.value !== "undefined"
       ? fieldTypeFormField.value
@@ -32,7 +52,9 @@ const FieldTypeDetail = ({
     typeof fieldSettingsFormField.value !== "undefined"
       ? fieldSettingsFormField.value
       : field.settings;
-  const currency = getFieldCurrency(settings);
+  const currency = getFieldCurrency(
+    settings as Parameters<typeof getFieldCurrency>[0],
+  );
 
   return (
     <div className={cx(D.detail)}>
@@ -62,7 +84,7 @@ const FieldTypeDetail = ({
             ) : (
               <span>
                 {getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                  field.semantic_type,
+                  field.semantic_type ?? "",
                   "name",
                 ]) || t`No field type`}
               </span>
@@ -89,7 +111,9 @@ const FieldTypeDetail = ({
               <FieldFkTargetPicker
                 databaseId={databaseId}
                 field={field}
-                value={foreignKeyFormField.value || field.fk_target_field_id}
+                value={
+                  foreignKeyFormField.value || field.fk_target_field_id || null
+                }
                 /** bottom-start with flip: true opens down and shrinks height
                  * of popover to one line */
                 comboboxProps={{ position: "top-start" }}
@@ -108,15 +132,6 @@ const FieldTypeDetail = ({
       </div>
     </div>
   );
-};
-
-FieldTypeDetail.propTypes = {
-  databaseId: PropTypes.number.isRequired,
-  field: PropTypes.object.isRequired,
-  fieldTypeFormField: PropTypes.object.isRequired,
-  foreignKeyFormField: PropTypes.object.isRequired,
-  fieldSettingsFormField: PropTypes.object.isRequired,
-  isEditing: PropTypes.bool.isRequired,
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
