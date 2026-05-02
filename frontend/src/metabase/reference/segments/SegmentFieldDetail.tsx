@@ -1,7 +1,5 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import { useFormik } from "formik";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { List } from "metabase/common/components/List";
@@ -17,6 +15,7 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
   getError,
@@ -29,13 +28,19 @@ import {
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 
-const interestingQuestions = (table, field, metadata) => {
+type EntityLike = any;
+
+const interestingQuestions = (
+  table: EntityLike,
+  field: EntityLike,
+  metadata: Metadata,
+) => {
   return [
     {
       text: t`Number of ${table && table.display_name} grouped by ${
         field.display_name
       }`,
-      icon: "number",
+      icon: "number" as const,
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,
@@ -46,7 +51,7 @@ const interestingQuestions = (table, field, metadata) => {
     },
     {
       text: t`All distinct values of ${field.display_name}`,
-      icon: "table2",
+      icon: "table2" as const,
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,
@@ -57,18 +62,18 @@ const interestingQuestions = (table, field, metadata) => {
   ];
 };
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: any, props: any) => {
   const entity = getFieldBySegment(state, props) || {};
 
   return {
     entity,
     table: getTable(state, props),
-    loading: getLoading(state, props),
+    loading: getLoading(state),
     // naming this 'error' will conflict with redux form
-    loadingError: getError(state, props),
-    user: getUser(state, props),
-    isEditing: getIsEditing(state, props),
-    isFormulaExpanded: getIsFormulaExpanded(state, props),
+    loadingError: getError(state),
+    user: getUser(state),
+    isEditing: getIsEditing(state),
+    isFormulaExpanded: getIsFormulaExpanded(state),
     metadata: getMetadata(state),
   };
 };
@@ -79,25 +84,27 @@ const mapDispatchToProps = {
   onSubmit: actions.rUpdateSegmentFieldDetail,
 };
 
-const propTypes = {
-  style: PropTypes.object.isRequired,
-  entity: PropTypes.object.isRequired,
-  table: PropTypes.object,
-  user: PropTypes.object.isRequired,
-  isEditing: PropTypes.bool,
-  startEditing: PropTypes.func.isRequired,
-  endEditing: PropTypes.func.isRequired,
-  startLoading: PropTypes.func.isRequired,
-  endLoading: PropTypes.func.isRequired,
-  setError: PropTypes.func.isRequired,
-  updateField: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-  loadingError: PropTypes.object,
-  metadata: PropTypes.object.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-};
+interface SegmentFieldDetailProps {
+  style: React.CSSProperties;
+  entity: EntityLike;
+  table?: EntityLike;
+  user: EntityLike;
+  isEditing?: boolean;
+  startEditing: () => void;
+  endEditing: () => void;
+  startLoading: () => void;
+  endLoading: () => void;
+  setError: (error: unknown) => void;
 
-const SegmentFieldDetail = (props) => {
+  updateField: (...args: any[]) => any;
+  loading?: boolean;
+  loadingError?: unknown;
+  metadata: Metadata;
+
+  onSubmit: (fields: Record<string, unknown>, props: any) => void;
+}
+
+const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
   const {
     style,
     entity,
@@ -118,13 +125,14 @@ const SegmentFieldDetail = (props) => {
     getFieldMeta,
     handleSubmit,
     handleReset,
-  } = useFormik({
+  } = useFormik<Record<string, unknown>>({
     initialValues: {},
-    onSubmit: (fields) =>
-      onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields): void => {
+      onSubmit(fields, { ...props, resetForm: handleReset });
+    },
   });
 
-  const getFormField = (name) => ({
+  const getFormField = (name: string) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -136,7 +144,7 @@ const SegmentFieldDetail = (props) => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset}
+          reinitializeForm={() => handleReset(undefined)}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -167,7 +175,6 @@ const SegmentFieldDetail = (props) => {
               <List>
                 <li className={CS.relative}>
                   <Detail
-                    id="description"
                     name={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
@@ -178,7 +185,6 @@ const SegmentFieldDetail = (props) => {
                 {!isEditing && (
                   <li className={CS.relative}>
                     <Detail
-                      id="name"
                       name={t`Actual name in database`}
                       description={entity.name}
                       subtitleClass={S.tableActualName}
@@ -187,7 +193,6 @@ const SegmentFieldDetail = (props) => {
                 )}
                 <li className={CS.relative}>
                   <Detail
-                    id="points_of_interest"
                     name={t`Why this field is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
@@ -197,7 +202,6 @@ const SegmentFieldDetail = (props) => {
                 </li>
                 <li className={CS.relative}>
                   <Detail
-                    id="caveats"
                     name={t`Things to be aware of about this field`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
@@ -209,7 +213,6 @@ const SegmentFieldDetail = (props) => {
                 {!isEditing && (
                   <li className={CS.relative}>
                     <Detail
-                      id="base_type"
                       name={t`Data type`}
                       description={entity.database_type}
                     />
@@ -222,7 +225,7 @@ const SegmentFieldDetail = (props) => {
                     fieldTypeFormField={getFormField("semantic_type")}
                     foreignKeyFormField={getFormField("fk_target_field_id")}
                     fieldSettingsFormField={getFormField("settings")}
-                    isEditing={isEditing}
+                    isEditing={Boolean(isEditing)}
                   />
                 </li>
                 {!isEditing && (
@@ -241,7 +244,8 @@ const SegmentFieldDetail = (props) => {
   );
 };
 
-SegmentFieldDetail.propTypes = propTypes;
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentFieldDetail);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentFieldDetail as unknown as React.ComponentType);
