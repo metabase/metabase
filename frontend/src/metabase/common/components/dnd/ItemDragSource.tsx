@@ -11,8 +11,11 @@ import { getEmptyImage } from "react-dnd-html5-backend";
 import { getErrorMessage } from "metabase/api/utils";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import {
+  type MovableItem,
   type PinnableItem,
+  isMovable,
   isPinnable,
+  useSetCollection,
   useSetPinned,
   useToast,
 } from "metabase/common/hooks";
@@ -59,6 +62,10 @@ interface DragSourceOwnProps {
   onDrop?: () => void;
   onMoveError?: (error: unknown) => void;
   setPinned: (item: PinnableItem, pinned: boolean | number) => void;
+  setCollection: (
+    item: MovableItem,
+    destination: { id: Collection["id"] },
+  ) => Promise<unknown>;
   children?: ReactNode | ((props: Record<string, unknown>) => ReactNode);
 }
 
@@ -83,7 +90,13 @@ const DragSourceComponent = DragSource(
       return { item: props.item };
     },
     async endDrag(
-      { selected, onDrop, onMoveError, setPinned }: DragSourceOwnProps,
+      {
+        selected,
+        onDrop,
+        onMoveError,
+        setPinned,
+        setCollection,
+      }: DragSourceOwnProps,
       monitor: DragSourceMonitor,
     ) {
       if (!monitor.didDrop()) {
@@ -99,7 +112,9 @@ const DragSourceComponent = DragSource(
         try {
           if (collection !== undefined) {
             await Promise.all(
-              items.map((i) => i.setCollection && i.setCollection(collection)),
+              items
+                .filter(isMovable)
+                .map((i) => setCollection(i as MovableItem, collection)),
             );
           } else if (pinIndex !== undefined) {
             await Promise.all(
@@ -134,6 +149,7 @@ interface ItemDragSourceProps {
 export function ItemDragSource(props: ItemDragSourceProps) {
   const [sendToast] = useToast();
   const setPinned = useSetPinned();
+  const setCollection = useSetCollection();
   const onMoveError = (error: unknown) =>
     sendToast({
       message: getErrorMessage(error),
@@ -145,6 +161,7 @@ export function ItemDragSource(props: ItemDragSourceProps) {
       {...props}
       onMoveError={onMoveError}
       setPinned={setPinned}
+      setCollection={setCollection}
     />
   );
 }

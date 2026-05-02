@@ -39,7 +39,6 @@ export const Question = {
       name: "Question",
       description: "This is a description of the question",
       copy: true,
-      setCollection: action("setCollection"),
       archived: false,
     },
     onCopy,
