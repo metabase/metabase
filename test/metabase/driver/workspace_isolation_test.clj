@@ -358,6 +358,11 @@
     (testing "workspace SA gets read-only access to input dataset, full access to output dataset"
       (let [database     (mt/db)
             details      (:details database)
+            ;; The BQ test extension only populates `:project-id` in `details` when
+            ;; `MB_BIGQUERY_CLOUD_SDK_TEST_PROJECT_ID` is set (see test/data/
+            ;; bigquery_cloud_sdk.clj:69-70). When it isn't, fall back to the
+            ;; project embedded in the admin service-account JSON — every
+            ;; Google-issued SA key carries the project it was created in.
             project-id   (or (:project-id details)
                              (.getProjectId (bq-admin-credentials details)))
             admin-creds  (bq-admin-credentials details)

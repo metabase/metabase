@@ -15,6 +15,8 @@
 
      1. Records a `TableRemapping` from the canonical `(schema, name)` to the workspace
         `(workspace-schema, name)` via [[ws.table-remapping/add-transform-target-mapping!]].
+        The remap is normalized per-driver (3-slot for Snowflake/SQL Server/BigQuery,
+        2-slot for Postgres/ClickHouse, 1-slot for MySQL).
      2. Returns the target with `:schema` rewritten to the workspace output schema.
 
    Subsequent reads of the canonical `(schema, name)` pair will resolve to the workspace
@@ -28,7 +30,7 @@
   :feature :none
   [db-id target]
   (if-let [workspace-schema (ws/db-workspace-schema db-id)]
-    (let [{from-schema :schema, from-name :name} target]
-      (ws.table-remapping/add-transform-target-mapping! db-id from-schema from-name from-name)
+    (do
+      (ws.table-remapping/add-transform-target-mapping! db-id target)
       (assoc target :schema workspace-schema))
     target))

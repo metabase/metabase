@@ -35,7 +35,6 @@
 ;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
 ;; running concurrently with other workspace-mode tests would cross-pollute.
 (deftest ^:synchronized workspace-full-e2e-test
-  (mt/set-test-drivers! #{:postgres})
   (mt/test-driver :postgres
     (mt/with-premium-features #{:workspaces}
       (testing "transform run on a workspaced DB → app db + describe-database stay in the input schema"

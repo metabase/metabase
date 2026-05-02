@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -366,11 +367,11 @@
          db-table-metadatas    (table-set db-metadata)
          ;; DEV-1898: workspace-isolated tables (`ws_*`) live on the warehouse but must not
          ;; become :model/Table rows. They back canonical Tables via remap, not their own identity.
-         db-table-metadatas    (fetch-metadata/filter-workspace-side-tables db-table-metadatas (:id database))
+         db-table-metadatas    (ws.table-remapping/filter-workspace-side-tables db-table-metadatas (:id database))
          ;; Inject synthetic canonical-side tuples for any remap whose to-side is materialized.
          ;; Without this, the diff retires canonical Table rows whose physical backing only
          ;; exists at the workspace location (not at the canonical name on the warehouse).
-         db-table-metadatas    (fetch-metadata/inject-workspace-canonical-tuples db-table-metadatas (:id database))
+         db-table-metadatas    (ws.table-remapping/inject-workspace-canonical-tuples db-table-metadatas (:id database))
          name+schema           #(select-keys % [:name :schema])
          name+schema->db-table (m/index-by name+schema db-table-metadatas)
          our-metadata          (db->our-metadata database)

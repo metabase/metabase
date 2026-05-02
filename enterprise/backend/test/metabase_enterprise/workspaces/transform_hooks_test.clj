@@ -24,15 +24,14 @@
     (let [recorded (atom nil)]
       (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
                     ws.table-remapping/add-transform-target-mapping!
-                    (fn [db-id from-schema from-name to-name]
-                      (reset! recorded {:db-id db-id :from-schema from-schema
-                                        :from-name from-name :to-name to-name}))]
+                    (fn [db-id target]
+                      (reset! recorded {:db-id db-id :target target}))]
         (let [target {:schema "public" :name "orders" :type :table}
               result (ws.transform-hooks/resolve-transform-target 42 target)]
           (is (= "ws_alice" (:schema result))
               "schema is rewritten to the workspace output schema")
           (is (= "orders" (:name result))
-              "name is preserved — only the schema changes")
+              "name is preserved -- only the schema changes")
           (is (= :table (:type result))
               "other target keys are preserved"))))))
 
@@ -41,13 +40,13 @@
     (let [recorded (atom nil)]
       (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
                     ws.table-remapping/add-transform-target-mapping!
-                    (fn [db-id from-schema from-name to-name]
-                      (reset! recorded {:db-id db-id :from-schema from-schema
-                                        :from-name from-name :to-name to-name}))]
+                    (fn [db-id target]
+                      (reset! recorded {:db-id db-id :target target}))]
         (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table})
-        (is (= {:db-id 42 :from-schema "public" :from-name "orders" :to-name "orders"}
+        (is (= {:db-id  42
+                :target {:schema "public" :name "orders" :type :table}}
                @recorded)
-            "add-transform-target-mapping! receives the canonical (schema, name) and the same name as to-name")))))
+            "add-transform-target-mapping! receives the db-id and the canonical target map verbatim")))))
 
 (defn- with-instance-workspace-for-db!
   "Set the in-process workspace atom so that `db-workspace-schema` returns

@@ -1790,7 +1790,8 @@
            system
            tracing
            users
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
@@ -2147,7 +2148,8 @@
            tracing
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2317,7 +2319,8 @@
            query-processor
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2603,6 +2606,11 @@
                     :model/Field
                     :model/FieldValues
                     :model/Table}}
+
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.table-remapping}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -3454,7 +3462,8 @@
   enterprise/workspaces
   {:team "Graphy"
    :api  #{}
-   :uses #{cache
+   :uses #{app-db
+           cache
            driver
            lib
            models
