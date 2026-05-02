@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import { createThunkAction } from "metabase/redux";
 import {
   CANCEL_QUERY,
   QUERY_COMPLETED as QUERY_COMPLETED_TYPE,
@@ -15,7 +16,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { defer } from "metabase/utils/promise";
-import { createThunkAction } from "metabase/utils/redux";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

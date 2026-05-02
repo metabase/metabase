@@ -3,7 +3,7 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/utils/redux";
+import { connect } from "metabase/redux";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Description, EmptyDescription } from "../MetadataInfo";

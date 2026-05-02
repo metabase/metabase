@@ -9,9 +9,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { entityForObject } from "metabase/entities/utils";
 import { ObjectUnionSchema } from "metabase/schema";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 import { Actions } from "./actions";
 import { Bookmarks } from "./bookmarks";
@@ -22,6 +20,7 @@ import { Questions } from "./questions";
 import { Segments } from "./segments";
 import { SnippetCollections } from "./snippet-collections";
 import { Snippets } from "./snippets";
+import { createEntity, entityCompatibleQuery, entityForObject } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -30,9 +29,9 @@ export const Search = createEntity({
   name: "search",
   path: "/api/search",
 
-  rtk: {
+  rtk: () => ({
     useListQuery,
-  },
+  }),
 
   api: {
     list: async (query = {}, dispatch) => {
@@ -123,15 +122,6 @@ export const Search = createEntity({
   },
 
   objectActions: {
-    setArchived: (object, archived) => {
-      return (dispatch) => {
-        const entity = entityForObject(object);
-        return entity
-          ? dispatch(entity.actions.setArchived(object, archived))
-          : warnEntityAndReturnObject(object);
-      };
-    },
-
     delete: (object) => {
       return (dispatch) => {
         const entity = entityForObject(object);
@@ -142,30 +132,6 @@ export const Search = createEntity({
     },
   },
 
-  objectSelectors: {
-    getCollection: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getCollection?.(object) ??
-            object?.collection ??
-            null)
-        : warnEntityAndReturnObject(object);
-    },
-
-    getName: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
-        : warnEntityAndReturnObject(object);
-    },
-
-    getColor: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getColor?.(object) ?? null)
-        : warnEntityAndReturnObject(object);
-    },
-  },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     return (

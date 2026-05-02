@@ -5,9 +5,9 @@ import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";

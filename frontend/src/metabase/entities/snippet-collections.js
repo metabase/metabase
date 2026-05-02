@@ -10,7 +10,8 @@ import {
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
 import { SnippetCollectionSchema } from "metabase/schema";
-import { createEntity, undo } from "metabase/utils/entities";
+
+import { createEntity, undo } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -24,12 +25,12 @@ export const SnippetCollections = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`snippet collections`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: _.mapObject(
     Collections.api,
@@ -39,13 +40,6 @@ export const SnippetCollections = createEntity({
   ),
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      SnippetCollections.actions.update(
-        { id },
-        { archived },
-        undo(opts, "folder", archived ? "archived" : "unarchived"),
-      ),
-
     setCollection: ({ id }, collection, opts) =>
       SnippetCollections.actions.update(
         { id },

@@ -9,18 +9,16 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections/utils";
+import { getCollectionType } from "metabase/entities/collections/utils";
+import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { color } from "metabase/ui/colors";
+
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/utils/entities";
-import { compose, withAction, withRequestState } from "metabase/utils/redux";
+  withRequestState,
+} from "./utils";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
@@ -37,12 +35,12 @@ export const Dashboards = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`dashboards`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDashboardQuery,
     }),
     useListQuery: useListDashboardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -90,13 +88,6 @@ export const Dashboards = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      Dashboards.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`dashboard`, archived ? t`trashed` : t`restored`),
-      ),
-
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
@@ -105,16 +96,6 @@ export const Dashboards = createEntity({
           archived: isRootTrashCollection(collection),
         },
         undo(opts, "dashboard", "moved"),
-      ),
-
-    setPinned: ({ id }, pinned, opts) =>
-      Dashboards.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
       ),
 
     // TODO move into more common area as copy is implemented for more entities
@@ -170,13 +151,6 @@ export const Dashboards = createEntity({
       return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
-  },
-
-  objectSelectors: {
-    getName: (dashboard) => dashboard && dashboard.name,
-    getCollection: (dashboard) =>
-      dashboard && normalizedCollection(dashboard.collection),
-    getColor: () => color("dashboard"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

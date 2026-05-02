@@ -17,6 +17,7 @@ export const TAG_TYPES = [
   "database",
   "dataset",
   "document",
+  "embed-theme",
   "external-transform",
   "public-document",
   "comment",

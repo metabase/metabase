@@ -16,11 +16,11 @@ import type { OmniPickerCollectionItem } from "metabase/common/components/Picker
 import { MoveModal } from "metabase/common/components/Pickers";
 import { Dashboards } from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
+import { useDispatch } from "metabase/redux";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
 import MoveCardToast from "./MoveCardToast";
@@ -82,7 +82,6 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         dispatch(
           addUndo({
             message: <MoveCardToast card={card} destination={destination} />,
-            undo: false,
           }),
         );
 

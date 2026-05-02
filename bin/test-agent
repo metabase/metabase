@@ -11,10 +11,13 @@
 #   bin/test-agent :only '[metabase.foo-test]'
 #   bin/test-agent :only '[metabase.foo-test/some-test]'
 #   bin/test-agent --oss :only '[metabase.foo-test]'   # run without EE extensions
+#   bin/test-agent --drivers=mysql,h2,postgres :module enterprise/workspaces  # run driver tests
 #   bin/test-agent                          # runs all tests (rarely what you want)
 #
 # Options:
-#   --oss    Run without enterprise extensions (uses :oss:oss-dev instead of :ee:ee-dev)
+#   --oss             Run without enterprise extensions (uses :oss:oss-dev instead of :ee:ee-dev)
+#   --drivers=LIST    Add driver aliases (:drivers:drivers-dev) and set DRIVERS=LIST.
+#                     LIST is a comma-separated list of driver names, e.g. mysql,h2,postgres.
 #
 # Any extra arguments are forwarded directly to the clojure test command.
 # The :test alias uses port 0 (OS-assigned random port) so parallel runs never collide.
@@ -23,16 +26,32 @@ set -euo pipefail
 
 export HAWK_MODE=cli/ci
 
-# Check for --oss flag
-ALIASES=":dev:ee:ee-dev:test"
+# Parse our own flags; forward everything else to clojure.
+INCLUDE_OSS=false
+INCLUDE_DRIVERS=false
+DRIVERS_VAL=""
 args=()
 for arg in "$@"; do
   if [[ "$arg" == "--oss" ]]; then
-    ALIASES=":dev:ci:test:oss:oss-dev"
+    INCLUDE_OSS=true
+  elif [[ "$arg" == --drivers=* ]]; then
+    INCLUDE_DRIVERS=true
+    DRIVERS_VAL="${arg#--drivers=}"
   else
     args+=("$arg")
   fi
 done
+
+if $INCLUDE_OSS; then
+  ALIASES=":dev:ci:test:oss:oss-dev"
+else
+  ALIASES=":dev:ee:ee-dev:test"
+fi
+
+if $INCLUDE_DRIVERS; then
+  ALIASES="${ALIASES}:drivers:drivers-dev"
+  export DRIVERS="$DRIVERS_VAL"
+fi
 
 # Filter noise and strip ANSI escape sequences
 clean_output() {
