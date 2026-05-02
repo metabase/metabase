@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
@@ -13,9 +11,9 @@ import * as actions from "metabase/reference/reference";
 
 import { getDatabaseId, getIsEditing } from "../selectors";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, props: any) => ({
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
+  isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
@@ -23,28 +21,29 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-class DatabaseListContainer extends Component {
-  static propTypes = {
-    params: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    database: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
-  };
+interface DatabaseListContainerProps {
+  params: any;
+  location: { pathname: string };
 
+  database?: any;
+  databaseId?: number;
+}
+
+class DatabaseListContainer extends Component<DatabaseListContainerProps> {
   async fetchContainerData() {
-    await actions.wrappedFetchDatabases(this.props);
+    await actions.wrappedFetchDatabases(this.props as any);
   }
 
   UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps: DatabaseListContainerProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
 
-    actions.clearState(newProps);
+    actions.clearState(newProps as any);
   }
 
   render() {
@@ -53,7 +52,8 @@ class DatabaseListContainer extends Component {
         className={cx(CS.flexFull, CS.relative)}
         sidebar={<BaseSidebar />}
       >
-        <DatabaseList {...this.props} />
+        {}
+        <DatabaseList {...(this.props as any)} />
       </SidebarLayout>
     );
   }
@@ -63,4 +63,4 @@ class DatabaseListContainer extends Component {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(DatabaseListContainer);
+)(DatabaseListContainer as unknown as React.ComponentType);
