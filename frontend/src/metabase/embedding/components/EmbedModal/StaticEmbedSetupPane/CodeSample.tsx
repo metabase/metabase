@@ -5,8 +5,8 @@ import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
+import { EmbedServerSnippetLanguageSelect } from "metabase/embedding/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
 import type { CodeSampleOption } from "metabase/embedding/types";
-import { EmbedServerSnippetLanguageSelect } from "metabase/public/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
 import { getHighlightedRanges } from "./utils";

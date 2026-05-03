@@ -9,11 +9,11 @@ import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+} from "metabase/dashboard/context/mock-context";
+import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
@@ -23,6 +23,7 @@ import {
 } from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualization } from "metabase/visualizations";
+import { Map } from "metabase/visualizations/visualizations/Map";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -33,8 +34,6 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-
-import { Map } from "./index";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Map);

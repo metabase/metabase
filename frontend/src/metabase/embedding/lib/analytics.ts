@@ -8,7 +8,7 @@ import type {
   EmbedResourceType,
   EmbeddingDisplayOptions,
   EmbeddingParameterVisibility,
-} from "./types";
+} from "../types";
 
 const SCHEMA_NAME = "embed_flow";
 

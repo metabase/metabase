@@ -1,3 +1,9 @@
+import type {
+  ClientCodeSampleConfig,
+  CodeSampleParameters,
+  ServerCodeSampleConfig,
+} from "../types";
+
 import {
   clojure,
   getHtmlSource,
@@ -7,11 +13,6 @@ import {
   python,
   ruby,
 } from "./code-templates";
-import type {
-  ClientCodeSampleConfig,
-  CodeSampleParameters,
-  ServerCodeSampleConfig,
-} from "./types";
 
 export const getEmbedClientCodeExampleOptions =
   (): ClientCodeSampleConfig[] => [

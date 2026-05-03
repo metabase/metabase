@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
+import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -14,16 +14,16 @@ import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 
-type PublicDocumentCardMenuProps = {
+type ExternalDocumentCardMenuProps = {
   card: Card;
   dataset: Dataset;
 };
 
-export const PublicDocumentCardMenu = ({
+export const ExternalDocumentCardMenu = ({
   card,
   dataset,
-}: PublicDocumentCardMenuProps) => {
-  const { publicDocumentUuid } = usePublicDocumentContext();
+}: ExternalDocumentCardMenuProps) => {
+  const externalCardData = useExternalCardData();
   const [menuView, setMenuView] = useState<string | null>(null);
   const [isOpen, { close, toggle }] = useDisclosure(false, {
     onClose: () => {
@@ -40,7 +40,7 @@ export const PublicDocumentCardMenu = ({
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question: question,
     result: dataset,
-    documentUuid: checkNotNull(publicDocumentUuid),
+    documentUuid: checkNotNull(externalCardData).documentUuid,
   });
 
   return (

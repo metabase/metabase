@@ -6,7 +6,7 @@ import type {
   EmbedResource,
   EmbedResourceType,
   EmbeddingParametersValues,
-} from "./types";
+} from "../types";
 
 const DEFAULT_SIGNED_TOKEN_EXPIRATION_MINUTES = 10;
 

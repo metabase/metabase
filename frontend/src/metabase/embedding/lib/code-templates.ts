@@ -1,12 +1,13 @@
 import { match } from "ts-pattern";
 
-import { optionsToHashParams } from "./embed";
 import type {
   CodeSampleParameters,
   EmbeddingDisplayOptions,
   EmbeddingHashOptions,
   EmbeddingParametersValues,
-} from "./types";
+} from "../types";
+
+import { optionsToHashParams } from "./embed";
 
 export function getIframeQueryWithoutDefaults(
   displayOptions: EmbeddingDisplayOptions,
