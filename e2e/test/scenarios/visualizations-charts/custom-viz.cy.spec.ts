@@ -1534,3 +1534,375 @@ describe("admin > custom visualizations", () => {
     });
   });
 });
+
+describe("sandbox", () => {
+  let sandboxCardId: number;
+  before(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("custom-viz-enabled", true);
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {});
+    H.createQuestion({
+      name: "Custom Viz Sandbox Test",
+      query: {
+        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: H.CUSTOM_VIZ_DISPLAY,
+    }).then(({ body }) => {
+      sandboxCardId = body.id;
+    });
+  });
+
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    cy.wrap(sandboxCardId).as("sandboxCardId");
+  });
+
+  const blockedPattern = (suffix: RegExp) =>
+    new RegExp(String.raw`\[plugin \d+\] blocked ${suffix.source}`);
+
+  const SANDBOX_CASES: Array<{
+    name: string;
+    payload: string;
+    errorPattern: RegExp;
+    before?: () => void;
+    additionalAssertions?: () => void;
+  }> = [
+    {
+      name: "window.fetch",
+      payload: 'window.fetch("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "document.open",
+      payload: 'document.open("https://evilsite.example");',
+      errorPattern: blockedPattern(/API call: Document\.open/),
+    },
+    {
+      name: "document.cookie getter",
+      payload: "var stolen = document.cookie;",
+      errorPattern: blockedPattern(/API call: Document\.get cookie/),
+    },
+    {
+      name: 'setAttribute("onclick", ...)',
+      payload: 'document.body.setAttribute("onclick", "alert(1)");',
+      errorPattern: blockedPattern(
+        /setAttribute for inline event handler: onclick/,
+      ),
+    },
+    {
+      name: "navigator.clipboard",
+      payload: "var c = navigator.clipboard;",
+      errorPattern: blockedPattern(/API call: Navigator\.get clipboard/),
+    },
+    {
+      // Hits createElementDistortion's BLOCKED_TAGS — different code path
+      // and different error format ("blocked createElement: <tag>") from
+      // the API-call cases above.
+      name: 'createElement("script")',
+      payload: 'document.createElement("script");',
+      errorPattern: blockedPattern(/createElement: script/),
+    },
+    // `eval` / `new Function(...)` Near membrane allows these in the sandbox, but
+    // it still catches anything they evaluate (e.g. `eval('window.fetch(...)')` triggers the fetch
+    // distortion), so it's not an escape — just not blocked at access.
+    {
+      name: "eval-evaluated fetch",
+      payload:
+        "eval('window.fetch(\"/api/canary-should-be-blocked-by-sandbox\")');",
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "XMLHttpRequest",
+      payload: "new XMLHttpRequest();",
+      errorPattern: blockedPattern(/API call: window\.XMLHttpRequest/),
+    },
+    {
+      name: "document.cookie setter",
+      payload: 'document.cookie = "${document.cookie}stolen=1;";',
+      errorPattern: blockedPattern(/API call: set cookie/),
+    },
+    {
+      name: "window.open",
+      payload: 'window.open("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.open/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "document.write",
+      payload: 'document.write("<p>injected</p>");',
+      errorPattern: blockedPattern(/API call: Document\.write/),
+    },
+    {
+      name: 'setAttribute("onerror", ...)',
+      payload: 'document.body.setAttribute("onerror", "alert(1)");',
+      errorPattern: blockedPattern(
+        /setAttribute for inline event handler: onerror/,
+      ),
+    },
+    {
+      name: 'setAttribute("href", "javascript:...")',
+      payload: 'document.body.setAttribute("href", "javascript:alert(1)");',
+      errorPattern: blockedPattern(/setAttribute with javascript: URL: href/),
+    },
+    {
+      // Try to defeat the membrane by binding a non-allowlisted native.
+      // Safe because `window.fetch` access already
+      // returns a `blocked` function. Binding it produces a bound
+      // function that still throws when called.
+      name: "window.fetch.bind(window) bypass attempt",
+      payload:
+        'window.fetch.bind(window)("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      // Try to bypass via Function.prototype.bind.call. Confirms the check
+      // isn't sensitive to which side initiates the bind.
+      name: "Function.prototype.bind.call(window.fetch, ...) bypass attempt",
+      payload:
+        'Function.prototype.bind.call(window.fetch, window)("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+  ];
+
+  it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(
+    (testCase) => `blocks ${testCase.name} called by injected plugin code`,
+    (testCase) => {
+      const { payload, errorPattern } = testCase;
+      testCase.before?.();
+
+      cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+        req.continue((res) => {
+          res.body = `console.log("injected bundle");${payload}\n${String(res.body)};\n`;
+          res.send();
+        });
+      }).as("injectedBundle");
+
+      cy.get<number>("@sandboxCardId").then((id) => {
+        cy.visit(`/question/${id}`, {
+          onBeforeLoad(win) {
+            cy.spy(win.console, "log").as("consoleLog");
+            cy.spy(win.console, "error").as("consoleError");
+          },
+        });
+      });
+      cy.wait("@injectedBundle");
+
+      // sandbox.evaluate threw → loadCustomVizPlugin caught it → toast
+      // surfaced and the viz fell back to the default table.
+      cy.findByTestId("visualization-root")
+        .findByTestId("table-root")
+        .should("be.visible");
+      H.undoToastList()
+        .findByText(/"demo-viz" visualization is currently unavailable/)
+        .should("be.visible");
+      cy.get("@consoleLog").should("be.calledWith", "injected bundle");
+      cy.get("@consoleError").should(
+        "have.been.calledWithMatch",
+        /Failed to load plugin/,
+        Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
+      );
+
+      testCase.additionalAssertions?.();
+    },
+  );
+
+  // innerHTML/outerHTML/insertAdjacentHTML go through DOMPurify rather than
+  // being blocked outright, so this case doesn't fit the "expect a thrown
+  // error and a fallback viz" shape of SANDBOX_CASES. Instead we inject an
+  // <img onerror> — which the browser would execute in the host realm if it
+  // survived assignment — and confirm DOMPurify stripped it by checking the
+  // onerror's side effect (a fetch to the canary URL) never happens.
+  it("sanitizes innerHTML through DOMPurify before it reaches the DOM", () => {
+    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+      "canary",
+    );
+
+    const payload = `
+      var d = document.createElement('div');
+      d.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+      document.body.appendChild(d);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<CardId>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    // Viz still renders — sanitization mutates the HTML but doesn't throw.
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+    cy.get("@canary.all").should("have.length", 0);
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
+    );
+  });
+
+  it("isolates DOM access to the plugin subtree (out-of-scope reads and writes hit a decoy)", () => {
+    const hostSelector = "#root";
+    const payload = `
+      var hostEl = document.querySelector('${hostSelector}');
+      if (hostEl) {
+        const elementId = hostEl.getAttribute("id");
+        hostEl.setAttribute('data-pwned-by-plugin', 'true');
+        console.log('plugin read element id', elementId);
+        console.log('plugin saw decoy', hostEl.getAttribute('data-plugin-sandbox-decoy'));
+      } else {
+        console.log('plugin-saw-decoy', false);
+      }
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<CardId>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "log").as("consoleLog");
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    // The plugin reached for visualization-root but received a decoy with
+    // data-plugin-sandbox-decoy="true" instead of the real element.
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin saw decoy",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin read element id",
+      "sandbox-decoy",
+    );
+
+    // The swap is reported to host console for diagnostics.
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
+    );
+
+    // The real host element was untouched.
+    cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
+  });
+
+  it("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", () => {
+    const payload = `
+      var seenMutations = 0;
+      var observer = new MutationObserver(function(records) {
+        seenMutations += records.length;
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+      setTimeout(function() {
+        console.log('plugin observed mutations:', seenMutations);
+      }, 1500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<CardId>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "log").as("consoleLog");
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    // Mutate the real host DOM. If the plugin held a real reference to
+    // document.body, these would fire its observer. The membrane swapped
+    // body for a detached decoy, so observation is wired to a node that
+    // never sees host changes.
+    cy.document().then((doc) => {
+      const probe = doc.createElement("div");
+      probe.setAttribute("data-mutation-probe", "true");
+      doc.body.appendChild(probe);
+      doc.body.setAttribute("data-mutation-probe-attr", "true");
+      probe.remove();
+      doc.body.removeAttribute("data-mutation-probe-attr");
+    });
+
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    );
+  });
+});
