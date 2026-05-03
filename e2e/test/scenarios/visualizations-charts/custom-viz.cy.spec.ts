@@ -1950,7 +1950,18 @@ describe.only("sandbox", () => {
         static getDerivedStateFromError() {
           return { failed: true };
         }
-        componentDidCatch() {}
+        componentDidCatch(err) {
+          // Diagnostic: log what was actually caught. The error may be a
+          // near-membrane Red Proxy of the host-realm Error; pull primitive
+          // fields defensively to avoid further proxy crossings inside the
+          // log path.
+          try {
+            var msg = (err && err.message) ? String(err.message) : String(err);
+            console.warn("[evil-boundary] caught: " + msg);
+          } catch (_) {
+            console.warn("[evil-boundary] caught (unreadable error)");
+          }
+        }
         render() {
           return this.state.failed ? null : this.props.children;
         }
