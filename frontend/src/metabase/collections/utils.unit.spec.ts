@@ -8,10 +8,14 @@ import {
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
+  normalizedCollection,
 } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { type Collection, SEARCH_MODELS } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 describe("Collections > utils", () => {
@@ -243,6 +247,99 @@ describe("Collections > utils", () => {
       });
       const pathString = getCollectionPathAsString(collection);
       expect(pathString).toBe("Home / User / Files / Documents");
+    });
+  });
+
+  describe("normalizedCollection", () => {
+    describe("input edge cases", () => {
+      it("returns ROOT_COLLECTION for null", () => {
+        expect(normalizedCollection(null)).toBe(ROOT_COLLECTION);
+      });
+
+      it("returns ROOT_COLLECTION for undefined", () => {
+        expect(normalizedCollection(undefined)).toBe(ROOT_COLLECTION);
+      });
+    });
+
+    describe("root collection forms", () => {
+      it.each([
+        ["id is null", { id: null as never }],
+        ["id is undefined", { id: undefined as never }],
+        ['id is "root"', { id: "root" as const }],
+      ])("returns ROOT_COLLECTION when %s", (_label, override) => {
+        const collection = createMockCollection(override);
+        expect(normalizedCollection(collection)).toBe(ROOT_COLLECTION);
+      });
+    });
+
+    describe("non-root collections", () => {
+      it("returns the collection unchanged for a regular collection", () => {
+        const collection = createMockCollection({ id: 5, name: "Reports" });
+        expect(normalizedCollection(collection)).toBe(collection);
+      });
+
+      it.each([
+        ["personal", { id: 6, personal_owner_id: 1 }],
+        ["trash", { id: 7, type: "trash" as const }],
+        ["library", { id: 8, type: "library" as const }],
+        ["instance-analytics", { id: 9, type: "instance-analytics" as const }],
+        [
+          "official authority level",
+          { id: 10, authority_level: "official" as const },
+        ],
+        ["archived", { id: 11, archived: true }],
+        ["nested (location set)", { id: 12, location: "/3/" }],
+      ])(
+        "returns the collection unchanged for a %s collection",
+        (_label, override) => {
+          const collection = createMockCollection(override);
+          expect(normalizedCollection(collection)).toBe(collection);
+        },
+      );
+
+      it("preserves every field on the input collection", () => {
+        const collection = createMockCollection({
+          id: 42,
+          name: "Special",
+          description: "A description",
+          authority_level: "official",
+          location: "/1/2/",
+          archived: false,
+        });
+        expect(normalizedCollection(collection)).toEqual(collection);
+      });
+    });
+
+    // The helper is invoked from search-result rendering paths
+    // (InfoText, command palette) for every model that can carry a
+    // `collection` field. Exercise each model to guard against a regression
+    // where one model's collection shape is mishandled. Search results carry
+    // CollectionEssentials, so we cast at the boundary the same way the
+    // production call sites do.
+    describe("for every search-result entity type", () => {
+      it.each(SEARCH_MODELS)(
+        "normalizes a non-root collection on a %s result",
+        (model) => {
+          const collection = createMockCollection({ id: 99, name: "Library" });
+          const result = createMockSearchResult({ model, collection });
+          expect(normalizedCollection(result.collection as Collection)).toEqual(
+            collection,
+          );
+        },
+      );
+
+      it.each(SEARCH_MODELS)(
+        "returns ROOT_COLLECTION for a root-collection %s result",
+        (model) => {
+          const result = createMockSearchResult({
+            model,
+            collection: createMockCollection({ id: "root" as const }),
+          });
+          expect(normalizedCollection(result.collection as Collection)).toBe(
+            ROOT_COLLECTION,
+          );
+        },
+      );
     });
   });
 });

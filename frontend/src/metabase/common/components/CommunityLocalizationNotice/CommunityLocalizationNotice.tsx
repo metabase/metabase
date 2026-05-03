@@ -1,12 +1,12 @@
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useSelector } from "metabase/redux";
 import { CROWDIN_URL } from "metabase/selectors/settings";
 import {
   getIsWhiteLabeling,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/utils/redux";
 
 export function getLocalizationNoticeText({
   mentionMetabase,

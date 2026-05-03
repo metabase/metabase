@@ -243,15 +243,15 @@
 ;;; ---------------------------------------------- parsing helpers ---------------------------------------------------
 (defn parse-with-zone
   "Parses a timestamp with Z or a timezone offset at the end.
-  Dayjs will handle this correctly with utc() and keepOffset."
+
+  Returns a dayjs in the input's offset zone, so subsequent `.startOf`/`.format` calls operate on the
+  input's local calendar rather than UTC. Without this, e.g. \"2024-05-13T00:00:00+08:00\" would be
+  truncated to May 12 (in UTC) instead of May 13 (in +08:00). See #72937."
   [value]
-  (let [;; Check if it has a timezone offset
-        has-offset? (re-find #"[Zz]|[+-]\d{2}:?\d{2}$" value)]
-    (if has-offset?
-      ;; Parse as UTC and keep the offset info
-      (.utc dayjs value true)
-      ;; No timezone, parse normally
-      (dayjs value))))
+  (if-let [offset (re-find #"Z|[+-]\d{2}:?\d{2}$" value)]
+    (-> (.utc dayjs value)
+        (.utcOffset offset))
+    (dayjs value)))
 
 (defn localize
   "Given a freshly parsed absolute Day.js instance, convert it to a local one."

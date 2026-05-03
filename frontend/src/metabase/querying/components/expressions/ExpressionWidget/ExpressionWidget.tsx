@@ -2,10 +2,7 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import type {
-  DefinedClauseName,
-  ExpressionError,
-} from "metabase/querying/expressions";
+import type { ExpressionError } from "metabase/querying/expressions";
 import { Box, Button, Flex } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
@@ -34,7 +31,7 @@ export type ExpressionWidgetProps = {
   withName?: boolean;
   reportTimezone?: string;
   header?: ReactNode;
-  initialExpressionClause?: DefinedClauseName | null;
+  initialExpressionClause?: Lib.DefinedClauseName | null;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   readOnly?: boolean;

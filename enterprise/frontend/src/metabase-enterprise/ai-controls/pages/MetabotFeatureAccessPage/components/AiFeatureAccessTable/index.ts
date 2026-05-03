@@ -1,0 +1,1 @@
+export { AiFeatureAccessTable } from "./AiFeatureAccessTable";

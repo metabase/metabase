@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
 
@@ -27,5 +27,5 @@ export const getItemUrl = (
 ) =>
   match(model)
     .with("dashboard", () => Urls.dashboard(item))
-    .with("question", () => Urls.question(item))
+    .with("question", () => Urls.card(item))
     .otherwise(() => null);
