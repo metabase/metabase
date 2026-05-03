@@ -1536,7 +1536,7 @@ describe("admin > custom visualizations", () => {
   });
 });
 
-describe.only("sandbox", () => {
+describe("sandbox", () => {
   let sandboxCardId: number;
   before(() => {
     H.restore("postgres-writable");
