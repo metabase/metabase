@@ -19,9 +19,9 @@ import {
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Box, Popover, UnstyledButton } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

@@ -29,6 +29,7 @@ const generalSettings = {
   "site-url": "https://mysite.biz",
   "admin-email": "help@mysite.biz",
   "anon-tracking-enabled": false,
+  "analytics-pii-retention-enabled": false,
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
@@ -90,7 +91,8 @@ describe("GeneralSettingsPage", () => {
       "Redirect to HTTPS",
       "Custom homepage",
       "Email address for help requests",
-      "Anonymous tracking",
+      "Send anonymous tracking data to Metabase",
+      "Collect user data to display in usage analytics",
       "Friendly table and field names",
       "Enable X-Ray features",
       "Allowed domains for iframes in dashboards",
@@ -167,12 +169,16 @@ describe("GeneralSettingsPage", () => {
   it("should show Anonymous Tracking input for non-cloud plans", async () => {
     await setup({ isCloudPlan: false });
 
-    expect(screen.getByText("Anonymous tracking")).toBeInTheDocument();
+    expect(
+      screen.getByText("Send anonymous tracking data to Metabase"),
+    ).toBeInTheDocument();
   });
 
   it("should not show Anonymous Tracking input if the plan is cloud", async () => {
     await setup({ isCloudPlan: true });
 
-    expect(screen.queryByText("Anonymous tracking")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Send anonymous tracking data to Metabase"),
+    ).not.toBeInTheDocument();
   });
 });

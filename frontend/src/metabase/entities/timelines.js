@@ -16,13 +16,9 @@ import {
   getTimelineName,
 } from "metabase/common/utils/timelines";
 import { TimelineSchema } from "metabase/schema";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
 
 import { TimelineEvents } from "./timeline-events";
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -33,12 +29,12 @@ export const Timelines = createEntity({
   path: "/api/timeline",
   schema: TimelineSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetTimelineQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: ({ collectionId, ...params } = {}, dispatch) =>
@@ -103,14 +99,6 @@ export const Timelines = createEntity({
           default: false,
         },
         undo(opts, t`timeline`, t`moved`),
-      );
-    },
-
-    setArchived: (timeline, archived, opts) => {
-      return Timelines.actions.update(
-        { id: timeline.id },
-        { archived, default: false },
-        undo(opts, t`timeline`, archived ? t`archived` : t`unarchived`),
       );
     },
   },

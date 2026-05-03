@@ -4,6 +4,7 @@ import { snippetApi, useUpdateCollectionMutation } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/collections/utils";
 import type { SnippetCollectionMenuProps } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -14,7 +15,6 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 export function SnippetCollectionMenu({
@@ -47,7 +47,7 @@ export function SnippetCollectionMenu({
           message: wasArchived
             ? t`"${collection.name}" has been unarchived`
             : t`"${collection.name}" has been archived`,
-          undo: async () => {
+          action: async () => {
             await updateCollection({
               id: collection.id,
               archived: wasArchived,

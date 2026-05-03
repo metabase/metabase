@@ -193,6 +193,81 @@
           (finally
             (cleanup! conv-id)))))))
 
+(deftest metabot-stats-falls-back-to-conversation-user-for-legacy-rows-test
+  (let [clock      (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+        yesterday  (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+        rasta-id   (mt/user->id :rasta)
+        lucky-id   (mt/user->id :lucky)
+        ;; `:user_id` on the messages is intentionally omitted — this is the legacy
+        ;; scenario from before messages stamped their author.
+        legacy-msg #(hash-map :conversation_id % :created_at yesterday :role "user"
+                              :profile_id "legacy" :total_tokens 100 :ai_proxied true)
+        usage-log  (fn [conv-id user-id]
+                     {:conversation_id conv-id :user_id user-id :created_at yesterday
+                      :source "legacy-test" :total_tokens 100 :prompt_tokens 100
+                      :ai_proxied true})]
+    (t/with-clock clock
+      (mt/with-temp [:model/MetabotConversation {conv-1 :id} {:user_id rasta-id}
+                     :model/MetabotConversation {conv-2 :id} {:user_id lucky-id}
+                     :model/MetabotMessage _ (legacy-msg conv-1)
+                     :model/MetabotMessage _ (legacy-msg conv-2)
+                     :model/AiUsageLog _ (usage-log conv-1 rasta-id)
+                     :model/AiUsageLog _ (usage-log conv-2 lucky-id)]
+        (is (= 2 (:metabot-users (sut/metabot-stats))))))))
+
+(deftest metabot-stats-mixed-user-id-stamping-dedups-test
+  (testing "stamped + unstamped messages from the same user must collapse to one distinct user"
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          rasta-id  (mt/user->id :rasta)
+          mixed-msg (fn [conv-id stamp-user?]
+                      (cond-> {:conversation_id conv-id
+                               :created_at      yesterday
+                               :role            "user"
+                               :profile_id      "mixed"
+                               :total_tokens    100
+                               :ai_proxied      true}
+                        stamp-user? (assoc :user_id rasta-id)))
+          usage-log {:user_id rasta-id
+                     :created_at yesterday
+                     :source "mixed-test"
+                     :total_tokens 100
+                     :prompt_tokens 100
+                     :ai_proxied true}]
+      (t/with-clock clock
+        (mt/with-temp [:model/MetabotConversation {conv-id :id} {:user_id rasta-id}
+                       :model/MetabotMessage _ (mixed-msg conv-id true)
+                       :model/MetabotMessage _ (mixed-msg conv-id false)
+                       :model/AiUsageLog _ (assoc usage-log :conversation_id conv-id)]
+          (is (= 1 (:metabot-users (sut/metabot-stats)))))))))
+
+(deftest metabot-stats-counts-distinct-participants-in-shared-conversation-test
+  (testing "two participants in a single conversation are both counted in :metabot-users"
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          rasta-id  (mt/user->id :rasta)
+          lucky-id  (mt/user->id :lucky)
+          msg       (fn [conv-id user-id]
+                      {:conversation_id conv-id
+                       :user_id         user-id
+                       :created_at      yesterday
+                       :role            "user"
+                       :profile_id      "shared"
+                       :total_tokens    100
+                       :ai_proxied      true})
+          log       {:created_at yesterday
+                     :source "shared-test"
+                     :total_tokens 100
+                     :prompt_tokens 100
+                     :ai_proxied true}]
+      (t/with-clock clock
+        (mt/with-temp [:model/MetabotConversation {conv-id :id} {:user_id rasta-id}
+                       :model/MetabotMessage _ (msg conv-id rasta-id)
+                       :model/MetabotMessage _ (msg conv-id lucky-id)
+                       :model/AiUsageLog _ (assoc log :conversation_id conv-id :user_id rasta-id)
+                       :model/AiUsageLog _ (assoc log :conversation_id conv-id :user_id lucky-id)]
+          (is (= 2 (:metabot-users (sut/metabot-stats)))))))))
+
 (deftest metabot-usage-anthropic-provider-test
   (search.tu/with-index-disabled
     (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
@@ -380,7 +455,7 @@
             ;; Example question generation (no conversation)
             (generate-example-questions! tables model 300 100)
             (t2/update! :model/AiUsageLog {:id [:> baseline]
-                                           :source "example-question-generation"}
+                                           :source "example_question_generation_batch"}
                         {:created_at yesterday}))
 
           (testing "metabot-stats includes both chat and example question generation"

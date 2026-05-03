@@ -19,8 +19,6 @@ Check for any relevant changes, especially deprecations or breaking changes that
 
 ## 2. Test the upgrade
 
-When upgrading to a new major version, you'll want to upgrade both Metabase and the SDK version in parallel, as having Metabase and the SDK major versions out of sync can cause errors.
-
 ### Spin up the new version of Metabase for testing
 
 You can do this locally or in a dev instance. If your testing setup involves a lot of test user accounts, getting a [development instance](../../installation-and-operation/development-instance.md) could be more cost-effective.
@@ -31,31 +29,25 @@ See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md)
 
 You'll want to test the changes locally first, as there may be breaking changes that require you to upgrade your application code.
 
-Check out a new branch in your application and install the next stable version, either with npm or Yarn:
-
-Via npm:
+Check out a new branch in your application and install the SDK that matches your Metabase major version. For Metabase 60.x:
 
 ```bash
-npm install @metabase/embedding-sdk-react@{next-major-version-number}-stable
+npm install @metabase/embedding-sdk-react@60-stable
 ```
 
-For example, if you were upgrading to version 56 of the SDK:
+or with Yarn:
 
 ```bash
-npm install @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react@60-stable
 ```
 
-If you're using Yarn:
-
-```bash
-yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
-```
+To track the latest published SDK major instead, install without a dist-tag (`npm install @metabase/embedding-sdk-react`).
 
 See more on [SDK versions](./version.md).
 
 ### If there are deprecations or breaking changes, make the necessary changes to your application code
 
-Deprecations or breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
+Deprecations or breaking changes are rare, but if you do need to make changes to your application code, we'll mention it in the [release notes](https://www.metabase.com/releases) for the new major version and have docs that walk you through the changes.
 
 Update or add tests for any application code changes that you make.
 
@@ -71,8 +63,6 @@ If all goes well with your local tests, deploy to your staging environment. Chec
 ## 3. Deploy to production
 
 If everything is working in staging, you're ready to deploy to production.
-
-Be sure to deploy your application changes and upgrade your Metabase in parallel so that the SDK version and the Metabase version stay in sync.
 
 ### Caching may delay the upgrade by up to a minute
 

@@ -16,6 +16,7 @@ import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
+import { useSelector } from "metabase/redux";
 import {
   getDocsUrl,
   getIsPaidPlan,
@@ -38,8 +39,7 @@ import {
   Title,
   rem,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import S from "./Onboarding.module.css";
 import {

@@ -6,11 +6,7 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import {
-  Collections,
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections";
+import { Collections, getCollectionType } from "metabase/entities/collections";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
@@ -19,12 +15,8 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
@@ -37,12 +29,12 @@ export const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetCardQuery,
     }),
     useListQuery: useListCardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -79,13 +71,6 @@ export const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: (card, archived, opts) =>
-      Questions.actions.update(
-        { id: card.id },
-        { archived },
-        undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
-      ),
-
     // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
     // this function name is incorrect but maintained for consistency with other entities.
     setCollection: (card, destination, opts) => {
@@ -134,19 +119,6 @@ export const Questions = createEntity({
         return result;
       };
     },
-
-    setPinned: ({ id }, pinned, opts) =>
-      Questions.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
-      ),
-
-    setCollectionPreview: ({ id }, collection_preview, opts) =>
-      Questions.actions.update({ id }, { collection_preview }, opts),
   },
 
   selectors: {
@@ -160,12 +132,6 @@ export const Questions = createEntity({
         Questions.selectors.getObjectUnfiltered(state, { entityId }),
       );
     },
-  },
-
-  objectSelectors: {
-    getName: (card) => card && card.name,
-    getColor: () => color("text-secondary"),
-    getCollection: (card) => card && normalizedCollection(card.collection),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

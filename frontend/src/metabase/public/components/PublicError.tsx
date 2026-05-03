@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
+import { useSelector } from "metabase/redux";
 import { getErrorMessage } from "metabase/selectors/app";
-import { useSelector } from "metabase/utils/redux";
 
 export const PublicError = () => {
   const message = useSelector(getErrorMessage) ?? t`An error occurred`;

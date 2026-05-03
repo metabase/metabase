@@ -10,8 +10,8 @@ import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -102,7 +102,7 @@ function getLocationForCard(
 ): LocationDescriptorObject {
   const isSaved = "id" in card;
   return {
-    pathname: isSaved ? Urls.question(card) : Urls.serializedQuestion(card),
+    pathname: isSaved ? Urls.card(card) : Urls.serializedQuestion(card),
     hash: !isSaved ? CardLib.serializeCardForUrl(card) : "",
     query: {},
     ...extra,
@@ -276,7 +276,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("does not run question query in notebook mode", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          const baseUrl = Urls.question(card as Card);
+          const baseUrl = Urls.card(card as Card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/notebook`,
           });
@@ -311,7 +311,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("sets QB mode to notebook if opening /notebook route", async () => {
-          const baseUrl = Urls.question(card as Card);
+          const baseUrl = Urls.card(card as Card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/notebook`,
           });
@@ -534,7 +534,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("runs question query on /query route", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/query`,
           });
@@ -546,7 +546,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("runs question query on /metadata route", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/metadata`,
           });
@@ -557,7 +557,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("sets UI state correctly for /query route", async () => {
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/query`,
           });
@@ -569,7 +569,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("sets UI state correctly for /columns route", async () => {
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/columns`,
           });
@@ -581,7 +581,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("sets UI state correctly for /metadata route", async () => {
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/metadata`,
           });
