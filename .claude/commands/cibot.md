@@ -26,9 +26,23 @@ Execute all phases in sequence. Only stop when CI is green or you've exhausted r
 
 ---
 
+## Phase 0: Generate per-run directory
+
+Generate a timestamp in `YYYYMMDD-HHMMSS` format. If you know the current wall-clock time, construct it directly. Otherwise run `./bin/mage -bot-timestamp`. Do NOT use `date` directly.
+
+Set:
+- `TIMESTAMP=<YYYYMMDD-HHMMSS>`
+- `OUTPUT_DIR=.bot/cibot/<TIMESTAMP>`
+
+Every file this run writes — including discover artifacts — lives under `<OUTPUT_DIR>/`. There must be **no shared paths across runs**, so multiple `/cibot` invocations in the same repo do not collide.
+
+If `<OUTPUT_DIR>/config.env` does NOT exist, run `/cibot-discover $ARGUMENTS --output-dir <OUTPUT_DIR>` first. (Discover writes its artifacts directly into `<OUTPUT_DIR>/`, never in a shared location.)
+
+---
+
 ## Phase 1: Find the PR
 
-Run `./bin/mage -bot-git-readonly gh pr view --json number,url,headRefName` to get the PR for the current branch. If no PR exists, tell the user and stop.
+Run `gh pr view --json number,url,headRefName` to get the PR for the current branch. If no PR exists, tell the user and stop.
 
 ---
 
@@ -36,7 +50,7 @@ Run `./bin/mage -bot-git-readonly gh pr view --json number,url,headRefName` to g
 
 Check CI status every 10 minutes until all checks pass or you've exhausted retries:
 
-1. Run `./bin/mage -bot-git-readonly gh pr checks` to see the current status of all checks
+1. Run `gh pr checks` to see the current status of all checks
 2. If all checks pass → tell the user "CI is green" and stop
 3. If checks are still running → wait 10 minutes and check again
 4. If checks have failed → proceed to Phase 3
@@ -91,8 +105,6 @@ After CI passes (or after exhausting retries), tell the user:
 - What failures you fixed (with commit references)
 - What failures you re-ran as flakes
 - If anything still needs attention
-
----
 
 ---
 
