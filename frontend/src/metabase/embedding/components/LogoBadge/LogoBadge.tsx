@@ -2,8 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-
-import EmbedFrameS from "../EmbedFrame.module.css";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 
 import LogoBadgeStyle from "./LogoBadge.module.css";
 import MetabaseLogoWithText from "./metabase_logo_with_text.svg?component";
