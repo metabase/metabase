@@ -1929,46 +1929,26 @@ describe.only("sandbox", () => {
   // exposes window.__customVizCapturedCreateRoot__ and window.__evilReact__.
   // ---------------------------------------------------------------------------
 
-  // Inline error boundary used by every malicious render-attack factory.
-  // Render-time throws from the sandbox (e.g. when innerHTML sanitization or
-  // setAttribute distortion fires inside React's reconciler) are confined to
-  // the plugin's own React root; without a boundary, React's default behavior
-  // is to log "Uncaught" + the error to console. The boundary swallows the
-  // error so the test console stays readable.
+  // Render-time attack tests for vectors that pass through the plugin's DOM
+  // writes. Implemented as raw-DOM mount functions instead of React because:
   //
-  // Uses ES6 `class extends React.Component` because React 18's Component is
-  // a real class — calling it as a function (React.Component.call(this, ...))
-  // throws "Cannot call a class as a function". The sandbox iframe supports
-  // modern syntax.
-  const MAKE_EVIL_BOUNDARY = `
-    function makeEvilBoundary(React) {
-      class Boundary extends React.Component {
-        constructor(props) {
-          super(props);
-          this.state = { failed: false };
-        }
-        static getDerivedStateFromError() {
-          return { failed: true };
-        }
-        componentDidCatch(err) {
-          // Diagnostic: log what was actually caught. The error may be a
-          // near-membrane Red Proxy of the host-realm Error; pull primitive
-          // fields defensively to avoid further proxy crossings inside the
-          // log path.
-          try {
-            var msg = (err && err.message) ? String(err.message) : String(err);
-            console.warn("[evil-boundary] caught: " + msg);
-          } catch (_) {
-            console.warn("[evil-boundary] caught (unreadable error)");
-          }
-        }
-        render() {
-          return this.state.failed ? null : this.props.children;
-        }
-      }
-      return Boundary;
-    }
-  `;
+  //   1. The security claim under test is "the sandbox's distortions sanitize
+  //      plugin-controlled DOM writes". Both `el.innerHTML = '...'` (raw) and
+  //      React's `setInnerHTML(node, html)` end up calling the SAME native
+  //      Element.innerHTML setter, which is what we distort. The path under
+  //      test is identical.
+  //
+  //   2. Using React in the malicious factory required either bundling
+  //      ~150 KB of React+ReactDOM into the test, or capturing the fixture's
+  //      React via a window-side dance (`?__cv_test__=1` + fixture-rebuild
+  //      with a capture block). Both fragile.
+  //
+  //   3. Raw DOM means no React reconciler in the path — so no Red-Proxy-of-
+  //      Error noise from React's dev-mode reportUncaughtErrorInDEV when a
+  //      distortion throws.
+  //
+  // The malicious factory REPLACES the bundle entirely (no `;${original}`
+  // append), so this test is independent of what the fixture's IIFE does.
 
   type RenderAttackCase = {
     name: string;
@@ -1978,30 +1958,20 @@ describe.only("sandbox", () => {
 
   const RENDER_ATTACK_CASES: RenderAttackCase[] = [
     {
-      name: "dangerouslySetInnerHTML <img onerror>",
+      name: "innerHTML with <img onerror>",
       factorySource: `
-        ${MAKE_EVIL_BOUNDARY}
         window.__customVizPlugin__ = function () {
           return {
             id: "evil",
             getName: function () { return "Evil"; },
             checkRenderable: function () {},
             mount: function (container) {
-              var root = window.__customVizCapturedCreateRoot__(container);
-              var React = window.__evilReact__;
-              var Boundary = makeEvilBoundary(React);
-              root.render(
-                React.createElement(Boundary, null,
-                  React.createElement("div", {
-                    dangerouslySetInnerHTML: {
-                      __html: "<img src=x onerror=\\"window.__xssFired=true\\">"
-                    },
-                  })
-                )
-              );
+              var div = document.createElement("div");
+              div.innerHTML = "<img src=x onerror=\\"window.__xssFired=true\\">";
+              container.appendChild(div);
               return {
                 update: function () {},
-                unmount: function () { root.unmount(); },
+                unmount: function () { container.removeChild(div); },
               };
             },
           };
@@ -2018,28 +1988,24 @@ describe.only("sandbox", () => {
     {
       name: "<a href='javascript:...'>",
       factorySource: `
-        ${MAKE_EVIL_BOUNDARY}
         window.__customVizPlugin__ = function () {
           return {
             id: "evil",
             getName: function () { return "Evil"; },
             checkRenderable: function () {},
             mount: function (container) {
-              var root = window.__customVizCapturedCreateRoot__(container);
-              var React = window.__evilReact__;
-              var Boundary = makeEvilBoundary(React);
-              root.render(
-                React.createElement(Boundary, null,
-                  React.createElement(
-                    "a",
-                    { href: "javascript:window.__xssFired=true", id: "evil-link" },
-                    "click me",
-                  )
-                )
-              );
+              var a = document.createElement("a");
+              a.id = "evil-link";
+              try {
+                a.setAttribute("href", "javascript:window.__xssFired=true");
+              } catch (_) {
+                // setAttribute distortion throws — that's the success path.
+              }
+              a.textContent = "click me";
+              container.appendChild(a);
               return {
                 update: function () {},
-                unmount: function () { root.unmount(); },
+                unmount: function () { container.removeChild(a); },
               };
             },
           };
@@ -2055,30 +2021,20 @@ describe.only("sandbox", () => {
       },
     },
     {
-      name: "dangerouslySetInnerHTML <iframe>",
+      name: "innerHTML with <iframe>",
       factorySource: `
-        ${MAKE_EVIL_BOUNDARY}
         window.__customVizPlugin__ = function () {
           return {
             id: "evil",
             getName: function () { return "Evil"; },
             checkRenderable: function () {},
             mount: function (container) {
-              var root = window.__customVizCapturedCreateRoot__(container);
-              var React = window.__evilReact__;
-              var Boundary = makeEvilBoundary(React);
-              root.render(
-                React.createElement(Boundary, null,
-                  React.createElement("div", {
-                    dangerouslySetInnerHTML: {
-                      __html: "<iframe src='https://evilsite.example'></iframe>"
-                    },
-                  })
-                )
-              );
+              var div = document.createElement("div");
+              div.innerHTML = "<iframe src='https://evilsite.example'></iframe>";
+              container.appendChild(div);
               return {
                 update: function () {},
-                unmount: function () { root.unmount(); },
+                unmount: function () { container.removeChild(div); },
               };
             },
           };
@@ -2095,22 +2051,18 @@ describe.only("sandbox", () => {
   ];
 
   it.each<RenderAttackCase>(RENDER_ATTACK_CASES)(
-    (testCase) => `blocks ${testCase.name} in plugin React`,
+    (testCase) => `blocks ${testCase.name} via raw DOM in plugin sandbox`,
     (testCase) => {
-      cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-        req.continue((res) => {
-          // Suffix the malicious factory after the original IIFE so the last
-          // assignment to window.__customVizPlugin__ wins. The original IIFE
-          // has already exposed the plugin's React + createRoot via the gated
-          // window.__customVizCapturedCreateRoot__ / window.__evilReact__
-          // capture (enabled by the ?__cv_test__=1 query param).
-          res.body = `${String(res.body)};\n` + testCase.factorySource;
-          res.send();
-        });
+      // Replace the bundle entirely with the malicious factory. No
+      // dependency on the original fixture's contents.
+      cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+        statusCode: 200,
+        headers: { "content-type": "application/javascript" },
+        body: testCase.factorySource,
       }).as("evilBundle");
 
       cy.get<number>("@sandboxCardId").then((id) => {
-        cy.visit(`/question/${id}?__cv_test__=1`, {
+        cy.visit(`/question/${id}`, {
           onBeforeLoad(win) {
             cy.spy(win.console, "log").as("consoleLog");
             cy.spy(win.console, "error").as("consoleError");
