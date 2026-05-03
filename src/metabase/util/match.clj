@@ -1,5 +1,6 @@
 (ns metabase.util.match
-  "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
+  "Leaner reimplementation of `clojure.core.match` macros with mostly compatible syntax and much smaller bytecode
+  footprint."
   (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
    [metabase.util.match.impl]
@@ -287,20 +288,20 @@
   Examples:
 
     ;; keyword pattern
-    (match-one {:fields [[:field 10 nil]]} :field) ; -> [:field 10 nil]
+    (match-one {:fields [[:field 10 nil]]} [:field & _] &match) ; -> [:field 10 nil]
 
     ;; set of keywords
-    (match-one some-query #{:field :expression}) ; -> [:field 10 nil] or [:expression \"wow\"]
+    (match-one some-query [#{:field :expression} & _] &match) ; -> [:field 10 nil] or [:expression \"wow\"]
 
     ;; match any `:field` clause with two args (which should be all of them)
-    (match-one some-query [:field _ _])
+    (match-one some-query [:field _ _] &match)
 
     ;; match-one any `:field` clause with integer ID > 100
-    (match-one some-query [:field (num :guard (and (integer? num) (> num 100)))]) ; -> [:field 200 nil]
+    (match-one some-query [:field (num :guard (and (integer? num) (> num 100)))] &match) ; -> [:field 200 nil]
 
     ;; symbol naming a predicate function
     ;; match anything that satisfies that predicate
-    (match-one some-query integer?)
+    (match-one some-query (_ :guard integer?) &match)
 
     ;; match anything with `_`
     (match-one 100 `_` :anything) ; -> :anything
@@ -397,7 +398,7 @@
 ;;      (:source-table &match))
 
 (defmacro replace
-  "Walk `form` recursively and replace all patterns matched with `match-lite` by the respective return expressions. The
+  "Walk `form` recursively and replace all patterns matched with `match-one` by the respective return expressions. The
   same pattern options are supported, and `&parents` and `&match` anaphors are available in the same way."
   [form & clauses]
   (let [replace-fn-symb (gensym "replace-")
