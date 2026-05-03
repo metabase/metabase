@@ -28,13 +28,13 @@
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.task.bootstrap]
-   [metabase.util.date-2 :as u.date]   
+   [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -223,14 +223,14 @@
 
 (defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
-                     (lib.util.match/match-one old
-                       ["ref" ref] ["ref" (lib.util.match/match-one ref
+                     (match/match-one old
+                       ["ref" ref] ["ref" (match/match-one ref
                                             ["field-id" x] ["field" x nil]
                                             ["field-literal" x y] ["field" x {"base-type" y}]
-                                            ["fk->" x y] (let [x (lib.util.match/match-one x
+                                            ["fk->" x y] (let [x (match/match-one x
                                                                    [_x0 x1] x1
                                                                    _ x)
-                                                               y (lib.util.match/match-one y
+                                                               y (match/match-one y
                                                                    [_y0 y1] y1
                                                                    _ y)]
                                                            ["field" y {:source-field x}])
@@ -269,13 +269,13 @@
 
 (defn- update-legacy-field-refs-in-result-metadata [result-metadata]
   (let [old-to-new (fn [ref]
-                     (lib.util.match/match-one ref
+                     (match/match-one ref
                        ["field-id" x] ["field" x nil]
                        ["field-literal" x y] ["field" x {"base-type" y}]
-                       ["fk->" x y] (let [x (lib.util.match/match-one x
+                       ["fk->" x y] (let [x (match/match-one x
                                               [_x0 x1] x1
                                               _ x)
-                                          y (lib.util.match/match-one y
+                                          y (match/match-one y
                                               [_y0 y1] y1
                                               _ y)]
                                       ["field" y {:source-field x}])
@@ -305,7 +305,7 @@
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
   [field_ref & opts-to-remove]
-  (lib.util.match/match-one field_ref
+  (match/match-one field_ref
     ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
     _ field_ref))
 
@@ -314,7 +314,7 @@
           (fn [column_settings]
             (into {}
                   (map (fn [[k v]]
-                         (lib.util.match/match-one (vec (json/decode k))
+                         (match/match-one (vec (json/decode k))
                            ["ref" ["field" id opts]]
                            [(json/encode ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
                            _ [k v]))
@@ -333,7 +333,7 @@
              (fn [column_settings]
                (into {}
                      (mapcat (fn [[k v]]
-                               (lib.util.match/match-one (vec (json/decode k))
+                               (match/match-one (vec (json/decode k))
                                  ["ref" ["field" id opts]]
                                  (for [column-metadata (column-key->metadata ["field" id opts])
                                        ;; remove "temporal-unit" and "binning" options from the matching field refs,
@@ -520,7 +520,7 @@
                       (fn [column_settings]
                         (let [copies-with-join-alias (into {}
                                                            (mapcat (fn [[k v]]
-                                                                     (lib.util.match/match-one (vec (json/decode k))
+                                                                     (match/match-one (vec (json/decode k))
                                                                        ["ref" ["field" id opts]]
                                                                        (for [alias join-aliases]
                                                                          [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
@@ -674,7 +674,7 @@
                                     (fn [column_settings]
                                       (let [copies-with-join-alias (into {}
                                                                          (mapcat (fn [[k v]]
-                                                                                   (lib.util.match/match-one (vec (json/decode k))
+                                                                                   (match/match-one (vec (json/decode k))
                                                                                      ["ref" ["field" id opts]]
                                                                                      (for [alias join-aliases]
                                                                                        [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])

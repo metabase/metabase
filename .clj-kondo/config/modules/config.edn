@@ -1085,7 +1085,7 @@
            metabase.lib.schema.validate
            metabase.lib.types.isa
            metabase.lib.util
-           metabase.lib.util.match}
+           metabase.util.match}
    :uses #{config
            graph
            legacy-mbql

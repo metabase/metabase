@@ -1,8 +1,8 @@
-(ns metabase.lib.util.match
+(ns metabase.util.match
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
   (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
-   [metabase.lib.util.match.impl]
+   [metabase.util.match.impl]
    [metabase.util.performance :as perf :refer [empty? every? mapv run! some]]))
 
 (defn- parse-pattern
@@ -66,20 +66,20 @@
                 (vswap! bindings conj [(:symbol parsed) value]))
       :vector (let [s (if (symbol? value) value (gensym "vec"))
                     cnt (count parts)]
-                (vswap! bindings conj (with-meta [s `(metabase.lib.util.match.impl/vector! ~value)]
+                (vswap! bindings conj (with-meta [s `(metabase.util.match.impl/vector! ~value)]
                                                  {:vector-check true}))
                 (dorun (map-indexed #(process-pattern %2 (with-meta (list `nth s %1 nil) (or (meta s)
                                                                                              {:depends-on s}))
                                                       bindings conditions return) parts))
                 (when (pos? cnt)
                   (vswap! conditions conj (with-meta (list (if rest-part
-                                                             `metabase.lib.util.match.impl/count>=
-                                                             `metabase.lib.util.match.impl/count=) s cnt)
+                                                             `metabase.util.match.impl/count>=
+                                                             `metabase.util.match.impl/count=) s cnt)
                                                      {:depends-on s})))
                 (when rest-part
                   (process-pattern rest-part `(into [] (drop ~cnt) ~s) bindings conditions false)))
       :map (let [s (if (symbol? value) value (gensym "map"))]
-             (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
+             (vswap! bindings conj [s `(metabase.util.match.impl/map! ~value)])
              (run! (fn [[k v]]
                      (condp = v
                        '&truthy (vswap! conditions conj (with-meta (list `get s k) {:depends-on s}))
@@ -111,7 +111,7 @@
                                                       (list predicate s))
                                                     {:depends-on s})))
                (when (:length parsed)
-                 (vswap! conditions conj (with-meta (list `metabase.lib.util.match.impl/count= s (:length parsed))
+                 (vswap! conditions conj (with-meta (list `metabase.util.match.impl/count= s (:length parsed))
                                                     {:depends-on s}))))
       :equality (vswap! conditions conj (with-meta (list `= value (:value parsed)) (meta value)))
       :set (vswap! conditions conj (list (:value parsed) value)))))
@@ -168,7 +168,7 @@
 (defn- maybe-wrap-nil [expr]
   (if (:nil-wrapped (meta expr))
     (vary-meta expr dissoc :nil-wrapped)
-    `(metabase.lib.util.match.impl/wrap-nil ~expr)))
+    `(metabase.util.match.impl/wrap-nil ~expr)))
 
 (defn- expand-or-some [args]
   (case (count args)
@@ -185,7 +185,7 @@
         common-vector-check? (some #(and (= % value-sym) (:vector-check (meta %))) common-bindings)
         common-bindings (remove #(and (= % value-sym) (:vector-check (meta %))) common-bindings)
         value-binding (if common-vector-check?
-                        `(metabase.lib.util.match.impl/vector! ~(or value-binding value-sym))
+                        `(metabase.util.match.impl/vector! ~(or value-binding value-sym))
                         value-binding)]
     `(let [~@(when (and (some? value-binding) (not= value-sym value-binding))
                [value-sym value-binding])
@@ -239,11 +239,11 @@
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
         value-binding (when-not (or recursive? contains-&recur?) value)
-        body `(metabase.lib.util.match.impl/unwrap-nil
+        body `(metabase.util.match.impl/unwrap-nil
                ~(expand-or-some
                  (cond-> [(process-clauses pairs '&match value-binding)]
                    (some? default) (conj default)
-                   recursive? (conj `(metabase.lib.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))))]
+                   recursive? (conj `(metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))))]
     (if (or recursive? contains-&recur?)
       `((fn ~'&recur [~'&match ~'&parents]
           ~body)
@@ -355,9 +355,9 @@
                                 (some? default) (conj default)))]
             ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that nil to
             ;; wind up in results.
-            (do (some->> (metabase.lib.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
+            (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
                 nil)
-            (metabase.lib.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))
+            (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))
         ~value
         ~(when contains-&parents? []))
        (perf/not-empty @acc#))))
@@ -392,7 +392,7 @@
 ;;
 ;;
 ;;    ;; get *all* the source tables
-;;    (lib.util.match/match-all query
+;;    (match/match-all query
 ;;      (&match :guard (every-pred map? :source-table))
 ;;      (:source-table &match))
 
@@ -405,7 +405,7 @@
     `((fn ~replace-fn-symb [~'&match ~'&parents]
         (match-one ~'&match
           ~@clauses
-          ~'_ (metabase.lib.util.match.impl/replace-in-collection
+          ~'_ (metabase.util.match.impl/replace-in-collection
                ~replace-fn-symb ~'&match ~(when contains-&parents?
                                             '&parents))))
       ~form
@@ -415,6 +415,6 @@
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
   {:style/indent :defn}
   [x ks & patterns-and-results]
-  `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace x# ~@patterns-and-results))))
+  `(metabase.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace x# ~@patterns-and-results))))
 
 ;; TODO - it would be useful to have something like a `replace-all` function as well

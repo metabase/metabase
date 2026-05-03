@@ -39,7 +39,7 @@
   ;;
 
   ;; TODO (cam): most of these either have a ton of things that need to be fixed or cause issues
-  ;; with [[metabase.lib.util.match/match]] and friends -- we need to write a custom hook for those macros so Kondo
+  ;; with [[metabase.util.match/match]] and friends -- we need to write a custom hook for those macros so Kondo
   ;; can understand them.
 
   #_:docstring-leading-trailing-whitespace
@@ -231,9 +231,9 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match-one
-                                    metabase.lib.util.match/match-many
-                                    metabase.lib.util.match/replace]}                    ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.util.match/match-one
+                                    metabase.util.match/match-many
+                                    metabase.util.match/replace]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -249,10 +249,10 @@
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-    (metabase.lib.util.match/match-one)
-    (metabase.lib.util.match/match-many)
-    (metabase.lib.util.match/replace-in)
-    (metabase.lib.util.match/replace)
+    (metabase.util.match/match-one)
+    (metabase.util.match/match-many)
+    (metabase.util.match/replace-in)
+    (metabase.util.match/replace)
     (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)

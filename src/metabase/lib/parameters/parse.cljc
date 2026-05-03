@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv]]))
 
 (mr/def ::parsed-token
@@ -76,7 +76,7 @@
            normalize-card-tag))
 
 (defn- ->param [value]
-  (lib.util.match/match-one value
+  (match/match-one value
     (s :guard string?)
     s
 

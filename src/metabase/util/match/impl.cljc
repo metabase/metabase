@@ -1,4 +1,4 @@
-(ns metabase.lib.util.match.impl
+(ns metabase.util.match.impl
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
   (:refer-clojure :exclude [mapv get-in empty?])
   (:require

@@ -1,12 +1,12 @@
 (ns metabase.revisions.models.revision.diff
   (:require
    [clojure.data :as data]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (defn- match-1 [k v1 v2 identifier]
-  (lib.util.match/match-one [k v1 v2]
+  (match/match-one [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
 
@@ -47,7 +47,7 @@
     (deferred-tru "changed the embedding parameters")))
 
 (defn- match-2 [k v1 v2 identifier]
-  (lib.util.match/match-one [k v1 v2]
+  (match/match-one [k v1 v2]
     [:archived _ after]
     (if after
       (deferred-tru "trashed {0}" identifier)
