@@ -1885,12 +1885,9 @@ describe.only("sandbox", () => {
     });
     cy.wait("@injectedBundle");
 
-    cy.findByTestId("visualization-root")
-      .findByTestId("table-root")
-      .should("be.visible");
-    H.undoToastList()
-      .findByText(/"demo-viz" visualization is currently unavailable/)
-      .should("be.visible");
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
 
     // Mutate the real host DOM. If the plugin held a real reference to
     // document.body, these would fire its observer. The membrane swapped
