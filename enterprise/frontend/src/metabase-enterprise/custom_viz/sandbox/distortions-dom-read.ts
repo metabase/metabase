@@ -2,7 +2,12 @@
 // inside the plugin's mount subtree (marked with data-plugin-sandbox=<id>)
 // pass through real; elements outside are replaced with a detached decoy of
 // the same nodeName so the plugin can't read or mutate host UI.
+
 const PLUGIN_SANDBOX_ATTR = "data-plugin-sandbox";
+export const ACTIVE_ELEMENT_GETTER = Object.getOwnPropertyDescriptor(
+  Document.prototype,
+  "activeElement",
+)?.get;
 
 export function getSafeSandboxDomElement(
   el: Element,
@@ -28,6 +33,22 @@ export function getSafeSandboxDomElement(
   } catch {
     return el;
   }
+}
+
+// document.activeElement crosses the membrane and would otherwise be replaced
+// with a decoy when focus is on host UI — noisy and confusing for libraries
+// (notably React) that probe activeElement during rendering. Return null when
+// the focused element is outside the plugin's subtree, so the plugin sees
+// "nothing focused inside my React tree" rather than a fake element.
+export function activeElementDistortion(pluginId: string) {
+  return function activeElement(this: Document): Element | null {
+    const el = ACTIVE_ELEMENT_GETTER!.call(this) as Element | null;
+    if (!el) {
+      return null;
+    }
+    const inSandbox = el.closest(`[${PLUGIN_SANDBOX_ATTR}="${pluginId}"]`);
+    return inSandbox ? el : null;
+  };
 }
 
 export function isDomElement(obj: unknown): obj is Element {
