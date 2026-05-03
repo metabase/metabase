@@ -1560,6 +1560,13 @@ describe.only("sandbox", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
     cy.wrap(sandboxCardId).as("sandboxCardId");
+    // The sandbox throws by design when an attack vector is exercised
+    // (innerHTML sanitization, blocked APIs, etc.). React's reconciler
+    // surfaces those throws as "Uncaught" in the console; Cypress's
+    // default behavior fails the test on any AUT uncaught exception.
+    // Suppress that here — we verify blocking behavior via the explicit
+    // assertions instead.
+    cy.on("uncaught:exception", () => false);
   });
 
   const blockedPattern = (suffix: RegExp) =>
@@ -1922,6 +1929,31 @@ describe.only("sandbox", () => {
   // exposes window.__customVizCapturedCreateRoot__ and window.__evilReact__.
   // ---------------------------------------------------------------------------
 
+  // Inline error boundary used by every malicious render-attack factory.
+  // Render-time throws from the sandbox (e.g. when innerHTML sanitization or
+  // setAttribute distortion fires inside React's reconciler) are confined to
+  // the plugin's own React root; without a boundary, React's default behavior
+  // is to log "Uncaught" + the error to console. The boundary swallows the
+  // error so the test console stays readable.
+  const MAKE_EVIL_BOUNDARY = `
+    function makeEvilBoundary(React) {
+      function Boundary(props) {
+        React.Component.call(this, props);
+        this.state = { failed: false };
+      }
+      Boundary.prototype = Object.create(React.Component.prototype);
+      Boundary.prototype.constructor = Boundary;
+      Boundary.getDerivedStateFromError = function () {
+        return { failed: true };
+      };
+      Boundary.prototype.componentDidCatch = function () {};
+      Boundary.prototype.render = function () {
+        return this.state.failed ? null : this.props.children;
+      };
+      return Boundary;
+    }
+  `;
+
   type RenderAttackCase = {
     name: string;
     factorySource: string;
@@ -1932,6 +1964,7 @@ describe.only("sandbox", () => {
     {
       name: "dangerouslySetInnerHTML <img onerror>",
       factorySource: `
+        ${MAKE_EVIL_BOUNDARY}
         window.__customVizPlugin__ = function () {
           return {
             id: "evil",
@@ -1939,12 +1972,16 @@ describe.only("sandbox", () => {
             checkRenderable: function () {},
             mount: function (container) {
               var root = window.__customVizCapturedCreateRoot__(container);
+              var React = window.__evilReact__;
+              var Boundary = makeEvilBoundary(React);
               root.render(
-                window.__evilReact__.createElement("div", {
-                  dangerouslySetInnerHTML: {
-                    __html: "<img src=x onerror=\\"window.__xssFired=true\\">"
-                  },
-                }),
+                React.createElement(Boundary, null,
+                  React.createElement("div", {
+                    dangerouslySetInnerHTML: {
+                      __html: "<img src=x onerror=\\"window.__xssFired=true\\">"
+                    },
+                  })
+                )
               );
               return {
                 update: function () {},
@@ -1965,6 +2002,7 @@ describe.only("sandbox", () => {
     {
       name: "<a href='javascript:...'>",
       factorySource: `
+        ${MAKE_EVIL_BOUNDARY}
         window.__customVizPlugin__ = function () {
           return {
             id: "evil",
@@ -1972,12 +2010,16 @@ describe.only("sandbox", () => {
             checkRenderable: function () {},
             mount: function (container) {
               var root = window.__customVizCapturedCreateRoot__(container);
+              var React = window.__evilReact__;
+              var Boundary = makeEvilBoundary(React);
               root.render(
-                window.__evilReact__.createElement(
-                  "a",
-                  { href: "javascript:window.__xssFired=true", id: "evil-link" },
-                  "click me",
-                ),
+                React.createElement(Boundary, null,
+                  React.createElement(
+                    "a",
+                    { href: "javascript:window.__xssFired=true", id: "evil-link" },
+                    "click me",
+                  )
+                )
               );
               return {
                 update: function () {},
@@ -1999,6 +2041,7 @@ describe.only("sandbox", () => {
     {
       name: "dangerouslySetInnerHTML <iframe>",
       factorySource: `
+        ${MAKE_EVIL_BOUNDARY}
         window.__customVizPlugin__ = function () {
           return {
             id: "evil",
@@ -2006,12 +2049,16 @@ describe.only("sandbox", () => {
             checkRenderable: function () {},
             mount: function (container) {
               var root = window.__customVizCapturedCreateRoot__(container);
+              var React = window.__evilReact__;
+              var Boundary = makeEvilBoundary(React);
               root.render(
-                window.__evilReact__.createElement("div", {
-                  dangerouslySetInnerHTML: {
-                    __html: "<iframe src='https://evilsite.example'></iframe>"
-                  },
-                }),
+                React.createElement(Boundary, null,
+                  React.createElement("div", {
+                    dangerouslySetInnerHTML: {
+                      __html: "<iframe src='https://evilsite.example'></iframe>"
+                    },
+                  })
+                )
               );
               return {
                 update: function () {},
