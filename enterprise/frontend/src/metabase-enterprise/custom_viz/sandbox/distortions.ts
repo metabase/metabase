@@ -1,22 +1,17 @@
 import DOMPurify from "dompurify";
 
-import {
-  ACTIVE_ELEMENT_GETTER,
-  CREATE_ELEMENT,
-  CREATE_ELEMENT_NS,
-  INSERT_ADJACENT_HTML,
-  SET_ATTRIBUTE,
-  SET_ATTRIBUTE_NS,
-} from "./allowlist";
 import { getFunctionName } from "./debugging";
 import { getSafeSandboxDomElement, isDomElement } from "./distortions-dom";
 
-// Flip to true to log a console.warn for every native function the sandbox
-// rejects, including its source preview and identity comparisons. Useful when
-// a plugin hits "blocked API call: …" and we need to figure out which
-// captured reference the runtime function should match against. Keep false
-// in checked-in code.
-const DIAGNOSE_BLOCKED_CALLS = false;
+const CREATE_ELEMENT = Document.prototype.createElement;
+const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
+const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
+const SET_ATTRIBUTE = Element.prototype.setAttribute;
+const SET_ATTRIBUTE_NS = Element.prototype.setAttributeNS;
+const ACTIVE_ELEMENT_GETTER = Object.getOwnPropertyDescriptor(
+  Document.prototype,
+  "activeElement",
+)?.get;
 
 export function makeDistortionCallback(pluginId: string) {
   return function distortionCallback(value: object): object {
@@ -25,10 +20,6 @@ export function makeDistortionCallback(pluginId: string) {
     }
 
     if (typeof value !== "function") {
-      return value;
-    }
-
-    if (isUserDefinedFunction(value)) {
       return value;
     }
 
@@ -82,19 +73,6 @@ export function makeDistortionCallback(pluginId: string) {
       return function blocked() {
         throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
       };
-    }
-
-    if (DIAGNOSE_BLOCKED_CALLS) {
-      // Now logs PASS-THROUGH events instead — useful when chasing why a
-      // dangerous-looking call isn't blocked. Off by default.
-      try {
-        const src = Function.prototype.toString.call(value);
-        console.warn(
-          `[plugin ${pluginId}] PASS ${name} | src=${src.slice(0, 80)}`,
-        );
-      } catch {
-        // ignore
-      }
     }
 
     return value;
@@ -211,28 +189,6 @@ const BLOCKED_NATIVE_NAMES = new Set([
   "Window.get indexedDB",
   "Window.get caches",
 ]);
-
-// User-space JS functions stringify to their actual source; native built-ins
-// (`fetch`, `XMLHttpRequest`, `document.createElement`, …) stringify with the
-// `[native code]` marker. Anything outside that marker can't do I/O on its
-// own — to be dangerous it must eventually call a native, which crosses the
-// membrane again and gets gated then. So user-defined functions can pass
-// through here without consulting the allowlist.
-//
-// Bound functions (`Function.prototype.bind`) also stringify with
-// `[native code]` even though they wrap user code (e.g. React's bound
-// dispatchSetState), but their `.name` is prefixed with `bound ` — we treat
-// those as user-defined too.
-//
-// Distortion callback returns a `blocked` function on first
-// access, and `blocked.bind(...)` is still a function that throws when called.
-function isUserDefinedFunction(fun: object): boolean {
-  if (!Function.prototype.toString.call(fun).includes("[native code]")) {
-    return true;
-  }
-  const fname = Object.getOwnPropertyDescriptor(fun, "name")?.value;
-  return fname.startsWith("bound ");
-}
 
 // Wraps innerHTML/outerHTML through DOMPurify before they reach the DOM.
 type SanitizedSetterInfo = {
