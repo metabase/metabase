@@ -29,10 +29,14 @@ export function addCustomVizPlugin(
       });
     })
     .then(({ body, status }) => {
+      // Cypress's `cy.request` always returns the response body as an
+      // ArrayBuffer when the request body is `FormData` — even for JSON
+      // responses. The buffer comes from a different realm than the spec's
+      // `window.ArrayBuffer`, so `instanceof ArrayBuffer` returns false.
+      // Decode unconditionally instead of branching.
       const bytes = new Uint8Array(body as ArrayBuffer);
       const text = new TextDecoder("utf-8").decode(bytes);
       if (status !== 200) {
-        // eslint-disable-next-line no-console
         console.error(
           `[addCustomVizPlugin] upload failed (${status}): ${text}`,
         );

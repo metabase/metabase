@@ -1,7 +1,3 @@
-import type { CustomVizPlugin } from "metabase-types/api";
-
-import { addCustomVizPlugin } from "./api";
-
 export const CUSTOM_VIZ_FIXTURE_TGZ =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_custom_viz_plugin.tgz";
@@ -9,14 +5,6 @@ export const CUSTOM_VIZ_FIXTURE_TGZ =
 export const CUSTOM_VIZ_FIXTURE_TGZ_2 =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_custom_viz_plugin_2.tgz";
-
-// SHA-256 of the committed .tgz fixture bytes. Update if the fixture is
-// regenerated (`shasum -a 256 e2e/support/assets/example_custom_viz_plugin.tgz`).
-export const CUSTOM_VIZ_FIXTURE_BUNDLE_HASH =
-  "667dafe8e1387f4cbfbcfe5da10ff4ea4af7ecefe9032db81a5860602093a5a5";
-
-export const CUSTOM_VIZ_FIXTURE_BUNDLE_HASH_2 =
-  "551c5f649d300a1edb361caf1ba6e2682db6485266a00256d81183c12128155d";
 
 // Identifier comes from the manifest's `name` field in the packaged bundle.
 export const CUSTOM_VIZ_IDENTIFIER = "demo-viz";
@@ -27,12 +15,15 @@ export const CUSTOM_VIZ_IDENTIFIER_2 = "demo-viz-2";
 export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}` as const;
 
 /**
- * Register the demo plugin from the pre-built .tgz fixture.
- * This is the most common beforeEach pattern for tests that need a working
- * plugin but don't test the install flow.
+ * Compute the SHA-256 of a .tgz fixture on disk via `shasum`. The chip on the
+ * plugin list shows the first 8 chars, so tests that assert on the chip read
+ * the hash through this helper instead of hardcoding it (which would drift
+ * silently when the fixture is regenerated).
  */
-export function setupCustomVizPlugin(): Cypress.Chainable<CustomVizPlugin> {
-  return addCustomVizPlugin(CUSTOM_VIZ_FIXTURE_TGZ);
+export function getCustomVizFixtureHash(tgzPath: string) {
+  return cy
+    .exec(`shasum -a 256 ${tgzPath}`)
+    .then(({ stdout }) => stdout.split(" ")[0]);
 }
 
 // -- Intercept helpers --

@@ -45,13 +45,12 @@ import type {
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
-type StaticVizApiWindow = Window & {
-  __METABASE_VIZ_API__?: {
-    React: typeof React;
-    jsxRuntime: typeof jsxRuntime;
-    columnTypes: typeof customVizColumnTypes;
-    formatValue: (value: unknown, options?: OptionsType) => string;
-  };
+type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
+  __METABASE_VIZ_API__?: Omit<
+    NonNullable<Window["__METABASE_VIZ_API__"]>,
+    // unsupported in static viz
+    "measureText" | "measureTextHeight" | "measureTextWidth"
+  >;
 };
 
 // Expose React, jsxRuntime, and utils for custom viz bundles that reference

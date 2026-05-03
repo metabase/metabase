@@ -108,7 +108,7 @@ function CustomVizEmptyState() {
             <Stack gap="sm">
               <Title order={3}>{t`Enable custom visualizations`}</Title>
               <Text c="text-secondary" lh="1.25rem">
-                {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and link them here from a Git repository.`}
+                {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and upload them here as packaged bundles (.tgz).`}
               </Text>
               <Text fw="bold" lh="1.25rem">
                 {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
@@ -132,9 +132,9 @@ function CustomVizEmptyState() {
               description={t`Build plugins with the Custom Visualizations SDK`}
             />
             <FeatureCard
-              icon="git_branch"
-              title={t`Git-based distribution`}
-              description={t`Publish custom visualizations by linking to a Git repository`}
+              icon="upload"
+              title={t`Bundle uploads`}
+              description={t`Publish custom visualizations by uploading packaged plugin bundles (.tgz)`}
             />
             <FeatureCard
               icon="gear"

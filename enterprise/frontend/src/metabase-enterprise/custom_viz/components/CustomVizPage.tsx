@@ -33,6 +33,7 @@ import {
   MAX_BUNDLE_BYTES,
   hasAllowedExtension,
 } from "./BundleDropzone";
+import { CustomVizPluginSummary } from "./CustomVizPluginSummary";
 
 type Props = {
   params?: {
@@ -158,9 +159,14 @@ export function CustomVizPage({ params }: Props) {
             {({ dirty }) => (
               <Form>
                 <Stack gap="40px">
-                  <Title order={2}>
-                    {isEdit ? t`Replace bundle` : t`Add a new visualization`}
-                  </Title>
+                  <Stack gap="md">
+                    <Title order={2}>
+                      {isEdit ? t`Replace bundle` : t`Add a new visualization`}
+                    </Title>
+                    {isEdit && plugin && (
+                      <CustomVizPluginSummary plugin={plugin} />
+                    )}
+                  </Stack>
                   <BundleDropzone />
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">
