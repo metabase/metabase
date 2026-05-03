@@ -342,7 +342,6 @@
     clj-time.coerce                           time.coerce
     clj-time.format                           time.format
     clojure.core.async                        a
-    clojure.core.match                        clojure.core.match
     clojure.data                              data
     clojure.math.combinatorics                math.combo
     clojure.pprint                            pprint
