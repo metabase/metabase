@@ -1732,7 +1732,7 @@ describe("issue 48824", { tags: "@skip" }, () => {
   it("should correctly translate relative filters in dashboards (metabase#48824)", () => {
     cy.log("set locale");
     cy.request("GET", "/api/user/current").then(({ body: user }) => {
-      cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+      cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
     });
 
     cy.log("add a date parameter with a relative default value to a dashboard");
@@ -1761,12 +1761,12 @@ describe("issue 48824", { tags: "@skip" }, () => {
     });
 
     cy.log("Previous 30 days");
-    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible");
+    H.filterWidget().findByText("[zz] Previous 30 days").should("be.visible");
     H.filterWidget().icon("revert").click();
 
     cy.log("Previous 30 days, starting 7 days ago");
     H.filterWidget()
-      .findByText("Vorheriger 30 Tage, ab vor 7 tage")
+      .findByText("[zz] Previous 30 days, [zz] starting 7 days ago")
       .should("be.visible");
   });
 });

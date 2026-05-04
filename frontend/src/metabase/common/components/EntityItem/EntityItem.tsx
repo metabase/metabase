@@ -27,7 +27,7 @@ import { Swapper } from "metabase/common/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import type { IconName, IconProps } from "metabase/ui";
 import { Ellipsified, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
 
 import {

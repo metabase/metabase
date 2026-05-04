@@ -410,6 +410,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import rename_component from "./rename.svg?component";
+import rename_source from "./rename.svg?source";
 import repository_component from "./repository.svg?component";
 import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
@@ -432,8 +434,6 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
-import segment2_component from "./segment2.svg?component";
-import segment2_source from "./segment2.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
 import settings_component from "./settings.svg?component";
@@ -1437,6 +1437,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: refresh_downstream_component,
       source: refresh_downstream_source,
     },
+    rename: {
+      component: rename_component,
+      source: rename_source,
+    },
     repository: {
       component: repository_component,
       source: repository_source,
@@ -1464,10 +1468,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     segment: {
       component: segment_component,
       source: segment_source,
-    },
-    segment2: {
-      component: segment2_component,
-      source: segment2_source,
     },
     send: {
       component: send_component,
@@ -1951,6 +1951,7 @@ export type IconName =
   | "reference"
   | "refresh"
   | "refresh_downstream"
+  | "rename"
   | "repository"
   | "rocket"
   | "ruler"
@@ -1959,7 +1960,6 @@ export type IconName =
   | "search_check"
   | "section"
   | "segment"
-  | "segment2"
   | "shield"
   | "shield_outline"
   | "sidebar_closed"

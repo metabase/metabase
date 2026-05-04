@@ -8,7 +8,7 @@ describe("Search", () => {
     cy.signInAsAdmin();
     H.restore("postgres-writable");
     H.resetSnowplow();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.resetTestTable({ type: "postgres", table: "multi_schema" });
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
     cy.intercept("GET", "/api/table?*").as("listTables");

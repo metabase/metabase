@@ -265,7 +265,8 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                         component: "metabase-dashboard",
                         attributes: {
                           token: expiredToken,
-                          "custom-context": "test-custom-context",
+                          "custom-context":
+                            '{"param":"value","nested":{"a":1}}',
                         },
                       },
                     ],
@@ -275,7 +276,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     expect(interception.request.body).to.deep.include({
                       entityType: "dashboard",
                       entityId: dashboardId,
-                      customContext: "test-custom-context",
+                      customContext: { param: "value", nested: { a: 1 } },
                     });
                   });
 
@@ -407,8 +408,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -474,8 +474,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -799,8 +798,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -868,8 +866,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {

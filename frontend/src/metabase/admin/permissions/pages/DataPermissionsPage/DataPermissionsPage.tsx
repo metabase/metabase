@@ -6,10 +6,10 @@ import _ from "underscore";
 import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
 import { Databases } from "metabase/entities/databases";
 import { Groups } from "metabase/entities/groups";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, Group } from "metabase-types/api";
 

@@ -406,18 +406,18 @@ describe("issue 23076", () => {
     cy.signInAsAdmin();
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "de",
+      locale: "en-ZZ",
     });
 
     H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^Summen für/, { timeout: 10000 })
+    cy.findAllByText(/^\[zz\] Totals for/)
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai 2026");
+      .should("eq", "[zz] Totals for May 2026");
   });
 });
 
@@ -1330,33 +1330,6 @@ describe("issue 56771", () => {
   });
 });
 
-describe("issue 57132", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset", function (req) {
-      req.continue((res) => {
-        // remove description from the CATEGORY column
-        const index = res.body.data.cols.findIndex(
-          (col) => col.name === "CATEGORY",
-        );
-        delete res.body.data.cols[index].description;
-      });
-    });
-  });
-
-  it("should render more values when hovering colum header without description (metabase#57132)", () => {
-    H.openProductsTable();
-    H.tableInteractive().findByText("Category").realHover();
-
-    cy.log("The popover should be wide enough to show at least some values");
-    H.popover()
-      .findByText(/^Doohickey, Gadget, Gizmo/)
-      .should("be.visible");
-  });
-});
-
 describe("issue 52333", () => {
   const baseQuery = `
 SELECT *
@@ -1600,5 +1573,31 @@ describe("issue 56094", () => {
     H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
 
     H.queryBuilderFooterDisplayToggle().should("exist");
+  });
+});
+
+describe("issue 57685", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        display: "table",
+        native: {
+          query: 'SELECT id as "" FROM PRODUCTS',
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should handle empty column names without error (metabase#57685)", () => {
+    cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+
+    H.tableInteractive().should("be.visible");
   });
 });

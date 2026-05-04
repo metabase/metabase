@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,6 +7,7 @@ import * as Yup from "yup";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -19,9 +21,9 @@ import type {
 import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
+import { connect } from "metabase/redux";
+import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { connect } from "metabase/utils/redux";
 import type { Collection } from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
@@ -40,7 +42,7 @@ const COLLECTION_SCHEMA = Yup.object({
 export interface CreateCollectionProperties {
   name: string;
   description: string | null;
-  parent_id: Collection["id"];
+  parent_id: Collection["id"] | null;
 }
 
 export interface CreateCollectionFormOwnProps {
@@ -52,10 +54,6 @@ export interface CreateCollectionFormOwnProps {
   showAuthorityLevelPicker?: boolean;
 }
 
-interface CreateCollectionFormStateProps {
-  initialCollectionId: Collection["id"];
-}
-
 interface CreateCollectionFormDispatchProps {
   handleCreateCollection: (
     collection: CreateCollectionProperties,
@@ -63,33 +61,28 @@ interface CreateCollectionFormDispatchProps {
 }
 
 type Props = CreateCollectionFormOwnProps &
-  CreateCollectionFormStateProps &
-  CreateCollectionFormDispatchProps;
-
-function mapStateToProps(
-  state: State,
-  props: CreateCollectionFormOwnProps,
-): CreateCollectionFormStateProps {
-  return {
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
-  };
-}
+  CreateCollectionFormDispatchProps &
+  WithRouterProps;
 
 const mapDispatchToProps = {
   handleCreateCollection: Collections.actions.create,
 };
 
 function CreateCollectionForm({
-  initialCollectionId,
+  collectionId,
+  location,
+  params,
   onSubmit,
   onCancel,
   filterPersonalCollections,
   showCollectionPicker = true,
   showAuthorityLevelPicker = true,
 }: Props) {
+  const initialCollectionId = useInitialCollectionId({
+    collectionId,
+    location,
+    params,
+  });
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
@@ -142,6 +135,7 @@ function CreateCollectionForm({
                 filterPersonalCollections={filterPersonalCollections}
                 entityType="collection"
                 onCollectionSelect={setSelectedParentCollection}
+                mb="1rem"
               />
             )}
             {showAuthorityLevelPicker && !isParentTenantCollection && (
@@ -149,10 +143,12 @@ function CreateCollectionForm({
             )}
             <FormFooter>
               <FormErrorMessage inline />
-              {!!onCancel && (
-                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-              )}
-              <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+              <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
+                {!!onCancel && (
+                  <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+                )}
+                <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+              </Flex>
             </FormFooter>
           </Form>
         );
@@ -164,5 +160,5 @@ function CreateCollectionForm({
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(CreateCollectionForm);

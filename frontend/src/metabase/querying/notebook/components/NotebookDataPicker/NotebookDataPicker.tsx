@@ -15,10 +15,10 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { isEmbedding } from "metabase/embedding/config";
 import { loadMetadataForTable } from "metabase/questions/actions";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
-import { useDispatch, useSelector, useStore } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -199,10 +199,10 @@ function ModernDataPicker({
       return Boolean(
         // @ts-expect-error - Please fix 🥺
         shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
-          shouldDisableItem?.(item as OmniPickerItem) ||
-          (isObjectWithModel(item) &&
-            item.model === "database" &&
-            shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
+        shouldDisableItem?.(item as OmniPickerItem) ||
+        (isObjectWithModel(item) &&
+          item.model === "database" &&
+          shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
   }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
@@ -258,9 +258,9 @@ function ModernDataPicker({
           shouldDisableItem={(i) => {
             return Boolean(
               shouldDisableItem?.(i) ||
-                ("model" in i &&
-                  i.model === "database" &&
-                  shouldDisableDatabase?.(i)),
+              ("model" in i &&
+                i.model === "database" &&
+                shouldDisableDatabase?.(i)),
             );
           }}
           options={getItemTooltip ? { getItemTooltip } : undefined}

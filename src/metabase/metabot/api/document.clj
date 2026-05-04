@@ -7,6 +7,7 @@
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -91,6 +92,7 @@
 
    {:keys [instructions references]} :- generate-content-body-schema]
   (metabot.config/check-metabot-enabled!)
+  (metabot.usage/check-metabase-managed-free-limit!)
   (let [context      (assoc
                       (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
                       :references references)

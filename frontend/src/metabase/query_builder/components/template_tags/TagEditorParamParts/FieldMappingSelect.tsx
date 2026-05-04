@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";

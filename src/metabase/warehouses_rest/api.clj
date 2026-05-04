@@ -560,10 +560,6 @@
                 :schema schema
                 :description description))
 
-(defn- perm-user-info []
-  {:user-id       api/*current-user-id*
-   :is-superuser? api/*is-superuser?*})
-
 (defn- format-field-metadata
   "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
   [{:keys [id table_id parent_id fk_target_field_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
@@ -577,38 +573,75 @@
                 :semantic_type semantic_type
                 :coercion_strategy coercion_strategy))
 
-(defn- perm-mapping []
+(defn- perm-user-info
+  "User information used to check permissions."
+  []
+  {:user-id       api/*current-user-id*
+   :is-superuser? api/*is-superuser?*})
+
+(defn- perm-mapping
+  "Permission mapping used to filter databases and tables to those visible to the current user.
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or `Query builder and native`)."
+  []
   {:perms/view-data      :unrestricted
    :perms/create-queries :query-builder})
 
 (defn- write-json-array!
-  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row."
+  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row.
+
+  `run!` is required here because it dispatches through `reduce`, which consumes the
+  `IReduceInit` returned by `t2/reducible-select` row-by-row without materializing.
+  `doseq` cannot be used: it walks a seq, and producing a seq from the reducible
+  would realize every row into memory — defeating the point of streaming."
   [^java.io.Writer writer reducible format-fn]
   (.write writer "[")
   (let [first? (volatile! true)]
-    (reduce (fn [_ row]
-              (if @first?
-                (vreset! first? false)
-                (.write writer ","))
-              (json/encode-to (format-fn row) writer {}))
-            nil
-            reducible))
+    (run! (fn [row]
+            (if @first?
+              (vreset! first? false)
+              (.write writer ","))
+            (json/encode-to (format-fn row) writer {}))
+          reducible))
   (.write writer "]"))
 
+(defn- visible-db-where
+  "Honeysql `:where` clause restricting a `:metabase_database :d` join to databases that
+  belong in a bulk export for the current user: not audit, not a router DB, and inside
+  the query-builder visibility filter."
+  []
+  [:and
+   [:= :d.is_audit false]
+   [:= :d.router_database_id nil]
+   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]])
+
+(defn- visible-table-where
+  "Honeysql `:where` clause restricting a `:metabase_table :t` join to active, non-hidden
+  tables inside the current user's query-builder visibility filter."
+  []
+  [:and
+   [:= :t.active true]
+   [:= :t.visibility_type nil]
+   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]])
+
+(defn- visible-field-where
+  "Honeysql `:where` clause restricting a `:metabase_field :f` join to active,
+  non-sensitive fields."
+  []
+  [:and
+   [:= :f.active true]
+   [:<> :f.visibility_type "sensitive"]])
+
 (defn- write-databases-metadata!
-  "Streams the databases/tables/fields metadata as JSON to the given OutputStream."
+  "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
+
+  Warehouses with large schemas can produce gigabytes of metadata, so streaming is
+  required — materializing the full response in memory would OOM the server. Each
+  section is written directly to the underlying writer as rows are pulled from a
+  reducible query, keeping memory usage bounded regardless of schema size."
   [^java.io.OutputStream os]
-  (let [db-filter [:and
-                   [:= :d.is_audit false]
-                   [:= :d.router_database_id nil]
-                   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
-        t-filter  [:and
-                   [:= :t.active true]
-                   [:= :t.visibility_type nil]
-                   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        f-filter  [:and
-                   [:= :f.active true]
-                   [:<> :f.visibility_type "sensitive"]]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
         writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (.write writer "{\"databases\":")
     (write-json-array! writer
@@ -636,273 +669,119 @@
     (.write writer "}")
     (.flush writer)))
 
+(mr/def ::database-info
+  [:map
+   [:id ::lib.schema.id/database]
+   [:name :string]
+   [:engine :string]])
+
+(mr/def ::table-info
+  [:map
+   [:id ::lib.schema.id/table]
+   [:db_id ::lib.schema.id/database]
+   [:name :string]
+   [:schema {:optional true} :string]
+   [:description {:optional true} :string]])
+
+(mr/def ::field-info
+  [:map
+   [:id ::lib.schema.id/field]
+   [:table_id ::lib.schema.id/table]
+   [:name :string]
+   [:parent_id {:optional true} ::lib.schema.id/field]
+   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
+   [:description {:optional true} :string]
+   [:base_type :string]
+   [:database_type {:optional true} :string]
+   [:effective_type {:optional true} :string]
+   [:semantic_type {:optional true} :string]
+   [:coercion_strategy {:optional true} :string]])
+
 (mr/def ::databases-metadata-response
   [:map
-   [:databases [:sequential [:map
-                             [:id ::lib.schema.id/database]
-                             [:name :string]
-                             [:engine :string]]]]
-   [:tables [:sequential [:map
-                          [:id ::lib.schema.id/table]
-                          [:db_id ::lib.schema.id/database]
-                          [:name :string]
-                          [:schema {:optional true} :string]
-                          [:description {:optional true} :string]]]]
-   [:fields [:sequential [:map
-                          [:id ::lib.schema.id/field]
-                          [:table_id ::lib.schema.id/table]
-                          [:name :string]
-                          [:parent_id {:optional true} ::lib.schema.id/field]
-                          [:fk_target_field_id {:optional true} ::lib.schema.id/field]
-                          [:description {:optional true} :string]
-                          [:base_type :string]
-                          [:database_type {:optional true} :string]
-                          [:effective_type {:optional true} :string]
-                          [:semantic_type {:optional true} :string]
-                          [:coercion_strategy {:optional true} :string]]]]])
+   [:databases [:sequential ::database-info]]
+   [:tables    [:sequential ::table-info]]
+   [:fields    [:sequential ::field-info]]])
 
 (api.macros/defendpoint :get "/metadata"
   :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
   "Get metadata (databases, tables, and fields) for all databases visible to the current user.
   Returns a flat structure with three arrays: databases, tables, and fields.
-  Response is streamed for efficiency with large schemas."
+  Response is streamed for efficiency with large schemas.
+
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
+  `Query builder and native`) permissions on each database and table."
   []
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
 
-;;; ----------------------------------------- POST /api/database/metadata -----------------------------------------
+;;; --------------------------------------- GET /api/database/field-values ---------------------------------------
 
-(defn- engine-name
-  "Normalize engine (stored as string or keyword) to a string for lookup."
-  [engine]
-  (when engine (name engine)))
+(defn- format-field-values-entry
+  "Formats a FieldValues row for the /field-values response. Omits `human_readable_values`
+  when empty to keep the common case compact."
+  [{:keys [field_id values human_readable_values has_more_values]}]
+  (m/assoc-some {:field_id        field_id
+                 :values          (or values [])
+                 :has_more_values (boolean has_more_values)}
+                :human_readable_values (not-empty human_readable_values)))
 
-(defn- build-db-lookup
-  "Map of [name engine-string] -> target database id."
-  []
-  (into {}
-        (map (juxt (juxt :name (comp engine-name :engine)) :id))
-        (t2/select [:model/Database :id :name :engine])))
+(defn- write-field-values!
+  "Streams the `field_values` JSON array to `os`. Exports only unconstrained (`:full`)
+  FieldValues — sandboxed, impersonation, and linked-filter variants are user-specific
+  and excluded from the bulk export. Visibility filter matches `GET /api/database/metadata`
+  so every streamed row has a corresponding field entry there."
+  [^java.io.OutputStream os]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
+        fv-filter [:and
+                   [:= :fv.type "full"]
+                   [:= :fv.hash_key nil]]
+        writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+    (.write writer "{\"field_values\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/FieldValues
+                                             :fv.field_id :fv.values :fv.human_readable_values :fv.has_more_values]
+                                            {:from  [[:metabase_fieldvalues :fv]]
+                                             :join  [[:metabase_field :f]    [:= :fv.field_id :f.id]
+                                                     [:metabase_table :t]    [:= :f.table_id :t.id]
+                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
+                                             :where [:and db-filter t-filter f-filter fv-filter]})
+                       format-field-values-entry)
+    (.write writer "}")
+    (.flush writer)))
 
-(defn- build-target-table-lookup
-  "{[target-db-id schema table-name] -> target-table-id} for every active table in the given dbs."
-  [target-db-ids]
-  (if (empty? target-db-ids)
-    {}
-    (into {}
-          (map (juxt (juxt :db_id :schema :name) :id))
-          (t2/select [:model/Table :id :db_id :schema :name]
-                     :db_id [:in target-db-ids] :active true))))
-
-(defn- build-target-field-pathmap
-  "{[target-table-id [name1 ... leaf]] -> target-field-id} for every active field under
-  the given target tables. Paths are produced by walking `parent_id` on the target side."
-  [target-table-ids]
-  (if (empty? target-table-ids)
-    {}
-    (let [rows  (t2/select [:model/Field :id :table_id :parent_id :name]
-                           :table_id [:in target-table-ids] :active true)
-          by-id (into {} (map (juxt :id identity)) rows)
-          path  (fn path [field]
-                  (if-some [pid (:parent_id field)]
-                    (conj (path (get by-id pid)) (:name field))
-                    [(:name field)]))]
-      (into {}
-            (map (fn [{:keys [id table_id] :as field}]
-                   [[table_id (path field)] id]))
-            rows))))
-
-(defn- incoming-field-path
-  "[name1 ... leaf] path of an incoming field, walking parent_id in the payload."
-  [incoming-by-id field-id]
-  (when-some [{:keys [name parent_id]} (get incoming-by-id field-id)]
-    (if parent_id
-      (conj (incoming-field-path incoming-by-id parent_id) name)
-      [name])))
-
-(defn- new-table-row
-  [target-db-id {:keys [schema name description]}]
-  (cond-> {:db_id               target-db-id
-           :name                name
-           :schema              schema
-           :active              true
-           :initial_sync_status "complete"}
-    (some? description) (assoc :description description)))
-
-(defn- new-field-row
-  "Row for inserting a new field. parent_id and fk_target_field_id are intentionally
-  omitted — they're set in the references pass after every field exists."
-  [target-tbl-id
-   {:keys [name base_type description database_type effective_type semantic_type coercion_strategy]}]
-  (cond-> {:table_id  target-tbl-id
-           :name      name
-           :base_type (or base_type :type/*)
-           :active    true}
-    (some? description)       (assoc :description description)
-    (some? database_type)     (assoc :database_type database_type)
-    (some? effective_type)    (assoc :effective_type effective_type)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
-
-(defn- matched-field-patch
-  "Writable keys for a matched field — excludes parent_id (never re-parent matched rows)
-  and fk_target_field_id (handled in the references pass)."
-  [{:keys [description semantic_type coercion_strategy effective_type]}]
-  (cond-> {}
-    (some? description)       (assoc :description description)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)
-    (some? effective_type)    (assoc :effective_type effective_type)))
-
-(defn- import-tables!
-  "Phase 1. Match by (target-db, schema, name) against a full lookup of the target's
-  active tables; UPDATE matched rows' description, bulk INSERT the rest."
-  [state tables in-db->target]
-  (let [target-lookup (build-target-table-lookup (vals in-db->target))
-        to-insert     (volatile! [])]
-    (doseq [{:keys [id db_id schema name description] :as tbl} tables]
-      (let [target-db-id (in-db->target db_id)
-            existing-id  (when target-db-id (target-lookup [target-db-id schema name]))]
-        (cond
-          (nil? target-db-id)
-          (swap! state update-in [:tables :missing] conj
-                 (cond-> {:db_id db_id :name name}
-                   (some? schema) (assoc :schema schema)))
-
-          existing-id
-          (do
-            (when (some? description)
-              (t2/update! :model/Table existing-id {:description description}))
-            (swap! state #(-> %
-                              (update-in [:tables :matched] inc)
-                              (assoc-in [:in-tbl->target id] existing-id))))
-
-          :else
-          (vswap! to-insert conj [id (new-table-row target-db-id tbl)]))))
-    (when-some [rows (seq @to-insert)]
-      (let [new-ids (t2/insert-returning-pks! :model/Table (mapv second rows))]
-        (swap! state (fn [s]
-                       (reduce (fn [s [[incoming-id _] new-id]]
-                                 (-> s
-                                     (update-in [:tables :created] inc)
-                                     (assoc-in [:in-tbl->target incoming-id] new-id)))
-                               s
-                               (map vector rows new-ids))))))))
-
-(defn- import-fields!
-  "Phase 2. Match incoming fields against the target by full (table, parent-path, name)
-  using `build-target-field-pathmap`; UPDATE matched rows with editable metadata (minus
-  parent_id / fk_target_field_id), bulk INSERT the rest with parent_id left NULL."
-  [state fields incoming-by-id in-tbl->target]
-  (let [path-lookup (build-target-field-pathmap (vals in-tbl->target))
-        to-insert   (volatile! [])]
-    (doseq [{:keys [id table_id] :as fld} fields]
-      (let [target-tbl  (in-tbl->target table_id)
-            path        (when target-tbl (incoming-field-path incoming-by-id id))
-            existing-id (when target-tbl (path-lookup [target-tbl path]))]
-        (cond
-          (nil? target-tbl)
-          (swap! state update-in [:fields :missing] conj
-                 {:table_id table_id
-                  :path     (incoming-field-path incoming-by-id id)})
-
-          existing-id
-          (let [patch (matched-field-patch fld)]
-            (when (seq patch)
-              (t2/update! :model/Field existing-id patch))
-            (swap! state #(-> %
-                              (update-in [:fields :matched] inc)
-                              (assoc-in [:in-fld->target id] existing-id))))
-
-          :else
-          (vswap! to-insert conj [id (new-field-row target-tbl fld)]))))
-    (when-some [rows (seq @to-insert)]
-      (let [new-ids (t2/insert-returning-pks! :model/Field (mapv second rows))]
-        (swap! state (fn [s]
-                       (reduce (fn [s [[incoming-id _] new-id]]
-                                 (-> s
-                                     (update-in [:fields :created] inc)
-                                     (assoc-in [:in-fld->target incoming-id] new-id)
-                                     (update :created-fld-ids conj incoming-id)))
-                               s
-                               (map vector rows new-ids))))))))
-
-(defn- resolve-field-references!
-  "Phase 3. Link parent_id and fk_target_field_id now that every resolvable field has a
-  target id. parent_id is only set on rows we just created — matched rows keep their
-  existing parent so we never restructure a nested field in place. fk_target_field_id is
-  user-editable and is updated for both matched and created rows."
-  [fields in-fld->target created-fld-ids]
-  (doseq [{:keys [id parent_id fk_target_field_id]} fields]
-    (let [tid   (in-fld->target id)
-          patch (cond-> {}
-                  (and (contains? created-fld-ids id) (some? parent_id))
-                  (assoc :parent_id (in-fld->target parent_id))
-
-                  (some? fk_target_field_id)
-                  (assoc :fk_target_field_id (in-fld->target fk_target_field_id)))]
-      (when (and tid (seq patch))
-        (t2/update! :model/Field tid patch)))))
-
-(defn- import-metadata!*
-  "Core logic for POST /metadata. See the endpoint doc for behavior."
-  [{:keys [databases tables fields]}]
-  (let [db-by-key      (build-db-lookup)
-        in-db->target  (into {}
-                             (keep (fn [{:keys [id name engine]}]
-                                     (when-some [tid (db-by-key [name (engine-name engine)])]
-                                       [id tid])))
-                             databases)
-        missing-dbs    (mapv #(select-keys % [:name :engine])
-                             (remove #(in-db->target (:id %)) databases))
-        incoming-by-id (m/index-by :id fields)
-        state          (atom {:tables          {:matched 0 :created 0 :missing []}
-                              :fields          {:matched 0 :created 0 :missing []}
-                              :in-tbl->target  {}
-                              :in-fld->target  {}
-                              :created-fld-ids #{}})]
-    (t2/with-transaction [_conn]
-      (import-tables! state tables in-db->target)
-      (import-fields! state fields incoming-by-id (:in-tbl->target @state))
-      (let [{:keys [in-fld->target created-fld-ids]} @state]
-        (resolve-field-references! fields in-fld->target created-fld-ids)))
-    (let [{:keys [tables fields]} @state]
-      {:databases {:matched (count in-db->target) :missing missing-dbs}
-       :tables    tables
-       :fields    fields})))
-
-(mr/def ::metadata-import-report
+(mr/def ::field-values-info
   [:map
-   [:databases [:map [:matched :int] [:missing [:sequential :map]]]]
-   [:tables    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]
-   [:fields    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]])
+   [:field_id ::lib.schema.id/field]
+   [:values [:sequential [:sequential :any]]]
+   [:has_more_values :boolean]
+   [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
 
-(api.macros/defendpoint :post "/metadata"
-  :- ::metadata-import-report
-  "Import database/table/field metadata previously exported from `GET /api/database/metadata`.
+(mr/def ::field-values-response
+  [:map
+   [:field_values [:sequential ::field-values-info]]])
 
-  Entities are matched by natural key — databases by `(name, engine)`, tables by
-  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids
-  in the payload are only used to link fields to their tables within the request.
+(api.macros/defendpoint :get "/field-values"
+  :- (server.streaming-response/streaming-response-schema ::field-values-response)
+  "Get sampled field values for every field in the instance, streamed as a single
+  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,
+  optional `human_readable_values`, and `has_more_values`.
 
-  Tables and fields that don't exist on the target are created when their parent
-  (database for tables; table for fields) is present on the target. Databases are
-  not auto-created — missing databases are reported instead. Field `fk_target_field_id`
-  is re-resolved through the natural-key lookup after all fields exist.
+  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and
+  linked-filter variants are user-specific and would bypass their own enforcement
+  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve
+  `field_id` to table and field names. Response is streamed for efficiency with large
+  schemas.
 
-  For matched entities, only user-editable metadata is written: table `description`;
-  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and
-  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are
-  also populated from the payload. Keys absent from the payload (including null values)
-  are left untouched on matched entities.
-
-  Returns counts of matched + created entities per type plus a list of entities in the
-  payload that could not be placed (their parent was missing on the target)."
-  [_route-params
-   _query-params
-   body :- ::databases-metadata-response]
+  Admin-only: this endpoint exposes cached values computed over the unrestricted
+  dataset, so it would leak data past sandbox / impersonation rules if served to
+  regular users."
+  []
   (api/check-superuser)
-  (import-metadata!* body))
+  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+                      (write-field-values! os)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -1602,24 +1481,6 @@
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
-(api.macros/defendpoint :post "/:id/permission/workspace/check"
-  :- [:map
-      [:status :string]
-      [:checked_at :string]
-      [:error {:optional true} :string]]
-  "Check if database's connection has the required permissions to manage workspaces.
-  By default it'll return the cached permission check."
-  [{:keys [id cached]} :- [:map [:id ms/PositiveInt]
-                           [:cached {:optional true
-                                     :default true} :boolean]]]
-  (api/check-superuser)
-  (let [db (api/check-404 (t2/select-one :model/Database id))
-        _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
-                          "Database does not support workspaces")]
-    (or (when cached
-          (t2/select-one-fn :workspace_permissions_status :model/Database id))
-        (database/check-and-cache-workspace-permissions! db))))
-
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
 (defenterprise current-user-can-manage-schema-metadata?
@@ -1664,7 +1525,7 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata? include-workspace?]}]
+  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
                            (if-let [f (u/ignore-exceptions
@@ -1676,18 +1537,7 @@
         clauses         (cond-> []
                           ;; a non-nil value means Table is hidden --
                           ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                          (not include-hidden?) (conj [:= :visibility_type nil])
-                          (not include-workspace?) (conj [:or
-                                                          [:= :schema nil]
-                                                          [:not
-                                                           (driver.u/workspace-isolated-schema-clause :schema)
-                                                          ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
-                                                           #_[:exists {:select [1]
-                                                                       :from   [[(t2/table-name :model/Workspace) :w]]
-                                                                       :where  [:and
-                                                                                [:= :w.database_id id]
-                                                                                [:= :w.schema :metabase_table.schema]
-                                                                                [:= :w.archived_at nil]]}]]]))
+                          (not include-hidden?) (conj [:= :visibility_type nil]))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
@@ -1727,22 +1577,15 @@
    {:keys [include_editable_data_model
            include_hidden
            can-query
-           can-write-metadata
-           include_workspace]} :- [:map
-                                   [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                   [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                   [:can-query                   {:optional true} [:maybe :boolean]]
-                                   [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                   [:include_workspace           {:default false} [:maybe ms/BooleanValue]]]]
+           can-write-metadata]} :- [:map
+                                    [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                    [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                    [:can-query                   {:optional true} [:maybe :boolean]]
+                                    [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
   (database-schemas id {:include-editable-data-model? include_editable_data_model
-                        :include-hidden? include_hidden
+                        :include-hidden?              include_hidden
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata
-                        ;; TODO (Chris 2025-12-09) -- filtering out workspace schemas has a weird FE consequence - if you type one of those
-                        ;;       schemas out manually in the targets, it will offer to create it for you.
-                        ;;       this ends up being a no-op, so i guess it's harmless for now?
-                        ;;       it will look very weird when we add validation to refuse saving that target.
-                        :include-workspace? include_workspace}))
+                        :can-write-metadata?          can-write-metadata}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1777,7 +1620,7 @@
 (defn- schema-tables-list
   ([db-id schema]
    (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata?]}]
+  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata? include-measures?]}]
    (when-not include-editable-data-model?
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
@@ -1803,7 +1646,8 @@
                             can-query?          (filter mi/can-query?)
                             can-write-metadata? (filter mi/can-write?))
          hydration-keys   (cond-> []
-                            (premium-features/has-feature? :transforms-basic)   (conj :transform))]
+                            (premium-features/has-feature? :transforms-basic)   (conj :transform)
+                            include-measures? (conj :measures))]
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)
        filtered-tables))))
@@ -1825,18 +1669,20 @@
   [{:keys [id schema]} :- [:map
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata]} :- [:map
-                                                                                         [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                         [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
   (api/check-404 (seq (schema-tables-list
                        id
                        schema
                        {:include-hidden?              include_hidden
                         :include-editable-data-model? include_editable_data_model
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata}))))
+                        :can-write-metadata?          can-write-metadata
+                        :include-measures?            include_measures}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -1854,15 +1700,17 @@
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata]} :- [:map
-                                                                                         [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                         [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
   (let [opts {:include-hidden?              include_hidden
               :include-editable-data-model? include_editable_data_model
               :can-query?                   can-query
-              :can-write-metadata?          can-write-metadata}]
+              :can-write-metadata?          can-write-metadata
+              :include-measures?            include_measures}]
     (api/check-404 (seq (concat (schema-tables-list id nil opts)
                                 (schema-tables-list id "" opts))))))
 

@@ -2,14 +2,15 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { canMoveItem, isRootTrashCollection } from "metabase/collections/utils";
+import { isRootTrashCollection } from "metabase/collections/utils";
 import {
   BulkActionButton,
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { canMoveItem, useSetArchive } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
@@ -32,6 +33,7 @@ export const ArchivedBulkActions = ({
   setSelectedAction,
 }: ArchivedBulkActionsProps) => {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
 
   const hasSelectedItems = useMemo(
     () => !!selectedItems && !_.isEmpty(selectedItems),
@@ -59,7 +61,7 @@ export const ArchivedBulkActions = ({
   }, [selected]);
 
   const handleBulkRestore = () => {
-    const actions = selected.map((item) => item.setArchived(false));
+    const actions = selected.map((item) => archive(item, false));
     Promise.all(actions).finally(unselect);
   };
 
@@ -83,7 +85,6 @@ export const ArchivedBulkActions = ({
           `${selected.length} items have been permanently deleted.`,
           selected.length,
         ),
-        undo: false,
         canDismiss: true,
       }),
     );

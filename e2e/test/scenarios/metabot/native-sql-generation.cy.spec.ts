@@ -20,7 +20,7 @@ describe("Native SQL generation", () => {
   it("should not be available when metabot is not configured", () => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     H.startNewNativeQuestion();
     H.NativeEditor.get().should("be.visible");
@@ -32,7 +32,7 @@ describe("Native SQL generation", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
         value: "sk-ant-api03-test-token",
       });
@@ -120,7 +120,7 @@ describe("Native SQL generation", () => {
     beforeEach(() => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
         value: "sk-ant-api03-test-token",
       });
