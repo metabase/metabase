@@ -26,6 +26,7 @@ config:
     name: New workspace
     databases:
       test-data (postgres):
-        input_schemas:
-        - public
-        output_schema: mb__isolation_44490_1933
+        input:
+        - schema: public
+        output:
+          schema: mb__isolation_44490_1933

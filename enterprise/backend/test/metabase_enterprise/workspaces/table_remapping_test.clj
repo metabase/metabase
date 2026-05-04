@@ -11,6 +11,7 @@
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -28,8 +29,8 @@
   [db-id output-schema f]
   (try
     (ws/set-instance-workspace! {:name "table-remapping-test-ws"
-                                 :databases {db-id {:input_schemas []
-                                                    :output_schema output-schema}}})
+                                 :databases {db-id {:input  [{:schema "_"}]
+                                                    :output {:schema output-schema}}}})
     (f)
     (finally
       (ws/clear-instance-workspace!))))
@@ -100,7 +101,7 @@
 ;; ------------------------------------------------- add-transform-target-mapping! -------------------------------------------------
 
 (deftest add-transform-target-mapping!-writes-app-db-test
-  (testing "add-transform-target-mapping! writes the app-db cache using the workspace's output schema as the to-schema"
+  (testing "add-transform-target-mapping! writes the app-db cache using the workspace's output schema as the to-schema and a collision-resistant to-table"
     (clean-db-fixture!
      (mt/id)
      (fn []
@@ -109,8 +110,9 @@
          (fn []
            (ws.table-remapping/add-transform-target-mapping!
             (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})
-           (is (= ["ws_fresh" "ORDERS"]
-                  (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS")))))))))
+           (is (= ["ws_fresh" "PUBLIC__ORDERS"]
+                  (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))
+               "to-side is rewritten to <from-schema>__<from-name> so cross-schema collisions are avoided")))))))
 
 (deftest add-transform-target-mapping!-is-idempotent-test
   (testing "calling add-transform-target-mapping! twice leaves the app-db with a single row (no duplicate-key explosion)"
@@ -123,7 +125,7 @@
            (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}]
              (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
              (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
-             (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "ORDERS"]}
+             (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "PUBLIC__ORDERS"]}
                     (ws.table-remapping/all-mappings-for-db (mt/id)))))))))))
 
 (deftest workspace-remap-schema+name-redirects-sync-fetch-test
@@ -195,6 +197,163 @@
          (is (= (mt/id) (:db-id (ex-data ex)))))
        (testing "no app-db row was written"
          (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))))
+
+;;; ------------------------------------------------- remapped-table-name -------------------------------------------------
+;;;
+;;; Unit tests for the rename helper. Two source tables sharing a `:table` slot under different
+;;; `:schema` slots must produce distinct `:table` slots after the rewrite, even when the driver's
+;;; identifier limit forces truncation.
+
+(deftest ^:parallel remapped-table-name-short-passthrough-test
+  (testing "inputs under the driver's limit pass through as schema__table"
+    (is (= {:db "" :schema "public" :table "public__orders"}
+           (ws.table-remapping/remapped-table-name
+            :postgres {:db "" :schema "public" :table "orders"})))))
+
+(deftest ^:parallel remapped-table-name-determinism-test
+  (testing "same input -> same output"
+    (let [in {:db "" :schema "schema_a" :table "orders"}]
+      (is (= (ws.table-remapping/remapped-table-name :postgres in)
+             (ws.table-remapping/remapped-table-name :postgres in))))))
+
+(deftest ^:parallel remapped-table-name-distinct-schemas-test
+  (testing "two source tables with same :table under different :schema produce distinct :table slots"
+    (let [a (ws.table-remapping/remapped-table-name :postgres {:db "" :schema "schemaA" :table "orders"})
+          b (ws.table-remapping/remapped-table-name :postgres {:db "" :schema "schemaB" :table "orders"})]
+      (is (= "schemaA__orders" (:table a)))
+      (is (= "schemaB__orders" (:table b)))
+      (is (not= (:table a) (:table b))))))
+
+(deftest ^:parallel remapped-table-name-honors-driver-limit-test
+  (testing "Postgres (63) hashes long names; H2 (256) leaves them readable"
+    (let [long-schema (apply str (repeat 40 "a"))
+          long-table  (apply str (repeat 40 "b"))
+          in          {:db "" :schema long-schema :table long-table}
+          pg          (ws.table-remapping/remapped-table-name :postgres in)
+          h2          (ws.table-remapping/remapped-table-name :h2 in)]
+      (is (<= (count (:table pg)) 63))
+      (is (re-find #"_[0-9a-z]{8}$" (:table pg))
+          "Postgres output ends in an 8-char base36 disambiguating suffix")
+      (is (= (str long-schema "__" long-table) (:table h2))
+          "H2's 256-char headroom leaves the readable concatenation alone"))))
+
+(deftest ^:parallel remapped-table-name-collision-resistance-under-truncation-test
+  (testing "different long inputs that share a prefix produce distinct outputs after truncation"
+    (let [base (apply str (repeat 60 "x"))
+          a    (ws.table-remapping/remapped-table-name :postgres {:db "" :schema (str base "_a") :table "tbl"})
+          b    (ws.table-remapping/remapped-table-name :postgres {:db "" :schema (str base "_b") :table "tbl"})]
+      (is (<= (count (:table a)) 63))
+      (is (<= (count (:table b)) 63))
+      (is (not= (:table a) (:table b))
+          "the hash suffix discriminates inputs that would collide after naive truncation"))))
+
+(deftest ^:parallel remapped-table-name-truncation-shape-test
+  (testing "with max-len = 20"
+    ;; Layout, position by position:
+    ;;
+    ;; positions:    1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+    ;;
+    ;; verbatim:     s  c  h  e  m  a  A  _  _  t  a  b  l  e  _  f  i  t  s            (19, verbatim)
+    ;; at limit:     s  c  h  e  m  a  A  _  _  t  a  b  l  e  _  f  i  t  s  !         (20, verbatim)
+    ;; over limit:   s  c  h  e  m  a  A  _  _  t  a  _  <-------- 8-char hash -------->
+    ;;               [-- first (max-len - 9) chars of raw -][- _ + 8 base36 chars (9 total) -]
+    ;;
+    ;; When raw exceeds max-len, the function preserves the first (max-len - 9) chars of raw
+    ;; and appends an underscore + 8-char base36 hash of the FULL pre-truncation raw. So two
+    ;; inputs sharing those first chars still get distinct outputs via the hash.
+    (testing "verbatim cases (raw <= max-len)"
+      (doseq [[case-name {:keys [table-spec expected-output]}]
+              {"raw is 18 chars, under limit"
+               {:table-spec      {:db "" :schema "schemaA" :table "table_fits"}
+                :expected-output "schemaA__table_fits"}
+
+               "raw is 20 chars, exactly at limit"
+               {:table-spec      {:db "" :schema "schemaA" :table "table_fits!"}
+                :expected-output "schemaA__table_fits!"}}]
+        (testing case-name
+          (let [out (:table (ws.table-remapping/remapped-table-name-with-limit table-spec 20))]
+            (is (= expected-output out))
+            (is (>= 20 (count out)) "output is at or under the limit")))))
+    (testing "overflow cases (raw > max-len): output is <first 11 chars of raw>_<8-char base36 hash of full raw>"
+      ;; The hash is deterministic, so we pin the entire 20-char output literally.
+      ;; All three raws share the prefix "schemaA__ta" -- the hash discriminates them.
+      (doseq [[case-name {:keys [table-spec expected-output]}]
+              {"raw is 21 chars: 1 over the limit"
+               {:table-spec      {:db "" :schema "schemaA" :table "table_no_fit"}
+                :expected-output "schemaA__ta_lnvvf3pc"}
+
+               "raw is 27 chars: shares the first 11 chars with the 21-char case above"
+               {:table-spec      {:db "" :schema "schemaA" :table "table_alpha_long"}
+                :expected-output "schemaA__ta_s6fpa2r3"}
+
+               "raw is 28 chars: also shares the first 11 chars"
+               {:table-spec      {:db "" :schema "schemaA" :table "table_beta_longer"}
+                :expected-output "schemaA__ta_rmulb7o0"}}]
+        (testing case-name
+          (let [out (:table (ws.table-remapping/remapped-table-name-with-limit table-spec 20))]
+            (is (= expected-output out))
+            (is (= 20 (count out)) "output is exactly the limit")))))))
+
+(deftest ^:parallel remapped-table-name-byte-aware-truncation-test
+  (testing "limit is enforced in UTF-8 bytes, not Java chars, and truncation never splits a multi-byte codepoint"
+    ;; Each Japanese char is 1 Java char and 3 UTF-8 bytes. With six of them in the schema,
+    ;; raw = "ああああああ__orders" -> 14 chars but 26 bytes. With max-bytes = 20:
+    ;;   - char-based logic would see 14 <= 20 and skip truncation (BUG: 26 bytes overflows Postgres)
+    ;;   - byte-aware logic truncates because string-byte-count returns 26
+    ;;
+    ;; Truncation is codepoint-safe: head-room = 20 - 9 = 11 bytes; we fit only 3 full
+    ;; Japanese chars (9 bytes) plus the 9-byte ASCII suffix = 18 bytes total, which is
+    ;; at-or-under the limit without ever splitting a 3-byte codepoint into 1.5.
+    (let [out (:table (ws.table-remapping/remapped-table-name-with-limit
+                       {:db "" :schema "ああああああ" :table "orders"}
+                       20))]
+      (is (= "あああ_pgiv8lx2" out))
+      (is (= 12 (count out)) "12 java chars: 3 Japanese + underscore + 8 ASCII hash chars")
+      (is (= 18 (u/string-byte-count out))
+          "18 UTF-8 bytes: 9 from the 3 Japanese + 9 from the ASCII suffix; <=20 bytes")
+      (is (>= 20 (u/string-byte-count out)) "output respects the byte limit"))))
+
+(deftest ^:parallel remapped-table-name-postgres-real-limit-test
+  (testing "with the real :postgres limit of 63: a long schema__table concatenation truncates to 54 chars + '_' + 8-char hash"
+    ;; raw = "marketing_analytics_warehouse_production__monthly_customer_lifetime_value_summary" (81 chars)
+    ;; head-len = 63 - 9 = 54, head = first 54 chars of raw.
+    (let [out (:table (ws.table-remapping/remapped-table-name
+                       :postgres
+                       {:db "" :schema "marketing_analytics_warehouse_production"
+                        :table "monthly_customer_lifetime_value_summary"}))]
+      (is (= "marketing_analytics_warehouse_production__monthly_cust_x5niligw" out))
+      (is (= 63 (count out)) "output is exactly the Postgres identifier limit"))))
+
+(deftest ^:parallel remapped-table-name-mysql-empty-schema-test
+  (testing "MySQL has no schema dimension (qualified-name-components is []) -- empty :schema produces __table without throwing"
+    (is (= "__orders"
+           (:table (ws.table-remapping/remapped-table-name
+                    :mysql {:db "" :schema "" :table "orders"}))))))
+
+;;; ------------------------------------------------- cross-schema collision ------------------------------------------------
+
+(deftest add-transform-target-mapping!-cross-schema-collision-test
+  (testing "two source tables sharing :name across different :schema land at distinct warehouse identifiers"
+    (clean-db-fixture!
+     (mt/id)
+     (fn []
+       (with-provisioned-workspace-db!
+         (mt/id) "ws_collide"
+         (fn []
+           (let [a-spec (ws.table-remapping/add-transform-target-mapping!
+                         (mt/id) {:schema "schemaA" :name "ORDERS" :type :table})
+                 b-spec (ws.table-remapping/add-transform-target-mapping!
+                         (mt/id) {:schema "schemaB" :name "ORDERS" :type :table})]
+             (testing "the two writers return distinct to-side specs"
+               (is (= "schemaA__ORDERS" (:table a-spec)))
+               (is (= "schemaB__ORDERS" (:table b-spec))))
+             (testing "both rows are present and resolve to distinct warehouse names"
+               (is (= ["ws_collide" "schemaA__ORDERS"]
+                      (ws.table-remapping/remap-table (mt/id) "schemaA" "ORDERS"))
+                   "schemaA.ORDERS resolves to a unique warehouse identifier")
+               (is (= ["ws_collide" "schemaB__ORDERS"]
+                      (ws.table-remapping/remap-table (mt/id) "schemaB" "ORDERS"))
+                   "schemaB.ORDERS resolves to a different warehouse identifier")))))))))
 
 ;;; --------------------------- Pre-sync ordering: to-side has no :model/Table yet -------------------------------
 ;;;

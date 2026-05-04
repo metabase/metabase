@@ -19,9 +19,15 @@
 
   Shape:
     {:name <workspace-name>
-     :databases {<database-id> {:input_schemas [...]
-                                :output_schema <schema>}
-                 ...}}"}
+     :databases {<database-id> {:input  [{:db ?, :schema ?}, ...]
+                                :output {:db ?, :schema ?}}
+                 ...}}
+
+  `:input` and `:output` are `::table-namespace` maps (the level above
+  `:table` in the canonical addressing scheme). Each slot is a string when
+  the driver populates it and absent (or `nil`) otherwise. Empty string
+  `\"\"` is reserved for storage rows; the atom carries `nil`/missing for
+  absent slots. See `ai-reports/2026-05-04-table-namespace-mapping-spec.md`."}
   workspace-instance-config
   (atom nil))
 
@@ -55,12 +61,26 @@
   []
   (some? @workspace-instance-config))
 
-(defn db-workspace-schema
-  "Return the workspace-isolated output schema name for `db-id` on this instance,
-   or nil when this instance is not running a workspace, or the workspace has no
-   entry for `db-id`. Reads from the in-process atom populated by `config.yml`."
+(defn db-workspace-namespace
+  "Return the workspace-isolated output namespace map for `db-id` on this
+   instance, or `nil` when this instance is not running a workspace or the
+   workspace has no entry for `db-id`. The namespace map is
+   `{:db ?, :schema ?}` - either or both keys may be absent depending on
+   the driver's `qualified-name-components`. Reads from the in-process atom
+   populated by `config.yml`. See
+   `ai-reports/2026-05-04-table-namespace-mapping-spec.md` for the contract."
   [db-id]
-  (get-in @workspace-instance-config [:databases db-id :output_schema]))
+  (get-in @workspace-instance-config [:databases db-id :output]))
+
+(defn db-workspace-schema
+  "Return the workspace-isolated output `:schema` slot for `db-id`, or `nil`
+   when this instance has no workspace entry for `db-id` OR the entry's
+   output namespace doesn't populate `:schema`. Thin shim over
+   [[db-workspace-namespace]] preserved for predicate-style callers
+   (`(if (db-workspace-schema db-id) ...)`); new code that needs the full
+   namespace should call `db-workspace-namespace` directly."
+  [db-id]
+  (:schema (db-workspace-namespace db-id)))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."
