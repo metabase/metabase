@@ -3,8 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
@@ -113,15 +112,21 @@
   "Execute all function attributes for a given spec and return computed values.
   If a function returns a map, its entries are merged directly into the result —
   this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
+
+  When a function attr declares `:provides`, the attr-key itself is not a column in
+  the index — it's a logical grouping whose `:provides` keys are the real columns.
+  In that case, on non-map results (e.g. when the function threw and `false` was
+  returned), skip writing instead of poisoning the document with an unknown column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
        (let [result (execute-function-attr attr-key attr-def record)]
-         (if (map? result)
-           (merge acc result)
-           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+         (cond
+           (map? result)                          (merge acc result)
+           (seq (search.spec/function-attr-provides attr-def)) acc
+           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))
@@ -273,7 +278,7 @@
             duration (u/since-ms timer)]
         (log/debugf "Updated search entries in %.0fms Updated: %s Deleted: %s" duration (sort-by (comp - val) update-report) (sort-by (comp - val) delete-report))
         (analytics/inc! :metabase-search/index-update-ms duration)
-        (prometheus/observe! :metabase-search/index-update-duration-ms duration)
+        (analytics/observe! :metabase-search/index-update-duration-ms duration)
         (doseq [[model cnt] (merge-with + update-report delete-report)]
           (analytics/inc! :metabase-search/index-updates {:model model} cnt))))))
 
@@ -323,7 +328,7 @@
         {}))))
 
 (defn- track-queue-size! []
-  (analytics/set! :metabase-search/queue-size (.size queue)))
+  (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
 
 (defn- index-worker-exists? []
   (queue/listener-exists? listener-name))

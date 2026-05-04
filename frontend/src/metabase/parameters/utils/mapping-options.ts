@@ -5,6 +5,7 @@ import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getAllowedIframeAttributes } from "metabase/dashboard/visualizations/IFrameViz/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
+import type { IconName } from "metabase/ui";
 import {
   isActionDashCard,
   isQuestionDashCard,
@@ -36,10 +37,23 @@ import type {
   ParameterTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  TemplateTagType,
   VirtualCard,
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
+
+const VARIABLE_ICONS: Record<TemplateTagType, IconName | null> = {
+  text: "string",
+  number: "int",
+  date: "calendar",
+  boolean: "io",
+  dimension: null,
+  "temporal-unit": "clock",
+  card: null,
+  snippet: null,
+  table: null,
+};
 
 export type StructuredQuerySectionOption = {
   sectionName: string;
@@ -89,9 +103,10 @@ function buildNativeQuerySectionOptions(
 function buildVariableOption(
   variable: TemplateTagVariable,
 ): NativeParameterMappingOption {
+  const tag = variable.tag();
   return {
     name: variable.displayName() ?? "",
-    icon: variable.icon() ?? "",
+    icon: (tag && VARIABLE_ICONS[tag.type]) ?? "",
     isForeign: false,
     target: buildTemplateTagVariableTarget(variable),
   };

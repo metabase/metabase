@@ -8,10 +8,10 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 

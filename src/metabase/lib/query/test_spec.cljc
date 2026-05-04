@@ -1,5 +1,5 @@
 (ns metabase.lib.query.test-spec
-  (:refer-clojure :exclude [mapv name empty?])
+  (:refer-clojure :exclude [mapv name])
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]

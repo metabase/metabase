@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
    [environ.core :as env]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
@@ -67,14 +67,14 @@
 
 ;;; --------------------------------------------------- Info Metric---------------------------------------------------
 
-(defmethod analytics/known-labels :metabase-info/build
+(defmethod analytics.core/known-labels :metabase-info/build
   [_]
   ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
   [(merge (select-keys config/mb-version-info [:tag :hash :date])
           {:version       config/mb-version-string
            :major-version (config/current-major-version)})])
 
-(defmethod analytics/initial-value :metabase-info/build [_ _] 1)
+(defmethod analytics.core/initial-value :metabase-info/build [_ _] 1)
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -108,7 +108,7 @@
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (tracing/shutdown!)
-  (analytics/shutdown!)
+  (analytics.core/shutdown!)
   (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
@@ -170,6 +170,9 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Set up Prometheus
+  (log/info "Setting up prometheus metrics")
+  (analytics.core/setup!)
   ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
   (tracing/init!)
   ;; load any plugins as needed
@@ -190,12 +193,10 @@
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
   (init-status/set-progress! 0.4)
-  ;; Set up Prometheus
-  (log/info "Setting up prometheus metrics")
-  (analytics/setup!)
+  (analytics.core/observe-initial-values)
   (init-status/set-progress! 0.5)
   (task/init-scheduler!)
-  (analytics/add-listeners-to-scheduler!)
+  (analytics.core/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
@@ -247,8 +248,8 @@
                  (u/format-milliseconds init-duration-ms)
                  (u/format-milliseconds jvm-to-complete-ms))
       (system/startup-time-millis! init-duration-ms)
-      (prometheus/set! :metabase-startup/init-duration-millis init-duration-ms)
-      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
+      (analytics/set-gauge! :metabase-startup/init-duration-millis init-duration-ms)
+      (analytics/set-gauge! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

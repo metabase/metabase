@@ -226,7 +226,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.wait("@getCardQuery").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe",
+          "embedding-iframe-full-app",
         );
       });
     });
@@ -1767,7 +1767,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.wait("@getDashboard").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe",
+          "embedding-iframe-full-app",
         );
       });
     });

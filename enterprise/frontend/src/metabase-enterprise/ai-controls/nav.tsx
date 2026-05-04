@@ -4,7 +4,11 @@ import { AdminNavItem } from "metabase/admin/components/AdminNav";
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 
-export function AiControlsNavItems() {
+export function getAiControlsNavItems() {
+  return <AiControlsNavItems />;
+}
+
+function AiControlsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
 
@@ -21,12 +25,12 @@ export function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`AI feature access`}
+          label={t`Access`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
           disabled={!isConfigured}
         />
         <AdminNavItem
-          label={t`AI usage limits`}
+          label={t`Limits`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-usage-limits`}
         />
       </AdminNavItem>
@@ -43,7 +47,7 @@ export function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`Metabot chat`}
+          label={t`AI chat`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
           disabled={!isConfigured}
         />

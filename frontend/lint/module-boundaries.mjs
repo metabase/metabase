@@ -25,6 +25,7 @@ const elements = [
     mode: "full",
   }),
   createElement({ type: "lib", name: "utils" }),
+  createElement({ type: "lib", name: "analytics", enforceOutgoing: true }),
   createElement({ type: "lib", name: "css", enforceOutgoing: true }),
   createElement({
     type: "lib",
@@ -33,26 +34,97 @@ const elements = [
     mode: "full",
     enforceOutgoing: true,
   }),
-  // basic
+
+  // mlv1/mlv2 need to be in this order
+  // for precedence
   createElement({
     type: "basic",
+    name: "mlv1",
+    pattern: "frontend/src/metabase-lib/v1/**",
+  }),
+  createElement({
+    type: "lib",
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/**",
+    enforceOutgoing: true,
   }),
+
+  // basic
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
-  createElement({ type: "shared", name: "api" }),
+  createElement({ type: "shared", name: "api", enforceOutgoing: true }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "visualizations" }),
+  createElement({ type: "shared", name: "account", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "archive", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "auth", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "browse", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "collections", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "comments", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "data-grid", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "history", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "i18n", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "metadata", enforceOutgoing: true }),
+  createElement({
+    type: "shared",
+    name: "metrics-viewer",
+    enforceOutgoing: true,
+  }),
+  createElement({ type: "shared", name: "new", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "pulse", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "questions", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "router", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "search", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "status", enforceOutgoing: true }),
+  createElement({
+    type: "shared",
+    name: "styled-components",
+    enforceOutgoing: true,
+  }),
+  createElement({ type: "shared", name: "timelines", enforceOutgoing: true }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/**",
+    enforceOutgoing: true,
+  }),
+  createElement({
+    type: "shared",
+    name: "metabase-shared",
+    pattern: "frontend/src/metabase-shared/**",
+    enforceOutgoing: true,
+  }),
+  createElement({
+    type: "shared",
+    name: "types",
+    pattern: "frontend/src/types/**",
+    enforceOutgoing: true,
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-ee",
+    pattern: "enterprise/frontend/src/embedding/**",
+    enforceOutgoing: true,
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/**",
+    enforceOutgoing: true,
+  }),
   // feature
-  createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "dashboard", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "query_builder",
     enforceOutgoing: true,
   }),
-  createElement({ type: "feature", name: "admin" }),
+  createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
   createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
@@ -70,6 +142,8 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/App.tsx",
     "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/routes-public.tsx",

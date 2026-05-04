@@ -5,11 +5,13 @@ import { omit } from "underscore";
 import {
   createDashboardPublicLink,
   deleteDashboardPublicLink,
+  updateDashboard,
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import { handleActions } from "metabase/redux";
 import {
   INITIALIZE,
   RESET,
@@ -26,7 +28,6 @@ import type {
   DashboardSidebarName,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
-import { handleActions } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -325,6 +326,13 @@ export const dashboards = createReducer(
           draftDashboard.collection = payload.dashboard.collection;
         }
       })
+      .addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+        const draftDashboard = state[payload.id];
+        if (draftDashboard) {
+          draftDashboard.collection_id = payload.collection_id;
+          draftDashboard.collection = payload.collection;
+        }
+      })
       .addMatcher(
         createDashboardPublicLink.matchFulfilled,
         (state, { payload }) =>
@@ -423,7 +431,7 @@ export const dashcardData = createReducer(
       })
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
-        if (dashcard_id && card_id) {
+        if (dashcard_id && card_id && result != null) {
           return assocIn(state, [dashcard_id, card_id], result);
         }
       })

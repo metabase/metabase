@@ -7,6 +7,7 @@ import {
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   EntityNameCell,
@@ -14,7 +15,6 @@ import {
   Tooltip,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionItem } from "metabase-types/api";
 

@@ -5,8 +5,8 @@ import {
 } from "metabase/api";
 import { MetricSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { color } from "metabase/ui/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -17,12 +17,12 @@ export const Metrics = createEntity({
   path: "/api/metric",
   schema: MetricSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListMetricsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -41,11 +41,6 @@ export const Metrics = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).metric(entityId),
-  },
-
-  objectSelectors: {
-    getName: (metric) => metric && metric.name,
-    getColor: () => color("summarize"),
   },
 });
 

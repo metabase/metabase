@@ -342,8 +342,8 @@
         :number/between
         (let [[l u] (:value param)]
           (cond-> param
-            (nil? u) (assoc :type :number/>=, :value [l])
-            (nil? l) (assoc :type :number/<=, :value [u])))
+            (and l (nil? u)) (assoc :type :number/>=, :value [l])
+            (and u (nil? l)) (assoc :type :number/<=, :value [u])))
         param))))
 
 (mr/def ::id
