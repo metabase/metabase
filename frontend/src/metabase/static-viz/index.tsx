@@ -18,10 +18,10 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import type { ColorPalette } from "metabase/ui/colors/types";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue as internalFormatValue } from "metabase/utils/formatting/value";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
+import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {
   createDataSource,
