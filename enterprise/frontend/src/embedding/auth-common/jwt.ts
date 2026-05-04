@@ -115,7 +115,7 @@ const refreshUserJwt = async (url: string) => {
   }
 
   const text = await clientBackendResponse.text();
-  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
+  // This should return { jwt: "<signed-token>" } from the customer's auth provider
   try {
     return JSON.parse(text);
   } catch (e) {
