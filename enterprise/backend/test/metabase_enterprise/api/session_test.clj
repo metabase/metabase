@@ -25,6 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
@@ -38,6 +39,7 @@
                               :embedding-hub
                               :hosting
                               :metabase-ai-managed
+                              :metabot-v3
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -63,7 +65,6 @@
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
-                              :workspaces
                               :writable-connection}
     (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
             :advanced_permissions           true
@@ -75,6 +76,7 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
@@ -87,6 +89,7 @@
             :embedding_simple               true
             :hosting                        true
             :metabase-ai-managed            true
+            :metabot-v3                     true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true
@@ -115,7 +118,6 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
-            :workspaces                     true
             :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 

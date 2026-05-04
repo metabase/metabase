@@ -7,6 +7,11 @@ import { isTrashedCollection } from "metabase/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import {
+  type MovableItem,
+  isMovable,
+  useSetCollection,
+} from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
@@ -38,6 +43,7 @@ export const CollectionBulkActions = memo(
   }: CollectionBulkActionsProps) => {
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
+    const setCollection = useSetCollection();
 
     const isVisible = selected.length > 0 && selectedAction !== "confirm-move";
 
@@ -73,7 +79,9 @@ export const CollectionBulkActions = memo(
       if (selectedItems) {
         await tryOrClear(
           Promise.all(
-            selectedItems.map((item) => item.setCollection?.(destination)),
+            selectedItems
+              .filter(isMovable)
+              .map((item) => setCollection(item as MovableItem, destination)),
           ),
         );
       }

@@ -10,8 +10,8 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
@@ -137,10 +137,10 @@
   [tracking-opts]
   (map (fn [part]
          (when (= (:type part) :error)
-           (prometheus/inc! :metabase-metabot/llm-errors
-                            {:model      (:model tracking-opts "unknown")
-                             :source     (:tag tracking-opts "none")
-                             :error-type "llm-sse-error"}))
+           (analytics/inc! :metabase-metabot/llm-errors
+                           {:model      (:model tracking-opts "unknown")
+                            :source     (:tag tracking-opts "none")
+                            :error-type "llm-sse-error"}))
          part)))
 
 (defn- report-token-usage-xf
@@ -156,7 +156,7 @@
     - `:session-id` — conversation UUID string
     - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag]}]
+  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -164,7 +164,7 @@
                    model      (or model (:model part) "unknown")
                    prompt     (:promptTokens usage 0)
                    completion (:completionTokens usage 0)]
-               (analytics/track-token-usage!
+               (analytics.core/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
                 {:prometheus          true
                  :snowplow            (some? request-id)
@@ -176,18 +176,19 @@
                  :estimated-costs-usd 0.0
                  :duration-ms         (long (u/since-ms start-ms))
                  :user-id             api/*current-user-id*
-                 :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
+                 :request-id          (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
                  :session-id          session-id
                  :source              source
                  :tag                 tag})
                (usage/log-ai-usage!
-                {:source            (or tag source "unknown")
+                {:source            (or source tag "unknown")
                  :model             model
                  :prompt-tokens     prompt
                  :completion-tokens completion
                  :conversation-id   session-id
                  :profile-id        profile-id
-                 :request-id        request-id})))
+                 :request-id        request-id
+                 :ai-proxied        (boolean ai-proxy?)})))
            part))))
 
 (defn- report-tool-usage-xf
@@ -198,18 +199,18 @@
          (when (and (some? source)
                     (some? request-id)
                     (= (:type part) :tool-output))
-           (analytics/track-event! :snowplow/ai_service_event
-                                   {:hashed-metabase-license-token (analytics/hashed-metabase-token-or-uuid)
-                                    :request-id                    (analytics/uuid->ai-service-hex-uuid request-id)
-                                    :source                        source
-                                    :event                         "agent_used_tool"
-                                    :user-id                       api/*current-user-id*
-                                    :session-id                    session-id
-                                    :profile                       (some-> profile-id name)
-                                    :duration-ms                   (some-> (:duration-ms part) long)
-                                    :result                        (if (:error part) "error" "success")
-                                    :event-details                 (cond-> {"tool_name" (:function part)}
-                                                                     (some? iteration) (assoc "step" iteration))}))
+           (analytics.core/track-event! :snowplow/ai_service_event
+                                        {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                         :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                         :source                        source
+                                         :event                         "agent_used_tool"
+                                         :user-id                       api/*current-user-id*
+                                         :session-id                    session-id
+                                         :profile                       (some-> profile-id name)
+                                         :duration-ms                   (some-> (:duration-ms part) long)
+                                         :result                        (if (:error part) "error" "success")
+                                         :event-details                 (cond-> {"tool_name" (:function part)}
+                                                                          (some? iteration) (assoc "step" iteration))}))
          part)))
 
 (defn- with-retries
@@ -219,7 +220,7 @@
   [tracking-opts thunk]
   (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
     (loop [attempt 1]
-      (prometheus/inc! :metabase-metabot/llm-requests labels)
+      (analytics/inc! :metabase-metabot/llm-requests labels)
       (let [timer  (u/start-timer)
             result (try
                      {:ok (thunk)}
@@ -232,13 +233,13 @@
                                       :max     max-llm-retries
                                       :delay   delay
                                       :status  (:status (ex-data e))})
-                           (prometheus/inc! :metabase-metabot/llm-retries labels)
+                           (analytics/inc! :metabase-metabot/llm-retries labels)
                            {:retry delay})
-                         (do (prometheus/inc! :metabase-metabot/llm-errors
-                                              (assoc labels :error-type (.getSimpleName (class e))))
+                         (do (analytics/inc! :metabase-metabot/llm-errors
+                                             (assoc labels :error-type (.getSimpleName (class e))))
                              (throw e))))
                      (finally
-                       (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
+                       (analytics/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
         (if-let [delay (:retry result)]
           (do (Thread/sleep ^long delay)
               (recur (inc attempt)))
@@ -272,11 +273,11 @@
    (if-let [limit-msg (usage/check-usage-limits!)]
      (reify clojure.lang.IReduceInit
        (reduce [_ rf init]
-         (rf init {:type :text :text limit-msg})))
+         (rf init {:type :error :error {:message limit-msg :error-code "ai_usage_limit_reached"}})))
      (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
        (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                 :tool-choice tool-choice :ai-proxy? ai-proxy?})
-       (let [tracking-opts  (assoc tracking-opts :model provider-and-model)
+       (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
              streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
                               system-msg        (assoc :system system-msg)
                               (and (seq tools)
@@ -318,8 +319,11 @@
   Returns the parsed JSON map from the forced tool call."
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
-        _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        tracking-opts  (assoc tracking-opts :model provider-and-model)
+        _ (log/info "Calling LLM (structured)" {:provider provider
+                                                :model model
+                                                :msg-count (count messages)
+                                                :ai-proxy? ai-proxy?})
+        tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
         streaming-opts {:model       model
                         :input       messages
                         :schema      json-schema

@@ -47,20 +47,18 @@ jest.mock("../MetricPill", () => ({
 jest.mock("../MetricExpressionPill", () => ({
   MetricExpressionPill: ({
     expressionEntry,
-    onClick,
     onRemove,
   }: {
     expressionEntry: { name: string };
-    metricEntries: unknown[];
+    metricNames: unknown;
     colors?: string[];
-    onClick: (e: React.MouseEvent) => void;
+    onNameChange: (name: string) => void;
     onRemove: () => void;
   }) => {
     return (
       <div
         data-testid="metric-expression-pill"
         data-expression-text={expressionEntry.name}
-        onClick={onClick}
       >
         <span>{expressionEntry.name}</span>
         <button onClick={onRemove}>remove</button>
@@ -72,12 +70,12 @@ jest.mock("../MetricExpressionPill", () => ({
 jest.mock("../MetricSearchDropdown", () => ({
   MetricSearchDropdown: ({
     onSelect,
-    externalSearchText,
+    searchQuery,
   }: {
     onSelect: (metric: SelectedMetric) => void;
-    externalSearchText: string;
+    searchQuery: string;
   }) => (
-    <div data-testid="search-dropdown" data-search-text={externalSearchText}>
+    <div data-testid="search-dropdown" data-search-text={searchQuery}>
       <button
         onClick={() =>
           onSelect({ id: 99, name: "New Metric", sourceType: "metric" })
@@ -304,7 +302,10 @@ describe("expanded view (focused text input)", () => {
       entries: [revenueEntry, costsEntry, expr],
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
+    // Click a metric pill (not expression pill) to enter formula editing mode.
+    // Expression pill clicks now open the name editor instead.
+    const pills = screen.getAllByTestId("metric-pill");
+    await user.click(pills[0]);
 
     await waitFor(() => {
       expect(
@@ -382,7 +383,9 @@ describe("blur behavior", () => {
       entries: [revenueEntry, costsEntry, expr],
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
+    // Click a metric pill to enter formula editing mode.
+    const pills = screen.getAllByTestId("metric-pill");
+    await user.click(pills[0]);
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
     expect(

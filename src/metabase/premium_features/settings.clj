@@ -309,9 +309,9 @@
   "Should the multi-tenant feature be enabled?"
   :tenants)
 
-(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
-  "Should we allow users to use workspaces?"
-  :workspaces)
+(define-premium-feature enable-metabot-v3?
+  "Should we allow users to use the Metabase-managed tiered AI provider?"
+  :metabot-v3)
 
 (define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
   "Should we allow users to use the Metabase-managed AI provider?"
@@ -320,6 +320,10 @@
 (define-premium-feature ^{:added "0.60.0"} enable-offer-metabase-ai-managed?
   "Should we offer users the Metabase-managed AI provider?"
   :offer-metabase-ai-managed)
+
+(define-premium-feature enable-data-complexity-score?
+  "Should we expose Data Complexity Score?"
+  :data-complexity-score)
 
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
@@ -341,6 +345,7 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
+   :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
@@ -356,6 +361,7 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
+   :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
@@ -379,7 +385,6 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
-   :workspaces                     (enable-workspaces?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 

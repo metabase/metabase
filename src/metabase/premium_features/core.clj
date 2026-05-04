@@ -36,6 +36,7 @@
   TokenStatus
   clear-cache!
   token-check-url
+  transform-metered-as
   transform-stats]
 
  (metabase.premium-features.settings
@@ -54,11 +55,13 @@
   enable-config-text-file?
   enable-content-translation?
   enable-content-verification?
+  enable-data-complexity-score?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
   enable-metabase-ai-managed?
+  enable-metabot-v3?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
@@ -84,7 +87,6 @@
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
-  enable-workspaces?
   enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?

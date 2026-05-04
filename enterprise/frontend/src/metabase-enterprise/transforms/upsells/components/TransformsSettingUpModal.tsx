@@ -15,8 +15,10 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-interface TransformsSettingUpModalProps
-  extends Pick<ModalProps, "opened" | "onClose"> {
+interface TransformsSettingUpModalProps extends Pick<
+  ModalProps,
+  "opened" | "onClose"
+> {
   isPython?: boolean;
 }
 

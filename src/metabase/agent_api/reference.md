@@ -9,28 +9,23 @@ Base path: /api/agent
 
 ## Key concepts
 
-- **Databases**: Data sources connected to Metabase. Use /v1/database to list
-  them, and /v1/database/{id} to inspect a database's tables.
 - **Tables**: Database tables visible to the user.
 - **Metrics**: Standalone saved queries that represent pre-defined aggregations
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
   as a data source in the API. They have a fixed aggregation, but can be
   filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
-  inspect a metric's dimensions, and POST /v1/construct-query with `metric_id`
-  to query one.
+  inspect a metric's dimensions, and POST /v2/construct-query with a program
+  whose `source` is `{"type": "metric", "id": <id>}` to query one.
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
   not standalone queries — they are building blocks that can be referenced in
-  table queries via `measure_id` in the aggregations array. Discover available
-  measures for a table via GET /v1/table/{id}?with-measures=true.
+  table queries via `["measure", id]` inside an `aggregate` operation. Discover
+  available measures for a table via GET /v1/table/{id}?with-measures=true.
 - **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
-  be applied to queries by referencing their segment_id.
-- **Field IDs**: Opaque string identifiers for columns, formatted as
-  `<prefix><entity-id>-<column-index>`. Prefix is `t` for table fields and
-  `c` for metric fields. Example: `t42-3` means the column at index 3 of table 42.
-  Field IDs are returned by the table/metric detail endpoints and must be used
-  as-is in query construction. They are positional — always fetch current
-  entity details before constructing queries.
+  be applied to queries via `["filter", ["segment", id]]`.
+- **Field IDs**: Integer identifiers for database columns. These are the real
+  database field IDs returned by the table/metric detail endpoints. Use them
+  inside operator forms as `["field", N]`.
 
 ## Authentication
 
@@ -94,8 +89,7 @@ lacks access to a table or metric, the API returns 403.
 
 Query parameters on GET endpoints use kebab-case (e.g., `with-fields`,
 `with-related-tables`). JSON request and response bodies use snake_case (e.g.,
-`table_id`, `field_id`, `field_granularity`). This applies consistently across
-all endpoints.
+`table_id`, `field_id`). This applies consistently across all endpoints.
 
 ## Endpoints
 
@@ -104,73 +98,6 @@ all endpoints.
 Health check.
 
 Response: `{"message": "pong"}`
-
-### GET /v1/database
-
-List all databases the current user has access to.
-
-Response:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Production DB",
-    "engine": "postgres"
-  }
-]
-```
-
-### GET /v1/database/{id}
-
-Get details for a database by ID, optionally including its tables.
-
-Query parameters (all boolean, all optional):
-
-| Parameter           | Default | Description                             |
-|---------------------|---------|-----------------------------------------|
-| with-tables         | false   | Include tables in this database         |
-| with-fields         | false   | Include field metadata on each table    |
-| with-field-values   | false   | Include sample values on each field     |
-| with-related-tables | false   | Include FK-related tables               |
-| with-metrics        | false   | Include metrics defined on each table   |
-| with-measures       | false   | Include measures on each table          |
-| with-segments       | false   | Include segments defined on each table  |
-
-Response (without tables):
-
-```json
-{
-  "id": 1,
-  "name": "Production DB",
-  "engine": "postgres"
-}
-```
-
-Response (with-tables=true):
-
-```json
-{
-  "id": 1,
-  "name": "Production DB",
-  "engine": "postgres",
-  "tables": [
-    {
-      "type": "table",
-      "id": 42,
-      "name": "ORDERS",
-      "display_name": "Orders",
-      "database_id": 1,
-      "database_engine": "postgres",
-      "database_schema": "PUBLIC",
-      "fields": []
-    }
-  ]
-}
-```
-
-When with-fields, with-metrics, etc. are enabled, each table in the response
-follows the same shape as GET /v1/table/{id} with the corresponding options.
 
 ### GET /v1/table/{id}
 
@@ -202,7 +129,7 @@ Response:
   "description": "All customer orders",
   "fields": [
     {
-      "field_id": "t42-0",
+      "field_id": 301,
       "name": "ID",
       "display_name": "ID",
       "description": "Primary key",
@@ -210,6 +137,13 @@ Response:
       "semantic_type": "type/PK",
       "database_type": "BIGINT",
       "field_values": [1, 2, 3]
+    },
+    {
+      "field_id": 302,
+      "name": "TOTAL",
+      "type": "number",
+      "description": "Order total",
+      "database_type": "FLOAT"
     }
   ],
   "related_tables": [
@@ -227,7 +161,7 @@ Response:
       "id": 10,
       "type": "metric",
       "name": "Total Revenue",
-      "default_time_dimension_field_id": "c10-2"
+      "default_time_dimension_field_id": 305
     }
   ],
   "measures": [
@@ -260,11 +194,11 @@ Response:
   "id": 10,
   "name": "Total Revenue",
   "description": "Sum of order totals",
-  "default_time_dimension_field_id": "c10-2",
+  "default_time_dimension_field_id": 305,
   "verified": true,
   "queryable_dimensions": [
     {
-      "field_id": "c10-0",
+      "field_id": 305,
       "name": "CREATED_AT",
       "display_name": "Created At",
       "base_type": "type/DateTime"
@@ -277,14 +211,15 @@ Response:
 ### GET /v1/table/{id}/field/{field-id}/values
 ### GET /v1/metric/{id}/field/{field-id}/values
 
-Get statistics and sample values for a field. Accepts optional `limit` query
+Get statistics and sample values for a field. The `field-id` is the integer
+field ID from the detail endpoints. Accepts optional `limit` query
 parameter (default: 30).
 
 Response:
 
 ```json
 {
-  "field_id": "t42-3",
+  "field_id": 302,
   "statistics": {
     "distinct_count": 200,
     "percent_null": 0.02,
@@ -348,40 +283,53 @@ Response:
 }
 ```
 
-### POST /v1/construct-query
+### POST /v2/construct-query
 
-Construct a query from a table or metric. Returns a base64-encoded query to
-pass to /v1/execute.
+Construct an MBQL query from a structured agent-lib program. Returns a
+base64-encoded query string to pass to `/v1/execute`.
 
-**Important**: Field IDs used here must come from the detail endpoints
-(/v1/table/{id} or /v1/metric/{id}). Always fetch entity details first.
+**Important**: All field IDs used in operations must come from the detail
+endpoints (`/v1/table/{id}` or `/v1/metric/{id}`). Always fetch entity details
+first.
 
-#### Table query request
+The request body **is** the program — there is no envelope. A program is a
+JSON object with two keys:
 
-All fields except `table_id` are optional:
+- `source` — identifies the entity to query (`table`, `card`, `dataset`, or
+  `metric` plus an `id`).
+- `operations` — an ordered array of operator tuples to apply on top of the
+  source. Each operation is itself an array: `["operator", arg1, arg2, ...]`.
+
+The agent-lib backend automatically repairs small mistakes (operator aliases,
+casing, scalar wrapping) before validation, so you don't need to be perfectly
+precise about every detail — but the canonical operator names listed below
+will always work.
+
+#### Request format
 
 ```json
 {
-  "table_id": 42,
-  "filters": [],
-  "fields": [{"field_id": "t42-0"}, {"field_id": "t42-1"}],
-  "aggregations": [{"field_id": "t42-3", "function": "sum"}],
-  "group_by": [{"field_id": "t42-5", "field_granularity": "month"}],
-  "order_by": [{"field": {"field_id": "t42-1"}, "direction": "desc"}],
-  "limit": 100
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["filter", [">", ["field", 302], 100]],
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]],
+    ["order-by", ["aggregation-ref", 0], "desc"],
+    ["limit", 100]
+  ]
 }
 ```
 
-#### Metric query request
-
-Metrics have a pre-defined aggregation, so only filters and group_by are
-supported:
+For a metric source (the metric supplies its own aggregation, so additional
+aggregates are usually unnecessary):
 
 ```json
 {
-  "metric_id": 10,
-  "filters": [{"field_id": "c10-2", "operation": "greater-than", "value": "2024-01-01"}],
-  "group_by": [{"field_id": "c10-2", "field_granularity": "month"}]
+  "source": {"type": "metric", "id": 10},
+  "operations": [
+    ["filter", [">", ["field", 305], "2024-01-01"]],
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
+  ]
 }
 ```
 
@@ -391,177 +339,210 @@ supported:
 {"query": "eyJkYXRhYmFzZSI6MSwi..."}
 ```
 
-#### Filter types
+#### Source types
 
-Filters are polymorphic. The required fields depend on the operation.
+The top-level `source` must be one of these — `context` and nested `program`
+sources are reserved for in-process callers and are rejected at the HTTP
+boundary.
 
-**Segment filter** — apply a pre-defined segment:
+| Type      | Meaning                                                       |
+|-----------|---------------------------------------------------------------|
+| `table`   | Query a database table directly (`id` is a table ID)         |
+| `card`    | Query a saved question (`id` is a card ID)                   |
+| `dataset` | Query a model (`id` is the model's card ID)                  |
+| `metric`  | Query a metric, inheriting its aggregation and time dimension |
+
+#### Top-level operations
+
+Each operation is an array starting with the operator name. Operations are
+applied in order to the query stage produced from `source`.
+
+| Operator               | Shape                                           | Description                                              |
+|------------------------|-------------------------------------------------|----------------------------------------------------------|
+| `filter`               | `["filter", clause]`                            | Add a filter clause to the current stage                 |
+| `aggregate`            | `["aggregate", agg-clause]`                     | Add an aggregation                                       |
+| `breakout`             | `["breakout", ref-or-bucketed]`                 | Add a grouping dimension                                 |
+| `expression`           | `["expression", "Name", expr]`                  | Define a named computed column                           |
+| `with-fields`          | `["with-fields", [refs]]`                       | Restrict the returned columns                            |
+| `order-by`             | `["order-by", ref]` or `["order-by", ref, dir]` | Sort by a field, expression-ref, or aggregation-ref      |
+| `limit`                | `["limit", N]`                                  | Cap the number of returned rows                          |
+| `join`                 | `["join", join-clause]`                         | Join another table or card                               |
+| `append-stage`         | `["append-stage"]`                              | Start a new query stage (e.g. for post-aggregation ops)  |
+| `with-page`            | `["with-page", {"page": N, "items": M}]`        | Apply pagination on the current stage                    |
+
+The full canonical list lives in
+[src/metabase/agent_lib/capabilities/catalog/](../agent_lib/capabilities/catalog/).
+
+#### References
+
+References are nested operator forms used inside operations to point at fields,
+expressions, or earlier aggregations.
+
+| Form                              | Meaning                                                |
+|-----------------------------------|--------------------------------------------------------|
+| `["field", N]`                    | Reference a database field by ID                       |
+| `["expression-ref", "Name"]`      | Reference a named expression defined earlier           |
+| `["aggregation-ref", N]`          | Reference the Nth aggregation defined earlier (0-based)|
+| `["measure", N]`                  | Reference a pre-defined measure on the source entity   |
+| `["with-temporal-bucket", r, b]`  | Bucket a temporal field by `b` (`day`, `month`, …)     |
+
+#### Filter operators (used inside `["filter", …]`)
+
+| Operator             | Example                                              |
+|----------------------|------------------------------------------------------|
+| `=`, `!=`            | `["=", ["field", 101], "active"]`                    |
+| `<`, `<=`, `>`, `>=` | `[">", ["field", 302], 100]`                         |
+| `between`            | `["between", ["field", 305], "2024-01-01", "2024-12-31"]` |
+| `in`, `not-in`       | `["in", ["field", 302], [10, 20, 30]]`               |
+| `is-null`, `not-null`| `["is-null", ["field", 101]]`                        |
+| `is-empty`, `not-empty` | `["is-empty", ["field", 101]]`                    |
+| `contains`, `does-not-contain` | `["contains", ["field", 303], "acme"]`     |
+| `starts-with`, `ends-with` | `["starts-with", ["field", 303], "acme"]`      |
+| `time-interval`      | `["time-interval", ["field", 305], -7, "day"]`       |
+| `and`, `or`, `not`   | `["and", filter1, filter2]`                          |
+| `segment`            | `["segment", 5]` — apply a pre-defined segment        |
+
+#### Aggregation operators (used inside `["aggregate", …]`)
+
+`count`, `sum`, `avg`, `min`, `max`, `distinct`, `median`, `stddev`, `var`,
+`percentile`, `count-where`, `sum-where`, `distinct-where`, `share`,
+`cum-count`, `cum-sum`.
 
 ```json
-{"segment_id": 5}
+["aggregate", ["count"]]
+["aggregate", ["sum", ["field", 302]]]
+["aggregate", ["count-where", ["=", ["field", 101], "completed"]]]
 ```
 
-**Existence filters** — no value needed:
+#### Temporal helpers (commonly used in `expression` and `breakout`)
 
-| Operation            | Description            |
-|----------------------|------------------------|
-| is-null              | Field is null          |
-| is-not-null          | Field is not null      |
-| string-is-empty      | String is empty        |
-| string-is-not-empty  | String is not empty    |
-| is-true              | Boolean is true        |
-| is-false             | Boolean is false       |
+`get-year`, `get-quarter`, `get-month`, `get-week`, `get-day`,
+`get-day-of-week`, `get-hour`, `get-minute`, `datetime-add`, `datetime-diff`,
+`datetime-subtract`, `now`, `today`, `relative-datetime`, `absolute-datetime`,
+`with-temporal-bucket`, `convert-timezone`.
+
+#### Worked examples
+
+**Top 5 customers by revenue**
 
 ```json
-{"field_id": "t42-0", "operation": "is-not-null"}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["field", 101]],
+    ["order-by", ["aggregation-ref", 0], "desc"],
+    ["limit", 5]
+  ]
+}
 ```
 
-**Temporal filters** — for date/datetime fields. Optional `bucket` specifies
-temporal bucketing granularity for the comparison. Accepts both truncation
-units (`minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`) and
-extraction units (`day-of-week`, `day-of-month`, `day-of-year`,
-`week-of-year`, `month-of-year`, `quarter-of-year`, `hour-of-day`,
-`minute-of-hour`, `second-of-minute`). Note: this is a broader set of
-values than `field_granularity` in group_by, which only accepts truncation
-units.
-
-| Operation             | Description                     |
-|-----------------------|---------------------------------|
-| equals                | Equals value                    |
-| not-equals            | Does not equal value            |
-| greater-than          | After (dates) / greater than    |
-| greater-than-or-equal | On or after / greater or equal  |
-| less-than             | Before (dates) / less than      |
-| less-than-or-equal    | On or before / less or equal    |
+**Conditional sum with a named expression**
 
 ```json
-{"field_id": "t42-5", "operation": "greater-than", "value": "2024-01-01"}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["expression", "Discount", ["-", ["field", 302], ["field", 303]]],
+    ["aggregate", ["sum", ["expression-ref", "Discount"]]]
+  ]
+}
 ```
 
-For multiple values, use `values` (array) instead of `value`:
+**Orders per month using a metric**
 
 ```json
-{"field_id": "t42-5", "operation": "equals", "values": ["2024-01-01", "2024-06-01"]}
+{
+  "source": {"type": "metric", "id": 10},
+  "operations": [
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
+  ]
+}
 ```
 
-**Temporal extraction filters** — filter by date component:
-
-| Operation              | Value type |
-|------------------------|------------|
-| year-equals            | int        |
-| year-not-equals        | int        |
-| quarter-equals         | int (1-4)  |
-| quarter-not-equals     | int        |
-| month-equals           | int (1-12) |
-| month-not-equals       | int        |
-| day-of-week-equals     | int (1-7)  |
-| day-of-week-not-equals | int        |
-| hour-equals            | int (0-23) |
-| hour-not-equals        | int        |
-| minute-equals          | int (0-59) |
-| minute-not-equals      | int        |
-| second-equals          | int (0-59) |
-| second-not-equals      | int        |
+**Multi-stage: filter on an aggregated value**
 
 ```json
-{"field_id": "t42-5", "operation": "month-equals", "value": 12}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["field", 101]],
+    ["append-stage"],
+    ["filter", [">", ["aggregation-ref", 0], 1000]]
+  ]
+}
 ```
 
-For multiple values: `{"field_id": "t42-5", "operation": "month-equals", "values": [1, 2, 3]}`
+#### Error responses
 
-**String filters**:
-
-| Operation           | Description                          |
-|---------------------|--------------------------------------|
-| equals              | Exact match                          |
-| not-equals          | Does not match                       |
-| string-contains     | Contains substring                   |
-| string-not-contains | Does not contain substring           |
-| string-starts-with  | Starts with prefix                   |
-| string-ends-with    | Ends with suffix                     |
+Validation, repair, and resolution errors are returned as `400 Bad Request`
+with a structured JSON body:
 
 ```json
-{"field_id": "t42-2", "operation": "string-contains", "value": "acme"}
+{
+  "status-code": 400,
+  "error": "invalid-generated-program",
+  "path": "operations[2].field_id",
+  "details": "operations[2].field_id: field 12345 is not accessible",
+  "recovery": {
+    "available": ["field 1001", "field 1002"],
+    "suggestion": "Did you mean field 1001?"
+  }
+}
 ```
 
-For multiple values: `{"field_id": "t42-2", "operation": "equals", "values": ["A", "B"]}`
+A non-existent table, card, or metric in `source` returns `404 Not Found`.
 
-**Numeric filters**:
+### POST /v2/query
 
-| Operation             | Description            |
-|-----------------------|------------------------|
-| equals                | Equals value           |
-| not-equals            | Does not equal value   |
-| greater-than          | Greater than           |
-| greater-than-or-equal | Greater than or equal  |
-| less-than             | Less than              |
-| less-than-or-equal    | Less than or equal     |
+Combined construct-and-execute endpoint with built-in pagination via
+continuation tokens.
+
+The body is either:
+- A program (same shape as `/v2/construct-query`), **or**
+- `{"continuation_token": "..."}` returned from a previous response.
+
+Pagination is automatic. The per-page row limit is taken from your program's
+`["limit", N]` operation if present, otherwise defaults to 200, and is hard-
+capped at 200 rows for memory and LLM-context safety. If the page is full and
+more rows may exist, the response includes a `continuation_token` you can
+post back to fetch the next page.
 
 ```json
-{"field_id": "t42-3", "operation": "greater-than", "value": 100}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["order-by", ["field", 101]],
+    ["limit", 50]
+  ]
+}
 ```
 
-For multiple values: `{"field_id": "t42-3", "operation": "equals", "values": [10, 20, 30]}`
-
-#### Aggregations
-
-Field-based aggregation — `function` is required:
-
-| Function       | Description                |
-|----------------|----------------------------|
-| avg            | Average                    |
-| count          | Count of rows              |
-| count-distinct | Count of distinct values   |
-| max            | Maximum value              |
-| min            | Minimum value              |
-| sum            | Sum                        |
+Response (HTTP 202, streaming):
 
 ```json
-{"field_id": "t42-3", "function": "sum"}
+{
+  "status": "completed",
+  "data": {
+    "cols": [{"name": "ID", "base_type": "type/Integer", "display_name": "ID"}],
+    "rows": [[1], [2], [3], [...]]
+  },
+  "row_count": 50,
+  "running_time": 87,
+  "continuation_token": "eyJxdWVyeSI6ey..."
+}
 ```
 
-For `count`, omit `field_id` (count operates on rows, not a specific field):
+To fetch the next page:
 
 ```json
-{"function": "count"}
-```
-
-To sort by an aggregation result, use `sort_order` on the aggregation itself
-(not `order_by`):
-
-```json
-{"field_id": "t42-3", "function": "sum", "sort_order": "desc"}
-```
-
-Measure-based aggregation — uses a pre-defined measure:
-
-```json
-{"measure_id": 5, "sort_order": "asc"}
-```
-
-#### Group by
-
-```json
-{"field_id": "t42-5", "field_granularity": "month"}
-```
-
-`field_granularity` is optional and controls temporal grouping granularity.
-Valid values: `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`,
-`day-of-week`. Note: this is a smaller set than the `bucket` field on
-filters, which also accepts extraction units like `day-of-month` and
-`hour-of-day`.
-
-#### Order by
-
-Order by a field (not an aggregation — use `sort_order` for that):
-
-```json
-{"field": {"field_id": "t42-1"}, "direction": "desc"}
+{"continuation_token": "eyJxdWVyeSI6ey..."}
 ```
 
 ### POST /v1/execute
 
-Execute a query returned by /v1/construct-query.
+Execute a query returned by /v2/construct-query.
 
 **Important: streaming response.** This endpoint streams results, so the HTTP
 status code (202) is sent before query execution completes. A 202 status does
@@ -616,7 +597,6 @@ On failure:
 ```
 
 Row limits:
-- Default: 100 rows (applied when no `limit` is specified in construct-query for tables)
 - Simple queries (no aggregation): 2000 rows max
 - Aggregated queries: 10000 rows max
 
@@ -627,19 +607,21 @@ Row limits:
    understand the schema
 3. **Explore field values** — GET /v1/table/{id}/field/{field-id}/values if
    you need to know valid filter values or field statistics
-4. **Build query** — POST /v1/construct-query with filters, aggregations,
-   group_by, etc.
-5. **Execute** — POST /v1/execute with the base64-encoded query
-6. **Iterate** — Adjust filters/aggregations and repeat steps 4-5
+4. **Build query** — POST /v2/construct-query with a structured program
+   (`source` + `operations`)
+5. **Execute** — POST /v1/execute with the base64-encoded query, or use
+   POST /v2/query to construct and execute in one round-trip with pagination
+6. **Iterate** — Adjust the program and repeat steps 4-5
 
 ## Error handling
 
-| HTTP Status | Meaning                                  |
-|-------------|------------------------------------------|
-| 200         | Success (GET endpoints, construct-query) |
-| 202         | Success (execute — streaming response)   |
-| 401         | Authentication failure                   |
-| 403         | Insufficient permissions                 |
-| 404         | Entity not found                         |
+| HTTP Status | Meaning                                                       |
+|-------------|---------------------------------------------------------------|
+| 200         | Success (GET endpoints, construct-query)                      |
+| 202         | Success (execute / query — streaming response)                |
+| 400         | Invalid program (validation, repair, or resolution failure)   |
+| 401         | Authentication failure                                        |
+| 403         | Insufficient permissions                                      |
+| 404         | Entity not found                                              |
 
 ---

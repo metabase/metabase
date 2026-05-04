@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -9,13 +9,15 @@ export interface Undo {
   type?: string;
   action?: (() => void) | null;
   message?: ReactNode | ((undo: Undo) => ReactNode);
-  timeout?: number;
-  initialTimeout?: number;
+  timeout?: number | null;
+  initialTimeout?: number | null;
   actions?: (() => void)[];
   showProgress?: boolean;
   icon?: IconName | null;
   toastColor?: string;
+  dark?: boolean;
   iconColor?: ColorName;
+  style?: CSSProperties;
   actionLabel?: string;
   canDismiss?: boolean;
   startedAt?: number;

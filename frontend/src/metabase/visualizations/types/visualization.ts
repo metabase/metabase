@@ -7,7 +7,7 @@ import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
+} from "metabase/utils/measure-text";
 import type {
   ClickActionModeGetter,
   ClickActionsMode,
@@ -64,6 +64,8 @@ export type Formatter = (
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
 export type Extent = [number, number];
+
+export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 
 export interface RenderingContext {
   getColor: ColorGetter;

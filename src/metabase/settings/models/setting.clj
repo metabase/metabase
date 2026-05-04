@@ -568,6 +568,14 @@
                              dep-key (setting-name setting))))
               v))))))
 
+(defn db-stored-value
+  "Return the raw value persisted in the DB/cache for `setting-definition-or-name`, or nil if none.
+
+  Unlike [[get-raw-value]], this does not consult user-local values, database-local values, env vars, defaults, or
+  init functions."
+  ^String [setting-definition-or-name]
+  (db-or-cache-value setting-definition-or-name))
+
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
 (defn- init! [setting-definition-or-name]
@@ -650,6 +658,19 @@
                      (string? raw-value) parse)]
      (when (pred v)
        v))))
+
+(defn get-raw-value-source
+  "Get the source of the raw value of a Setting from wherever it may be specified.
+  Priority order is specified in `get-raw-value`."
+  ([setting-definition-or-name]
+   (let [setting (resolve-setting setting-definition-or-name)]
+     (cond
+       (some? (user-local-value setting)) :user-local
+       (some? (database-local-value setting)) :database-local
+       (some? (env-var-value setting)) :env
+       (some? (db-or-cache-value setting)) :database
+       (some? (:default setting)) :default
+       :else nil))))
 
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter

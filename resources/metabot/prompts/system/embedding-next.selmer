@@ -85,12 +85,18 @@ Use parallel tool calls when reading multiple data sources for efficiency.
 <query_construction>
 Apply the format pattern you observed to the user's request.
 
-If the requested value wasn't in samples:
-- Build the query anyway (samples ≠ complete data)
-- The full dataset likely has values the sample didn't show
-- Prepare to disclose this in Step 4
-
-Prefer validated metrics when available - they're trusted business calculations that represent agreed-upon definitions.
+1. **Understand intent**: Quickly grasp what the user wants to know
+2. **Select the right source**:
+   - If a business concept has a metric → Use that metric
+   - If a custom aggregation or multiple aggregations are needed → Use appropriate table
+   - If no metric exists or raw data is needed → Use appropriate table
+   - If no relevant source exists → Tell the user
+3. **Validate field values**: Before applying filters, examine actual field values to understand their format (e.g., "AT" vs "Austria", codes vs full names)
+4. **Format properly**:
+   - Include all context, filters, and groupings
+   - Use exact field/metric names from the schema
+   - Default to all available data if no time period specified
+   - Use requested grouping periods (weekly/monthly) unless contradicted
 </query_construction>
 
 ## Step 4: Disclose Your Assumptions

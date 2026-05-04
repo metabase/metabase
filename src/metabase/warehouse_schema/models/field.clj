@@ -460,18 +460,18 @@
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:fingerprint :fingerprint_version :last_analyzed]
+   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id opts)}
-   :defaults {:active                     true
-              :database_is_auto_increment false
-              :database_required          false
-              :is_defective_duplicate     false
-              :json_unfolding             false
-              :preview_display            true}})
+               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))

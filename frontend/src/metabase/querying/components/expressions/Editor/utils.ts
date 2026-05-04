@@ -8,15 +8,15 @@ import type { EditorView } from "@codemirror/view";
 import { useCallback } from "react";
 
 import {
-  type DefinedClauseName,
   expressionClauseSnippet,
   getClauseDefinition,
 } from "metabase/querying/expressions";
+import type * as Lib from "metabase-lib";
 
 export function useInitialClause({
   initialExpressionClause,
 }: {
-  initialExpressionClause?: DefinedClauseName | null;
+  initialExpressionClause?: Lib.DefinedClauseName | null;
 }) {
   return useCallback(
     (view: EditorView) => {

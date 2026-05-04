@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Modal, Stack, Text, rem } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { FieldId } from "metabase-types/api";
 
 import { DiscardFieldValuesButton } from "../DiscardFieldValuesButton";

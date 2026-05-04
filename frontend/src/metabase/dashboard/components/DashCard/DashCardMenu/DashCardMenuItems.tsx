@@ -7,8 +7,8 @@ import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
+import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 

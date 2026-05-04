@@ -41,8 +41,9 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery = DatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;
@@ -452,7 +453,7 @@ export interface UpdateCardRequest {
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;

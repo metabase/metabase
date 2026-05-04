@@ -240,10 +240,10 @@
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
               (metabot/log-ai-usage!
-               {:source            "oss-sql-gen"
-                :model             (:model usage)
-                :prompt-tokens     (:prompt usage)
-                :completion-tokens (:completion usage)})
+               {:source             "sql-gen"
+                :model              (:model usage)
+                :prompt-tokens      (:prompt usage)
+                :completion-tokens  (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"

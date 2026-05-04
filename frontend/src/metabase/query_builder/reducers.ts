@@ -524,7 +524,9 @@ export const parameterValues = createReducer<ParameterValuesMap>(
       .addCase<
         string,
         { type: string; payload: { id: string; value: unknown } }
-      >(SET_PARAMETER_VALUE, (state, action) => assoc(state, action.payload.id, action.payload.value));
+      >(SET_PARAMETER_VALUE, (state, action) =>
+        assoc(state, action.payload.id, action.payload.value),
+      );
   },
 );
 

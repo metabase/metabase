@@ -52,7 +52,7 @@ function NewSelectItem({ value }: { value: string }) {
   return (
     <SelectItem>
       <Text c="inherit" lh="inherit">
-        {jt`Create new schema ${(<strong key="value">{value}</strong>)}`}
+        {jt`Create new schema ${<strong key="value">{value}</strong>}`}
       </Text>
     </SelectItem>
   );

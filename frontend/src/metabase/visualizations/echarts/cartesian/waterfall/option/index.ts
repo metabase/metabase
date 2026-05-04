@@ -35,6 +35,10 @@ import type { ChartLayout } from "../../layout/types";
 import { isCategoryAxis } from "../../model/guards";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
+import {
+  getGoalLineParams,
+  getGoalLineSeriesOption,
+} from "../../option/goal-line";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 
@@ -234,9 +238,15 @@ export const getWaterfallChartOption = (
     chartModel.waterfallLabelFormatter,
     renderingContext,
   );
+  const goalSeriesOption = getGoalLineSeriesOption(
+    getGoalLineParams(chartModel),
+    settings,
+    renderingContext,
+  );
 
   const seriesOption: WaterfallSeriesOption[] = [
     dataSeriesOptions,
+    goalSeriesOption,
     timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 

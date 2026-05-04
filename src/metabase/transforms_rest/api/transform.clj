@@ -67,7 +67,8 @@
    [:transform_entity_id {:optional true} [:maybe :string]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -112,6 +113,7 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
@@ -185,39 +187,11 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        global-ordering (transforms.core/transform-ordering (vals id->transform))
-        dep-ids         (get global-ordering id)
+        {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
+        dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
          transforms.u/add-source-readable)))
-
-(def ^:private MergeHistoryEntry
-  [:map
-   [:id ms/PositiveInt]
-   [:workspace_merge_id ms/PositiveInt]
-   [:commit_message :string]
-   [:workspace_id [:maybe ms/PositiveInt]]
-   [:workspace_name :string]
-   [:merging_user_id ms/PositiveInt]
-   [:created_at :any]])
-
-(api.macros/defendpoint :get "/:id/merge-history"
-  :- [:sequential MergeHistoryEntry]
-  "Get merge history for a transform. Returns all merge events that affected this transform,
-   ordered by created_at descending (newest first)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Transform id))
-  (t2/select [:model/WorkspaceMergeTransform
-              :id
-              :workspace_merge_id
-              :commit_message
-              :workspace_id
-              :workspace_name
-              :merging_user_id
-              :created_at]
-             {:where    [:= :transform_id id]
-              :order-by [[:created_at :desc]]}))
 
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]

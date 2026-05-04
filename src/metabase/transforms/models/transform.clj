@@ -250,16 +250,19 @@
                  {:email (:owner_email transform)}))))))
 
 (t2/define-after-insert :model/Transform [transform]
-  (events/publish-event! :event/create-transform {:object transform})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/create-transform {:object transform}))
   transform)
 
 (t2/define-after-update :model/Transform [transform]
-  (events/publish-event! :event/update-transform {:object transform})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
   (ws.table/delete-orphaned-provisional-table! (:target_table_id transform) (:id transform))
-  (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
@@ -389,7 +392,7 @@
                                                                                         (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]

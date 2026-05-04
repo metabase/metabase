@@ -1,13 +1,13 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.api :as api]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -278,18 +278,15 @@
                                :keyword_queries  ["orders"]
                                :entity_types     ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
-             ;; Iteration 2: Construct a simple raw query (no fields/aggregations = select all)
+             ;; Iteration 2: Construct a simple query via agent-lib program
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
-                               :query         {:query_type "raw"
-                                               :source     {:table_id orders-table-id}
-                                               :filters    []
-                                               :fields     []
-                                               :order_by   []
-                                               :limit      10}
+                               :source_entity {:type "table" :id orders-table-id}
+                               :program       {:source     {:type "table" :id orders-table-id}
+                                               :operations [["limit" 10]]}
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response
@@ -336,7 +333,7 @@
                           :data      {:queries map?
                                       :charts  map?}}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (#'api/combine-text-parts-xf)
+                          (into [] (metabot.persistence/combine-text-parts-xf)
                                 (agent/run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -437,7 +434,7 @@
             (is (=? [{:type :text :text "Hello after retry"}
                      {:type :data :data-type "state"}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (#'api/combine-text-parts-xf)
+                      (into [] (metabot.persistence/combine-text-parts-xf)
                             (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
@@ -485,11 +482,11 @@
                                          {:profile-id "internal"})))))
 
     ;; clear! is much faster than a new mt/with-prometheus-system!
-      (prometheus/clear! :metabase-metabot/agent-requests)
-      (prometheus/clear! :metabase-metabot/agent-iterations)
-      (prometheus/clear! :metabase-metabot/agent-errors)
-      (prometheus/clear! :metabase-metabot/agent-duration-ms)
-      (prometheus/clear! :metabase-metabot/llm-requests)
+      (analytics/clear! :metabase-metabot/agent-requests)
+      (analytics/clear! :metabase-metabot/agent-iterations)
+      (analytics/clear! :metabase-metabot/agent-errors)
+      (analytics/clear! :metabase-metabot/agent-duration-ms)
+      (analytics/clear! :metabase-metabot/llm-requests)
 
       (testing "records agent-errors on failure"
         (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
