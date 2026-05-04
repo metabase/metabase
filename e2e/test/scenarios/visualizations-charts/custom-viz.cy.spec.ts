@@ -1760,6 +1760,21 @@ describe("sandbox", () => {
       payload: "window.print();",
       errorPattern: blockedPattern(/API call: window\.print/),
     },
+    {
+      name: "HTMLElement.click()",
+      payload: 'document.createElement("a").click();',
+      errorPattern: blockedPattern(/API call: HTMLElement\.click/),
+    },
+    {
+      name: "HTMLAnchorElement href setter",
+      payload: 'document.createElement("a").href = "https://evilsite.example";',
+      errorPattern: blockedPattern(/API call: HTMLAnchorElement\.set href/),
+    },
+    {
+      name: "HTMLAnchorElement target setter",
+      payload: 'document.createElement("a").target = "_blank";',
+      errorPattern: blockedPattern(/API call: HTMLAnchorElement\.set target/),
+    },
   ];
 
   it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(

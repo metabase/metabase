@@ -107,3 +107,17 @@ block(
 );
 block(method(Element.prototype, "setHTMLUnsafe"), "Element.setHTMLUnsafe");
 block(method(Document, "parseHTMLUnsafe"), "Document.parseHTMLUnsafe");
+
+// Programmatic activation — `.click()` on a synthesized <a> can navigate the
+// host or trigger a download. Anchor href/target setters skip the
+// `setAttribute("href", "javascript:...")` distortion, so block at the
+// property setters too.
+block(method(HTMLElement.prototype, "click"), "HTMLElement.click");
+block(
+  setter(HTMLAnchorElement.prototype, "href"),
+  "HTMLAnchorElement.set href",
+);
+block(
+  setter(HTMLAnchorElement.prototype, "target"),
+  "HTMLAnchorElement.set target",
+);
