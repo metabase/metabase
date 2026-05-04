@@ -12,12 +12,23 @@
 
 (def ^:private default-config
   "Per-typed-pair ensemble configuration. Add typed pairs as later phases earn
-   them through eval lift. Phase 3 ships only [:card :card]."
+   them through eval lift. Phase 3 ships only [:card :card].
+
+   Weight calibration notes:
+   - `:direct-dependency 1.5` boosts ground-truth structural-truth links.
+   - `:co-dashboard 0.8` compensates for cluster amplification: a 10-card
+     dashboard contributes 9 score-1.0 edges from one seed, all sharing
+     RANK 1 in their view. Weight 0.8 keeps each tied member meaningful
+     without letting the cluster swamp other views' contributions.
+     The previous value was 1.2 under a tie-collapse SQL policy that
+     suppressed cluster total contribution to one row per tie group; that
+     policy was removed in the Phase 7 follow-up (see
+     `notes/classifiers/card-similarity-graph-index-impl-progress.md`)."
   {[:card :card]
    {:views            [:direct-dependency :co-dashboard :source-table-jaccard
                        :co-execution :field-jaccard-idf :title-desc-ebr]
     :weights          {:direct-dependency 1.5
-                       :co-dashboard      1.2}
+                       :co-dashboard      0.8}
     :k                60
     :top-k-per-source 50}})
 

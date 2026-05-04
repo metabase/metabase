@@ -2,36 +2,47 @@
   "Materialized RRF fusion over per-view rows in `similar_edge`.
 
    For each typed pair in `fusion/ensemble-config`, we:
-   1. Pull base-view rows from `similar_edge`.
-   2. Tie-collapse: within each `(from_entity, view)`, drop all-but-one row per
-      tied score group. The 200-card diagnostic showed that `co-dashboard`
-      routinely produces 5–10+ tied score-1.0 edges from a single dashboard
-      cluster, and `ROW_NUMBER`-based ranking treated each as an independent
-      endorsement, packing the ensemble head with one cluster's followers and
-      crowding out other views (notably `title-desc-ebr`).
-   3. Rank each surviving row within `(from_entity, view)` by score-desc.
-   4. Sum `weight(view) / (k + rank)` over views per `(from, to)` candidate.
-   5. Apply a `top-K-per-source` cap on the fused list.
-   6. Insert the survivors back as `view = :ensemble`.
+   1. Rank each row within `(from_entity, view)` by score-desc using SQL
+      `RANK()`. Tied scores share a rank — all tied members enter the
+      ensemble and contribute equal RRF weight, with a gap after the tie
+      group (1, 1, 1, 4, ...).
+   2. Sum `weight(view) / (k + rank)` over views per `(from, to)` candidate.
+   3. Apply a `top-K-per-source` cap on the fused list.
+   4. Insert the survivors back as `view = :ensemble`.
 
-   Tie-collapse is a bridge-fix until Phase 8's community detection lands —
-   communities will keep all cluster members as candidates and let
-   `dedupe-by-community` choose a representative at retrieval time. Until
-   then, dropping tied followers is a cheap proxy that materially improves
-   ensemble visibility for non-clustered views.
+   Cluster amplification — e.g. a 10-card dashboard producing 9 score-1.0
+   `co-dashboard` edges from one seed — is managed by two complementary
+   mechanisms: per-view weight calibration in `fusion/ensemble-config`
+   (`co-dashboard` ships at 0.8 to compensate for cluster size) and
+   retrieval-time community dedup in `api/dedupe-by-community` over the
+   Phase 8 Louvain partition.
+
+   An earlier iteration of this pipeline included a `:deduped` CTE that
+   filtered tied rows down to the lowest `to_entity_id` per tie group. That
+   was removed because it was destructive: locked-out rows were unreachable
+   from `api/neighbors` regardless of any retrieval-time flag, and they were
+   invisible to Phase 8's PageRank/Louvain (which both read `view='ensemble'`
+   in `graph/edge_loader.clj`), so the community partition itself was being
+   computed over an edge-pruned graph. The harness in
+   `dev.ensemble-fusion-strategy` quantified the head-balance shift and
+   confirmed weight recalibration recovers diversity without destroying
+   coverage. See the Phase 7 follow-up entry in
+   `notes/classifiers/card-similarity-graph-index-impl-progress.md`.
 
    The whole pipeline runs as a single SQL statement per typed pair using
    window functions; the JVM only ferries rows from the result cursor into
    `t2/insert!` batches. `metabase-enterprise.similarity.fusion/fuse-ranks`
    exists as the unit-testable reference impl and as a JVM-side fallback if
-   the SQL path hits a portability issue. The JVM impl does *not* tie-collapse
-   — it expects pre-deduped ranked lists from the caller; this divergence is
-   intentional since tie-collapse is a SQL-side policy applied to raw edges.
+   the SQL path hits a portability issue. The JVM impl ranks ties via
+   `map-indexed` (ROW_NUMBER-equivalent), while the SQL path uses `RANK()`;
+   the two differ only when the input has tied scores. The SQL path is the
+   production codepath and is what shapes the materialized index.
 
-   Postgres-only. The CTE chain stacks two window-bearing CTEs (`:base` →
-   `:deduped` → `:ranked`); H2's planner returns 0 rows from that shape, so
-   tests for this view are gated on `(= :postgres (mdb/db-type))`. Postgres is
-   the appdb engine for the PoC, so this is acceptable."
+   Postgres-only. The CTE chain stacks window-bearing CTEs (`:ranked` →
+   `:fused` → `:final`); H2's planner returns 0 rows from that shape, so
+   tie-behavior tests for this view are gated on
+   `(= :postgres (mdb/db-type))`. Postgres is the appdb engine for the PoC,
+   so this is acceptable."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.similarity.fusion :as fusion]
@@ -62,39 +73,25 @@
         case-expr     (weight-case-expr weights)
         k-int         (long (or k 60))
         cap           (long (or top-k-per-source 50))]
-    {:with [[:base
+    {:with [[:ranked
              {:select [:from_entity_type :from_entity_id
                        :to_entity_type   :to_entity_id
                        :view :score
-                       ;; Per-tied-score-group position; only `tie_position=1`
-                       ;; survives the `:deduped` filter below. ORDER BY
-                       ;; `:to_entity_id` makes the choice deterministic across
-                       ;; runs (lowest id wins inside a tie group).
-                       [[:over [[:row_number]
-                                {:partition-by [:from_entity_type :from_entity_id
-                                                :view :score]
-                                 :order-by     [[:to_entity_id]]}]]
-                        :tie_position]]
+                       ;; SQL RANK(): tied scores share a rank, with a gap
+                       ;; after the tie group (1, 1, 1, 4, ...). All tied
+                       ;; members survive into fusion and contribute equal
+                       ;; RRF weight; cluster amplification is managed via
+                       ;; per-view weight calibration in `fusion/ensemble-config`
+                       ;; and retrieval-time community dedup.
+                       [[:over [[:rank]
+                                {:partition-by [:from_entity_type :from_entity_id :view]
+                                 :order-by     [[:score :desc]]}]]
+                        :within_view_rank]]
               :from   [:similar_edge]
               :where  [:and
                        [:= :from_entity_type from-name]
                        [:= :to_entity_type   to-name]
                        [:in :view view-names]]}]
-            [:deduped
-             {:select [:from_entity_type :from_entity_id
-                       :to_entity_type   :to_entity_id
-                       :view :score]
-              :from   [:base]
-              :where  [:= :tie_position [:inline 1]]}]
-            [:ranked
-             {:select [:from_entity_type :from_entity_id
-                       :to_entity_type   :to_entity_id
-                       :view :score
-                       [[:over [[:row_number]
-                                {:partition-by [:from_entity_type :from_entity_id :view]
-                                 :order-by     [[:score :desc]]}]]
-                        :within_view_rank]]
-              :from   [:deduped]}]
             [:fused
              {:select   [:from_entity_type :from_entity_id
                          :to_entity_type   :to_entity_id

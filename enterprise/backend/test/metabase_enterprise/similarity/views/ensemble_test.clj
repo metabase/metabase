@@ -1,8 +1,8 @@
 (ns metabase-enterprise.similarity.views.ensemble-test
   "Tests for the materialized RRF fusion view.
 
-   Tie-collapse stacks two window-bearing CTEs (`:base` → `:deduped` →
-   `:ranked`); H2 returns 0 rows from that shape. Tie-behavior tests are
+   The CTE chain stacks window-bearing CTEs (`:ranked` → `:fused` →
+   `:final`); H2 returns 0 rows from that shape. Tie-behavior tests are
    gated on `(= :postgres (mdb/db-type))` and are no-ops on H2. The PoC
    targets a Postgres appdb."
   (:require
@@ -43,9 +43,9 @@
                          [:= :from_entity_id from-id]]
               :order-by [[:score :desc]]}))
 
-(deftest ^:sequential tie-collapse-drops-tied-followers-test
+(deftest ^:sequential tied-rows-share-rank-and-survive-test
   (when (= :postgres (mdb/db-type))
-    (testing "tied scores within a (from, view) group collapse to the lowest-id row only"
+    (testing "tied scores within a (from, view) group all enter the ensemble with equal RRF contribution"
       (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
         ;; Source card 1, three co-dashboard ties at score 1.0 (cards 2, 3, 4) and
         ;; one solo co-dashboard at 0.5 (card 5). One source-table-jaccard hit at
@@ -58,16 +58,28 @@
                        (seed-edge 1 :co-dashboard 5 0.5 now)
                        (seed-edge 1 :source-table-jaccard 6 0.9 now)]))
         (runner/run-view! :ensemble)
-        (let [rows (ensemble-for 1)
-              ids  (mapv :to_entity_id rows)]
-          (testing "only one row from the tied co-dashboard group survives"
-            (is (= [2 5 6] ids)
-                (str "expected the lowest-id tied row (2), the non-tied co-dashboard row (5), "
-                     "and the source-table-jaccard hit (6); got " (pr-str ids))))
+        (let [rows      (ensemble-for 1)
+              ids       (set (map :to_entity_id rows))
+              by-id     (into {} (map (juxt :to_entity_id :score)) rows)
+              tied-ids  [2 3 4]
+              tied-scs  (map by-id tied-ids)]
+          (testing "all five candidates survive (no destructive lockout)"
+            (is (= #{2 3 4 5 6} ids)
+                (str "expected coverage of all 5 to-ids; got " (pr-str ids))))
+          (testing "top fused row is the source-table-jaccard hit (1.0/(60+1) > 0.8/(60+1))"
+            (is (= 6 (:to_entity_id (first rows)))))
+          (testing "tied co-dashboard rows share fused score (RANK gives all rank=1)"
+            (is (apply = tied-scs)
+                (str "expected cards 2, 3, 4 to share fused score under RANK; got "
+                     (pr-str (zipmap tied-ids tied-scs)))))
+          (testing "non-tied co-dashboard row gets RANK gap (rank=4 → lower contribution)"
+            (is (< (by-id 5) (first tied-scs))
+                (str "expected card 5 (rank 4) to score below the tied trio (rank 1); "
+                     "got 5=" (by-id 5) " vs tied=" (first tied-scs))))
           (testing "no fused score is zero or negative"
             (is (every? pos? (map :score rows)))))))
 
-    (testing "tie-collapse does not affect candidates that are unique within their view"
+    (testing "candidates with unique scores within their view rank cleanly"
       (mt/with-model-cleanup [:model/SimilarEdge :model/SimilarEdgeStatus]
         (let [now (t/offset-date-time)]
           (t2/insert! :model/SimilarEdge
