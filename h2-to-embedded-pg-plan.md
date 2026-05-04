@@ -69,6 +69,12 @@ A possible further size reduction: Zonky ships `*-lite` Alpine variants without 
 
 ## How a Customer Upgrades
 
+A new version of Metabase ships with:
+- logic to use Embedded Postgres as the default app db driver
+- Read support in the H2 driver to migrate data from H2 to embedded postgres
+- Read-write/full featured support in the Postgres driver for embedded postgres
+- Migration process to migrate data from H2 to embedded postgres on start-up
+
 For a typical customer running the Metabase uberjar with their existing H2 file, the upgrade is fully automatic:
 
 1. They download the new Metabase JAR and start it as before.
