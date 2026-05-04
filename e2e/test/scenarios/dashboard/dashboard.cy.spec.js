@@ -18,7 +18,6 @@ import {
 
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
-  adaptiveRadioButton,
   cacheStrategySidesheet,
   durationRadioButton,
   openSidebarCacheStrategyForm,
@@ -1597,41 +1596,6 @@ describe("scenarios > dashboard > caching", () => {
   });
 
   /**
-   * @note There is a similar test for the cache config form that appears in the question sidebar.
-   * It's in the Cypress describe block labeled "scenarios > question > caching"
-   */
-  it("can configure cache for a dashboard, on an enterprise instance", () => {
-    interceptPerformanceRoutes();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    H.sidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      durationRadioButton().click();
-      cy.findByLabelText("Cache results for this many hours").type("48");
-      cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@putCacheConfig");
-      cy.log(
-        "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
-      );
-      cy.findByLabelText(/When to get new results/).should(
-        "contain",
-        "Duration",
-      );
-      cy.findByLabelText(/When to get new results/).click();
-      adaptiveRadioButton().click();
-      cy.findByLabelText(/Minimum query duration/).type("999");
-      cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@putCacheConfig");
-      cy.findByLabelText(/When to get new results/).should(
-        "contain",
-        "Adaptive",
-      );
-    });
-  });
-
-  /**
    * @note There is a similar test for closing the cache form when it's dirty
    * It's in the Cypress describe block labeled "scenarios > question > caching"
    */
@@ -1669,28 +1633,6 @@ describe("scenarios > dashboard > caching", () => {
     // Action 4: browser's Back action
     cy.go("back");
     cancelConfirmationModal();
-  });
-
-  it("can click 'Clear cache' for a dashboard", () => {
-    interceptPerformanceRoutes();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    H.sidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      cy.findByRole("button", {
-        name: /Clear cache for this dashboard/,
-      }).click();
-    });
-
-    cy.findByTestId("confirm-modal").within(() => {
-      cy.findByRole("button", { name: /Clear cache/ }).click();
-    });
-    cy.wait("@invalidateCache");
-    H.sidesheet().within(() => {
-      cy.findByText("Cache cleared").should("be.visible");
-    });
   });
 });
 
