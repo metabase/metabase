@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Stack } from "metabase/ui";
-import { getErdQueryParams } from "metabase/utils/urls";
+import { getErdQueryParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 

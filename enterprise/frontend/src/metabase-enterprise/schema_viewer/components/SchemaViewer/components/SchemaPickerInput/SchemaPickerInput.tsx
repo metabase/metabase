@@ -16,7 +16,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Database, DatabaseId, SchemaName } from "metabase-types/api";
 
 import S from "./SchemaPickerInput.module.css";
