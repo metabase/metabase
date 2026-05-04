@@ -2,6 +2,7 @@
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 import { initializeHandleLinkPlugin } from "../embedding-sdk-ee/handle-link/handle-link";
+import { initializeSdkMetabotNavigateToPlugin } from "../embedding-sdk-ee/metabot/navigate-to-plugin";
 
 // SETTINGS OVERRIDES:
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
@@ -34,6 +35,7 @@ export function initializePlugins() {
   initializeNotifications();
   initializeSharing();
   initializeHandleLinkPlugin();
+  initializeSdkMetabotNavigateToPlugin();
   initializeSdkPluginsV2Demo();
 }
 

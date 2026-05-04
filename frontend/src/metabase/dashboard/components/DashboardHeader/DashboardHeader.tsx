@@ -166,18 +166,21 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 
       <Flex align="center" gap="md" px="md" py="xs" bg="background-warning">
         <span data-testid="plugins-v2-demo-label">
-          {hook("dashboard.header.label", () => "this is default behavior", {
-            dashboardId: dashboard.id,
-            dashboardName: dashboard.name,
-          })}
+          {hook(
+            "dashboard.header.label",
+            { dashboardId: dashboard.id, dashboardName: dashboard.name },
+            () => "this is default behavior",
+          )}
         </span>
         <Button
           data-testid="plugins-v2-demo-button"
           size="xs"
           onClick={() =>
-            hook("dashboard.header.alertAction", () => alert("default click"), {
-              dashboardId: dashboard.id,
-            })
+            hook(
+              "dashboard.header.alertAction",
+              { dashboardId: dashboard.id },
+              () => alert("default click"),
+            )
           }
         >
           {t`plugins-v2 demo button`}

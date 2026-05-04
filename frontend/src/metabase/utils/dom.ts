@@ -155,31 +155,27 @@ export async function open(
 ): Promise<void> {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  await hook(
-    "dashboard.openLink",
-    ({ url }) => {
-      if (shouldOpenInBlankWindow(url, options)) {
-        openInBlankWindow(url);
-      } else if (isSameOrigin(url)) {
-        if (!isMetabaseUrl(url)) {
-          clickLink(url, false);
-        } else if (openInSameOrigin) {
-          const location = getLocation(url);
-          if (isObject(location) && "pathname" in location) {
-            openInSameOrigin(location);
-          } else {
-            openInSameWindow(url);
-          }
+  await hook("dashboard.openLink", { url }, ({ url }) => {
+    if (shouldOpenInBlankWindow(url, options)) {
+      openInBlankWindow(url);
+    } else if (isSameOrigin(url)) {
+      if (!isMetabaseUrl(url)) {
+        clickLink(url, false);
+      } else if (openInSameOrigin) {
+        const location = getLocation(url);
+        if (isObject(location) && "pathname" in location) {
+          openInSameOrigin(location);
         } else {
           openInSameWindow(url);
         }
       } else {
         openInSameWindow(url);
       }
-      return Promise.resolve();
-    },
-    { url },
-  );
+    } else {
+      openInSameWindow(url);
+    }
+    return Promise.resolve();
+  });
 }
 
 export function openInBlankWindow(url: string): void {

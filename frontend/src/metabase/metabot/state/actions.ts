@@ -8,7 +8,7 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { hook } from "metabase/lib/plugins-v2";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -47,6 +47,23 @@ import type {
   SlashCommand,
 } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
+
+type PendingChartMessage = { type: "chart"; navigateTo: string };
+
+declare module "metabase/lib/plugins-v2/types" {
+  interface HookRegistry {
+    /**
+     * Reacts to a `navigate_to` part from the agent stream. Default behavior
+     * (core app) routes immediately via `push`. Embedding plugins instead
+     * defer the navigation by returning a chart message that the action
+     * appends to the conversation when the stream completes.
+     */
+    "metabot.navigateTo": (params: {
+      path: string;
+      currentPending: PendingChartMessage | undefined;
+    }) => PendingChartMessage | undefined;
+  }
+}
 
 export const {
   addAgentTextDelta,
@@ -365,9 +382,7 @@ export const sendAgentRequest = createAsyncThunk<
        * Last navigate_to wins, matching setNavigateToPath/CurrentChart semantics.
        * In practice we don't expect more than one navigate_to in a single stream.
        */
-      let pendingChartMessage:
-        | { type: "chart"; navigateTo: string }
-        | undefined = undefined;
+      let pendingChartMessage: PendingChartMessage | undefined = undefined;
 
       const response = await aiStreamingQuery(
         {
@@ -403,23 +418,14 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
-
-                if (isEmbeddingSdk()) {
-                  if (pendingChartMessage) {
-                    console.warn("Overwriting pending navigate_to: ", {
-                      previous: pendingChartMessage.navigateTo,
-                      next: part.value,
-                    });
-                  }
-                  pendingChartMessage = {
-                    type: "chart",
-                    navigateTo: part.value,
-                  };
-                }
-
-                if (!isEmbeddingSdk()) {
-                  dispatch(push(part.value) as UnknownAction);
-                }
+                pendingChartMessage = hook(
+                  "metabot.navigateTo",
+                  { path: part.value, currentPending: pendingChartMessage },
+                  ({ path }) => {
+                    dispatch(push(path) as UnknownAction);
+                    return undefined;
+                  },
+                );
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {
                 const suggestedTransform = {

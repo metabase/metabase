@@ -56,14 +56,10 @@ export function formatUrl(value: string, options: OptionsType = {}) {
     const onClickCapture = async (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.stopPropagation();
       e.preventDefault();
-      await hook(
-        "dashboard.openLink",
-        ({ url }) => {
-          window.open(url, "_blank", "noopener,noreferrer");
-          return Promise.resolve();
-        },
-        { url },
-      );
+      await hook("dashboard.openLink", { url }, ({ url }) => {
+        window.open(url, "_blank", "noopener,noreferrer");
+        return Promise.resolve();
+      });
     };
 
     return (

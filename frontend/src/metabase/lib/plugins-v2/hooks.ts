@@ -44,13 +44,24 @@ type ReturnOf<K extends keyof HookRegistry> = HookRegistry[K] extends (
   ? R
   : never;
 
+/**
+ * If a hook's signature has no parameter (`() => R`), allow the short form
+ * `hook(name, code)`. Otherwise require `hook(name, params, code)` so the
+ * params sit visually next to the name and the implementation reads top-down.
+ */
+type HookArgs<K extends keyof HookRegistry> = HookRegistry[K] extends () => any
+  ? [code: HookRegistry[K]]
+  : [params: ParamsOf<K>, code: HookRegistry[K]];
+
 export function hook<K extends keyof HookRegistry>(
   name: K,
-  defaultImpl: HookRegistry[K],
-  params: ParamsOf<K>,
+  ...args: HookArgs<K>
 ): ReturnOf<K> {
+  const params: unknown = args.length === 1 ? undefined : args[0];
+  const defaultImpl: AnyFn = (args.length === 1 ? args[0] : args[1]) as AnyFn;
+
   const entry = getOrCreate(name as string);
-  entry.defaultImpl = defaultImpl as AnyFn;
+  entry.defaultImpl = defaultImpl;
 
   const base: AnyFn = entry.override ? entry.override.impl : entry.defaultImpl;
 
