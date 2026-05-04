@@ -9,6 +9,8 @@
    (java.nio.file ClosedFileSystemException FileSystem Files)
    (java.util.zip ZipEntry ZipOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (deftest is-regular-file-test
   (mt/with-temp-file [file "temp-file"]
     (testing (format "file = %s" (pr-str file))
@@ -18,7 +20,7 @@
     (testing (format "dir = %s" (pr-str dir)))
     (let [file-in-dir (str (u.files/get-path dir "file"))]
       (testing (format "file = %s" (pr-str file-in-dir))
-        (spit file-in-dir "abc") ; create a file in the dir to make sure it exists
+        (spit file-in-dir "abc")        ; create a file in the dir to make sure it exists
         (is (u.files/regular-file? (u.files/get-path file-in-dir)))))
     (is (not (u.files/regular-file? (u.files/get-path dir))))))
 
