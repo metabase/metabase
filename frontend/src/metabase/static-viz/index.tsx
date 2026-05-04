@@ -2,8 +2,6 @@ import "./mock-environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
-import React from "react";
-import * as jsxRuntime from "react/jsx-runtime";
 import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
@@ -56,8 +54,6 @@ type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
 // Expose React, jsxRuntime, and utils for custom viz bundles that reference
 // window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
 (window as StaticVizApiWindow).__METABASE_VIZ_API__ = {
-  React,
-  jsxRuntime,
   columnTypes: customVizColumnTypes,
   formatValue: (value: unknown, options?: OptionsType) => {
     const result = internalFormatValue(value, { ...options, jsx: false });

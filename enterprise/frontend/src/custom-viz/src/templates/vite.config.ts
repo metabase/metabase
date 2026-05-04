@@ -184,11 +184,6 @@ export default defineConfig({
     ...(isWatch ? [metabaseDevServer()] : []),
   ],
   resolve: {
-    // Force a single React copy in the bundle. When @metabase/custom-viz is
-    // installed via file:/link: during dev, Node may resolve the SDK's own
-    // `import "react"` from the SDK's real location instead of this plugin's
-    // node_modules — producing two React instances and "useRef of null" at
-    // runtime.
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   publicDir: "public",
