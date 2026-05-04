@@ -20,6 +20,7 @@ import {
   startMockLlmServer,
   stopMockLlmServer,
 } from "./helpers/e2e-mock-llm-tasks";
+import { restoreTasks } from "./helpers/e2e-restore-task";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -136,6 +137,7 @@ const defaultConfig = {
       ...dbTasks,
       ...ciTasks,
       ...verifyDownloadTasks,
+      ...restoreTasks,
       readDirectory,
       copyDirectory,
       removeDirectory,

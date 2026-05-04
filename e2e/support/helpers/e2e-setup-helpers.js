@@ -1,5 +1,8 @@
 import { resetWritableDb } from "./e2e-qa-databases-helpers";
 
+const RESTORE_TIMEOUT_MS = 90_000;
+const RESTORE_RETRIES = 1;
+
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
@@ -48,7 +51,11 @@ export function restore(name = "default") {
     resetWritableDb({ type: dbType });
   }
 
-  return cy.request("POST", `/api/testing/restore/${name}`);
+  return cy.task(
+    "restoreSnapshot",
+    { name, timeoutMs: RESTORE_TIMEOUT_MS, retries: RESTORE_RETRIES },
+    { timeout: RESTORE_TIMEOUT_MS * (RESTORE_RETRIES + 1) + 5_000 },
+  );
 }
 
 /**
