@@ -135,10 +135,6 @@
      :schema (normalize-level (when (:schema components) (schema-position-value database table)))
      :table  (:name table)}))
 
-;; TODO: replace with `metabase.lib.util.unique-name-generator/truncate-alias` once
-;; that ns is added to `lib`'s `:api` in `.clj-kondo/config/modules/config.edn` (or
-;; `truncate-alias` is re-exported from `metabase.lib.core`). It does the same job,
-;; byte-aware, with a CRC-32 suffix.
 (defn- short-hash
   "Short, stable, identifier-safe hash of `s`. Used as a disambiguating suffix
    when [[remapped-table-name]] must truncate to fit a driver's identifier limit.
