@@ -4,8 +4,8 @@ import { createRoot } from "react-dom/client";
 
 import type {
   CustomVisualization,
+  CustomVisualizationMountHandle,
   CustomVisualizationProps,
-  MountHandle,
 } from "./types";
 
 export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
@@ -36,9 +36,9 @@ class PluginErrorBoundary extends Component<
   }
 }
 
-export function createCustomVisualization<
-  TSettings extends Record<string, unknown>,
->(opts: CustomVisualizationOpts<TSettings>): CustomVisualization<TSettings> {
+export function defineConfig<TSettings extends Record<string, unknown>>(
+  opts: CustomVisualizationOpts<TSettings>,
+): CustomVisualization<TSettings> {
   const { VisualizationComponent, ...rest } = opts;
 
   return {
@@ -46,7 +46,7 @@ export function createCustomVisualization<
     mount(
       container: Element,
       initial: CustomVisualizationProps<TSettings>,
-    ): MountHandle<CustomVisualizationProps<TSettings>> {
+    ): CustomVisualizationMountHandle<CustomVisualizationProps<TSettings>> {
       const root = createRoot(container);
 
       const render = (props: CustomVisualizationProps<TSettings>) => {

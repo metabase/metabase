@@ -2,7 +2,7 @@ import {
   type CreateCustomVisualization,
   type CustomStaticVisualizationProps,
   type CustomVisualizationProps,
-  createCustomVisualization,
+  defineConfig,
 } from "../";
 
 type Settings = {
@@ -90,7 +90,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     );
   };
 
-  return createCustomVisualization<Settings>({
+  return defineConfig<Settings>({
     id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_DISPLAY_NAME__",
     minSize: { width: 2, height: 2 },
