@@ -303,7 +303,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (run-transform! (api/read-check :model/Transform id)))
+  (run-transform! (api/write-check :model/Transform id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
