@@ -606,23 +606,37 @@
 (defn- format-field-metadata
   "Formats a joined Field row for the /metadata endpoint response.
 
-  The row carries the field's own table+db (for `:table_id` and as the prefix of the
-  field's own portable id used in `:parent_id`) and, when `fk_target_field_id` is set,
-  the FK target field's table plus its `nfc_path` (for `:fk_target_field_id`). FKs
-  always live within the same database, so the source `db_name` is reused as the FK
-  target's database.
+  Two storage conventions for nested fields exist in `metabase_field`:
 
-  `:parent_id` is derived from `nfc_path` rather than walking the integer `parent_id`
-  chain — for a nested field these always describe the same hierarchy. `:effective_type`
-  is included only when it differs from `:base_type`."
+    - **Convention A — structurally nested** (BigQuery RECORDs, Mongo nested
+      docs). `parent_id` is the int id of an actual parent row; `nfc_path` is
+      the parent ancestry chain. Wire emits `:parent_id` (portable) only.
+    - **Convention B — JSON-unfolded leaf** (Postgres JSONB unfolding via
+      `metabase.driver.sql-jdbc.sync.describe-table/field-types->fields`).
+      `parent_id` is `nil`; `nfc_path` is the FULL path including the leaf's
+      structural location; `name` is the synthesized arrow-display label.
+      Wire emits `:nfc_path` (verbatim) only — there is no parent row to
+      point at, and the importer must preserve the storage `nfc_path`
+      verbatim for the QP's JSON-path navigation.
+
+  The discriminator is the storage `f.parent_id` column: non-nil → Convention
+  A; nil + non-empty `nfc_path` → Convention B.
+
+  `:effective_type` is included only when it differs from `:base_type`. FKs
+  emit `:fk_target_field_id` only when both `fk_name` and `fk_table_name`
+  pass the visibility-filtered `:left-join`."
   [{:keys [name description base_type database_type effective_type semantic_type coercion_strategy
-           db_name table_schema table_name nfc_path
+           parent_id db_name table_schema table_name nfc_path
            fk_table_schema fk_table_name fk_name fk_nfc_path]}]
   (let [nfc-path    (parse-nfc-path nfc_path)
-        fk-nfc-path (parse-nfc-path fk_nfc_path)]
+        fk-nfc-path (parse-nfc-path fk_nfc_path)
+        convention-a? (and (some? parent_id) (seq nfc-path))
+        convention-b? (and (nil? parent_id)  (seq nfc-path))]
     (m/assoc-some {:table_id (format-table-id db_name table_schema table_name)
                    :name     name}
-                  :parent_id          (format-parent-field-id db_name table_schema table_name nfc-path)
+                  :parent_id          (when convention-a?
+                                        (format-parent-field-id db_name table_schema table_name nfc-path))
+                  :nfc_path           (when convention-b? nfc-path)
                   ;; require both fk_name AND fk_table_name so that a half-join
                   ;; (fk-field passes visibility but fk-table fails, or vice versa)
                   ;; produces NO :fk_target_field_id rather than a partially-populated id
@@ -723,7 +737,7 @@
                        (t2/reducible-query
                         {:select    [:f.name :f.description :f.base_type :f.database_type
                                      :f.effective_type :f.semantic_type :f.coercion_strategy
-                                     :f.nfc_path
+                                     :f.parent_id :f.nfc_path
                                      [:d.name :db_name] [:t.schema :table_schema] [:t.name :table_name]
                                      [:fkt.schema :fk_table_schema] [:fkt.name :fk_table_name]
                                      [:fkf.name :fk_name] [:fkf.nfc_path :fk_nfc_path]]
@@ -775,7 +789,10 @@
   [:map
    [:table_id ::portable-table-id]
    [:name :string]
+   ;; Mutually exclusive: :parent_id (Convention A) or :nfc_path (Convention B);
+   ;; both absent on flat root fields.
    [:parent_id {:optional true} ::portable-field-id]
+   [:nfc_path {:optional true} [:sequential :string]]
    [:fk_target_field_id {:optional true} ::portable-field-id]
    [:description {:optional true} :string]
    [:base_type :string]

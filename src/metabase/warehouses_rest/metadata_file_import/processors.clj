@@ -33,11 +33,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const import-batch-size
+(def import-batch-size
   "Row batch size shared by all processors. An 8-column field row at 2000 rows/batch is 16k
   prepared-statement parameters — safely under Postgres' 65535 cap and MySQL's default
-  `max_allowed_packet`."
-  2000)
+  `max_allowed_packet`. (Dropped `:const` to allow REPL experimentation across batch sizes
+  during 20A perf work — restore `:const` once a value is settled.)"
+  500)
 
 ;;; ============================== Error utilities ==============================
 
@@ -308,14 +309,23 @@
   (= stub-database-type database_type))
 
 (defn- portable-field-id-vec
-  "Compute a row's portable field id as a Clojure vector. For a row whose
-  `:parent_id` is non-nil, that's `(parent-vec ++ [name])`; otherwise
-  `(table-vec ++ [name])`. Coerces into a vector regardless of whether the
-  caller passed Clojure colls or Jackson `ArrayList`s — vectors are required as
-  map keys downstream because `PersistentHashMap`'s `hasheq` differs from
-  ArrayList's."
-  [{:keys [table_id parent_id name]}]
-  (conj (vec (or parent_id table_id)) name))
+  "Compute a row's portable field id as a Clojure vector — matches the export's
+  `format-field-id` formula. Branches per the wire's storage convention:
+
+    - **Convention A** (`:parent_id` set): `parent-vec ++ [name]` — the leaf
+      hangs off its parent's portable id.
+    - **Convention B** (`:nfc_path` set, no `:parent_id`): `table-vec ++ nfc_path
+      ++ [name]` — full storage path with the arrow-display name appended.
+    - **Flat root** (neither): `table-vec ++ [name]`.
+
+  Always returns a Clojure vector. PersistentHashMap rejects ArrayList keys past
+  the array-map size threshold (different `hasheq`), so callers normalize
+  defensively."
+  [{:keys [table_id parent_id nfc_path name]}]
+  (cond
+    parent_id (conj (vec parent_id) name)
+    nfc_path  (-> (vec table_id) (into nfc_path) (conj name))
+    :else     (conj (vec table_id) name)))
 
 (defn- decompose-portable-field-id
   "Split a portable field id `[db schema table & path]` into the column components
@@ -469,12 +479,21 @@
               ;; recurse on the parent of pid
               (recur (vec (butlast pid)) (conj missing pid)))))))))
 
-(defn- match-fields-batch
-  "Look up every existing target Field matching any (target-table-id, name,
-  target-parent-id) triple in `lines`. Scoped to `is_defective_duplicate=false`
-  but **not** `active=true` — stubs (active=false) must match a later real-row
-  arrival so phase 3 can fill them via UPDATE (§7 audit reminder, §11c). Returns
-  `{[table-id name parent-id] → existing-id}`."
+(defn- match-fields-batch-loose-in
+  "PARKED — original implementation kept for A/B comparison during 20A perf work.
+
+  Uses the loose-IN-plus-Clojure-intersect pattern: SELECT all rows where
+  `(table_id IN tbl-ids AND name IN names)` (the Cartesian over-include), then
+  filter client-side by exact `(table_id, name, parent_id)` triple. Portable
+  across Postgres / H2 / MySQL because no composite-key SQL is required.
+
+  Pathology at scale: when names overlap heavily across tables (every table
+  has `id`, `col_0`, `col_1`, …), the SELECT returns the full
+  `|tbl-ids| × |names|` cross-product intersected with whatever's already in
+  `metabase_field`. Client-side filter then drops the over-includes. Phase-3
+  per-batch cost grows super-linearly in batch size — observed 424ms/batch at
+  size 2000, 145ms at 1000, 53ms at 500. See `match-fields-batch` for the
+  replacement using a `VALUES`-table inner join."
   [lines]
   (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
         tbl-ids (into #{} (keep :table_id) lines)
@@ -490,6 +509,124 @@
               (comp (map (fn [{:keys [id table_id name parent_id]}]
                            [[table_id name parent_id] id]))
                     (filter (fn [[triple _]] (contains? triples triple))))
+              rows)))))
+
+(defn- match-fields-batch-values-join
+  "PARKED — VALUES-JOIN implementation kept for A/B comparison during 20A
+  perf work. Replaced by [[match-fields-batch]] which probes
+  `unique_field_helper` directly to take advantage of `idx_unique_field`.
+
+  Builds an `INNER JOIN` against an inline `VALUES` table containing the
+  requested triples explicitly. Same pattern phase-4 uses for the FK update
+  SQL (see [[finalize-batch-sql+params]]). Eliminates the cross-product
+  over-include of [[match-fields-batch-loose-in]] — the planner sees exact
+  triples and result rows are matches with no client-side filter.
+
+  Pathology this implementation has: the `parent_id` NULL-equality predicate
+  `(f.parent_id = v.parent_id) OR (f.parent_id IS NULL AND v.parent_id IS NULL)`
+  is semantically equivalent to `COALESCE(f.parent_id, 0) = COALESCE(v.parent_id, 0)`,
+  but the Postgres planner doesn't rewrite OR-of-IS-NULL into a helper-column
+  equality. So this implementation can't probe `idx_unique_field` (which is
+  keyed on `unique_field_helper = COALESCE(parent_id, 0)`) cleanly — the
+  planner falls back to a less-selective access pattern for the `parent_id`
+  third column."
+  [lines]
+  (let [triples (vec (into #{} (map (juxt :table_id :name :parent_id)) lines))]
+    (if (empty? triples)
+      {}
+      (let [n            (count triples)
+            tuple-sql    (fn [idx]
+                           (if (zero? idx)
+                             "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
+                             "(?, ?, ?)"))
+            values-sql   (str/join ", " (map tuple-sql (range n)))
+            params       (into [] cat triples)
+            sql          (str "SELECT f.id AS id, f.table_id AS table_id, "
+                              "       f.name AS name, f.parent_id AS parent_id "
+                              "FROM metabase_field f "
+                              "INNER JOIN (VALUES " values-sql ") AS "
+                              "  v(table_id, name, parent_id) "
+                              "  ON f.table_id = v.table_id "
+                              "  AND f.name = v.name "
+                              "  AND ((f.parent_id = v.parent_id) "
+                              "       OR (f.parent_id IS NULL AND v.parent_id IS NULL)) "
+                              "WHERE f.is_defective_duplicate = false")
+            rows         (t2/query (into [sql] params))]
+        (into {}
+              (map (fn [{:keys [id table_id name parent_id]}]
+                     [[table_id name parent_id] id]))
+              rows)))))
+
+(defn- match-fields-batch
+  "Look up every existing target Field matching any (target-table-id, name,
+  target-parent-id) triple in `lines`. Scoped to `is_defective_duplicate=false`
+  but **not** `active=true` — stubs (active=false) must match a later real-row
+  arrival so phase 3 can fill them via UPDATE (§7 audit reminder, §11c). Returns
+  `{[table-id name parent-id] → existing-id}`.
+
+  Probes `idx_unique_field` directly. The unique index is over
+  `(name, table_id, unique_field_helper)` where `unique_field_helper` is a
+  STORED GENERATED column equal to `COALESCE(parent_id, 0)` for non-defective
+  rows (NULL for defective rows). We compute `helper = (or parent_id 0)`
+  client-side and JOIN against the index's three columns directly:
+
+    - `f.name = v.name`
+    - `f.table_id = v.table_id`
+    - `f.unique_field_helper = v.helper`
+
+  All three predicates are non-NULL integer/text equalities aligned with the
+  index's column order, so the planner does a single index probe per batch
+  row with no heap recheck. No `IS NOT DISTINCT FROM`, no
+  `OR (both NULL)` — sidesteps the planner's blind spot in
+  [[match-fields-batch-values-join]] and the over-include in
+  [[match-fields-batch-loose-in]].
+
+  Defective rows (`is_defective_duplicate=true`) have `helper = NULL`, which
+  never equals any probe value, so they're naturally excluded — no explicit
+  WHERE clause needed.
+
+  Portability: `VALUES (...)` is standard SQL across Postgres / H2 / MySQL
+  8+. `unique_field_helper` is defined in the migration with separate DDL
+  for each DBMS (`STORED` for Postgres/MySQL, plain GENERATED ALWAYS for
+  H2). The column is queryable identically from all three.
+
+  See `MATCH_FIELDS_BATCH_OPTIMIZATION_ANALYSIS.md` §2-§4 for the derivation."
+  [lines]
+  (let [;; B' is the deduplicated set of probe quads:
+        ;;   [table_id name parent_id helper]
+        ;; helper = (or parent_id 0); we keep parent_id to reconstruct the
+        ;; result-map key in the original triple shape.
+        quads (into #{}
+                    (map (fn [{:keys [table_id name parent_id]}]
+                           [table_id name parent_id (or parent_id 0)]))
+                    lines)]
+    (if (empty? quads)
+      {}
+      (let [quads-v    (vec quads)
+            n          (count quads-v)
+            tuple-sql  (fn [idx]
+                         (if (zero? idx)
+                           "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
+                           "(?, ?, ?)"))
+            values-sql (str/join ", " (map tuple-sql (range n)))
+            ;; Send (table_id, name, helper) per row. parent_id is local-only.
+            params     (into []
+                             (mapcat (fn [[t nm _p h]] [t nm h]))
+                             quads-v)
+            sql        (str "SELECT f.id AS id, "
+                            "       f.table_id AS table_id, "
+                            "       f.name AS name, "
+                            "       f.parent_id AS parent_id "
+                            "FROM metabase_field f "
+                            "INNER JOIN (VALUES " values-sql ") AS "
+                            "  v(table_id, name, helper) "
+                            "  ON f.name = v.name "
+                            "  AND f.table_id = v.table_id "
+                            "  AND f.unique_field_helper = v.helper")
+            rows       (t2/query (into [sql] params))]
+        (into {}
+              (map (fn [{:keys [id table_id name parent_id]}]
+                     [[table_id name parent_id] id]))
               rows)))))
 
 (defn- field-clobber
@@ -509,52 +646,71 @@
     (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
 
 (defn- new-field-row
-  "Row for inserting a real field during phase 3. `parent_id` is the resolved
-  target int (or nil for root fields); `is_defective_duplicate` is always FALSE
-  per §11a. `fk_target_field_id` starts NULL — phase 4 fills it in.
+  "Row for inserting a real field during phase 3. `resolved-parent-id` is the
+  resolved target int (or nil for root / Convention-B leaves); `store-nfc-path`
+  is the storage `nfc_path` to write (a vector or nil). `is_defective_duplicate`
+  is always FALSE per §11a. `fk_target_field_id` starts NULL — phase 4 fills it
+  in.
 
-  Includes `nfc_path` so a row inserted by phase 3 looks identical to a
-  sync-inserted row (and so future stub lookups by parent ancestry hit it)."
+  The caller (`classify-fields-batch`) computes `store-nfc-path` per the
+  storage convention: derived from `:parent_id` for Convention A, taken
+  verbatim from `:nfc_path` for Convention B, nil for flat root."
   [{:keys [name base_type database_type description effective_type
-           semantic_type coercion_strategy parent_id]}
+           semantic_type coercion_strategy]}
    target-table-id
-   resolved-parent-id]
-  (let [anc-path (when (seq parent_id) (vec (drop 3 parent_id)))]
-    (cond-> {:table_id               target-table-id
-             :name                   name
-             :base_type              base_type
-             :nfc_path               (encode-nfc-path anc-path)
-             :parent_id              resolved-parent-id
-             :fk_target_field_id     nil
-             :is_defective_duplicate false
-             :active                 true}
-      (some? database_type)     (assoc :database_type database_type)
-      (some? description)       (assoc :description description)
-      (some? effective_type)    (assoc :effective_type effective_type)
-      (some? semantic_type)     (assoc :semantic_type semantic_type)
-      (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy))))
+   resolved-parent-id
+   store-nfc-path]
+  (cond-> {:table_id               target-table-id
+           :name                   name
+           :base_type              base_type
+           :nfc_path               (encode-nfc-path store-nfc-path)
+           :parent_id              resolved-parent-id
+           :fk_target_field_id     nil
+           :is_defective_duplicate false
+           :active                 true}
+    (some? database_type)     (assoc :database_type database_type)
+    (some? description)       (assoc :description description)
+    (some? effective_type)    (assoc :effective_type effective_type)
+    (some? semantic_type)     (assoc :semantic_type semantic_type)
+    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
 
 (defn- field-match-key
   [{:keys [target-table-id resolved-parent row]}]
   [target-table-id (:name row) resolved-parent])
 
 (defn- classify-fields-batch
-  "Resolve `:target-table-id` and `:resolved-parent` for each row, inserting
-  stubs as needed. Returns `[{:line :row :target-table-id :resolved-parent}]`,
+  "Resolve `:target-table-id`, `:resolved-parent`, and `:store-nfc-path` for
+  each row. Branches on the wire's storage convention:
+
+    - `:parent_id` present (Convention A) — resolve via the per-batch parent
+      cache (with stubs for missing ancestors per §11c). `:store-nfc-path` is
+      the parent's path stripped of the table prefix.
+    - `:nfc_path` present and `:parent_id` absent (Convention B) — flat-leaf
+      from JSON unfolding. `:resolved-parent` is nil (no parent row exists in
+      the source); `:store-nfc-path` is the wire `:nfc_path` verbatim.
+    - Both absent (flat root) — both nil.
+
+  Returns `[{:line :row :target-table-id :resolved-parent :store-nfc-path}]`,
   preserving input order. Drops rows whose `:table_id` doesn't resolve — the
   caller emits `:no-target-table` for those by re-scanning the original batch."
   [batch table-id-map parent-cache!]
   (into []
         (keep (fn [[ln line]]
                 (when-let [tgt-tbl (get table-id-map (vec (:table_id line)))]
-                  (let [parent-vec (some-> (:parent_id line) vec)
+                  (let [parent-vec      (some-> (:parent_id line) vec)
+                        wire-nfc-path   (some-> (:nfc_path line) vec)
                         resolved-parent (when parent-vec
                                           (or (get @parent-cache! parent-vec)
-                                              (ensure-ancestors! parent-vec tgt-tbl parent-cache!)))]
+                                              (ensure-ancestors! parent-vec tgt-tbl parent-cache!)))
+                        store-nfc-path  (cond
+                                          parent-vec    (vec (drop 3 parent-vec))
+                                          wire-nfc-path wire-nfc-path
+                                          :else         nil)]
                     {:line             ln
                      :row              line
                      :target-table-id  tgt-tbl
-                     :resolved-parent  resolved-parent}))))
+                     :resolved-parent  resolved-parent
+                     :store-nfc-path   store-nfc-path}))))
         batch))
 
 (defn- clobber-matched-fields!
@@ -575,8 +731,8 @@
   [in-rows match-idx]
   (let [unmatched   (filterv (fn [in-row] (not (contains? match-idx (field-match-key in-row))))
                              in-rows)
-        insert-rows (mapv (fn [{:keys [target-table-id resolved-parent row]}]
-                            (new-field-row row target-table-id resolved-parent))
+        insert-rows (mapv (fn [{:keys [target-table-id resolved-parent store-nfc-path row]}]
+                            (new-field-row row target-table-id resolved-parent store-nfc-path))
                           unmatched)
         new-ids     (when (seq insert-rows)
                       (t2/insert-returning-pks! :model/Field insert-rows))]

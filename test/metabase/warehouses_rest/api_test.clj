@@ -903,36 +903,79 @@
                                 (filter #(= ["audit-db" "PUBLIC" "audit_table"] (vec (:table_id %)))
                                         fields))))))))
 
-(deftest databases-metadata-nested-fields-portable-id-test
-  (testing "GET /api/database/metadata — nested fields encode their full path
-            (nfc_path appended with leaf name) and their parent_id resolves to
-            the parent's own portable id"
+(deftest databases-metadata-convention-a-nested-fields-test
+  (testing "GET /api/database/metadata — Convention A (BigQuery RECORD-style):
+            storage has both :parent_id (int) AND :nfc_path (parent ancestry).
+            Wire emits :parent_id portable, no :nfc_path."
     (mt/with-temp [:model/Database _              {:name "nest-db" :engine :h2}
                    :model/Table    {t-id :id}     {:db_id (t2/select-one-fn :id :model/Database :name "nest-db")
                                                    :name "events" :schema "PUBLIC"}
-                   :model/Field    _              {:table_id t-id :name "address"
+                   :model/Field    {addr-id :id}  {:table_id t-id :name "address"
                                                    :base_type :type/Structured
                                                    :database_type "JSON"}
-                   :model/Field    _              {:table_id t-id :name "zip" :nfc_path ["address"]
+                   :model/Field    {zip-id :id}   {:table_id t-id :name "zip" :nfc_path ["address"]
+                                                   :parent_id addr-id
                                                    :base_type :type/Text :database_type "VARCHAR"}
                    :model/Field    _              {:table_id t-id :name "code"
                                                    :nfc_path ["address" "zip"]
+                                                   :parent_id zip-id
                                                    :base_type :type/Text :database_type "VARCHAR"}]
       (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")
             tbl-id ["nest-db" "PUBLIC" "events"]
             address (find-field fields tbl-id "address" nil)
             zip     (find-field fields tbl-id "zip"     (into tbl-id ["address"]))
             code    (find-field fields tbl-id "code"    (into tbl-id ["address" "zip"]))]
-        (testing "depth-1 nested field — portable id appends leaf name to nfc_path"
+        (testing "depth-1 nested field — :parent_id portable is [db schema table parent-name]"
           (is (some? zip))
           (is (= (into tbl-id ["address"]) (vec (:parent_id zip))))
+          (is (not (contains? zip :nfc_path))
+              "Convention A wire omits :nfc_path (the importer derives it from :parent_id)")
           (is (= "zip" (:name zip))))
-        (testing "depth-2 nested field — parent_id resolves to the depth-1 parent's portable id"
+        (testing "depth-2 nested field — :parent_id resolves to the depth-1 parent's portable id"
           (is (some? code))
-          (is (= (into tbl-id ["address" "zip"]) (vec (:parent_id code)))))
-        (testing "root field — no :parent_id key"
+          (is (= (into tbl-id ["address" "zip"]) (vec (:parent_id code))))
+          (is (not (contains? code :nfc_path))))
+        (testing "root field — no :parent_id, no :nfc_path"
           (is (some? address))
-          (is (not (contains? address :parent_id))))))))
+          (is (not (contains? address :parent_id)))
+          (is (not (contains? address :nfc_path))))))))
+
+(deftest databases-metadata-convention-b-json-leaf-test
+  (testing "GET /api/database/metadata — Convention B (Postgres JSON-unfolded):
+            storage has :nfc_path (full path) but :parent_id is NULL. Wire emits
+            :nfc_path verbatim, no :parent_id — there's no parent row to point at."
+    (mt/with-temp [:model/Database _              {:name "json-flat-db" :engine :h2}
+                   :model/Table    {t-id :id}     {:db_id (t2/select-one-fn :id :model/Database :name "json-flat-db")
+                                                   :name "events" :schema "PUBLIC"}
+                   :model/Field    _              {:table_id t-id :name "payload"
+                                                   :base_type :type/JSON
+                                                   :database_type "JSONB"}
+                   ;; Convention B leaves: nfc_path is the FULL path; parent_id is nil.
+                   :model/Field    _              {:table_id t-id :name "payload → address → zip"
+                                                   :nfc_path ["payload" "address" "zip"]
+                                                   :base_type :type/Text :database_type "VARCHAR"}
+                   :model/Field    _              {:table_id t-id :name "payload → address → street"
+                                                   :nfc_path ["payload" "address" "street"]
+                                                   :base_type :type/Text :database_type "VARCHAR"}]
+      (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")
+            warehouse-fields (filter (fn [f] (= ["json-flat-db" "PUBLIC" "events"] (vec (:table_id f))))
+                                     fields)
+            payload (first (filter #(= "payload" (:name %)) warehouse-fields))
+            zip     (first (filter #(= "payload → address → zip" (:name %)) warehouse-fields))
+            street  (first (filter #(= "payload → address → street" (:name %)) warehouse-fields))]
+        (testing "the JSON column itself is a flat root — no :parent_id, no :nfc_path"
+          (is (some? payload))
+          (is (not (contains? payload :parent_id)))
+          (is (not (contains? payload :nfc_path))))
+        (testing "Convention B leaves carry :nfc_path verbatim from storage"
+          (is (some? zip))
+          (is (= ["payload" "address" "zip"] (vec (:nfc_path zip))))
+          (is (not (contains? zip :parent_id))
+              "Convention B wire omits :parent_id (no parent row exists in source)"))
+        (testing "multiple Convention B leaves under the same JSON column"
+          (is (some? street))
+          (is (= ["payload" "address" "street"] (vec (:nfc_path street))))
+          (is (not (contains? street :parent_id))))))))
 
 (deftest databases-metadata-fk-target-visibility-test
   (testing "GET /api/database/metadata — when a field's fk_target points at a

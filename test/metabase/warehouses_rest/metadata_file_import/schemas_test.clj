@@ -214,3 +214,35 @@
                     :effective_type "type/Float"
                     :semantic_type "type/Currency"
                     :coercion_strategy "Coercion/UNIXSeconds->DateTime"})))
+
+;;; Convention B (Postgres JSON-unfolded leaves) — wire carries `:nfc_path`
+;;; verbatim from storage instead of `:parent_id`. The two are mutually
+;;; exclusive; both are optional.
+
+(deftest field-info-accepts-convention-b-leaf-with-nfc-path-test
+  (testing "Convention B: row carries :nfc_path, no :parent_id"
+    (is (mr/validate ::schemas/field-info
+                     {:table_id valid-table-id
+                      :name "payload → address → zip"
+                      :nfc_path ["payload" "address" "zip"]
+                      :base_type "type/Text"})))
+  (testing "Jackson ArrayList for :nfc_path also validates"
+    (is (mr/validate ::schemas/field-info
+                     {:table_id valid-table-id
+                      :name "payload → address → zip"
+                      :nfc_path (al ["payload" "address" "zip"])
+                      :base_type "type/Text"}))))
+
+(deftest field-info-rejects-malformed-nfc-path-test
+  (is (not (mr/validate ::schemas/field-info
+                        {:table_id valid-table-id
+                         :name "x"
+                         :nfc_path "not-a-list"
+                         :base_type "type/Text"}))
+      ":nfc_path must be a list/vector")
+  (is (not (mr/validate ::schemas/field-info
+                        {:table_id valid-table-id
+                         :name "x"
+                         :nfc_path [1 2 3]
+                         :base_type "type/Text"}))
+      "elements must be strings"))

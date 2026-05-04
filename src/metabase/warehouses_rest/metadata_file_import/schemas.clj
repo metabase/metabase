@@ -51,11 +51,22 @@
    [:description {:optional true} :string]])
 
 (mr/def ::field-info
+  ;; `:parent_id` and `:nfc_path` are mutually exclusive optional fields:
+  ;;   - Convention A (BigQuery RECORDs, Mongo nested): wire carries `:parent_id`
+  ;;     (a portable parent field id). Importer resolves to int via natural-key
+  ;;     SELECT, stubs missing ancestors per §11c.
+  ;;   - Convention B (Postgres JSONB unfolding): wire carries `:nfc_path` (the
+  ;;     full path verbatim from storage). Importer inserts with `parent_id=nil`
+  ;;     and stores `nfc_path` as-is for the QP's JSON-path navigation.
+  ;;   - Flat root field (e.g. a regular column): both absent.
   [:map
    [:table_id ::portable-table-id]
    [:name :string]
    [:base_type :string]
    [:parent_id {:optional true} ::portable-field-id]
+   [:nfc_path  {:optional true} [:fn {:error/message "must be a sequence of strings"}
+                                 (fn [x] (and (instance? java.util.List x)
+                                              (every? string? x)))]]
    [:fk_target_field_id {:optional true} ::portable-field-id]
    [:description {:optional true} :string]
    [:database_type {:optional true} :string]

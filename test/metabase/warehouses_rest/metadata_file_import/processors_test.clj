@@ -510,6 +510,56 @@
         (is (= :type/Structured (:base_type row)) "base_type clobbered to real")
         (is (= "json" (:database_type row))    "database_type clobbered from __stub__ to real")))))
 
+;;; ---------- Convention B (JSON-unfolded leaves) ----------
+
+(deftest process-fields-convention-b-inserts-flat-leaf-with-nfc-path-test
+  (testing "Convention B leaf: wire row has :nfc_path but no :parent_id. Inserts
+            with parent_id=NULL and stores nfc_path verbatim. NO stubs created."
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-conv-b-db" :engine :postgres}
+                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
+      (let [batch [[1 {:table_id ["fld-conv-b-db" "public" "events"]
+                       :name "payload → address → zip"
+                       :nfc_path ["payload" "address" "zip"]
+                       :base_type "type/Text"
+                       :database_type "text"}]]
+            [r]   (into [] (processors/process-fields! batch))
+            row   (t2/select-one :model/Field :id (:target-id r))]
+        (is (= :inserted (:status r)))
+        (is (= "payload → address → zip" (:name row)))
+        (is (nil? (:parent_id row))
+            "parent_id stays NULL — Convention B leaves have no parent row")
+        (is (= ["payload" "address" "zip"]
+               (json/decode (:nfc_path
+                             (first (t2/query
+                                     ["SELECT nfc_path FROM metabase_field WHERE id = ?"
+                                      (:target-id r)])))))
+            "nfc_path is stored verbatim from the wire — preserves QP's JSON-path navigation")
+        (is (zero? (count (t2/query
+                           [(str "SELECT id FROM metabase_field WHERE database_type = '__stub__' "
+                                 "AND table_id = ?")
+                            tbl-id])))
+            "no stubs were created — Convention B doesn't trigger ensure-ancestors!")))))
+
+(deftest process-fields-convention-b-idempotent-test
+  (testing "Re-importing a Convention B leaf matches the existing row by
+            (table_id, name, parent_id=NULL); no duplicate, no new stubs."
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-conv-b-idem-db" :engine :postgres}
+                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
+      (let [batch [[1 {:table_id ["fld-conv-b-idem-db" "public" "events"]
+                       :name "payload → address → zip"
+                       :nfc_path ["payload" "address" "zip"]
+                       :base_type "type/Text"
+                       :database_type "text"}]]
+            [r1] (into [] (processors/process-fields! batch))
+            [r2] (into [] (processors/process-fields! batch))]
+        (is (= :inserted (:status r1)))
+        (is (= :matched (:status r2))
+            "second pass matches the existing Convention B leaf")
+        (is (= (:target-id r1) (:target-id r2))
+            "same int id — no duplicate row inserted")
+        (is (= 1 (t2/count :model/Field :table_id tbl-id))
+            "exactly one Field row exists, no stubs")))))
+
 ;;; ======================== process-fields-fk-resolve! ========================
 ;;;
 ;;; Tuple shape: `[ln row]`. Bare batches — the processor self-resolves both
