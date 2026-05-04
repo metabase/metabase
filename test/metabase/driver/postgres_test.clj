@@ -38,7 +38,7 @@
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
