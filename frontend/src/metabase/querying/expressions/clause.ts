@@ -2,23 +2,21 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
-
 import {
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
+  type MBQLClauseDefinition,
+  type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
-} from "./config";
-import type { MBQLClauseDefinition, MBQLClauseFunctionConfig } from "./types";
+} from "metabase-lib";
+import type Database from "metabase-lib/v1/metadata/Database";
 
-export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
-
-export function isDefinedClause(name: string): name is DefinedClauseName {
+export function isDefinedClause(name: string): name is Lib.DefinedClauseName {
   return name in MBQL_CLAUSES;
 }
 
 export function getClauseDefinition(
-  name: DefinedClauseName,
+  name: Lib.DefinedClauseName,
 ): MBQLClauseFunctionConfig;
 export function getClauseDefinition(
   name: string,
@@ -49,13 +47,13 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
   Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
     // case-insensitive
     displayName.toLowerCase(),
-    mbql as DefinedClauseName,
+    mbql as Lib.DefinedClauseName,
   ]),
 );
 
 export function getMBQLName(
   expressionName: string,
-): DefinedClauseName | undefined {
+): Lib.DefinedClauseName | undefined {
   // case-insensitive
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }

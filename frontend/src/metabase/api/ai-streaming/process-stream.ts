@@ -8,6 +8,7 @@ import {
   dataPartSchema,
   finishPartSchema,
   knownDataPartTypes,
+  startPartSchema,
   toolCallPartSchema,
   toolResultPartSchema,
 } from "./schemas";
@@ -17,6 +18,7 @@ const StreamingPartTypeRegistry = {
   DATA: "2",
   ERROR: "3",
   FINISH_MESSAGE: "d",
+  START_MESSAGE: "f",
   TOOL_CALL: "9",
   TOOL_RESULT: "a",
 } as const;
@@ -87,6 +89,11 @@ function parseDataStreamPart(line: string) {
       code,
       name: "finish_message" as const,
       value: finishPartSchema.validateSync(jsonValue, { strict: true }),
+    }))
+    .with(StreamingPartTypeRegistry.START_MESSAGE, (code) => ({
+      code,
+      name: "start_message" as const,
+      value: startPartSchema.validateSync(jsonValue, { strict: true }),
     }))
     .exhaustive();
 }
@@ -188,6 +195,7 @@ type StreamPartValue<name extends ParsedStreamPartName> = Extract<
 >["value"];
 
 export type AIStreamingConfig = {
+  onStartMessagePart?: (part: StreamPartValue<"start_message">) => void;
   onTextPart?: (part: StreamPartValue<"text">) => void;
   // callback is only called if this version of the client is aware of the received data part type
   onDataPart?: (part: KnownDataPart) => void;
@@ -247,6 +255,9 @@ export async function processChatResponse(
       for (const streamPart of streamParts) {
         parsedStreamParts.push(streamPart);
 
+        if (streamPart.name === "start_message") {
+          config.onStartMessagePart?.(streamPart.value);
+        }
         if (streamPart.name === "text") {
           config.onTextPart?.(streamPart.value);
         }

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 import { useCollectionPath } from "../../hooks/use-collection-path/useCollectionPath";

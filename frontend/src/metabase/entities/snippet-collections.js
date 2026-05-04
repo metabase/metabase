@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   Collections,
   getExpandedCollectionsById,
@@ -11,7 +10,7 @@ import {
 } from "metabase/entities/collections";
 import { SnippetCollectionSchema } from "metabase/schema";
 
-import { createEntity, undo } from "./utils";
+import { createEntity } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -40,20 +39,6 @@ export const SnippetCollections = createEntity({
   ),
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      SnippetCollections.actions.update(
-        { id },
-        { archived },
-        undo(opts, "folder", archived ? "archived" : "unarchived"),
-      ),
-
-    setCollection: ({ id }, collection, opts) =>
-      SnippetCollections.actions.update(
-        { id },
-        { parent_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "folder", "moved"),
-      ),
-
     delete: null, // not implemented
   },
 

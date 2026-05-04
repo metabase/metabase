@@ -1309,23 +1309,34 @@
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
-          (is (= {"start_time" {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "22:00:00"
-                                                         :latest   "22:00:00"}}}
-                  "end_time"   {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "09:00:00"
-                                                         :latest   "09:00:00"}}}
-                  "reason"     {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/Text {:percent-json   0.0
-                                                     :percent-url    0.0
-                                                     :percent-email  0.0
-                                                     :percent-state  0.0
-                                                     :average-length 12.0}}}}
-                 (t2/select-fn->fn :name :fingerprint :model/Field
-                                   :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database))))))))))
+          (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
+                                                :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
+                ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
+                ;; shape (#5911), not the interestingness metrics.
+                extended-keys [:hour-distribution :weekday-distribution :skewness
+                               :mode-fraction :top-3-fraction
+                               :mode-fraction-by-weekday :mode-fraction-by-hour
+                               :min-length :max-length :percent-blank]
+                trim-type     (fn [fp]
+                                (update fp :type
+                                        (fn [types]
+                                          (update-vals types #(apply dissoc % extended-keys)))))]
+            (is (= {"start_time" {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "22:00:00"
+                                                           :latest   "22:00:00"}}}
+                    "end_time"   {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "09:00:00"
+                                                           :latest   "09:00:00"}}}
+                    "reason"     {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/Text {:percent-json   0.0
+                                                       :percent-url    0.0
+                                                       :percent-email  0.0
+                                                       :percent-state  0.0
+                                                       :average-length 12.0}}}}
+                   (update-vals fingerprints trim-type)))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 

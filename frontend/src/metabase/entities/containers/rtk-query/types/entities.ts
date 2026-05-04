@@ -2,7 +2,6 @@ import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
 import type { Dispatch, State } from "metabase/redux/store";
-import type { Collection } from "metabase-types/api";
 
 import type { UseQuery } from "./rtk";
 
@@ -45,7 +44,6 @@ export type EntityType =
   | "documents"
   | "fields"
   | "groups"
-  | "indexedEntities"
   | "persistedModels"
   | "pulses"
   | "questions"
@@ -93,11 +91,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   nameOne: string;
   normalize: (object: unknown) => { object: unknown };
   normalizeList: (list: unknown) => { list: unknown };
-  objectSelectors: {
-    getName: (entity: Entity | EntityWrapper) => string;
-    getColor: (entity: Entity | EntityWrapper) => string | undefined;
-    getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
-  };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
       action?: string;

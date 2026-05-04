@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   type ScheduleChangeProp,
   SchedulePicker,
@@ -22,13 +21,14 @@ import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Icon, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Channel,
-  ChannelApiResponse,
-  ChannelSpec,
-  Dashboard,
-  ScheduleSettings,
-  User,
+import {
+  type Channel,
+  type ChannelApiResponse,
+  type ChannelSpec,
+  type Dashboard,
+  DataPermissionValue,
+  type ScheduleSettings,
+  type User,
 } from "metabase-types/api";
 
 import { CaveatMessage } from "./CaveatMessage";

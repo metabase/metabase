@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
-import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import {
@@ -56,7 +55,7 @@ export function FilterPicker({
   );
   const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
   const [initialExpressionClause, setInitialExpressionClause] =
-    useState<DefinedClauseName | null>(null);
+    useState<Lib.DefinedClauseName | null>(null);
   const availableColumns = useMemo(
     () => Lib.expressionableColumns(query, stageIndex),
     [query, stageIndex],
@@ -92,7 +91,7 @@ export function FilterPicker({
     handleChange(item.segment);
   };
 
-  const handleExpressionSelect = (clause?: DefinedClauseName) => {
+  const handleExpressionSelect = (clause?: Lib.DefinedClauseName) => {
     setInitialExpressionClause(clause ?? null);
     openExpressionEditor();
   };
