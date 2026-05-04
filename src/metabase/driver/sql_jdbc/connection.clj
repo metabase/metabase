@@ -1,7 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
-  (:refer-clojure :exclude [get-in select-keys])
+  (:refer-clojure :exclude [get-in mapv select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
@@ -15,7 +15,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in select-keys]]
+   [metabase.util.performance :refer [get-in mapv select-keys]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
