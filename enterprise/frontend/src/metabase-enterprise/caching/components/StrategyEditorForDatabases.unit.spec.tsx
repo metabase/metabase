@@ -245,3 +245,34 @@ describe("StrategyEditorForDatabases", () => {
     expect(result).toBe("Duration: 5h");
   });
 });
+
+describe("StrategyEditorForDatabases (cache_preemptive enabled)", () => {
+  beforeEach(() => {
+    setup({
+      tokenFeatures: createMockTokenFeatures({
+        cache_granular_controls: true,
+        cache_preemptive: true,
+      }),
+    });
+  });
+
+  // The preemptive caching switch only renders for question/dashboard targets.
+  // Root and database forms must not show it, regardless of strategy.
+  it.each([
+    ["default policy", /Edit default policy/, /Duration/i],
+    ["default policy", /Edit default policy/, /Schedule/i],
+    ["a database", /Edit policy for database 'Database 1'/, /Duration/i],
+    ["a database", /Edit policy for database 'Database 1'/, /Schedule/i],
+  ])(
+    "does not show the preemptive caching switch for %s with %p strategy",
+    async (_label, launcherLabel, strategyName) => {
+      await userEvent.click(await screen.findByLabelText(launcherLabel));
+      await userEvent.click(
+        await screen.findByRole("radio", { name: strategyName }),
+      );
+      expect(
+        screen.queryByTestId("preemptive-caching-switch"),
+      ).not.toBeInTheDocument();
+    },
+  );
+});
