@@ -15,13 +15,10 @@ import type {
   Exploration,
   ExplorationQueryId,
   ExplorationQueryStatus,
-  ExplorationThread,
-} from "metabase-types/api";
-
-import type {
   ExplorationQueryWithName,
+  ExplorationThread,
   ThreadsWithSortedQueries,
-} from "../../pages/ExplorationPage";
+} from "metabase-types/api";
 
 import S from "./ExplorationSidebar.module.css";
 

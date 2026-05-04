@@ -138,3 +138,11 @@ export interface Exploration {
   creator?: ExplorationCreator;
   threads?: ExplorationThread[];
 }
+
+export type ExplorationQueryWithName = Omit<ExplorationQuery, "name"> & {
+  name: string; // we only render queries with names
+};
+
+export type ThreadsWithSortedQueries = Omit<ExplorationThread, "queries"> & {
+  queries: ExplorationQueryWithName[];
+};

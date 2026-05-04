@@ -16,31 +16,37 @@ export const createMockMetricDimension = (
 });
 
 export const createMockMetric = (opts?: Partial<Metric>): Metric => {
-  const dimension = createMockMetricDimension();
-  return {
+  const merged: Metric = {
     id: 1,
     name: "Metric",
     description: null,
-    dimension_ids: [dimension.id],
-    dimensions: [dimension],
     dimension_mappings: [],
     collection_id: null,
     ...opts,
+  };
+  const dimensions = merged.dimensions ?? [createMockMetricDimension()];
+  return {
+    ...merged,
+    dimensions,
+    dimension_ids: opts?.dimension_ids ?? dimensions.map((d) => d.id),
   };
 };
 
 export const createMockNormalizedMetric = (
   opts?: Partial<NormalizedMetric>,
 ): NormalizedMetric => {
-  const dimension = createMockMetricDimension();
-  return {
+  const merged: NormalizedMetric = {
     id: 1,
     name: "Metric",
     description: null,
-    dimension_ids: [dimension.id],
-    dimensions: [dimension],
     dimension_mappings: [],
     collection_id: null,
     ...opts,
+  };
+  const dimensions = merged.dimensions ?? [createMockMetricDimension()];
+  return {
+    ...merged,
+    dimensions,
+    dimension_ids: opts?.dimension_ids ?? dimensions.map((d) => d.id),
   };
 };

@@ -4,16 +4,17 @@
 
 (def type-hierarchies
   "Type hierarchy definitions for [[metabase.lib-metric.types.isa/field-type?]].
-   Each key maps to either :effective-type or :semantic-type with a vector of types."
-  {::temporal     {:effective-type [:type/Temporal]}
-   ::number       {:effective-type [:type/Number]}
-   ::boolean      {:effective-type [:type/Boolean]}
-   ::string       {:effective-type [:type/Text]}
-   ::string-like  {:effective-type [:type/TextLike]}
-   ::coordinate   {:semantic-type [:type/Coordinate]}
-   ::location     {:semantic-type [:type/Address]}
-   ::foreign-key  {:semantic-type [:type/FK]}
-   ::primary-key  {:semantic-type [:type/PK]}
-   ::time         {:effective-type [:type/Time]}
-   ::date         {:effective-type [:type/HasDate]}
-   ::category     {:semantic-type [:type/Category]}})
+   Each key maps to either :effective_type or :semantic_type with a vector of types.
+   Keys are snake_case to match the canonical lib-metric dimension shape."
+  {::temporal     {:effective_type [:type/Temporal]}
+   ::number       {:effective_type [:type/Number]}
+   ::boolean      {:effective_type [:type/Boolean]}
+   ::string       {:effective_type [:type/Text]}
+   ::string-like  {:effective_type [:type/TextLike]}
+   ::coordinate   {:semantic_type [:type/Coordinate]}
+   ::location     {:semantic_type [:type/Address]}
+   ::foreign-key  {:semantic_type [:type/FK]}
+   ::primary-key  {:semantic_type [:type/PK]}
+   ::time         {:effective_type [:type/Time]}
+   ::date         {:effective_type [:type/HasDate]}
+   ::category     {:semantic_type [:type/Category]}})

@@ -109,8 +109,7 @@
       (:semantic_type converted)    (update :semantic_type keyword)
       (:base-type converted)        (update :base-type keyword)
       (:has_field_values converted) (update :has_field_values keyword)
-      (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
-      (:group converted)            (update :group u/normalize-map))))
+      (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs))))))
 
 (defn- derive-sources-from-mapping
   "Derive sources from a dimension mapping's target field ID.

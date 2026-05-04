@@ -11,8 +11,10 @@ import type {
   Exploration,
   ExplorationQuery,
   ExplorationQueryId,
+  ExplorationQueryWithName,
   ExplorationThread,
   ExplorationThreadId,
+  ThreadsWithSortedQueries,
   Timeline,
   TimelineEvent,
   TimelineId,
@@ -28,14 +30,6 @@ const QUERY_POLL_INTERVAL_MS = 2000;
 interface ExplorationPageProps {
   params: { id: string };
 }
-
-export type ExplorationQueryWithName = Omit<ExplorationQuery, "name"> & {
-  name: string; // we only render queries with names
-};
-
-export type ThreadsWithSortedQueries = Omit<ExplorationThread, "queries"> & {
-  queries: ExplorationQueryWithName[];
-};
 
 function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   if (!exploration?.threads) {

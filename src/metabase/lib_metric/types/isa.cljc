@@ -6,11 +6,11 @@
 
    1. **Effective-type predicates** (`temporal?`, `numeric?`, `boolean?`, `string?`,
       `string-like?`, `category?`): route through [[field-type?]] which checks
-      `:effective-type` (and optionally `:semantic-type`) via
+      `:effective_type` (and optionally `:semantic_type`) via
       [[constants/type-hierarchies]]. These answer \"what kind of data is in this column?\".
 
    2. **Semantic-type predicates** (`coordinate?`, `foreign-key?`, `primary-key?`,
-      `location?`, `URL?`, `entity-name?`, etc.): check `:semantic-type` directly
+      `location?`, `URL?`, `entity-name?`, etc.): check `:semantic_type` directly
       with `clojure.core/isa?`. These answer \"what does this column *mean*?\"."
   (:refer-clojure :exclude [boolean? string?])
   (:require
@@ -22,9 +22,9 @@
 (comment metabase.types.core/keep-me)
 
 (defn column-type
-  "Returns the :effective-type of `column`, if set. Otherwise, returns the :base-type."
+  "Returns the :effective_type of `column`, if set. Otherwise, returns the :base-type."
   [column]
-  (or (:effective-type column) (:base-type column)))
+  (or (:effective_type column) (:base-type column)))
 
 (defn field-type?
   "Returns true if `column` matches the type definition for `category`.
@@ -36,11 +36,11 @@
     (let [type-definition (constants/type-hierarchies category)
           col             (cond-> column
                             (and (map? column)
-                                 (not (:effective-type column)))
-                            (assoc :effective-type (:base-type column)))]
+                                 (not (:effective_type column)))
+                            (assoc :effective_type (:base-type column)))]
       (clojure.core/boolean
        (perf/some (fn [[type-key types]]
-                    (and (#{:effective-type :semantic-type} type-key)
+                    (and (#{:effective_type :semantic_type} type-key)
                          (perf/some #(clojure.core/isa? (type-key col) %) types)))
                   type-definition)))))
 
@@ -78,37 +78,37 @@
   "Is `column` a coordinate?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Coordinate)))
+   (clojure.core/isa? (:semantic_type column) :type/Coordinate)))
 
 (defn latitude?
   "Is `column` a latitude?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Latitude)))
+   (clojure.core/isa? (:semantic_type column) :type/Latitude)))
 
 (defn longitude?
   "Is `column` a longitude?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Longitude)))
+   (clojure.core/isa? (:semantic_type column) :type/Longitude)))
 
 (defn location?
   "Is `column` a location/address?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Address)))
+   (clojure.core/isa? (:semantic_type column) :type/Address)))
 
 (defn foreign-key?
   "Is `column` a foreign key?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/FK)))
+   (clojure.core/isa? (:semantic_type column) :type/FK)))
 
 (defn primary-key?
   "Is `column` a primary key?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/PK)))
+   (clojure.core/isa? (:semantic_type column) :type/PK)))
 
 (defn time?
   "Is `column` a time (without date)?"
@@ -136,34 +136,34 @@
   "Is `column` a URL?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/URL)))
+   (clojure.core/isa? (:semantic_type column) :type/URL)))
 
 (defn entity-name?
   "Is `column` an entity name?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Name)))
+   (clojure.core/isa? (:semantic_type column) :type/Name)))
 
 (defn title?
   "Is `column` a title?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Title)))
+   (clojure.core/isa? (:semantic_type column) :type/Title)))
 
 (defn state?
   "Is `column` a state?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/State)))
+   (clojure.core/isa? (:semantic_type column) :type/State)))
 
 (defn country?
   "Is `column` a country?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/Country)))
+   (clojure.core/isa? (:semantic_type column) :type/Country)))
 
 (defn city?
   "Is `column` a city?"
   [column]
   (clojure.core/boolean
-   (clojure.core/isa? (:semantic-type column) :type/City)))
+   (clojure.core/isa? (:semantic_type column) :type/City)))

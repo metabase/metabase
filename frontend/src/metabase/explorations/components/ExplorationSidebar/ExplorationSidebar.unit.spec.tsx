@@ -5,6 +5,7 @@ import type {
   Exploration,
   ExplorationQuery,
   ExplorationQueryStatus,
+  ThreadsWithSortedQueries,
 } from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
@@ -27,12 +28,32 @@ function createQuery(
     entity_id: "abc123def456ghij78901",
     interestingness_score: null,
     dataset_query: { type: "query", database: 1, query: {} } as any,
+    segment_id: null,
     ...overrides,
   };
 }
 
-function createExploration(queries: ExplorationQuery[]): Exploration {
-  return {
+function createExploration(queries: ExplorationQuery[]): {
+  exploration: Exploration;
+  threadsWithSortedQueries: ThreadsWithSortedQueries[];
+} {
+  // TODO: sort queries
+  const threads = [
+    {
+      id: 1,
+      exploration_id: 1,
+      name: null,
+      prompt: null,
+      position: 0,
+      started_at: "2026-04-30T00:00:00Z",
+      entity_id: "thrd00000000000000001",
+      created_at: "2026-04-30T00:00:00Z",
+      updated_at: "2026-04-30T00:00:00Z",
+      queries,
+    },
+  ];
+
+  const exploration = {
     id: 1,
     name: "My exploration",
     description: null,
@@ -41,21 +62,10 @@ function createExploration(queries: ExplorationQuery[]): Exploration {
     entity_id: "expl00000000000000001",
     created_at: "2026-04-30T00:00:00Z",
     updated_at: "2026-04-30T00:00:00Z",
-    threads: [
-      {
-        id: 1,
-        exploration_id: 1,
-        name: null,
-        prompt: null,
-        position: 0,
-        started_at: "2026-04-30T00:00:00Z",
-        entity_id: "thrd00000000000000001",
-        created_at: "2026-04-30T00:00:00Z",
-        updated_at: "2026-04-30T00:00:00Z",
-        queries,
-      },
-    ],
+    threads,
   };
+
+  return { exploration, threadsWithSortedQueries: threads };
 }
 
 interface SetupOpts {
@@ -65,11 +75,15 @@ interface SetupOpts {
 
 function setup({ queries, selectedQueryId = null }: SetupOpts) {
   const setSelectedQueryId = jest.fn();
+
+  const { exploration, threadsWithSortedQueries } = createExploration(queries);
+
   renderWithProviders(
     <ExplorationSidebar
-      exploration={createExploration(queries)}
+      exploration={exploration}
       selectedQueryId={selectedQueryId}
       setSelectedQueryId={setSelectedQueryId}
+      threadsWithSortedQueries={threadsWithSortedQueries}
     />,
   );
   return { setSelectedQueryId };
