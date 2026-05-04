@@ -102,7 +102,7 @@ describe("useSetupAuthContentTranslations", () => {
 });
 
 describe("useSetupContentTranslations", () => {
-  const token = "mock-jwt-token" as never;
+  const token = "mock-jwt-token";
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -12,13 +12,13 @@ export const useSetupContentTranslations = ({
   token: SdkEntityToken | null;
 }) => {
   const { locale } = useLocale();
-  const isGuestEmbed = useSdkSelector(getIsGuestEmbedRaw);
+  const isGuestEmbedRaw = useSdkSelector(getIsGuestEmbedRaw);
 
   useEffect(() => {
-    if (locale !== "en" && isGuestEmbed === true && token) {
+    if (locale !== "en" && isGuestEmbedRaw === true && token) {
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
     }
-  }, [isGuestEmbed, locale, token]);
+  }, [isGuestEmbedRaw, locale, token]);
 };
 
 export const useSetupAuthContentTranslations = () => {
