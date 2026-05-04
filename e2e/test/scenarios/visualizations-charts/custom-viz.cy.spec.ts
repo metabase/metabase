@@ -20,6 +20,16 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 const AGGREGATED_VALUE = "18760";
 const AGGREGATED_VALUE_FORMATTED = "18,760";
 
+function drillThroughDemoVizClick() {
+  cy.intercept("POST", "/api/dataset").as("demoVizDrillDataset");
+  cy.findByTestId("demo-viz-click-target").click();
+  cy.findByTestId("click-actions-view")
+    .findByText(/See these Orders/)
+    .should("be.visible")
+    .click();
+  cy.wait("@demoVizDrillDataset");
+}
+
 function buildDocumentWithCustomVizCard(cardId: CardId): DocumentContent {
   return {
     type: "doc",
@@ -690,10 +700,7 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByTestId("demo-viz-click-target").click();
-      H.popover().findByText("See these Orders").should("be.visible").click();
-      cy.wait("@dataset");
+      drillThroughDemoVizClick();
 
       // Drill opens an ad-hoc question showing the underlying Orders rows
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
@@ -850,13 +857,7 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      H.getDashboardCard().findByTestId("demo-viz-click-target").click();
-      cy.findByTestId("click-actions-view")
-        .findByText(/See these Orders/)
-        .should("be.visible")
-        .click();
-      cy.wait("@dataset");
+      drillThroughDemoVizClick();
 
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       // The demo plugin's query is `count(Orders)` with no breakout, so the
