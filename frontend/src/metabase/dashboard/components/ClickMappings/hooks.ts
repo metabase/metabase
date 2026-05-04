@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
+import {
+  getTargetsForDashboard,
+  getTargetsForQuestion,
+} from "metabase/parameters/utils/click-behavior";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -8,10 +12,6 @@ import { GTAPApi } from "metabase/services";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import MetabaseSettings from "metabase/utils/settings";
 import Question from "metabase-lib/v1/Question";
-import {
-  getTargetsForDashboard,
-  getTargetsForQuestion,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
 import type { DatasetColumn, Parameter } from "metabase-types/api";
 
 import type { ClickMappingsOwnProps, TargetItem } from "./types";
