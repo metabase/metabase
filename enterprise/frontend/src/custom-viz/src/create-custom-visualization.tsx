@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
 
 import type {
@@ -49,49 +49,19 @@ export function createCustomVisualization<
       initial: CustomVisualizationProps<TSettings>,
     ): MountHandle<CustomVisualizationProps<TSettings>> {
       const root = createRoot(container);
-      // Plain object with the same shape as useRef — useRef only works inside
-      // a React component, but this closure is not a component.
-      const setPropsRef: {
-        current: ((p: CustomVisualizationProps<TSettings>) => void) | null;
-      } = { current: null };
-      let pendingProps: CustomVisualizationProps<TSettings> | undefined;
 
-      function Bridge({
-        first,
-      }: {
-        first: CustomVisualizationProps<TSettings>;
-      }) {
-        // `first` is only the useState initializer; subsequent prop updates
-        // flow via the ref-captured setter, not by re-rendering Bridge with
-        // a new `first`. Do not add a useEffect that calls setProps(first).
-        const [props, setProps] = useState(first);
-        setPropsRef.current = setProps;
-
-        // Drain any update() calls that arrived before the first commit.
-        useEffect(() => {
-          if (pendingProps !== undefined) {
-            setProps(pendingProps);
-            pendingProps = undefined;
-          }
-        }, []);
-
-        return (
+      const render = (props: CustomVisualizationProps<TSettings>) => {
+        root.render(
           <PluginErrorBoundary>
             <VisualizationComponent {...props} />
-          </PluginErrorBoundary>
+          </PluginErrorBoundary>,
         );
-      }
+      };
 
-      root.render(<Bridge first={initial} />);
+      render(initial);
 
       return {
-        update(next) {
-          if (setPropsRef.current) {
-            setPropsRef.current(next);
-          } else {
-            pendingProps = next;
-          }
-        },
+        update: render,
         unmount: () => root.unmount(),
       };
     },
