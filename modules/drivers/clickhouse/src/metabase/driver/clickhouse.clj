@@ -1,6 +1,5 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
-  (:refer-clojure :exclude [some])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -21,8 +20,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.performance :refer [some]])
+   [metabase.util.log :as log])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
