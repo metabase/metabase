@@ -2,13 +2,16 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import { Pulses } from "metabase/entities/pulses";
+import { subscriptionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { PulseApi } from "metabase/services";
 import type {
   ChannelApiResponse,
+  CreateSubscriptionRequest,
   DashboardSubscription,
+  UpdateSubscriptionRequest,
 } from "metabase-types/api";
 
 import { getEditingPulse } from "./selectors";
@@ -24,8 +27,9 @@ export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
 export const FETCH_PULSE_LIST_BY_DASHBOARD_ID =
   "FETCH_PULSE_LIST_BY_DASHBOARD_ID";
 
-export const updateEditingPulse =
-  createAction<DashboardSubscription>(UPDATE_EDITING_PULSE);
+export const updateEditingPulse = createAction<
+  DashboardSubscription | DraftDashboardSubscription
+>(UPDATE_EDITING_PULSE);
 export const cancelEditingPulse = createAction(CANCEL_EDITING_PULSE);
 
 export const saveEditingPulse = createThunkAction(
@@ -37,13 +41,17 @@ export const saveEditingPulse = createThunkAction(
 
       try {
         if (isEdit) {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.update(editingPulse)),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.updateSubscription.initiate(
+              editingPulse as unknown as UpdateSubscriptionRequest,
+            ),
+          ).unwrap();
         } else {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.create(editingPulse)),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.createSubscription.initiate(
+              editingPulse as unknown as CreateSubscriptionRequest,
+            ),
+          ).unwrap();
         }
       } catch (error) {
         const errorMessage = getActionErrorMessage(error);
@@ -66,7 +74,7 @@ export const saveEditingPulse = createThunkAction(
 
 export const testPulse = createThunkAction(
   TEST_PULSE,
-  function (pulse: DashboardSubscription) {
+  function (pulse: DashboardSubscription | DraftDashboardSubscription) {
     return async function () {
       return await PulseApi.test(pulse);
     };

@@ -118,7 +118,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   // feature
-  createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "dashboard", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "query_builder",

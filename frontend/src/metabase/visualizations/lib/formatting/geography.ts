@@ -1,9 +1,7 @@
 import * as d3 from "d3";
 
-import { decimalCount } from "metabase/visualizations/lib/numeric";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { isLatitude, isLongitude } from "metabase-lib/v1/types/utils/isa";
-
-import type { OptionsType } from "./types";
 
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
@@ -30,4 +28,17 @@ export function formatCoordinate(value: number, options: OptionsType = {}) {
       ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
       : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
+}
+
+function decimalCount(a: number): number {
+  if (!isFinite(a)) {
+    return 0;
+  }
+  let e = 1;
+  let p = 0;
+  while (Math.round(a * e) / e !== a) {
+    e *= 10;
+    p++;
+  }
+  return p;
 }

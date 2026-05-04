@@ -6,7 +6,7 @@ import {
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
   formatDateTimeWithUnit,
-} from "metabase/utils/formatting/date";
+} from "metabase/visualizations/lib/formatting/date";
 
 import "dayjs/locale/es";
 import "dayjs/locale/fr";
