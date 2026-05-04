@@ -263,6 +263,60 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     cy.get("@onParametersChange").should("have.been.calledOnce");
   });
 
+  it("fires `onParametersChange` with `source: 'auto-change'` when an unknown slug in the push is passed", () => {
+    const onParametersChange = cy.spy().as("onParametersChange");
+
+    const PushButton = ({ dashboardId }: { dashboardId: string }) => {
+      const [parameters, setParameters] = useState<ParameterValues>({
+        "filter-date": "past30days",
+      });
+
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              setParameters({
+                "filter-date": "thisyear",
+                "unknown-slug": "ignored",
+              })
+            }
+          >
+            push with unknown slug
+          </button>
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            parameters={parameters}
+            onParametersChange={onParametersChange}
+          />
+        </>
+      );
+    };
+
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<PushButton dashboardId={dashboardId} />);
+    });
+
+    cy.wait("@dashcardQuery");
+
+    cy.contains("button", "push with unknown slug").click();
+    cy.wait("@dashcardQuery");
+
+    // Host pushed `{ "filter-date": ..., "unknown-slug": ... }` but the
+    // dashboard only knows `filter-date`, so the payload omits
+    // `unknown-slug`. That mismatch fires `auto-change` so the host can
+    // sync from the actual applied state.
+    cy.get("@onParametersChange")
+      .its("lastCall.args.0")
+      .should((payload) => {
+        expect(payload.source).to.equal("auto-change");
+        expect(payload.parameters).to.deep.include({
+          "filter-date": "thisyear",
+        });
+        expect(payload.parameters).to.not.have.property("unknown-slug");
+      });
+  });
+
   it("does not fire a redundant `manual-change` after `initial-state` when the seed equals the BE-resolved values", () => {
     const onParametersChange = cy.spy().as("onParametersChange");
 
@@ -329,7 +383,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     findDateFilterValue().should("not.contain.text", "Previous 30 days");
   });
 
-  it("emits `auto-change` with `null` value when host pushes an explicit null", () => {
+  it("does not fire `onParametersChange` when host clears a parameter to null", () => {
     const onParametersChange = cy.spy().as("onParametersChange");
 
     const ClearableDashboard = ({ dashboardId }: { dashboardId: string }) => {
@@ -361,15 +415,18 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     });
 
     cy.wait("@dashcardQuery");
-    cy.contains("button", "clear date").click();
-    cy.wait("@dashcardQuery");
+    // initial-state has fired once.
+    cy.get("@onParametersChange").should("have.been.calledOnce");
 
-    cy.get("@onParametersChange")
-      .its("lastCall.args.0")
-      .should((payload) => {
-        expect(payload.source).to.equal("auto-change");
-        expect(payload.parameters["filter-date"]).to.equal(null);
-      });
+    cy.contains("button", "clear date").click();
+    // The clear push is dispatched (the dashcard re-runs), proving the
+    // controlled prop reached the dashboard.
+    cy.wait("@dashcardQuery");
+    cy.wait(500);
+
+    // Still exactly one call — clearing a single scalar param is a perfect
+    // round-trip (host's `null` ↔ payload's `null`), so no callback fires.
+    cy.get("@onParametersChange").should("have.been.calledOnce");
   });
 
   it("does not emit `manual-change` when the user re-selects the same widget value", () => {
