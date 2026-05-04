@@ -388,7 +388,7 @@
   - which AST positions to match against during query rewriting
 
   Defaults to `[:schema]` (Postgres-style)."
-  {:added "0.57.0" :arglists '([driver])}
+  {:added "0.61.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
