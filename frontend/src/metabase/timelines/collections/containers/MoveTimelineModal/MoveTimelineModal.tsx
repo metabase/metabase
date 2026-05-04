@@ -36,28 +36,34 @@ function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
   });
 
   const handleSubmit = useCallback(
-    async (timeline: Timeline, collectionId: CollectionId) => {
+    (timeline: Timeline, collectionId: CollectionId) => {
       const name =
         timeline.default && sourceCollection
           ? getDefaultTimelineName(sourceCollection)
           : timeline.name;
-      await setCollection(
-        { model: "timeline", id: timeline.id, name },
-        { id: collectionId },
-      );
-      const { data: collection } = await dispatch(
-        collectionApi.endpoints.getCollection.initiate({ id: collectionId }),
-      );
-      dispatch(
-        push(
-          Urls.timelineInCollection({
-            ...timeline,
-            collection_id:
-              typeof collectionId === "number" ? collectionId : null,
-            collection,
-          } as Timeline),
-        ),
-      );
+      // Fire-and-forget so the modal can close back to the parent path before
+      // we push the new timeline detail URL — otherwise ModalRoute's onClose
+      // would compute the parent off the post-navigation location and bounce
+      // us off the timeline page.
+      void (async () => {
+        await setCollection(
+          { model: "timeline", id: timeline.id, name },
+          { id: collectionId },
+        );
+        const { data: collection } = await dispatch(
+          collectionApi.endpoints.getCollection.initiate({ id: collectionId }),
+        );
+        dispatch(
+          push(
+            Urls.timelineInCollection({
+              ...timeline,
+              collection_id:
+                typeof collectionId === "number" ? collectionId : null,
+              collection,
+            } as Timeline),
+          ),
+        );
+      })();
     },
     [dispatch, setCollection, sourceCollection],
   );
