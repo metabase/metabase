@@ -52,6 +52,7 @@ From the Themes tab, you can:
 - **Edit a theme.** Click a theme card to open the editor. Changes show up in the live preview.
 - **Choose what the preview renders.** Pick the dashboard or question used to preview the theme.
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
+- **Delete a theme.** This deletion is eternal.
 
 ![Theme editor](./images/theme-editor.png)
 
