@@ -93,17 +93,21 @@
 
 (defn- db-position-value
   "Value to put in the `:db` slot of a `::table-spec` for a Table row in `database`.
-   Today only BigQuery emits a catalog-level identifier in compiled SQL — the project
-   ID, sourced from connection details.
+   Only called for drivers whose `qualified-name-components` includes `:db` —
+   currently Snowflake, SQL Server, and BigQuery.
 
-   Returns nil when the driver has no catalog level OR when a BigQuery connection
-   doesn't carry an explicit `:project-id`. Service-account-derived projects are not
-   resolved here — that lives in `bigquery.common/database-details->credential-project-id`
-   which we can't reach from this module without a circular dep. When BigQuery
-   workspace remapping lands, route through a driver multimethod instead."
+   Snowflake and SQL Server both store the warehouse database name in
+   `details.:db`. BigQuery puts the project ID in `details.:project-id`.
+
+   Returns nil when the connection doesn't carry the expected key. For BigQuery
+   that means service-account-derived projects are not resolved here — that lives
+   in `bigquery.common/database-details->credential-project-id` which we can't
+   reach from this module without a circular dep. Route through a driver
+   multimethod when BigQuery workspace remapping lands."
   [database]
   (case (:engine database)
-    :bigquery-cloud-sdk (:project-id (:details database))
+    (:snowflake :sqlserver) (:db (:details database))
+    :bigquery-cloud-sdk     (:project-id (:details database))
     nil))
 
 (mu/defn spec-for-table :- ::table-spec
