@@ -1,6 +1,6 @@
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   getDefaultValuePopulatedParameters,
   getParameterValuesBySlug,
