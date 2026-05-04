@@ -20,6 +20,9 @@ block(window.fetch, "window.fetch");
 block(window.XMLHttpRequest, "window.XMLHttpRequest");
 block(window.WebSocket, "window.WebSocket");
 block(window.EventSource, "window.EventSource");
+block(window.Worker, "window.Worker");
+block(window.SharedWorker, "window.SharedWorker");
+block(window.RTCPeerConnection, "window.RTCPeerConnection");
 block(method(Navigator.prototype, "sendBeacon"), "Navigator.sendBeacon");
 
 // Document mutation / navigation
@@ -45,6 +48,17 @@ block(window.open, "window.open");
 block(window.close, "window.close");
 block(method(Window.prototype, "open"), "window.open");
 block(method(Window.prototype, "close"), "window.close");
+
+// UI dialogs — block modal/blocking dialogs initiated by the plugin so it
+// can't freeze the host UI or phish via the browser chrome.
+block(window.alert, "window.alert");
+block(window.confirm, "window.confirm");
+block(window.prompt, "window.prompt");
+block(window.print, "window.print");
+block(method(Window.prototype, "alert"), "window.alert");
+block(method(Window.prototype, "confirm"), "window.confirm");
+block(method(Window.prototype, "prompt"), "window.prompt");
+block(method(Window.prototype, "print"), "window.print");
 
 // Navigator getters — credential / device leaks
 const NAVIGATOR_BLOCKED_GETTERS = [
@@ -79,3 +93,17 @@ block(method(History.prototype, "replaceState"), "History.replaceState");
 block(method(History.prototype, "go"), "History.go");
 block(method(History.prototype, "back"), "History.back");
 block(method(History.prototype, "forward"), "History.forward");
+
+// HTML parsing — these construct DOM from string input without going through
+// the innerHTML/outerHTML/insertAdjacentHTML setters that DOMPurify
+// sanitizes, so they'd otherwise be a clean bypass of that mitigation.
+block(
+  method(Range.prototype, "createContextualFragment"),
+  "Range.createContextualFragment",
+);
+block(
+  method(DOMParser.prototype, "parseFromString"),
+  "DOMParser.parseFromString",
+);
+block(method(Element.prototype, "setHTMLUnsafe"), "Element.setHTMLUnsafe");
+block(method(Document, "parseHTMLUnsafe"), "Document.parseHTMLUnsafe");

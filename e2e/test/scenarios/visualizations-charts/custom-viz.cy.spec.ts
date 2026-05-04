@@ -1704,6 +1704,62 @@ describe("sandbox", () => {
         cy.get("@canary.all").should("have.length", 0);
       },
     },
+    {
+      name: "Worker constructor",
+      payload: 'new Worker("data:text/javascript,1");',
+      errorPattern: blockedPattern(/API call: window\.Worker/),
+    },
+    {
+      name: "SharedWorker constructor",
+      payload: 'new SharedWorker("data:text/javascript,1");',
+      errorPattern: blockedPattern(/API call: window\.SharedWorker/),
+    },
+    {
+      name: "RTCPeerConnection constructor",
+      payload: "new RTCPeerConnection();",
+      errorPattern: blockedPattern(/API call: window\.RTCPeerConnection/),
+    },
+    {
+      name: "Range.createContextualFragment",
+      payload:
+        'document.createRange().createContextualFragment("<img src=x>");',
+      errorPattern: blockedPattern(/API call: Range\.createContextualFragment/),
+    },
+    {
+      name: "DOMParser.parseFromString",
+      payload: 'new DOMParser().parseFromString("<p>x</p>", "text/html");',
+      errorPattern: blockedPattern(/API call: DOMParser\.parseFromString/),
+    },
+    {
+      name: "Element.setHTMLUnsafe",
+      payload: 'document.createElement("div").setHTMLUnsafe("<x>");',
+      errorPattern: blockedPattern(/API call: Element\.setHTMLUnsafe/),
+    },
+    {
+      name: "Document.parseHTMLUnsafe",
+      payload: 'Document.parseHTMLUnsafe("<p>x</p>");',
+      errorPattern: blockedPattern(/API call: Document\.parseHTMLUnsafe/),
+    },
+    {
+      name: "window.alert",
+      payload: 'window.alert("pwned");',
+      errorPattern: blockedPattern(/API call: window\.alert/),
+    },
+    {
+      name: "window.confirm",
+      payload: 'window.confirm("pwned");',
+      errorPattern: blockedPattern(/API call: window\.confirm/),
+    },
+    {
+      name: "window.prompt",
+      payload: 'window.prompt("pwned");',
+      errorPattern: blockedPattern(/API call: window\.prompt/),
+    },
+    {
+      name: "window.print",
+      payload: "window.print();",
+      errorPattern: blockedPattern(/API call: window\.print/),
+    },
   ];
 
   it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(
