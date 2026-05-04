@@ -1,4 +1,5 @@
 import type { CardId } from "./card";
+import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { DatasetQuery } from "./query";
@@ -103,6 +104,12 @@ export interface ExplorationQuery {
   segment_id: SegmentId | null;
 }
 
+export interface ExplorationDocument {
+  id: DocumentId;
+  exploration_thread_id: ExplorationThreadId;
+  name: string;
+}
+
 export interface ExplorationThread {
   id: ExplorationThreadId;
   exploration_id: ExplorationId;
@@ -117,6 +124,7 @@ export interface ExplorationThread {
   dimensions?: ExplorationThreadDimension[];
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
+  documents?: ExplorationDocument[];
 }
 
 export interface ExplorationCreator {

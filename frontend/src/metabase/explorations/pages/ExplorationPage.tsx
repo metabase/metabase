@@ -8,7 +8,9 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center, Group } from "metabase/ui";
 import type {
+  DocumentId,
   Exploration,
+  ExplorationDocument,
   ExplorationQuery,
   ExplorationQueryId,
   ExplorationQueryWithName,
@@ -21,6 +23,7 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { ExplorationDocument as ExplorationDocumentComponent } from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import { ExplorationVisualization } from "../components/ExplorationVisualization";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../utils";
@@ -40,23 +43,57 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   );
 }
 
+interface SelectedQueryId {
+  type: "query";
+  id: ExplorationQueryId;
+}
+
+interface SelectedDocumentId {
+  type: "document";
+  id: DocumentId;
+}
+
+export type SelectedEntityId = SelectedQueryId | SelectedDocumentId;
+
+// todo delete me
+const DEFAULT_DOCUMENT = {
+  type: "document",
+  id: 1,
+  exploration_thread_id: 1,
+  name: "Findings",
+};
+
 export function ExplorationPage({ params }: ExplorationPageProps) {
   // Poll the exploration while any query is still in a non-terminal state.
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
-  const [selectedQueryId, setSelectedQueryId] =
-    useState<ExplorationQueryId | null>(null);
+  const [selectedEntityId, setSelectedEntityId] =
+    useState<SelectedEntityId | null>(null);
   const [selectedTimelineIdByThreadId, setSelectedTimelineIdByThreadId] =
     useState<Record<ExplorationThreadId, TimelineId | null>>({});
 
   const {
-    data: exploration,
+    data: _exploration,
     isLoading,
     error,
   } = useGetExplorationQuery(Number(params.id), {
     pollingInterval: shouldPoll ? QUERY_POLL_INTERVAL_MS : 0,
   });
+
+  // todo delete me
+  const exploration: Exploration | undefined = useMemo(() => {
+    if (!_exploration) {
+      return undefined;
+    }
+    return {
+      ..._exploration,
+      threads: _exploration?.threads?.map((thread) => ({
+        ...thread,
+        documents: [...(thread.documents ?? []), DEFAULT_DOCUMENT],
+      })),
+    };
+  }, [_exploration]);
 
   useEffect(() => {
     setShouldPoll(hasUnsettledQueries(exploration));
@@ -102,13 +139,16 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
   }, [exploration]);
 
   useEffect(() => {
-    if (selectedQueryId !== null) {
+    if (selectedEntityId !== null) {
       return;
     }
     if (threadsWithSortedQueries[0]?.queries[0]?.id) {
-      setSelectedQueryId(threadsWithSortedQueries[0].queries[0].id);
+      setSelectedEntityId({
+        type: "query",
+        id: threadsWithSortedQueries[0].queries[0].id,
+      });
     }
-  }, [threadsWithSortedQueries, selectedQueryId]);
+  }, [threadsWithSortedQueries, selectedEntityId]);
 
   const queryIdToQueryAndThread: Map<
     ExplorationQueryId,
@@ -127,11 +167,27 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     thread?: ExplorationThread;
   }>(
     () =>
-      selectedQueryId
-        ? (queryIdToQueryAndThread.get(selectedQueryId) ?? {})
+      selectedEntityId?.type === "query"
+        ? (queryIdToQueryAndThread.get(selectedEntityId.id) ?? {})
         : {},
-    [selectedQueryId, queryIdToQueryAndThread],
+    [selectedEntityId, queryIdToQueryAndThread],
   );
+
+  const documentIdToDocument: Map<DocumentId, ExplorationDocument> =
+    useMemo(() => {
+      return new Map(
+        exploration?.threads?.flatMap(
+          (thread) =>
+            thread.documents?.map((document) => [document.id, document]) ?? [],
+        ) ?? [],
+      );
+    }, [exploration]);
+
+  const selectedDocument = useMemo(() => {
+    return selectedEntityId?.type === "document"
+      ? documentIdToDocument.get(selectedEntityId.id)
+      : undefined;
+  }, [selectedEntityId, documentIdToDocument]);
 
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
@@ -173,6 +229,9 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (selectedEntityId?.type !== "query") {
+        return;
+      }
       // up and down arrows are handled by TimelineDropdown, because they should only run when it's mounted
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
         return;
@@ -186,11 +245,11 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
       const direction = event.key === "ArrowRight" ? 1 : -1;
       const nextQuery = getAdjacentById(
         sortedQueries,
-        selectedQueryId,
+        selectedEntityId.id,
         direction,
       );
-      if (nextQuery != null && nextQuery.id !== selectedQueryId) {
-        setSelectedQueryId(nextQuery.id);
+      if (nextQuery != null && nextQuery.id !== selectedEntityId.id) {
+        setSelectedEntityId({ type: "query", id: nextQuery.id });
         event.preventDefault();
       }
     };
@@ -198,7 +257,7 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [threadsWithSortedQueries, selectedQueryId, setSelectedQueryId]);
+  }, [threadsWithSortedQueries, selectedEntityId, setSelectedEntityId]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -225,8 +284,8 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
       >
         <ExplorationSidebar
           exploration={exploration}
-          selectedQueryId={selectedQueryId}
-          setSelectedQueryId={setSelectedQueryId}
+          selectedEntityId={selectedEntityId}
+          setSelectedEntityId={setSelectedEntityId}
           threadsWithSortedQueries={threadsWithSortedQueries}
         />
         {selectedQuery && (
@@ -238,6 +297,7 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
             timelineEvents={timelineEvents}
           />
         )}
+        {selectedDocument && <ExplorationDocumentComponent />}
       </Group>
     </Center>
   );

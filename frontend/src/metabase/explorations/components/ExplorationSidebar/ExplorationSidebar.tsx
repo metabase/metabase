@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type Ref, useEffect, useRef } from "react";
+import { type Ref, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,60 +13,109 @@ import {
 } from "metabase/ui";
 import type {
   Exploration,
-  ExplorationQueryId,
+  ExplorationDocument,
   ExplorationQueryStatus,
   ExplorationQueryWithName,
   ExplorationThread,
   ThreadsWithSortedQueries,
 } from "metabase-types/api";
 
+import type { SelectedEntityId } from "../../pages/ExplorationPage";
+
 import S from "./ExplorationSidebar.module.css";
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
-  selectedQueryId: ExplorationQueryId | null;
-  setSelectedQueryId: (queryId: ExplorationQueryId) => void;
+  selectedEntityId: SelectedEntityId | null;
+  setSelectedEntityId: (entityId: SelectedEntityId) => void;
   threadsWithSortedQueries: ThreadsWithSortedQueries[];
 }
 
-// todo fixme
-window.Metabase.INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
+type ExplorationSidebarItem =
+  | (ExplorationQueryWithName & { type: "query" })
+  | (ExplorationDocument & { type: "document" });
+
+const INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 
 export function ExplorationSidebar({
   exploration,
-  selectedQueryId,
-  setSelectedQueryId,
+  selectedEntityId,
+  setSelectedEntityId,
   threadsWithSortedQueries,
 }: ExplorationSidebarProps) {
   const selectedQueryRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    if (selectedEntityId?.type !== "query") {
+      return;
+    }
     selectedQueryRef.current?.scrollIntoView({
       block: "nearest",
     });
-  }, [selectedQueryId]);
+  }, [selectedEntityId]);
+
+  const threadsWithSortedItems = useMemo(() => {
+    return threadsWithSortedQueries.map((thread) => {
+      const items: ExplorationSidebarItem[] = [
+        ...thread.queries.map((query) => ({
+          ...query,
+          type: "query" as const,
+        })),
+        ...(thread.documents?.map((document) => ({
+          ...document,
+          type: "document" as const,
+        })) ?? []),
+      ];
+
+      return {
+        ...thread,
+        items,
+      };
+    });
+  }, [threadsWithSortedQueries]);
 
   return (
     <Stack h="100%" gap="lg">
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>
-      {threadsWithSortedQueries.map((thread, i) => (
+      {threadsWithSortedItems.map((thread, i) => (
         <Stack mih={0} key={thread.id} gap="md">
           <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
-          {thread.queries.length > 0 ? (
+          {thread.items.length > 0 ? (
             <Stack mih={0} gap="xs" pr="md" className={S.threadList}>
-              {thread.queries.map((query) => (
-                <ExplorationQueryRow
-                  key={query.id}
-                  query={query}
-                  isSelected={selectedQueryId === query.id}
-                  buttonRef={
-                    selectedQueryId === query.id ? selectedQueryRef : undefined
-                  }
-                  onSelect={() => setSelectedQueryId(query.id)}
-                />
-              ))}
+              {thread.items.map((item) => {
+                if (item.type === "document") {
+                  const isSelected =
+                    selectedEntityId?.type === "document" &&
+                    selectedEntityId.id === item.id;
+                  return (
+                    <ExplorationDocumentRow
+                      key={`document-${item.id}`}
+                      document={item}
+                      isSelected={isSelected}
+                      onSelect={() =>
+                        setSelectedEntityId({ type: "document", id: item.id })
+                      }
+                    />
+                  );
+                }
+
+                const isSelected =
+                  selectedEntityId?.type === "query" &&
+                  selectedEntityId.id === item.id;
+                return (
+                  <ExplorationQueryRow
+                    key={`query-${item.id}`}
+                    query={item}
+                    isSelected={isSelected}
+                    buttonRef={isSelected ? selectedQueryRef : undefined}
+                    onSelect={() =>
+                      setSelectedEntityId({ type: "query", id: item.id })
+                    }
+                  />
+                );
+              })}
             </Stack>
           ) : (
             <Text c="text-secondary">{t`No charts were generated.`}</Text>
@@ -74,6 +123,34 @@ export function ExplorationSidebar({
         </Stack>
       ))}
     </Stack>
+  );
+}
+
+interface ExplorationDocumentRowProps {
+  document: ExplorationDocument;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function ExplorationDocumentRow({
+  document,
+  isSelected,
+  onSelect,
+}: ExplorationDocumentRowProps) {
+  return (
+    <UnstyledButton
+      role="listitem"
+      aria-pressed={isSelected}
+      className={cx(S.queryRow, {
+        [S.queryRowSelected]: isSelected,
+      })}
+      onClick={onSelect}
+    >
+      <Icon name="document" c="text-secondary" aria-label={t`Document`} />
+      <Text flex={1} component="span" lineClamp={1}>
+        {document.name}
+      </Text>
+    </UnstyledButton>
   );
 }
 
@@ -109,8 +186,7 @@ function ExplorationQueryRow({
       <Text flex={1} component="span" lineClamp={1}>
         {query.name}
       </Text>
-      {(query.interestingness_score ?? 0) >
-        window.Metabase.INTERESTINGNESS_SCORE_THRESHOLD && (
+      {(query.interestingness_score ?? 0) > INTERESTINGNESS_SCORE_THRESHOLD && (
         <Tooltip label={t`Potentially interesting`}>
           <Box
             aria-hidden
