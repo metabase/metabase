@@ -24,6 +24,15 @@ No initial task specified. Wait for the user to give you a task.
 
 ### 2. Generate agent prompt
 
+**Always generate a fresh `<TIMESTAMP>` directory for THIS invocation** — even
+if a prior `/uxbot` run already created a `.bot/uxbot/<earlier-timestamp>/`
+directory in this conversation. Each `/uxbot` call is its own session with its
+own output directory and its own `task-report.md`. Do NOT reuse a prior
+directory.
+
+Use the current local time as `<TIMESTAMP>` (format `YYYYMMDD-HHMMSS`, e.g.
+`20260504-103045`). You can compute it with `date +%Y%m%d-%H%M%S`.
+
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
