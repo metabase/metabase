@@ -146,7 +146,7 @@ export type CustomVisualizationProps<
  * Handle returned by a plugin's mount call. The host calls update() to
  * push new props (data, settings, dimensions) and unmount() on cleanup.
  */
-export type MountHandle<TProps> = {
+export type CustomVisualizationMountHandle<TProps> = {
   update(props: TProps): void;
   unmount(): void;
 };
@@ -159,8 +159,8 @@ export type CustomVisualizationMount<
   TSettings extends Record<string, unknown>,
 > = (
   container: Element,
-  initial: CustomVisualizationProps<TSettings>,
-) => MountHandle<CustomVisualizationProps<TSettings>>;
+  initialProps: CustomVisualizationProps<TSettings>,
+) => CustomVisualizationMountHandle<CustomVisualizationProps<TSettings>>;
 
 export type ColorGetter = (colorName: string) => string;
 

@@ -1,11 +1,11 @@
 import type {
   CreateCustomVisualizationProps,
   CustomVisualization,
+  CustomVisualizationMountHandle,
   CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
-  MountHandle,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
@@ -392,7 +392,8 @@ export const useCustomVizPluginsIcon = () => {
 type GenericVizDefinition = CustomVisualization<Record<string, unknown>>;
 type GenericVizMount = GenericVizDefinition["mount"];
 type GenericVizPluginProps = CustomVisualizationProps<Record<string, unknown>>;
-type GenericVizMountHandle = MountHandle<GenericVizPluginProps>;
+type GenericVizMountHandle =
+  CustomVisualizationMountHandle<GenericVizPluginProps>;
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return (
