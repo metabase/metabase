@@ -114,7 +114,6 @@ describe("admin > custom visualizations", () => {
         });
 
         H.activateToken("bleeding-edge");
-        H.setupCustomVizRepo();
         H.updateSetting("custom-viz-enabled", true);
         H.visitCustomVizSettings();
         H.getAddVisualizationLink().click();
@@ -129,7 +128,7 @@ describe("admin > custom visualizations", () => {
           .findByRole("link", { name: /Custom visualizations/ })
           .should("have.attr", "data-active", "true");
 
-        cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+        H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
         cy.findByRole("button", { name: "Add visualization" }).click();
         cy.findByRole("link", { name: /demo-viz/ }).click();
 
