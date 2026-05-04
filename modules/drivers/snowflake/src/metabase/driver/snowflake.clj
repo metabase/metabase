@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -36,7 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -224,10 +224,10 @@
         (conj password-details)))))
 
 (defn- set-put-get [additional-options]
-  (cond (nil? additional-options) "enablePutGet=false"
-        (re-find #"enablePutGet=" additional-options) (str/replace additional-options
-                                                                   #"enablePutGet=[^&]+"
-                                                                   "enablePutGet=false")
+  (cond (empty? additional-options) "enablePutGet=false"
+        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
+                                                                       #"enablePutGet=[^&]+"
+                                                                       "enablePutGet=false")
         :else (str additional-options "&enablePutGet=false")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
