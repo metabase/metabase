@@ -62,3 +62,5 @@ jobs:
           igluctl lint "$LINT_ROOT/schemas"
       - name: Lint (Metabase schema rules)
         run: ./bin/lint-snowplow-schemas.bb
+      - name: Test linter rules
+        run: ./bin/lint-snowplow-schemas-test.bb

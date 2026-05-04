@@ -35,23 +35,31 @@
     {:path "snowplow/iglu-client-embedded/schemas/com.metabase/serialization/jsonschema/1-0-1"
      :pointer "$"}})
 
-(defn- schema-files []
+(defn schema-files []
   (->> (fs/glob schemas-root "**")
        (map str)
        (filter #(re-matches iglu-path-re %))
        sort))
 
-(defn- has-type? [schema kind]
+(defn has-type? [schema kind]
   (let [t (:type schema)]
     (or (= t kind)
         (and (sequential? t) (some #{kind} t)))))
 
-(defn- nullable-type? [t]
+(defn object-like?
+  "True for schemas that describe an object: explicit `type: object`, vector type
+  containing `\"object\"` (e.g. `[\"object\",\"null\"]`), or `properties` present
+  even without an explicit type."
+  [schema]
+  (or (has-type? schema "object")
+      (contains? schema :properties)))
+
+(defn nullable-type? [t]
   (or (= t "null")
       (and (sequential? t) (some #{"null"} t))))
 
-(defn- check-schema [path schema]
-  (let [missing-additional (when (and (has-type? schema "object")
+(defn check-schema [path schema]
+  (let [missing-additional (when (and (object-like? schema)
                                       (not (contains? schema :additionalProperties)))
                              [{:pointer "$"
                                :msg "object schema must explicitly set 'additionalProperties' (true or false)"}])
@@ -64,23 +72,34 @@
                                            (name prop) (pr-str t))})]
     (mapv #(assoc % :path path) (concat missing-additional nullable-required))))
 
-(defn -main [& _]
-  (let [files      (schema-files)
-        all        (mapcat (fn [path]
-                             (try
-                               (check-schema path (json/parse-string (slurp path) true))
-                               (catch Exception e
-                                 ;; :fatal forces the entry past the baseline — a parse failure
-                                 ;; should never be silently grandfathered.
-                                 [{:path path :pointer "$" :fatal true
-                                   :msg (str "unparseable: " (ex-message e))}])))
-                           files)
-        baselined? #(and (not (:fatal %))
+(defn classify-violations
+  "Partition `violations` against `baseline` (set of `{:path :pointer}`) into
+  `:new-problems` (must fail), `:grandfathered` (matched by baseline) and
+  `:stale` (baseline entries with no matching violation, must also fail so the
+  baseline shrinks as schemas get fixed). `:fatal` violations bypass baselining."
+  [violations baseline]
+  (let [baselined? #(and (not (:fatal %))
                          (contains? baseline (select-keys % [:path :pointer])))
-        {grandfathered true new-problems false} (group-by baselined? all)
-        stale      (remove (fn [{:keys [path pointer]}]
-                             (some #(and (= path (:path %)) (= pointer (:pointer %))) all))
-                           baseline)]
+        {grandfathered true new-problems false} (group-by baselined? violations)
+        stale (remove (fn [{:keys [path pointer]}]
+                        (some #(and (= path (:path %)) (= pointer (:pointer %))) violations))
+                      baseline)]
+    {:new-problems  (vec new-problems)
+     :grandfathered (vec grandfathered)
+     :stale         (vec stale)}))
+
+(defn -main [& _]
+  (let [files (schema-files)
+        all   (mapcat (fn [path]
+                        (try
+                          (check-schema path (json/parse-string (slurp path) true))
+                          (catch Exception e
+                            ;; :fatal forces the entry past the baseline — a parse failure
+                            ;; should never be silently grandfathered.
+                            [{:path path :pointer "$" :fatal true
+                              :msg (str "unparseable: " (ex-message e))}])))
+                      files)
+        {:keys [new-problems grandfathered stale]} (classify-violations all baseline)]
     (doseq [{:keys [path pointer msg]} new-problems]
       (println (format "%s  %s  %s" path pointer msg)))
     (doseq [{:keys [path pointer]} stale]
