@@ -1,6 +1,7 @@
 (ns build.uberjar
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [clojure.tools.build.util.zip :as build.zip]
    [clojure.tools.namespace.dependency :as ns.deps]
@@ -162,8 +163,12 @@
                          :src-dirs   [src-dir]})))))))
 
 (def ^:private dependency-ignore-patterns
-  "Files to ignore when copying resources from our dependencies."
-  [#".*metabase.*\.clj[c|s]?$"
+  "Files to ignore when copying resources from our dependencies.
+
+  NB: `b/uber` applies these to `class-dir` too, hence the [[drivers-excluded-from-aot]] carve-out (#73560)."
+  [(re-pattern
+    (format "(?!metabase/driver/(?:%s)(?:/.*)?\\.clj[cs]?$).*metabase.*\\.clj[c|s]?$"
+            (str/join "|" drivers-excluded-from-aot)))
    ;; ignore module-info files inside META-INF because we don't have a modular JAR and they can break tools like `jar
    ;; tf` -- see Slacc thread
    ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
