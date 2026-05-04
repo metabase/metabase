@@ -193,14 +193,17 @@
 
 (mr/def ::ExplorationQueryGroup
   "Schema for an auto-derived group bundling related queries on a single thread.
-   `query_ids` references queries that exist on the same thread. The `:type` field
-   exists so future user-defined groups (`\"user\"`) can land alongside without
-   changing the response shape."
+   `:query_ids` references queries that exist on the same thread. `:parent_group_id`
+   references another group's `:id` within the same `:groups` list (nil = top
+   level); the shape is nestable but currently we only generate flat groups. Type is
+  just `auto` for now but will allow for user-defined groups at some point down the road."
   [:map
-   [:id        :string]
-   [:type      [:enum "auto"]]
-   [:name      [:maybe :string]]
-   [:query_ids [:sequential ms/PositiveInt]]])
+   [:id              :string]
+   [:parent_group_id [:maybe :string]]
+   [:position        ms/IntGreaterThanOrEqualToZero]
+   [:type            [:enum "auto"]]
+   [:name            [:maybe :string]]
+   [:query_ids       [:sequential ms/PositiveInt]]])
 
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."

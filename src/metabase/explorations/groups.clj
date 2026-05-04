@@ -36,22 +36,31 @@
   "Given a seq of hydrated `ExplorationQuery` rows for a single thread, return a vector
    of auto-group maps:
 
-       {:id \"auto:<card_id>:<dim_id>\"
-        :type \"auto\"
-        :name \"<base query name>\"
-        :query_ids [<id> <id> ...]}
+       {:id              \"auto:<card_id>:<dim_id>\"
+        :parent_group_id nil
+        :position        <0-indexed sibling order>
+        :type            \"auto\"
+        :name            \"<base query name>\"
+        :query_ids       [<id> <id> ...]}
+
+   `:parent_group_id` references another group's `:id` in the same vector (nil = top
+   level). The current heuristic produces a single flat level, so every group emitted
+   today carries `nil`, just present to prep for a future where we can have ntested groups.
 
    Queries within a group keep their input order (positions). Groups are ordered by
    max `:interestingness_score` in the group (desc), then by group `:id` for a stable
-   tiebreak; groups with no scored queries sort last."
+   tiebreak; groups with no scored queries sort last. `:position` is the 0-indexed
+   slot in that ordering."
   [queries]
   (->> (group-by (juxt :card_id :dimension_id) queries)
        (mapv (fn [[[card-id dim-id] qs]]
-               {:id         (group-id card-id dim-id)
-                :type       "auto"
-                :name       (group-name qs)
-                :query_ids  (mapv :id qs)
-                ::max-score (max-score qs)}))
+               {:id              (group-id card-id dim-id)
+                :parent_group_id nil
+                :type            "auto"
+                :name            (group-name qs)
+                :query_ids       (mapv :id qs)
+                ::max-score      (max-score qs)}))
        (sort-by (fn [{::keys [max-score] :keys [id]}]
                   (if max-score [0 (- max-score) id] [1 0 id])))
-       (mapv #(dissoc % ::max-score))))
+       (into [] (comp (map-indexed #(assoc %2 :position %1))
+                      (map #(dissoc % ::max-score))))))

@@ -672,7 +672,13 @@
       (testing "each group is type=auto with a stable composite id"
         (is (every? #(= "auto" (:type %)) groups))
         (is (= #{"auto:10:d1" "auto:10:d2" "auto:20:d1"}
-               (set (map :id groups))))))))
+               (set (map :id groups)))))
+      (testing "every group is top-level (parent_group_id=nil) and carries 0-indexed :position"
+        (is (every? #(nil? (:parent_group_id %)) groups))
+        (is (= [0 1 2] (mapv :position groups)))
+        (is (= 0 (:position (get by-id "auto:20:d1"))) "highest score => position 0")
+        (is (= 1 (:position (get by-id "auto:10:d1"))))
+        (is (= 2 (:position (get by-id "auto:10:d2"))))))))
 
 (deftest auto-groups-name-from-unsegmented-base-test
   (testing "Group :name is taken from the unsegmented (segment_id=nil) base query"
@@ -682,7 +688,9 @@
                    {:id 3 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)"}])]
       (is (= 1 (count groups)))
       (is (= "Rev by D1" (-> groups first :name))
-          "even when base isn't first in the input, its name wins"))))
+          "even when base isn't first in the input, its name wins")
+      (is (nil? (-> groups first :parent_group_id)))
+      (is (= 0 (-> groups first :position))))))
 
 (deftest auto-groups-sort-order-test
   (testing "Groups are ordered by max interestingness desc; nil-score groups sort last"
@@ -692,7 +700,10 @@
                    {:id 3 :card_id 11 :dimension_id "d1" :segment_id 100 :name "high (S)" :interestingness_score 0.4}
                    {:id 4 :card_id 12 :dimension_id "d1" :segment_id nil :name "none" :interestingness_score nil}])]
       (is (= ["high" "low" "none"] (mapv :name groups))
-          "0.9 > 0.2 > nil; max-within-group drives the ordering"))))
+          "0.9 > 0.2 > nil; max-within-group drives the ordering")
+      (is (= [0 1 2] (mapv :position groups))
+          ":position reifies the sort order on the wire")
+      (is (every? #(nil? (:parent_group_id %)) groups)))))
 
 (deftest auto-groups-empty-input-test
   (testing "An empty input returns an empty vector (no nil)"
@@ -724,6 +735,11 @@
           (is (every? #(= "auto" (:type %)) groups))
           (is (every? #(string? (:id %)) groups))
           (is (every? #(seq (:query_ids %)) groups)))
+        (testing "shape is nestable but flat today: parent_group_id nil, sequential positions"
+          (is (every? #(nil? (:parent_group_id %)) groups)
+              "current heuristic emits one level only — every group is top-level")
+          (is (= (vec (range (count groups))) (mapv :position groups))
+              "positions are 0..N-1 in sort order — if a future heuristic emits nesting this fails on purpose"))
         (testing "every query appears in exactly one group's :query_ids"
           (let [all-member-ids (mapcat :query_ids groups)
                 query-ids      (map :id queries)]
