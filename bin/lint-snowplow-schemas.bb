@@ -51,18 +51,18 @@
       (and (sequential? t) (some #{"null"} t))))
 
 (defn- check-schema [path schema]
-  (let [problems (volatile! [])
-        add!     (fn [pointer msg] (vswap! problems conj {:pointer pointer :msg msg}))]
-    (when (and (has-type? schema "object")
-               (not (contains? schema :additionalProperties)))
-      (add! "$" "object schema must explicitly set 'additionalProperties' (true or false)"))
-    (let [required (set (:required schema))]
-      (doseq [[prop {t :type}] (:properties schema)
-              :when (and (contains? required (name prop))
-                         (nullable-type? t))]
-        (add! (str "$.properties." (name prop))
-              (format "required property '%s' has nullable type %s" (name prop) (pr-str t)))))
-    (mapv #(assoc % :path path) @problems)))
+  (let [missing-additional (when (and (has-type? schema "object")
+                                      (not (contains? schema :additionalProperties)))
+                             [{:pointer "$"
+                               :msg "object schema must explicitly set 'additionalProperties' (true or false)"}])
+        required           (set (:required schema))
+        nullable-required  (for [[prop {t :type}] (:properties schema)
+                                 :when (and (contains? required (name prop))
+                                            (nullable-type? t))]
+                             {:pointer (str "$.properties." (name prop))
+                              :msg (format "required property '%s' has nullable type %s"
+                                           (name prop) (pr-str t))})]
+    (mapv #(assoc % :path path) (concat missing-additional nullable-required))))
 
 (defn -main [& _]
   (let [files      (schema-files)
