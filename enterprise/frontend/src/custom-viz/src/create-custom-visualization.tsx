@@ -1,4 +1,5 @@
-import React from "react";
+import type { ComponentType, ReactNode } from "react";
+import { Component } from "react";
 import { createRoot } from "react-dom/client";
 
 import type {
@@ -9,13 +10,11 @@ import type {
 
 export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
   Omit<CustomVisualization<TSettings>, "mount"> & {
-    VisualizationComponent: React.ComponentType<
-      CustomVisualizationProps<TSettings>
-    >;
+    VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
   };
 
-class PluginErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+class PluginErrorBoundary extends Component<
+  { children: ReactNode },
   { error: Error | null }
 > {
   state: { error: Error | null } = { error: null };
