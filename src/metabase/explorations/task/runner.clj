@@ -3,12 +3,18 @@
   row with `FOR UPDATE SKIP LOCKED`, runs the snapshotted MBQL through the QP, writes the
   serialized result to `:model/ExplorationQueryResult`, and commits the whole thing in a single
   transaction. Crash recovery is automatic: a JVM kill drops the connection, the DB rolls back
-  the tx, and the row is left as `pending` for another worker to pick up."
+  the tx, and the row is left as `pending` for another worker to pick up.
+
+  Each iteration also handles per-`(query, timeline)` interestingness scoring: when no query is
+  pending, the worker looks for a thread-selected timeline that hasn't yet been scored against a
+  done query in the same thread, claims the pair via INSERT (the unique constraint serializes
+  competing claims), runs the LLM scorer, and writes the result."
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
@@ -92,7 +98,7 @@
                  (:id exploration-query))
       nil)))
 
-(defn- run-one-iteration!
+(defn- run-one-query-iteration!
   "Try to claim and execute a single pending query. Returns truthy when work was done so the
   caller knows whether to sleep."
   []
@@ -122,6 +128,67 @@
                          :started_at    started
                          :finished_at   (OffsetDateTime/now)}))))
       :worked)))
+
+(defn- find-unscored-pair
+  "Return one `{:exploration_query_id _ :timeline_id _}` map for a `(query, timeline)`
+  pair that needs scoring (query is `done`, timeline is selected on the same thread,
+  and no row exists in `exploration_query_timeline_interestingness` yet). Returns nil
+  when there's no pending work."
+  []
+  (first
+   (t2/query
+    {:select   [[:q.id :exploration_query_id]
+                [:ett.timeline_id :timeline_id]]
+     :from     [[:exploration_query :q]]
+     :join     [[:exploration_thread_timeline :ett]
+                [:= :ett.exploration_thread_id :q.exploration_thread_id]]
+     :left-join [[:exploration_query_timeline_interestingness :s]
+                 [:and [:= :s.exploration_query_id :q.id]
+                  [:= :s.timeline_id :ett.timeline_id]]]
+     :where    [:and [:= :q.status "done"] [:= :s.id nil]]
+     :order-by [[:q.id :asc] [:ett.timeline_id :asc]]
+     :limit    1})))
+
+(defn- claim-pending-timeline-pair!
+  "Atomically reserve one unscored `(query, timeline)` pair by INSERTing a row with
+  `scored_at = NULL` (the in-flight marker). The unique constraint serializes
+  competing claims: a losing worker catches the conflict and returns nil to retry on
+  the next iteration. Returns the inserted row on success, nil on no work or race loss."
+  []
+  (when-let [{:keys [exploration_query_id timeline_id]} (find-unscored-pair)]
+    (try
+      (first (t2/insert-returning-instances!
+              :model/ExplorationQueryTimelineInterestingness
+              {:exploration_query_id exploration_query_id
+               :timeline_id          timeline_id
+               :scored_at            nil}))
+      (catch Throwable e
+        (log/tracef e "Lost race claiming timeline pair (q=%s, t=%s)"
+                    exploration_query_id timeline_id)
+        nil))))
+
+(defn- run-one-timeline-iteration!
+  "Try to claim and score one `(query, timeline)` pair. Returns truthy when work was done."
+  []
+  (when-let [{:keys [id exploration_query_id timeline_id]} (claim-pending-timeline-pair!)]
+    (let [score (try
+                  (explorations.timeline-interestingness/score-query-timeline
+                   exploration_query_id timeline_id)
+                  (catch Throwable e
+                    (log/warnf e "Timeline scoring failed for query=%s timeline=%s"
+                               exploration_query_id timeline_id)
+                    nil))]
+      (t2/update! :model/ExplorationQueryTimelineInterestingness id
+                  {:interestingness_score score
+                   :scored_at             (OffsetDateTime/now)}))
+    :worked))
+
+(defn- run-one-iteration!
+  "Do one unit of work: prefer pending queries, fall back to pending timeline scoring.
+  Returns truthy when something was processed."
+  []
+  (or (run-one-query-iteration!)
+      (run-one-timeline-iteration!)))
 
 (defn- worker-loop
   [worker-id]

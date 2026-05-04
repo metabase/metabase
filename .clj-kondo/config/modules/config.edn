@@ -981,20 +981,25 @@
            lib
            lib-be
            lib-metric
+           metabot
            metrics
            models
            queries
            query-processor
            startup
+           timeline
            util}
    :model-exports #{:model/Exploration
                     :model/ExplorationQuery
                     :model/ExplorationQueryResult
+                    :model/ExplorationQueryTimelineInterestingness
                     :model/ExplorationThread
                     :model/ExplorationThreadDimension
                     :model/ExplorationThreadMetric
                     :model/ExplorationThreadTimeline}
    :model-imports #{:model/Card
+                    :model/Timeline
+                    :model/TimelineEvent
                     :model/User}}
 
   formatter
@@ -2279,7 +2284,8 @@
            events
            models
            util}
-   :model-exports #{:model/Timeline}
+   :model-exports #{:model/Timeline
+                    :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}
 
   tracing

@@ -4,6 +4,8 @@
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.task.runner :as runner]
+   [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
+   [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -187,3 +189,107 @@
         (is (some? (:finished_at final)))
         (is (zero? (t2/count :model/ExplorationQueryResult
                              :exploration_query_id (:id row))))))))
+
+(defn- store-fake-result!
+  [query-id qp-result]
+  (let [bytes (cache.impl/do-with-serialization
+               (fn [in result-fn]
+                 (in qp-result)
+                 (result-fn)))]
+    (t2/insert! :model/ExplorationQueryResult
+                {:exploration_query_id query-id
+                 :result_data          bytes})))
+
+(defn- done-query-with-fake-result!
+  [thread-id card-id]
+  (let [q (first (t2/insert-returning-instances!
+                  :model/ExplorationQuery
+                  {:exploration_thread_id thread-id
+                   :card_id               card-id
+                   :dimension_id          "d1"
+                   :dataset_query         (mt/mbql-query venues {:aggregation [[:count]]})
+                   :status                "done"
+                   :position              0}))]
+    (store-fake-result! (:id q) {:status :completed
+                                 :data   {:cols [{:name "x"} {:name "y"}]
+                                          :rows [["a" 1] ["b" 2]]}})
+    q))
+
+(deftest timeline-iteration-claims-and-scores-pair-test
+  (testing "When a thread-selected timeline has no score for a done query, the worker scores it"
+    (mt/with-temp [:model/User u {:email "ti-runner-claim@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            _link  (t2/insert! :model/ExplorationThreadTimeline
+                               {:exploration_thread_id (:id thread)
+                                :timeline_id           (:id tl)
+                                :position              0})]
+        (with-redefs [explorations.timeline-interestingness/score-query-timeline
+                      (fn [_ _] 0.71)]
+          (run-one-iteration!)
+          ;; If the iteration picked up a different unrelated row first (e.g. a leftover
+          ;; pending query from another test), drain a few more times until ours is scored.
+          (loop [n 5]
+            (when (and (pos? n)
+                       (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
+                                        :exploration_query_id (:id q)
+                                        :timeline_id (:id tl))))
+              (run-one-iteration!)
+              (recur (dec n)))))
+        (let [scored (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                    :exploration_query_id (:id q)
+                                    :timeline_id (:id tl))]
+          (is (some? scored))
+          (is (= 0.71 (:interestingness_score scored)))
+          (is (some? (:scored_at scored))))))))
+
+(deftest timeline-iteration-records-nil-on-scorer-failure-test
+  (testing "If the scorer throws or returns nil, scored_at is still set so we don't retry forever"
+    (mt/with-temp [:model/User u {:email "ti-runner-fail@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            _link  (t2/insert! :model/ExplorationThreadTimeline
+                               {:exploration_thread_id (:id thread)
+                                :timeline_id           (:id tl)
+                                :position              0})]
+        (with-redefs [explorations.timeline-interestingness/score-query-timeline
+                      (fn [_ _] (throw (ex-info "boom" {})))]
+          (run-one-iteration!)
+          (loop [n 5]
+            (when (and (pos? n)
+                       (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
+                                        :exploration_query_id (:id q)
+                                        :timeline_id (:id tl))))
+              (run-one-iteration!)
+              (recur (dec n)))))
+        (let [scored (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                    :exploration_query_id (:id q)
+                                    :timeline_id (:id tl))]
+          (is (some? scored))
+          (is (nil? (:interestingness_score scored)))
+          (is (some? (:scored_at scored))))))))
+
+(deftest timeline-iteration-is-idempotent-test
+  (testing "Once a (query, timeline) pair is scored, subsequent iterations don't duplicate it"
+    (mt/with-temp [:model/User u {:email "ti-runner-idem@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            _link  (t2/insert! :model/ExplorationThreadTimeline
+                               {:exploration_thread_id (:id thread)
+                                :timeline_id           (:id tl)
+                                :position              0})]
+        (with-redefs [explorations.timeline-interestingness/score-query-timeline
+                      (fn [_ _] 0.5)]
+          (dotimes [_ 6] (run-one-iteration!)))
+        (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
+                           :exploration_query_id (:id q)
+                           :timeline_id (:id tl))))))))

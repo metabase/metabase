@@ -191,7 +191,11 @@
    [:user_interestingness             {:optional true} [:maybe [:enum 0 1 2]]]
    [:entity_id                        {:optional true} [:maybe :string]]
    [:interestingness_score            {:optional true} [:maybe number?]]
-   [:contextual_interestingness_score {:optional true} [:maybe number?]]])
+   [:contextual_interestingness_score {:optional true} [:maybe number?]]
+   [:timeline_interestingness         {:optional true} [:maybe [:sequential
+                                                                [:map
+                                                                 [:timeline_id           ms/PositiveInt]
+                                                                 [:interestingness_score {:optional true} [:maybe number?]]]]]]])
 
 (mr/def ::ExplorationQueryGroup
   "Schema for an auto-derived group bundling related queries on a single thread.
@@ -510,17 +514,21 @@
   "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
   intended for the frontend to poll while pending queries finish. The `interestingness_score`
   column is left-joined from `exploration_query_result` so clients can rank/highlight without a
-  second roundtrip; pending or errored queries get `nil`."
+  second roundtrip; pending or errored queries get `nil`. Per-`(query, timeline)` scores are
+  batched-hydrated as `:timeline_interestingness` so the client can highlight relevant timelines
+  for the focused chart."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check (get-exploration-or-404 id))
-  (t2/select (into [:model/ExplorationQuery] query-summary-columns)
-             {:left-join [:exploration_thread
-                          [:= :exploration_query.exploration_thread_id :exploration_thread.id]
-                          :exploration_query_result
-                          [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
-              :where     [:= :exploration_thread.exploration_id id]
-              :order-by  [[:exploration_query.position :asc]
-                          [:exploration_query.id :asc]]}))
+  (t2/hydrate
+   (t2/select (into [:model/ExplorationQuery] query-summary-columns)
+              {:left-join [:exploration_thread
+                           [:= :exploration_query.exploration_thread_id :exploration_thread.id]
+                           :exploration_query_result
+                           [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
+               :where     [:= :exploration_thread.exploration_id id]
+               :order-by  [[:exploration_query.position :asc]
+                           [:exploration_query.id :asc]]})
+   :timeline_interestingness))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up

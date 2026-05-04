@@ -56,6 +56,7 @@
     :model/DependencyStatus
     :model/DocumentBookmark
     :model/ExplorationQueryResult
+    :model/ExplorationQueryTimelineInterestingness
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
