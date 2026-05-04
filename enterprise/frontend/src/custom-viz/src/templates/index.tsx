@@ -56,7 +56,7 @@ const VisualizationComponent = ({
   );
 };
 
-const factory: CreateCustomVisualization<Settings> = ({
+const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
   getAssetUrl,
 }) => {
@@ -150,4 +150,4 @@ const factory: CreateCustomVisualization<Settings> = ({
   });
 };
 
-export default factory;
+export default createVisualization;
