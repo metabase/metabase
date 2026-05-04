@@ -1,4 +1,4 @@
-/** Intercept routes for caching tests */
+/** Set up Cypress intercepts for the cache config endpoints. */
 export const interceptPerformanceRoutes = () => {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -16,24 +16,10 @@ export const interceptPerformanceRoutes = () => {
   cy.intercept("POST", "/api/cache/invalidate?*").as("invalidateCache");
 };
 
-/** Cypress log messages sometimes occur out of order so it is helpful to log to the console as well. */
-export const log = (message: string) => {
-  cy.log(message);
-  console.log(message);
-};
+export const cacheStrategySidesheet = () =>
+  cy.findByRole("dialog", { name: /Caching settings/ }).should("be.visible");
 
-export const goToPerformancePage = (
-  name:
-    | "Database caching"
-    | "Dashboard and question caching"
-    | "Model persistence",
-) => {
-  cy.findByTestId("admin-layout-sidebar").findByText(name).click();
-};
-
-export const advanceServerClockBy = (milliseconds: number) => {
-  log(`Advancing clock by ${milliseconds}ms`);
-  return cy.request("POST", "/api/testing/set-time", {
-    "add-ms": milliseconds,
-  });
-};
+export const durationRadioButton = () =>
+  cy
+    .findByRole("form", { name: "Select the cache invalidation policy" })
+    .findByRole("radio", { name: /Duration/ });

@@ -4,8 +4,6 @@ import _ from "underscore";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 
-import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
-
 import {
   BASE_POSTGRES_DESTINATION_DB_INFO,
   DB_ROUTER_USERS,
@@ -221,7 +219,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         query: "SELECT name FROM db_identifier;",
       },
     }).then(({ body: { id: questionId } }) => {
-      interceptPerformanceRoutes();
+      H.interceptPerformanceRoutes();
       cy.request("PUT", "api/cache", {
         model: "question",
         model_id: questionId,

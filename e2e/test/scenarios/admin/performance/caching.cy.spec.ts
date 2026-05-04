@@ -3,22 +3,40 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { interceptPerformanceRoutes } from "./helpers/e2e-performance-helpers";
-import {
-  adaptiveRadioButton,
-  cacheStrategySidesheet,
-  checkPreemptiveCachingDisabled,
-  checkPreemptiveCachingEnabled,
-  disablePreemptiveCaching,
-  durationRadioButton,
-  enablePreemptiveCaching,
-  formLauncher,
-  openSidebarCacheStrategyForm,
-  openStrategyFormForDatabaseOrDefaultPolicy,
-  saveCacheStrategyForm,
-} from "./helpers/e2e-strategy-form-helpers";
-
 const { H } = cy;
+
+const adaptiveRadioButton = () =>
+  cy
+    .findByRole("form", { name: "Select the cache invalidation policy" })
+    .findByRole("radio", { name: /Adaptive/ });
+
+const preemptiveCachingSwitch = () =>
+  cy.findByTestId("preemptive-caching-switch");
+
+const saveCacheStrategyForm = () => {
+  cy.findByRole("form", { name: "Select the cache invalidation policy" })
+    .button(/Save/)
+    .click();
+  return cy.wait("@putCacheConfig");
+};
+
+const openSidebarCacheStrategyForm = (type: "question" | "dashboard") => {
+  if (type === "dashboard") {
+    H.openDashboardSettingsSidebar();
+  } else {
+    H.openQuestionActions("Edit settings");
+  }
+  cy.wait("@getCacheConfig");
+  cy.findByLabelText("When to get new results").click();
+  return H.cacheStrategySidesheet();
+};
+
+const cancelConfirmationModal = () =>
+  cy
+    .findByTestId("confirm-modal")
+    .should("be.visible")
+    .button("Cancel")
+    .click();
 
 /**
  * Smoke tests for the caching feature.
@@ -51,14 +69,14 @@ describe("scenarios > admin > performance > caching", () => {
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
       H.restore();
-      interceptPerformanceRoutes();
+      H.interceptPerformanceRoutes();
       cy.signInAsAdmin();
     });
 
     it("saves the default-policy strategy and reflects the saved state", () => {
       cy.visit("/admin/performance");
       adaptiveRadioButton().click();
-      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+      saveCacheStrategyForm();
       adaptiveRadioButton().should("be.checked");
     });
   });
@@ -66,23 +84,26 @@ describe("scenarios > admin > performance > caching", () => {
   describe("ee", () => {
     beforeEach(() => {
       H.restore();
-      interceptPerformanceRoutes();
+      H.interceptPerformanceRoutes();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
     });
 
     it("can configure a database cache strategy, save, and clear the cache", () => {
-      openStrategyFormForDatabaseOrDefaultPolicy(
-        "Sample Database",
-        "No caching",
-      );
+      cy.visit("/admin/performance");
+      cy.findByTestId("admin-layout-content")
+        .findByLabelText(/Edit.*Sample Database.*currently.*No caching/)
+        .click();
+
       cy.log("Clear-cache button is absent before the database has a cache");
       cy.button(/Clear cache/).should("not.exist");
 
       cy.log("Set Sample Database to Duration and save");
-      durationRadioButton().click();
-      saveCacheStrategyForm({ strategyType: "duration", model: "database" });
-      formLauncher("Sample Database", "currently", "Duration");
+      H.durationRadioButton().click();
+      saveCacheStrategyForm();
+      cy.findByTestId("admin-layout-content").findByLabelText(
+        /Edit.*Sample Database.*currently.*Duration/,
+      );
 
       cy.log("Clear-cache button is now visible — click it");
       cy.button(/Clear cache for this database/).click();
@@ -100,28 +121,36 @@ describe("scenarios > admin > performance > caching", () => {
       cy.log("Enable preemptive caching from the question sidebar");
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
-      durationRadioButton().click();
-      enablePreemptiveCaching();
-      saveCacheStrategyForm({ strategyType: "duration", model: "database" });
+      H.durationRadioButton().click();
+      preemptiveCachingSwitch().within(() => {
+        cy.findByRole("switch").should("not.be.checked");
+        cy.findByRole("switch").parent("label").click();
+        cy.findByRole("switch").should("be.checked");
+      });
+      saveCacheStrategyForm();
       cy.findByLabelText("When to get new results").click();
-      checkPreemptiveCachingEnabled();
+      preemptiveCachingSwitch().findByRole("switch").should("be.checked");
 
       cy.log(
         "Toggle is reflected on the admin Dashboard and question caching tab",
       );
       cy.visit("/admin/performance/dashboards-and-questions");
       cy.findByTestId("cache-config-table").contains("Duration: 24h").click();
-      checkPreemptiveCachingEnabled();
+      preemptiveCachingSwitch().findByRole("switch").should("be.checked");
 
       cy.log("Disable from the admin tab");
-      disablePreemptiveCaching();
-      saveCacheStrategyForm({ strategyType: "duration", model: "database" });
-      checkPreemptiveCachingDisabled();
+      preemptiveCachingSwitch().within(() => {
+        cy.findByRole("switch").should("be.checked");
+        cy.findByRole("switch").parent("label").click();
+        cy.findByRole("switch").should("not.be.checked");
+      });
+      saveCacheStrategyForm();
+      preemptiveCachingSwitch().findByRole("switch").should("not.be.checked");
 
       cy.log("Toggle is reflected back in the question sidebar");
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
-      checkPreemptiveCachingDisabled();
+      preemptiveCachingSwitch().findByRole("switch").should("not.be.checked");
     });
 
     /**
@@ -137,13 +166,15 @@ describe("scenarios > admin > performance > caching", () => {
       cy.findByTestId("collection-table").findByText("Orders").click();
 
       openSidebarCacheStrategyForm("question");
-      cacheStrategySidesheet().within(() => {
+      H.cacheStrategySidesheet().within(() => {
         cy.findByText(/Caching settings/).should("be.visible");
-        durationRadioButton().click();
+        H.durationRadioButton().click();
       });
 
       cy.log("Action 1 — click the close (×) button");
-      cacheStrategySidesheet().findByRole("button", { name: /Close/ }).click();
+      H.cacheStrategySidesheet()
+        .findByRole("button", { name: /Close/ })
+        .click();
       cancelConfirmationModal();
 
       cy.log("Action 2 — press ESC");
@@ -173,15 +204,15 @@ describe("scenarios > admin > performance > caching", () => {
       cy.log("Configure Orders with Duration: 99h");
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
-      durationRadioButton().click();
+      H.durationRadioButton().click();
       cy.findByLabelText(/Cache results for this many hours/).type("99");
-      saveCacheStrategyForm({ strategyType: "duration", model: "database" });
+      saveCacheStrategyForm();
 
       cy.log("Configure Orders, Count with Adaptive");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       adaptiveRadioButton().click();
-      saveCacheStrategyForm({ strategyType: "ttl", model: "database" });
+      saveCacheStrategyForm();
 
       cy.log("Both entries are visible on the admin tab");
       cy.visit("/admin/performance/dashboards-and-questions");
@@ -191,7 +222,7 @@ describe("scenarios > admin > performance > caching", () => {
 
       cy.log("Clicking Duration: 99h opens its form with duration selected");
       cy.findByTestId("cache-config-table").contains("Duration: 99h").click();
-      durationRadioButton().should("be.checked");
+      H.durationRadioButton().should("be.checked");
       cy.findByLabelText(/Cache results for this many hours/).should(
         "have.value",
         "99",
@@ -206,10 +237,3 @@ describe("scenarios > admin > performance > caching", () => {
     });
   });
 });
-
-const cancelConfirmationModal = () =>
-  cy
-    .findByTestId("confirm-modal")
-    .should("be.visible")
-    .button("Cancel")
-    .click();
