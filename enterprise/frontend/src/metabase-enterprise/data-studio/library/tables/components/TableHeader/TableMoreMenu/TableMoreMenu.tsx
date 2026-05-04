@@ -132,6 +132,7 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
             hasConfirmButtons: true,
             confirmButtonText: t`Move`,
           }}
+          entityType="table"
         />
       )}
     </Box>
