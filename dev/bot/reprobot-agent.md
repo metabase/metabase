@@ -193,7 +193,9 @@ Show the user the report path and a brief summary using a banner:
 
 ---
 
-{{FILE:dev/bot/common/playwright-guide.md}}
+## Browser Automation
+
+For browser interaction with Metabase, use the **`playwright-mcp-metabase`** skill — it auto-loads on Playwright MCP tool use and documents the snapshot/act/check pattern, Mantine component pitfalls (Menu race, Select/MultiSelect, the Escape-closes-modal trap, portal scoping), and Metabase login flows.
 
 
 ## Important Rules

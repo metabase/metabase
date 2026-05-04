@@ -1,6 +1,8 @@
 Review this conversation and generate a structured improvement report.
 
-Generate `TIMESTAMP` by running `./bin/mage -bot-timestamp` (do **NOT** use `date` directly), then set `OUTPUT_DIR=.bot/recurbot/<TIMESTAMP>` and save the report to `<OUTPUT_DIR>/SUGGESTIONS.md`. All artifacts for the run live directly under `<OUTPUT_DIR>/` so parallel `/recurbot` invocations in the same checkout never collide.
+**Precondition:** If the conversation contains no substantive task work prior to this invocation (no edits, no non-trivial tool calls, no user task beyond invoking `/agent-improve`), respond with a single line stating there is nothing to analyze and exit without generating `OUTPUT_DIR` or writing `SUGGESTIONS.md`. Do not run `bin/mage -bot-timestamp` in that case.
+
+Generate `TIMESTAMP` by running `./bin/mage -bot-timestamp` (do **NOT** use `date` directly), then set `OUTPUT_DIR=.bot/agent-improve/<TIMESTAMP>` and save the report to `<OUTPUT_DIR>/SUGGESTIONS.md`. All artifacts for the run live directly under `<OUTPUT_DIR>/` so parallel `/agent-improve` invocations in the same checkout never collide.
 
 ## What to analyze
 
@@ -44,7 +46,7 @@ Write `<OUTPUT_DIR>/SUGGESTIONS.md` with this structure:
 **Session:** <brief description of what was being done>
 **Date:** <today's date>
 **Outcome:** <succeeded / partially succeeded / failed>
-**Transcript:** <absolute path to this conversation's transcript JSONL file — find it with `ls -lt ~/.claude/projects/-Users-nvoxland-src-metabase-metabase-4/*.jsonl | head -1`>
+**Transcript:** <absolute path to this conversation's transcript JSONL file — derive the project dir by replacing `/` with `-` in the absolute working directory and prefixing `~/.claude/projects/`, then `ls -lt <that dir>/*.jsonl | head -1`>
 
 ## Summary
 
