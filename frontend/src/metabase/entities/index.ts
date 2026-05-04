@@ -72,7 +72,6 @@ export { Actions as actions } from "./actions/actions";
 export { Collections as collections } from "./collections";
 export { SnippetCollections as snippetCollections } from "./snippet-collections";
 export { Dashboards as dashboards } from "./dashboards";
-export { Pulses as pulses } from "./pulses";
 export { Questions as questions } from "./questions";
 export { IndexedEntities as indexedEntities } from "./indexed-entities";
 

@@ -15,7 +15,6 @@ import { Actions } from "./actions";
 import { Bookmarks } from "./bookmarks";
 import { Collections } from "./collections";
 import { Dashboards } from "./dashboards";
-import { Pulses } from "./pulses";
 import { Questions } from "./questions";
 import { Segments } from "./segments";
 import { SnippetCollections } from "./snippet-collections";
@@ -139,7 +138,6 @@ export const Search = createEntity({
       Bookmarks.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
-      Pulses.actionShouldInvalidateLists(action) ||
       Questions.actionShouldInvalidateLists(action) ||
       Segments.actionShouldInvalidateLists(action) ||
       Snippets.actionShouldInvalidateLists(action) ||
