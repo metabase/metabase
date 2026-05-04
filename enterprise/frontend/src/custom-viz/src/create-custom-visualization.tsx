@@ -9,7 +9,9 @@ import type {
 
 export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
   Omit<CustomVisualization<TSettings>, "mount"> & {
-    Component: React.ComponentType<CustomVisualizationProps<TSettings>>;
+    VisualizationComponent: React.ComponentType<
+      CustomVisualizationProps<TSettings>
+    >;
   };
 
 function safeReadString(value: unknown, key: string): string {
@@ -66,7 +68,7 @@ class PluginErrorBoundary extends React.Component<
 export function createCustomVisualization<
   TSettings extends Record<string, unknown>,
 >(opts: CustomVisualizationOpts<TSettings>): CustomVisualization<TSettings> {
-  const { Component, ...rest } = opts;
+  const { VisualizationComponent, ...rest } = opts;
 
   return {
     ...rest,
@@ -103,7 +105,7 @@ export function createCustomVisualization<
 
         return (
           <PluginErrorBoundary>
-            <Component {...props} />
+            <VisualizationComponent {...props} />
           </PluginErrorBoundary>
         );
       }

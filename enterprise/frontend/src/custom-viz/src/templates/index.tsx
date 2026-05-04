@@ -11,7 +11,7 @@ type Settings = {
   threshold?: number;
 };
 
-const Component = ({
+const VisualizationComponent = ({
   height,
   series,
   settings,
@@ -145,7 +145,7 @@ const factory: CreateCustomVisualization<Settings> = ({
         },
       }),
     },
-    Component,
+    VisualizationComponent,
     StaticVisualizationComponent,
   });
 };
