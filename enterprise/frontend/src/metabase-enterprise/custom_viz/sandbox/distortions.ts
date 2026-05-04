@@ -1,3 +1,5 @@
+import type { CustomVizPluginId } from "metabase-types/api";
+
 import { BLOCKED_NATIVE_REFS } from "./distortions-blocked-apis";
 import {
   CREATE_ELEMENT,
@@ -20,7 +22,7 @@ import {
   isDomElement,
 } from "./distortions-dom-read";
 
-export function makeDistortionCallback(pluginId: string) {
+export function makeDistortionCallback(pluginId: CustomVizPluginId) {
   return function distortionCallback(value: object): object {
     if (isDomElement(value)) {
       return getSafeSandboxDomElement(value, pluginId);

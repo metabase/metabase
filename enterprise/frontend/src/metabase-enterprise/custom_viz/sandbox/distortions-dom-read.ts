@@ -1,3 +1,5 @@
+import type { CustomVizPluginId } from "metabase-types/api";
+
 // DOM scoping: every Element crossing the membrane is filtered. Elements
 // inside the plugin's mount subtree (marked with data-plugin-sandbox=<id>)
 // pass through real; elements outside are replaced with a detached decoy of
@@ -11,7 +13,7 @@ export const ACTIVE_ELEMENT_GETTER = Object.getOwnPropertyDescriptor(
 
 export function getSafeSandboxDomElement(
   el: Element,
-  pluginId: string,
+  pluginId: CustomVizPluginId,
 ): Element {
   // `instanceof Element` can match values whose prototype chain includes
   // Element.prototype but which aren't real host Nodes (e.g. objects with a
@@ -40,7 +42,7 @@ export function getSafeSandboxDomElement(
 // (notably React) that probe activeElement during rendering. Return null when
 // the focused element is outside the plugin's subtree, so the plugin sees
 // "nothing focused inside my React tree" rather than a fake element.
-export function activeElementDistortion(pluginId: string) {
+export function activeElementDistortion(pluginId: CustomVizPluginId) {
   return function activeElement(this: Document): Element | null {
     const el = ACTIVE_ELEMENT_GETTER!.call(this) as Element | null;
     if (!el) {
@@ -74,7 +76,7 @@ function describeElement(el: Element): string {
   return `<${tag}>`;
 }
 
-function makeDecoyElement(pluginId: string, el: Element): Element {
+function makeDecoyElement(pluginId: CustomVizPluginId, el: Element): Element {
   console.error(
     `[plugin ${pluginId}] swapped out-of-scope ${describeElement(el)} with decoy`,
   );

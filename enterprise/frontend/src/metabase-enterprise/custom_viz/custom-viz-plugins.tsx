@@ -285,7 +285,7 @@ export async function loadCustomVizPlugin(
 
     const text = await res.text();
 
-    const sandbox = createPluginSandbox(String(plugin.id));
+    const sandbox = createPluginSandbox(plugin.id);
     const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {
@@ -322,7 +322,7 @@ export async function loadCustomVizPlugin(
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
-    const Wrapper = createCustomVizWrapper(vizDef.mount, String(plugin.id));
+    const Wrapper = createCustomVizWrapper(vizDef.mount, plugin.id);
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
@@ -408,7 +408,10 @@ type CustomVizWrapperProps = Omit<VisualizationProps, "width" | "height"> & {
   height: number | null;
 };
 
-function createCustomVizWrapper(mount: GenericVizMount, pluginId: string) {
+function createCustomVizWrapper(
+  mount: GenericVizMount,
+  pluginId: CustomVizPluginId,
+) {
   return function CustomVizWrapper({
     onVisualizationClick,
     onHoverChange,

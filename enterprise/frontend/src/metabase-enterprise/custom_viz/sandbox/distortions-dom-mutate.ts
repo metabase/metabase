@@ -1,5 +1,7 @@
 import DOMPurify from "dompurify";
 
+import type { CustomVizPluginId } from "metabase-types/api";
+
 export const CREATE_ELEMENT = Document.prototype.createElement;
 export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
 export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
@@ -28,7 +30,10 @@ for (const key of ["innerHTML", "outerHTML"] as const) {
 // sanitize lets us log only when something dangerous was actually removed,
 // not on harmless normalization (case, whitespace, missing close tags). The
 // distortion runs in the host realm, so console output goes to the host.
-function logSanitizationIfStripped(pluginId: string, source: string) {
+function logSanitizationIfStripped(
+  pluginId: CustomVizPluginId,
+  source: string,
+) {
   if (DOMPurify.removed.length > 0) {
     console.error(
       `[plugin ${pluginId}] DOMPurify stripped content from ${source}:`,
@@ -38,7 +43,7 @@ function logSanitizationIfStripped(pluginId: string, source: string) {
 }
 
 export function sanitizedSetterDistortion(
-  pluginId: string,
+  pluginId: CustomVizPluginId,
   name: string,
   originalSet: (this: Element, value: string) => void,
 ) {
@@ -60,7 +65,7 @@ const BLOCKED_TAGS = new Set([
   "base",
 ]);
 
-export function createElementDistortion(pluginId: string) {
+export function createElementDistortion(pluginId: CustomVizPluginId) {
   return function createElement(
     this: Document,
     tag: string,
@@ -76,7 +81,7 @@ export function createElementDistortion(pluginId: string) {
 // Same blocklist applied to namespaced creates (SVG/MathML). React reaches
 // for createElementNS to build SVG trees — common for visualization plugins —
 // but the dangerous-tag filter (script, iframe, etc.) still applies.
-export function createElementNSDistortion(pluginId: string) {
+export function createElementNSDistortion(pluginId: CustomVizPluginId) {
   return function createElementNS(
     this: Document,
     namespaceURI: string | null,
@@ -133,7 +138,7 @@ function isJavascriptUrl(value: unknown): boolean {
   return typeof value === "string" && /^\s*javascript:/i.test(value);
 }
 
-export function setAttributeDistortion(pluginId: string) {
+export function setAttributeDistortion(pluginId: CustomVizPluginId) {
   return function setAttribute(this: Element, name: string, value: string) {
     if (isInlineEventHandlerName(name)) {
       throw new Error(
@@ -149,7 +154,7 @@ export function setAttributeDistortion(pluginId: string) {
   };
 }
 
-export function setAttributeNSDistortion(pluginId: string) {
+export function setAttributeNSDistortion(pluginId: CustomVizPluginId) {
   return function setAttributeNS(
     this: Element,
     namespace: string | null,
@@ -170,7 +175,7 @@ export function setAttributeNSDistortion(pluginId: string) {
   };
 }
 
-export function insertAdjacentHTMLDistortion(pluginId: string) {
+export function insertAdjacentHTMLDistortion(pluginId: CustomVizPluginId) {
   return function insertAdjacentHTML(
     this: Element,
     position: InsertPosition,

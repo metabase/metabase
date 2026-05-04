@@ -1,5 +1,7 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
+import type { CustomVizPluginId } from "metabase-types/api";
+
 import { makeDistortionCallback } from "./distortions";
 
 // Needed for React style declarations to be applied correctly.
@@ -7,7 +9,7 @@ function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
-export function createPluginSandbox(pluginId: string) {
+export function createPluginSandbox(pluginId: CustomVizPluginId) {
   let capturedFactory: unknown;
 
   const env = createVirtualEnvironment(window, {
