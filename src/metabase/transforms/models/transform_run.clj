@@ -1,20 +1,25 @@
 (ns metabase.transforms.models.transform-run
   (:require
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.transforms.models.timeout-util :as timeout-util]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (java.time Instant OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -119,6 +124,17 @@
                                 :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
+(defn- publish-timeout-event!
+  "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
+  failures don't bubble into the caller's timeout flow."
+  [run]
+  (try
+    (events/publish-event! :event/transform-run-timeout
+                           (cond-> {:object run}
+                             (:user_id run) (assoc :user-id (:user_id run))))
+    (catch Throwable t
+      (log/warnf t "Failed to publish transform-run-timeout event for run %s" (pr-str (:id run))))))
+
 (defn timeout-run!
   "Mark a started run as timed out."
   ([run-id]
@@ -132,19 +148,67 @@
                                 :message   "Timed out"
                                 :status    :timeout
                                 :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+     (cancel/delete-cancelation! run-id)
+     (when (pos? <>)
+       (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
+       (when-let [run (t2/select-one :model/TransformRun :id run-id)]
+         (publish-timeout-event! run))))))
+
+(defn- timeout-rows!
+  "Atomic select-then-update of stale active runs older than `cutoff`. Returns the pre-update rows
+  the UPDATE transitioned. See [[timeout-old-runs!]] for atomicity rationale."
+  [cutoff]
+  ;; Alternative considered: `UPDATE … RETURNING *` to avoid an explicit transaction. Rejected —
+  ;; `RETURNING` on UPDATE is portable on Postgres but not on H2 or MySQL/MariaDB, and
+  ;; Metabase's app DB supports all three. The transaction here holds row locks only across a
+  ;; SELECT and one UPDATE-by-id, well within the 10-minute sweep cadence.
+  (t2/with-transaction [_conn]
+    (let [stale (t2/select :model/TransformRun
+                           {:where [:and
+                                    [:= :is_active true]
+                                    [:< :start_time cutoff]]
+                            :for   :update})]
+      (when (seq stale)
+        (t2/update! :model/TransformRun
+                    :id        [:in (mapv :id stale)]
+                    :is_active true
+                    {:status    :timeout
+                     :end_time  :%now
+                     :is_active nil
+                     :message   "Timed out by metabase"}))
+      stale)))
 
 (defn timeout-old-runs!
-  "Time out all active runs older than the specified age."
+  "Time out all active runs older than the specified age. Returns the number of runs timed out.
+
+  Atomicity: the select-and-update is wrapped in a transaction with `SELECT … FOR UPDATE`,
+  so the rows we report on (counter, histogram, audit event) are exactly the rows the UPDATE
+  transitions to `:timeout`. Without the lock a concurrent run completion between SELECT and
+  UPDATE could leave the row non-active by UPDATE time — the UPDATE would skip it (its filter
+  matches `:is_active true`), but we'd already have counted it, overstating the timeout rate."
   [age unit]
-  (u/prog1 (t2/update! :model/TransformRun
-                       :is_active true
-                       :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-                       {:status    :timeout
-                        :end_time  :%now
-                        :is_active nil
-                        :message   "Timed out by metabase"})
-    (cancel/delete-old-canceling-runs!)))
+  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
+        timeout-dur (timeout-util/unit->duration age unit)
+        detected-at (Instant/now)
+        end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
+        timed-out   (timeout-rows! cutoff)]
+    (when (seq timed-out)
+      (analytics/inc! :metabase-transforms/timeouts-total
+                      {:type "transform"}
+                      (count timed-out))
+      (run! (fn [run]
+              (when-let [start (:start_time run)]
+                (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
+                                    {:type "transform"}
+                                    (timeout-util/detection-latency-ms start timeout-dur detected-at)))
+              (publish-timeout-event! (assoc run
+                                             :status    :timeout
+                                             :is_active nil
+                                             :end_time  end-time
+                                             :message   "Timed out by metabase")))
+            timed-out))
+    (cancel/delete-old-canceling-runs!)
+    (count timed-out)))
 
 (defn cancel-old-canceling-runs!
   "Cancel all canceling runs older than the specified age."

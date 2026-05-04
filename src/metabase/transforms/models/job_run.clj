@@ -1,11 +1,15 @@
 (ns metabase.transforms.models.job-run
   (:require
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
+   [metabase.transforms.models.timeout-util :as timeout-util]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,22 +80,55 @@
                      {:status :failed
                       :is_active nil})))
 
-(defn timeout-old-runs!
-  "Time out all active runs older than the specified age.
+(defn- timeout-rows!
+  "Atomic select-then-update of stale active job runs older than `cutoff`. Returns the pre-update
+  rows the UPDATE transitioned. See [[timeout-old-runs!]] for atomicity rationale."
+  [cutoff]
+  ;; Alternative considered: `UPDATE … RETURNING *` to avoid an explicit transaction. Rejected —
+  ;; `RETURNING` on UPDATE is portable on Postgres but not on H2 or MySQL/MariaDB, and
+  ;; Metabase's app DB supports all three. The transaction here holds row locks only across a
+  ;; SELECT and one UPDATE-by-id, well within the 10-minute sweep cadence.
+  (t2/with-transaction [_conn]
+    (let [stale (t2/select :model/TransformJobRun
+                           {:where [:and
+                                    [:= :is_active true]
+                                    [:< :updated_at cutoff]]
+                            :for   :update})]
+      (when (seq stale)
+        (t2/update! :model/TransformJobRun
+                    :id        [:in (mapv :id stale)]
+                    :is_active true
+                    {:status :timeout
+                     :end_time :%now
+                     :is_active nil
+                     :message "Timed out by metabase"}))
+      stale)))
 
-  Returns the rows that were timed out so callers can take follow-up action
-  (e.g. sending notifications)."
+(defn timeout-old-runs!
+  "Time out all active job runs older than the specified age. Returns the rows that
+  were timed out so callers can take follow-up action (e.g. sending notifications).
+
+  Atomicity: the select-and-update is wrapped in a transaction with `SELECT … FOR UPDATE`,
+  so the rows we report on (counter, histogram) are exactly the rows the UPDATE transitions
+  to `:timeout`. Without the lock a concurrent activity update between SELECT and UPDATE
+  could leave the row non-active by UPDATE time — the UPDATE would skip it (its filter matches
+  `:is_active true`), but we'd already have counted it, overstating the timeout rate."
   [age unit]
-  (let [pks (t2/update-returning-pks!
-             :model/TransformJobRun
-             :is_active true
-             :updated_at [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-             {:status :timeout
-              :end_time :%now
-              :is_active nil
-              :message "Timed out by metabase"})]
-    (when (seq pks)
-      (t2/select :model/TransformJobRun :id [:in pks]))))
+  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
+        timeout-dur (timeout-util/unit->duration age unit)
+        detected-at (Instant/now)
+        timed-out   (timeout-rows! cutoff)]
+    (when (seq timed-out)
+      (analytics/inc! :metabase-transforms/timeouts-total
+                      {:type "job"}
+                      (count timed-out))
+      (run! (fn [run]
+              (when-let [updated-at (:updated_at run)]
+                (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
+                                    {:type "job"}
+                                    (timeout-util/detection-latency-ms updated-at timeout-dur detected-at))))
+            timed-out))
+    timed-out))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."
