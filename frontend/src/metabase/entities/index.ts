@@ -74,7 +74,6 @@ export { SnippetCollections as snippetCollections } from "./snippet-collections"
 export { Dashboards as dashboards } from "./dashboards";
 export { Pulses as pulses } from "./pulses";
 export { Questions as questions } from "./questions";
-export { IndexedEntities as indexedEntities } from "./indexed-entities";
 
 export { Timelines as timelines } from "./timelines";
 export { TimelineEvents as timelineEvents } from "./timeline-events";

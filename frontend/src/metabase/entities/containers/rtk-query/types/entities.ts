@@ -44,7 +44,6 @@ export type EntityType =
   | "documents"
   | "fields"
   | "groups"
-  | "indexedEntities"
   | "persistedModels"
   | "pulses"
   | "questions"
