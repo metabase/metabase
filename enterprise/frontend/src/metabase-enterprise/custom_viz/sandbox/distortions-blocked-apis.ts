@@ -1,9 +1,4 @@
-// Map<host-realm ref → friendly label> for native APIs that must never be
-// invoked from a sandboxed plugin. distortionCallback is called by
-// near-membrane with the blue-realm reference, so identity comparison against
-// these captured refs is sufficient. Refs that don't exist in the running
-// browser (e.g. Navigator.share on desktop Firefox) are skipped — there's
-// nothing to block if the API isn't there.
+export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
 const method = (proto: object, key: string): object | undefined =>
   Object.getOwnPropertyDescriptor(proto, key)?.value as object | undefined;
@@ -13,8 +8,6 @@ const getter = (proto: object, key: string): object | undefined =>
 
 const setter = (proto: object, key: string): object | undefined =>
   Object.getOwnPropertyDescriptor(proto, key)?.set;
-
-export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
 const block = (ref: object | undefined, label: string) => {
   if (ref) {

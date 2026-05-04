@@ -2,7 +2,7 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 
 import { makeDistortionCallback } from "./distortions";
 
-// React style declarations need to be applied correctly.
+// Needed for React style declarations to be applied correctly.
 function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
