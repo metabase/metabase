@@ -126,7 +126,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
-  createElement({ type: "feature", name: "public" }),
+  createElement({ type: "feature", name: "public", enforceOutgoing: true }),
   createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
