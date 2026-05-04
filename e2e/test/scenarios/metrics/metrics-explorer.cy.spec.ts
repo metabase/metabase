@@ -337,8 +337,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
-        const currentYear = new Date().getFullYear();
-        for (let year = 2022; year <= currentYear; year++) {
+        for (let year = 2025; year <= 2029; year++) {
           cy.findByText(String(year)).should("be.visible");
         }
       });
@@ -893,10 +892,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2027");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("July 7, 2024");
+          .type("July 7, 2027");
         cy.button("Add filter").click();
       });
 
@@ -912,7 +911,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("January 1, 2024");
+          .type("January 1, 2027");
         cy.button("Update filter").click();
       });
 
@@ -962,10 +961,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 1, 2024");
+          .type("February 1, 2027");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2027");
         cy.button("Add filter").click();
       });
 
@@ -1026,7 +1025,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /by month/ })
         .should("exist");
-      H.MetricsViewer.getMetricVisualizationDataPoints().eq(4).click();
+      H.MetricsViewer.getMetricVisualizationDataPoints().eq(5).click();
       H.popover().findByText("See this month by week").click();
 
       H.MetricsViewer.getMerticControls()
