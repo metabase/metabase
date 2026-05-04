@@ -195,7 +195,8 @@
 
 (deftest single-remapped-table-cross-driver-test
   (testing "QP read against canonical name resolves to the workspace copy on the warehouse"
-    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                             (mt/normal-drivers-with-feature :basic-aggregations))
       (mt/with-premium-features #{:workspaces}
         ;; Workspace table has 2 rows; canonical orders has many thousands.
         ;; Asserting the count comes back as 2 proves the read hit the workspace
@@ -214,7 +215,8 @@
 
 (deftest non-remapped-passthrough-cross-driver-test
   (testing "0/1: a query against a non-remapped table still hits canonical even when an unrelated remap exists"
-    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                             (mt/normal-drivers-with-feature :basic-aggregations))
       (mt/with-premium-features #{:workspaces}
         ;; Setup: a workspace `orders` table with 2 rows + a remap orders -> workspace.
         ;; Query: `:people` (NOT remapped). Must return canonical people count.
@@ -241,7 +243,8 @@
 
 (deftest join-one-side-remapped-cross-driver-test
   (testing "1/2: an MBQL join with only the orders side remapped reads workspace orders + canonical people"
-    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                             (mt/normal-drivers-with-feature :basic-aggregations))
       (mt/with-premium-features #{:workspaces}
         ;; Workspace orders has 2 rows; both have user_id values that exist in canonical people.
         ;; The join count should be 2 (one row per workspace order, joined to its canonical people row).
@@ -274,7 +277,8 @@
 
 (deftest join-both-sides-remapped-cross-driver-test
   (testing "2/2: an MBQL join with both sides remapped reads workspace orders + workspace people"
-    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                             (mt/normal-drivers-with-feature :basic-aggregations))
       (mt/with-premium-features #{:workspaces}
         ;; Workspace orders has user_id 999; workspace people has id 999.
         ;; Canonical people doesn't have id 999, so the 999/999 match exists

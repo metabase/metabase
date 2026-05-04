@@ -109,7 +109,8 @@
            search
            settings
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1322,7 +1323,8 @@
            task
            task-history
            tracing
-           util}
+           util
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -1745,6 +1747,7 @@
               metabase.query-processor.interface
               metabase.query-processor.metadata
               metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -2371,7 +2374,8 @@
            settings
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2608,7 +2612,8 @@
 
   workspaces
   {:team "Graphy"
-   :api #{metabase.workspaces.table-remapping}
+   :api #{metabase.workspaces.core
+          metabase.workspaces.table-remapping}
    :uses #{premium-features}}
 
   xrays
@@ -2680,7 +2685,8 @@
            setup
            sync
            users
-           util}
+           util
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -2937,7 +2943,8 @@
            settings
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -3460,20 +3467,19 @@
 
   enterprise/workspaces
   {:team "Graphy"
-   :api  #{}
-   :uses #{app-db
+   :api  #{metabase-enterprise.workspaces.core
+           metabase-enterprise.workspaces.init}
+   :uses #{api
+           app-db
            cache
            driver
            lib
-           models
            permissions
            premium-features
            query-processor
            sql-tools
            util}
-   :model-imports #{:model/Database
-                    :model/Table
-                    :model/TableRemapping}}
+   :model-imports #{:model/Database}}
 
   enterprise/writable-connection
   {:team "Graphy"

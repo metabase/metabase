@@ -15,8 +15,20 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- widen-2-tuples
+  "Test convenience: callers in this file pass `[schema table]` 2-tuples, but
+   [[ws.remapping/MapRemappingStore]] requires 3-tuples `[db schema table]` with `\"\"`
+   as the sentinel for drivers that don't emit a `:db` slot. Widen any 2-tuple
+   to a 3-tuple by prepending `\"\"`. 3-tuples pass through unchanged."
+  [m]
+  (into {} (map (fn [[k v]]
+                  [(if (= 2 (count k)) (into [""] k) k)
+                   (if (= 2 (count v)) (into [""] v) v)]))
+        m))
+
 (defmacro ^:private with-remappings [db-id remappings & body]
-  `(binding [ws.remapping/*remapping-store* (ws.remapping/map-store {~db-id ~remappings})]
+  `(binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                             {~db-id (widen-2-tuples ~remappings)})]
      ~@body))
 
 ;;; -------------------------------------- Phase 1: Preprocessing (MBQL only) --------------------------------------
@@ -236,9 +248,12 @@
 ;;; pipeline, Card execution, and Dashboard execution respectively.
 
 (defn- rewrite-via-phase-2
-  "Run `sql` through Phase 2 with the given remappings and return the rewritten SQL."
+  "Run `sql` through Phase 2 with the given remappings and return the rewritten SQL.
+   Convenience for h2 + real `(mt/id)`-based tests; widens 2-tuple remapping keys for
+   ergonomics. For non-h2 drivers or synthetic db-ids, use [[rewrite-via-phase-2-with-driver]]."
   [db-id remappings sql]
-  (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {db-id remappings})
+  (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                            {db-id (widen-2-tuples remappings)})
             driver/*driver*                :h2]
     (let [captured (atom nil)
           mock-qp  (fn [query _rff] (reset! captured query) :ok)
@@ -441,7 +456,9 @@
 (def ^:private synthetic-db-id 99999)
 
 (defn- rewrite-via-phase-2-with-driver
-  "Phase 2 rewrite for an arbitrary driver and remappings, against a synthetic db-id."
+  "Phase 2 rewrite for an arbitrary driver and remappings, against a synthetic db-id.
+   Remappings must be 3-tuple-keyed (no widening). For h2 + real `(mt/id)`, use
+   [[rewrite-via-phase-2]]."
   [driver remappings sql]
   (mt/with-premium-features #{:workspaces}
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {synthetic-db-id remappings})
