@@ -46,4 +46,8 @@
         ;; Closing fs1 must not affect fs2.
         (.close fs1)
         (is (thrown? ClosedFileSystemException (read-hello fs1)))
-        (is (= "hi" (read-hello fs2)))))))
+        (is (= "hi" (read-hello fs2))))
+      ;; Subsequent opens still work after the previous instances close — documents that nothing was left in a
+      ;; permanently-broken state.
+      (with-open [fs (u.files/nio-fs zip-path)]
+        (is (= "hi" (read-hello fs)))))))
