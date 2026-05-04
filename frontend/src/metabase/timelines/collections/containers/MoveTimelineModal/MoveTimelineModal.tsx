@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { collectionApi } from "metabase/api";
 import { useSetCollection } from "metabase/common/hooks";
+import { getTimelineName } from "metabase/common/utils/timelines";
 import { Timelines } from "metabase/entities/timelines";
 import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -34,7 +35,7 @@ function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
   const handleSubmit = useCallback(
     async (timeline: Timeline, collectionId: CollectionId) => {
       await setCollection(
-        { model: "timeline", id: timeline.id },
+        { model: "timeline", id: timeline.id, name: getTimelineName(timeline) },
         { id: collectionId },
       );
       const { data: collection } = await dispatch(

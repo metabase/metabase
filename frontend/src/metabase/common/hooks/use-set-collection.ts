@@ -23,7 +23,6 @@ import {
   isRootPersonalCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type {
@@ -53,7 +52,7 @@ export type MovableItem =
   | Movable<"collection", Collection>
   | Movable<"snippet-collection", Collection>
   | Movable<"document", Document>
-  | Movable<"timeline", Timeline>;
+  | Movable<"timeline", Timeline, "name">;
 
 export type MovableModel = MovableItem["model"];
 
@@ -175,19 +174,13 @@ export function useSetCollection() {
             parent_id: canonicalCollectionId(destination.id),
           }).unwrap();
         })
-        .with({ model: "timeline" }, async ({ id }) => {
+        .with({ model: "timeline" }, ({ id, name }) => {
           if (!isCollectionDestination(destination)) {
             throw new Error("Cannot move a timeline into a dashboard");
           }
-          const timeline = await dispatch(
-            timelineApi.endpoints.getTimeline.initiate({ id }),
-          ).unwrap();
           return updateTimeline({
             id,
-            name:
-              timeline.default && timeline.collection
-                ? getDefaultTimelineName(timeline.collection)
-                : timeline.name,
+            name,
             collection_id: canonicalCollectionId(destination.id),
             default: false,
           }).unwrap();
@@ -195,7 +188,6 @@ export function useSetCollection() {
         .exhaustive();
     },
     [
-      dispatch,
       updateCard,
       updateDashboard,
       updateCollection,
@@ -268,10 +260,7 @@ export function useSetCollection() {
           return () =>
             updateTimeline({
               id,
-              name:
-                timeline.default && timeline.collection
-                  ? getDefaultTimelineName(timeline.collection)
-                  : timeline.name,
+              name: timeline.name,
               collection_id: timeline.collection_id,
               default: timeline.default,
             });
