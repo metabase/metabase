@@ -79,6 +79,8 @@ jobs:
     needs: decide-what-runs
     # Only land rows for the upstream repo so forks don't pollute the table.
     if: ${{ !cancelled() && needs.decide-what-runs.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    # Stats upload is best-effort — a failure here shouldn't fail the PR run.
+    continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     steps:
