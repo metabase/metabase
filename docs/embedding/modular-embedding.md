@@ -176,6 +176,83 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
 
+## Pass parameter values to embedded components
+
+You can pre-populate dashboard filters and SQL parameters from your page, push new values at runtime, and listen for applied changes.
+
+### Seed values once with `initial-parameters` / `initial-sql-parameters`
+
+Set values on mount via attributes. The component reads them once on load and ignores any subsequent changes to the attribute. User widget edits are not reflected back to your page.
+
+```html
+<metabase-dashboard
+  dashboard-id="1"
+  initial-parameters='{"state": "NY"}'
+></metabase-dashboard>
+
+<metabase-question
+  question-id="42"
+  initial-sql-parameters='{"product_id": 50}'
+></metabase-question>
+```
+
+Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions).
+
+### Push values at runtime with `parameters` / `sqlParameters`
+
+For controlled behavior, set the JS property on the element instead of the attribute. The component re-renders to apply the new values.
+
+```html
+<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
+
+<script>
+  const el = document.getElementById("my-dashboard");
+  el.parameters = { state: "NY" };
+
+  // Later, change a filter from your app:
+  document.getElementById("clear-state-button").addEventListener("click", () => {
+    // `null` strictly clears the parameter (ignores its default).
+    el.parameters = { ...el.parameters, state: null };
+  });
+</script>
+```
+
+The same pattern works for `metabase-question` via the `sqlParameters` property.
+
+To switch a component back to uncontrolled mode (leaving the last applied values in place), set the property to `undefined`. To clear every parameter, assign an empty object `{}`.
+
+### Observe applied changes with `parameters-change` / `sql-parameters-change`
+
+Listen for events to keep your page in sync with what's actually applied:
+
+```html
+<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
+
+<script>
+  const el = document.getElementById("my-dashboard");
+
+  el.addEventListener("parameters-change", (event) => {
+    const { source, parameters, defaultParameters, lastUsedParameters } =
+      event.detail;
+    console.log(source, parameters);
+  });
+</script>
+```
+
+The `event.detail` object delivered to a `parameters-change` listener has these fields:
+
+- `source` - why the event fired:
+  - `"initial-state"` - post-load snapshot, fired once per dashboard load.
+  - `"manual-change"` - user edited a parameter widget.
+  - `"auto-change"` - the values you pushed via `el.parameters` were stored differently than you sent (for example, a scalar wrapped into an array, an unknown slug ignored, an explicit `null` applied as a clear). Re-sync from `parameters`.
+- `parameters` - the currently applied values, slug-keyed.
+- `defaultParameters` - the dashboard's default values, slug-keyed.
+- `lastUsedParameters` - the values this user last applied to this dashboard, slug-keyed. Empty if the user hasn't applied any parameters yet.
+
+For SQL questions, listen for `sql-parameters-change` on `<metabase-question>`. Its `event.detail` has the same shape minus `lastUsedParameters`.
+
+If a value you push via `el.parameters` is applied unchanged, no event fires (your page already has the values, no need to echo them back).
+
 ## Page-level config
 
 To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:

@@ -60,15 +60,52 @@ Use this component when you want to allow people to explore their data and custo
 
 {% include_file "{{ dirname }}/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
 
-## Pass SQL parameters to SQL questions with `initialSqlParameters`
+## Pass SQL parameters to SQL questions
 
-You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+You can pass parameter values to questions defined with SQL in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+
+There are two ways to pass them - pick one depending on whether you only want to seed initial values or stay in sync with applied changes over time.
+
+These props can't be used with questions built using the query builder.
+
+### `initialSqlParameters` (uncontrolled)
+
+Pre-populate parameters once on load. After the question mounts, user widget edits are not reflected back to your app.
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/initial-sql-parameters.tsx" snippet="example" %}
 ```
 
-`initialSqlParameters` can't be used with questions built using the query builder.
+### `sqlParameters` + `onSqlParametersChange` (controlled)
+
+Push values from your app, and observe every applied change via `onSqlParametersChange`. This works like a controlled `<input value onChange>` - your app holds the source of truth, the question re-renders when the prop changes, and you receive a callback whenever applied values change.
+
+```typescript
+{% include_file "{{ dirname }}/snippets/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
+```
+
+The callback receives a payload with these fields:
+
+- `source` - why the callback fired:
+  - `"initial-state"` - the post-load snapshot, fired once per question load.
+  - `"manual-change"` - a user edited a filter widget.
+  - `"auto-change"` - values you pushed via `sqlParameters` were stored differently than you sent (for example, a scalar wrapped into an array for a multi-select filter, an unknown slug ignored, an explicit `null` applied as a clear). Use the payload to re-sync your local state.
+- `parameters` - the currently applied values, slug-keyed.
+- `defaultParameters` - the question's default values, slug-keyed.
+
+If your push is applied unchanged, no callback fires.
+
+#### Clearing a parameter
+
+Set its value to `null`. This strictly clears the parameter and ignores its default value. Missing slugs fall back to `parameter.default ?? null`.
+
+```typescript
+{% include_file "{{ dirname }}/snippets/questions/controlled-sql-parameters.tsx" snippet="example-clear" %}
+```
+
+To switch back to uncontrolled mode (and leave the question's last applied values in place), set the `sqlParameters` prop to `undefined`.
+
+> Don't combine `initialSqlParameters` and `sqlParameters` - pick one. For controlled behavior, only use `sqlParameters`.
 
 ## Enable alerts on embedded questions
 
