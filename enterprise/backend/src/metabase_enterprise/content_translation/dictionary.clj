@@ -153,21 +153,19 @@
 
 (defn- maybe-read
   [reader]
-  (let [lines (line-seq reader)]
-    (import-translations!
-     (for [[i line] (map-indexed vector lines)]
-       (try
-         (first (csv/read-csv (java.io.StringReader. line)))
-         (catch Exception e
-           (let [error-message (.getMessage ^Exception e)
-                 ;; report line number 1 indexed
-                 line-no (inc i)
-                 error-message (tru "Error Parsing CSV at Row {0}: {1}" line-no error-message)]
-             (throw (ex-info error-message
-                             {:status-code http-status-unprocessable
-                              :errors [error-message]
-                              :line line-no}
-                             e)))))))))
+  (let [rows (try
+               ;; Read the whole CSV at once so quoted fields can span multiple
+               ;; physical lines per RFC 4180. Forcing the lazy seq with `vec`
+               ;; ensures parse errors surface inside this try, while the reader
+               ;; is still open.
+               (vec (csv/read-csv reader))
+               (catch Exception e
+                 (let [error-message (tru "Error parsing CSV: {0}" (.getMessage ^Exception e))]
+                   (throw (ex-info error-message
+                                   {:status-code http-status-unprocessable
+                                    :errors [error-message]}
+                                   e)))))]
+    (import-translations! rows)))
 
 (defn read-and-import-csv!
   "Read CSV and catch error if the CSV is invalid."
