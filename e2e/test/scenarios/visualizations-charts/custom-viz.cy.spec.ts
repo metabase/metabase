@@ -1542,7 +1542,7 @@ describe("sandbox", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.updateSetting("custom-viz-enabled", true);
-    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {});
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     H.createQuestion({
       name: "Custom Viz Sandbox Test",
       query: {

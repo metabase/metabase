@@ -74,7 +74,7 @@ export function createElementDistortion(pluginId: CustomVizPluginId) {
     if (BLOCKED_TAGS.has(tag.toLowerCase())) {
       throw new Error(`[plugin ${pluginId}] blocked createElement: ${tag}`);
     }
-    return CREATE_ELEMENT.call(this, tag, options as ElementCreationOptions);
+    return CREATE_ELEMENT.call(this, tag, options);
   };
 }
 
