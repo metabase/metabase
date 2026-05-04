@@ -1,80 +1,72 @@
-import { c, t } from "ttag";
+import { useEffect } from "react";
+import { t } from "ttag";
 
-import { Button, Combobox, Icon, useCombobox } from "metabase/ui";
+import {
+  getAdjacentById,
+  shouldIgnoreKeyboardEvent,
+} from "metabase/explorations/utils";
+import { Icon, Select } from "metabase/ui";
 import type { Timeline, TimelineId } from "metabase-types/api";
 
 import S from "./TimelineDropdown.module.css";
 
 interface TimelineDropdownProps {
   availableTimelines: Timeline[];
-  selectedTimelineIds: Set<TimelineId>;
-  onToggleTimelineId: (timelineId: TimelineId) => void;
+  selectedTimelineId: TimelineId | null;
+  onSelectTimelineId: (timelineId: TimelineId | null) => void;
 }
 
 export function TimelineDropdown({
   availableTimelines,
-  selectedTimelineIds,
-  onToggleTimelineId,
+  selectedTimelineId,
+  onSelectTimelineId,
 }: TimelineDropdownProps) {
-  const combobox = useCombobox();
-
-  if (availableTimelines.length === 0) {
-    return null;
-  }
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+        return;
+      }
+      if (shouldIgnoreKeyboardEvent(event)) {
+        return;
+      }
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      const nextTimeline = getAdjacentById(
+        availableTimelines,
+        selectedTimelineId,
+        direction,
+      );
+      if (nextTimeline != null && nextTimeline.id !== selectedTimelineId) {
+        onSelectTimelineId(nextTimeline.id);
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [availableTimelines, selectedTimelineId, onSelectTimelineId]);
 
   return (
-    <Combobox
-      store={combobox}
-      onOptionSubmit={(value) => onToggleTimelineId(Number(value))}
-    >
-      <Combobox.Target>
-        <Button
-          w="16rem"
-          justify="space-between"
-          bg="background-secondary"
-          size="xs"
-          px="sm"
-          fw="normal"
-          leftSection={<Icon name="clock" />}
-          rightSection={<Icon name="chevrondown" />}
-          onClick={() => combobox.toggleDropdown()}
-        >
-          {getTimelineButtonLabel(availableTimelines, selectedTimelineIds)}
-        </Button>
-      </Combobox.Target>
-      <Combobox.Dropdown>
-        <Combobox.Options>
-          {availableTimelines.map((timeline) => (
-            <Combobox.Option
-              key={timeline.id}
-              value={String(timeline.id)}
-              selected={selectedTimelineIds.has(timeline.id)}
-              py="sm"
-              className={S.option}
-            >
-              {timeline.name}
-            </Combobox.Option>
-          ))}
-        </Combobox.Options>
-      </Combobox.Dropdown>
-    </Combobox>
+    <Select<string | null>
+      aria-label={t`Select timeline`}
+      data={availableTimelines.map((timeline) => ({
+        value: String(timeline.id),
+        label: timeline.name,
+      }))}
+      value={selectedTimelineId == null ? null : String(selectedTimelineId)}
+      onChange={(value) =>
+        onSelectTimelineId(value == null ? null : Number(value))
+      }
+      placeholder={t`Select timeline`}
+      clearable
+      w="16rem"
+      bg="background-secondary"
+      leftSection={<Icon name="clock" />}
+      classNames={{
+        input: S.selectInput,
+      }}
+      clearButtonProps={{
+        bg: "background-secondary",
+        c: "text-primary",
+      }}
+    />
   );
-}
-
-function getTimelineButtonLabel(
-  availableTimelines: Timeline[],
-  selectedTimelineIds: Set<TimelineId>,
-) {
-  if (selectedTimelineIds.size === 0) {
-    return t`Select timelines`;
-  }
-  if (selectedTimelineIds.size === 1) {
-    const selectedTimelineId = Array.from(selectedTimelineIds)[0];
-    const selectedTimeline = availableTimelines.find(
-      (timeline) => timeline.id === selectedTimelineId,
-    );
-    return selectedTimeline?.name ?? t`Select timelines`;
-  }
-  return c("{0} is the number of timelines selected")
-    .t`${selectedTimelineIds.size} timelines selected`;
 }

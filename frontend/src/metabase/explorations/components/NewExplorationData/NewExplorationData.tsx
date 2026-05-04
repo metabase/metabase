@@ -185,7 +185,7 @@ export function NewExplorationData({
               />
             ) : (
               <Text py="sm" c="text-secondary">
-                {t`Add timelines to help look for correlations in your data. You can ask the agent for timeline data you might not already have.`}
+                {t`Add timelines to help look for correlations in your data.`}
               </Text>
             )}
           </NewExplorationSection>

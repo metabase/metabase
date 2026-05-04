@@ -21,6 +21,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import { ExplorationVisualization } from "../components/ExplorationVisualization";
+import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../utils";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -52,8 +53,8 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
   const [shouldPoll, setShouldPoll] = useState(true);
   const [selectedQueryId, setSelectedQueryId] =
     useState<ExplorationQueryId | null>(null);
-  const [selectedTimelineIdsByThreadId, setSelectedTimelineIdsByThreadId] =
-    useState<Record<ExplorationThreadId, Set<TimelineId>>>({});
+  const [selectedTimelineIdByThreadId, setSelectedTimelineIdByThreadId] =
+    useState<Record<ExplorationThreadId, TimelineId | null>>({});
 
   const {
     data: exploration,
@@ -146,70 +147,57 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     );
   }, [selectedThread, allTimelinesById]);
 
-  const selectedTimelineIds: Set<TimelineId> = useMemo(() => {
+  const selectedTimelineId: TimelineId | null = useMemo(() => {
     if (!selectedThread) {
-      return new Set();
+      return null;
     }
-    return selectedTimelineIdsByThreadId[selectedThread.id] ?? new Set();
-  }, [selectedThread, selectedTimelineIdsByThreadId]);
+    return selectedTimelineIdByThreadId[selectedThread.id] ?? null;
+  }, [selectedThread, selectedTimelineIdByThreadId]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() => {
-    return availableTimelines
-      .filter((timeline) => selectedTimelineIds.has(timeline.id))
-      .flatMap((timeline) => timeline.events ?? []);
-  }, [availableTimelines, selectedTimelineIds]);
+    if (selectedTimelineId == null) {
+      return [];
+    }
+    return (
+      availableTimelines.find((timeline) => timeline.id === selectedTimelineId)
+        ?.events ?? []
+    );
+  }, [availableTimelines, selectedTimelineId]);
 
-  const handleToggleTimelineId = useCallback(
-    (timelineId: TimelineId) => {
+  const handleSelectTimelineId = useCallback(
+    (timelineId: TimelineId | null) => {
       if (!selectedThread) {
         return;
       }
-      const newSelectedTimelineIds = new Set(selectedTimelineIds);
-      if (newSelectedTimelineIds.has(timelineId)) {
-        newSelectedTimelineIds.delete(timelineId);
-      } else {
-        newSelectedTimelineIds.add(timelineId);
-      }
-      setSelectedTimelineIdsByThreadId((prev) => ({
+      setSelectedTimelineIdByThreadId((prev) => ({
         ...prev,
-        [selectedThread.id]: newSelectedTimelineIds,
+        [selectedThread.id]: timelineId,
       }));
     },
-    [selectedThread, selectedTimelineIds, setSelectedTimelineIdsByThreadId],
+    [selectedThread, setSelectedTimelineIdByThreadId],
   );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // up and down arrows are handled by TimelineDropdown, because they should only run when it's mounted
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
         return;
       }
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        target.closest("input, textarea, select, [contenteditable=true]")
-      ) {
+      if (shouldIgnoreKeyboardEvent(event)) {
         return;
       }
       const sortedQueries = threadsWithSortedQueries.flatMap(
         (thread) => thread.queries,
       );
-      if (sortedQueries.length === 0) {
-        return;
-      }
-      const currentQueryIndex = sortedQueries.findIndex(
-        (query) => query.id === selectedQueryId,
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      const nextQuery = getAdjacentById(
+        sortedQueries,
+        selectedQueryId,
+        direction,
       );
-      const nextQueryIndex =
-        (currentQueryIndex +
-          (event.key === "ArrowRight" ? 1 : -1) +
-          sortedQueries.length) %
-        sortedQueries.length;
-      const nextSelectedQueryId = sortedQueries[nextQueryIndex].id;
-      if (
-        nextSelectedQueryId !== undefined &&
-        nextSelectedQueryId !== selectedQueryId
-      ) {
-        setSelectedQueryId(nextSelectedQueryId);
+      if (nextQuery != null && nextQuery.id !== selectedQueryId) {
+        setSelectedQueryId(nextQuery.id);
+        event.preventDefault();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -227,7 +215,12 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
   }
 
   return (
-    <Center p="3rem" h="100%" bg="background-secondary">
+    <Center
+      p="3rem"
+      h="100%"
+      bg="background-secondary"
+      data-test-id="exploration-page"
+    >
       <Group
         h="100%"
         w="100%"
@@ -246,8 +239,8 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
           <ExplorationVisualization
             explorationQuery={selectedQuery}
             availableTimelines={availableTimelines}
-            selectedTimelineIds={selectedTimelineIds}
-            onToggleTimelineId={handleToggleTimelineId}
+            selectedTimelineId={selectedTimelineId}
+            onSelectTimelineId={handleSelectTimelineId}
             timelineEvents={timelineEvents}
           />
         )}

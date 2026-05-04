@@ -10,16 +10,16 @@ import { TimelineDropdown } from "./TimelineDropdown";
 interface ExplorationVisualizationHeaderProps {
   explorationQuery: ExplorationQuery;
   availableTimelines?: Timeline[];
-  selectedTimelineIds?: Set<TimelineId>;
-  onToggleTimelineId?: (timelineId: TimelineId) => void;
+  selectedTimelineId?: TimelineId | null;
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
   showTimelineDropdown?: boolean;
 }
 
 export function ExplorationVisualizationHeader({
   explorationQuery,
   availableTimelines,
-  selectedTimelineIds,
-  onToggleTimelineId,
+  selectedTimelineId,
+  onSelectTimelineId,
   showTimelineDropdown,
 }: ExplorationVisualizationHeaderProps) {
   return (
@@ -29,12 +29,13 @@ export function ExplorationVisualizationHeader({
       </Text>
       {showTimelineDropdown &&
         availableTimelines &&
-        selectedTimelineIds &&
-        onToggleTimelineId && (
+        availableTimelines.length > 0 &&
+        selectedTimelineId !== undefined &&
+        onSelectTimelineId && (
           <TimelineDropdown
             availableTimelines={availableTimelines}
-            selectedTimelineIds={selectedTimelineIds}
-            onToggleTimelineId={onToggleTimelineId}
+            selectedTimelineId={selectedTimelineId}
+            onSelectTimelineId={onSelectTimelineId}
           />
         )}
     </Group>

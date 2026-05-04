@@ -1,9 +1,5 @@
-.option.option:hover {
-  color: var(--mb-color-text-hover);
-  background-color: var(--mb-color-background-hover);
-}
-
-.option.option[data-combobox-selected="true"] {
-  color: var(--mb-color-text-selected);
-  background-color: var(--mb-color-background-selected);
+.selectInput {
+  background-color: var(--mb-color-background-secondary);
+  height: 2rem;
+  min-height: 2rem;
 }

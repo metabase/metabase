@@ -25,8 +25,8 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
 interface ExplorationVisualizationProps {
   explorationQuery: ExplorationQuery;
   availableTimelines: Timeline[];
-  selectedTimelineIds: Set<TimelineId>;
-  onToggleTimelineId: (timelineId: TimelineId) => void;
+  selectedTimelineId: TimelineId | null;
+  onSelectTimelineId: (timelineId: TimelineId | null) => void;
   timelineEvents: TimelineEvent[];
 }
 
@@ -61,8 +61,8 @@ function ExplorationVisualizationBody(props: ExplorationVisualizationProps) {
 function ExplorationVisualizationChart({
   explorationQuery,
   availableTimelines,
-  selectedTimelineIds,
-  onToggleTimelineId,
+  selectedTimelineId,
+  onSelectTimelineId,
   timelineEvents,
 }: ExplorationVisualizationProps) {
   const { currentData: dataset } = useGetExplorationQueryResultQuery(
@@ -113,8 +113,8 @@ function ExplorationVisualizationChart({
       <ExplorationVisualizationHeader
         explorationQuery={explorationQuery}
         availableTimelines={availableTimelines}
-        selectedTimelineIds={selectedTimelineIds}
-        onToggleTimelineId={onToggleTimelineId}
+        selectedTimelineId={selectedTimelineId}
+        onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
       />
       <Visualization
