@@ -52,6 +52,7 @@
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -133,6 +134,72 @@
     {:db     (normalize-level (when (:db components) (db-position-value database)))
      :schema (normalize-level (when (:schema components) (schema-position-value database table)))
      :table  (:name table)}))
+
+;; TODO: replace with `metabase.lib.util.unique-name-generator/truncate-alias` once
+;; that ns is added to `lib`'s `:api` in `.clj-kondo/config/modules/config.edn` (or
+;; `truncate-alias` is re-exported from `metabase.lib.core`). It does the same job,
+;; byte-aware, with a CRC-32 suffix.
+(defn- short-hash
+  "Short, stable, identifier-safe hash of `s`. Used as a disambiguating suffix
+   when [[remapped-table-name]] must truncate to fit a driver's identifier limit.
+
+   Uses base36 (`0-9a-z`) over the leading bytes of SHA-1: ~5.17 bits per character,
+   versus hex's 4. Eight base36 chars carry ~41 bits of entropy; 2^41 inputs are
+   needed for a ~50% birthday collision, which is well past any realistic per-database
+   table count. The alphabet is unquoted-identifier-safe on every supported warehouse
+   (base64 / base64-url include `+`, `/`, or `-` which are not)."
+  [^String s]
+  (let [md     (java.security.MessageDigest/getInstance "SHA-1")
+        bytes  (.digest md (.getBytes s "UTF-8"))
+        ;; First 8 bytes -> non-negative BigInteger (sign byte = 1).
+        bi     (java.math.BigInteger. 1 ^bytes (java.util.Arrays/copyOfRange bytes 0 8))
+        b36    (.toString bi 36)
+        padded (str "00000000" b36)]
+    ;; Take the rightmost 8 chars so leading-zero values still produce 8 chars.
+    (subs padded (- (count padded) 8))))
+
+(defn remapped-table-name-with-limit
+  "Implementation of [[remapped-table-name]] taking an explicit `max-bytes`. Exposed so
+   tests can exercise the truncation path with a small limit without driver dispatch.
+   Production callers should use [[remapped-table-name]] which derives `max-bytes` from
+   the driver. Counts and truncates by UTF-8 *bytes*, not characters -- Postgres et al.
+   measure their identifier limits in bytes, and a multi-byte schema name (emoji,
+   kanji) would overflow under naive char-based truncation. Truncation is codepoint-safe:
+   we never split a multi-byte char in the middle."
+  [from-spec max-bytes]
+  (let [{:keys [schema table]} from-spec
+        raw       (str (or schema "") "__" table)
+        new-table (if (<= (u/string-byte-count raw) max-bytes)
+                    raw
+                    (let [suffix    (str "_" (short-hash raw))
+                          head-room (max 0 (- max-bytes (u/string-byte-count suffix)))]
+                      (str (u/truncate-string-to-byte-count raw head-room) suffix)))]
+    (assoc from-spec :table new-table)))
+
+(mu/defn remapped-table-name :- ::table-spec
+  "Rewrite `:table` of `from-spec` into a deterministic, collision-resistant
+   name suitable for the workspace schema on `driver`. Concatenates
+   `:schema` + '__' + `:table` so two source tables with the same `:table`
+   under different `:schema` values land at distinct identifiers in the
+   single workspace schema (e.g. `schemaA.orders` and `schemaB.orders`
+   become `schemaA__orders` and `schemaB__orders`).
+
+   Honors `(driver/table-name-length-limit driver)` -- when the
+   concatenation exceeds the limit (measured in UTF-8 bytes, since that is
+   what every supported warehouse counts), truncates and appends an 8-char
+   base36 SHA-1 suffix of the full original concatenation so distinct
+   inputs stay distinct after truncation. Truncation is codepoint-safe.
+   Leftward slots (`:db`, `:schema`) are not modified here; callers
+   `assoc` the workspace schema themselves.
+
+   Note: MySQL has no schema dimension (`qualified-name-components` is `[]`),
+   so cross-schema collisions cannot occur there. The function still runs and
+   produces `\"__<table>\"` (empty prefix) for consistency across drivers."
+  [driver    :- :keyword
+   from-spec :- ::table-spec]
+  (remapped-table-name-with-limit
+   from-spec
+   (or (driver/table-name-length-limit driver) Integer/MAX_VALUE)))
 
 ;;; -------------------------------------------- Read API --------------------------------------------
 ;;;
@@ -372,6 +439,10 @@
      When the YAML transmission lands carrying `output_db` for cross-DB workspaces
      (Snowflake/BQ/SQL Server), this can be extended -- see audit H7.
 
+   Returns the to-side `::table-spec` so callers (notably
+   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]]) can route the
+   transform executor to the same warehouse identifier this function recorded.
+
    Throws when the database is not workspaced -- a caller getting here in that case is a
    programming error; the transform-hook path should gate on [[ws/db-workspace-schema]] first."
   [db-id target]
@@ -387,7 +458,11 @@
           ;; from-side slots per the driver's qualified-name-components.
           from-table   {:name table-name :schema from-schema}
           from-spec    (spec-for-table database from-table)
-          ;; To-side: same :name (transforms today don't rename), workspace schema substituted.
-          ;; :db slot stays "" until the atom carries output_db (audit H7 second half).
-          to-spec      (assoc from-spec :schema workspace-schema)]
-      (add-mapping! db-id from-spec to-spec))))
+          ;; To-side: rename via [[remapped-table-name]] so two source tables sharing a name
+          ;; across different schemas (schemaA.orders vs schemaB.orders) land at distinct
+          ;; warehouse identifiers in the single workspace schema. :db slot stays "" until
+          ;; the atom carries output_db (audit H7 second half).
+          to-spec      (-> (remapped-table-name (:engine database) from-spec)
+                           (assoc :schema workspace-schema))]
+      (add-mapping! db-id from-spec to-spec)
+      to-spec)))

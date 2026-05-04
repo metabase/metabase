@@ -20,18 +20,20 @@
         (is (= target (ws.transform-hooks/resolve-transform-target 42 target)))))))
 
 (deftest resolve-transform-target-rewrites-schema-test
-  (testing "with a provisioned WorkspaceDatabase, target's :schema is rewritten to the workspace output schema"
+  (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
     (let [recorded (atom nil)]
       (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
-                      (reset! recorded {:db-id db-id :target target}))]
+                      (reset! recorded {:db-id db-id :target target})
+                      ;; Mimic real return: collision-resistant to-spec.
+                      {:db "" :schema "ws_alice" :table "public__orders"})]
         (let [target {:schema "public" :name "orders" :type :table}
               result (ws.transform-hooks/resolve-transform-target 42 target)]
           (is (= "ws_alice" (:schema result))
-              "schema is rewritten to the workspace output schema")
-          (is (= "orders" (:name result))
-              "name is preserved -- only the schema changes")
+              "schema comes from the recorded to-spec (workspace output schema)")
+          (is (= "public__orders" (:name result))
+              "name comes from the recorded to-spec (collision-resistant rename)")
           (is (= :table (:type result))
               "other target keys are preserved"))))))
 
@@ -41,7 +43,8 @@
       (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
-                      (reset! recorded {:db-id db-id :target target}))]
+                      (reset! recorded {:db-id db-id :target target})
+                      {:db "" :schema "ws_alice" :table "public__orders"})]
         (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table})
         (is (= {:db-id  42
                 :target {:schema "public" :name "orders" :type :table}}
@@ -68,8 +71,9 @@
           (ws.table-remapping/clear-mappings-for-db! (mt/id))
           (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}
                 result (ws.transform-hooks/resolve-transform-target (mt/id) target)]
-            (is (= {:schema "ws_test_schema" :name "ORDERS" :type :table}
-                   result))
+            (is (= {:schema "ws_test_schema" :name "PUBLIC__ORDERS" :type :table}
+                   result)
+                "the executor target gets the workspace schema and the collision-resistant name")
             (testing "TableRemapping row was inserted with the canonical (schema, name) on the from-side"
               (let [row (t2/select-one :model/TableRemapping
                                        :database_id     (mt/id)
@@ -77,7 +81,8 @@
                                        :from_table_name "ORDERS")]
                 (is (some? row))
                 (is (= "ws_test_schema" (:to_schema row)))
-                (is (= "ORDERS"         (:to_table_name row))))))
+                (is (= "PUBLIC__ORDERS" (:to_table_name row))
+                    "to-side is rewritten via remapped-table-name; executor and row agree byte-for-byte"))))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
@@ -112,15 +117,16 @@
                 (transforms.execute/execute! python-transform)))
             (is (= "ws_test_schema" (get-in @captured [:target :schema]))
                 "Python transform's :target.schema is rewritten before dispatch")
-            (is (= "FOO" (get-in @captured [:target :name]))
-                ":name is preserved")
+            (is (= "PUBLIC__FOO" (get-in @captured [:target :name]))
+                ":name is rewritten to the collision-resistant warehouse identifier")
             (testing "TableRemapping row was recorded for the Python path too"
               (let [row (t2/select-one :model/TableRemapping
                                        :database_id     (mt/id)
                                        :from_schema     "PUBLIC"
                                        :from_table_name "FOO")]
                 (is (some? row) "Python target rewrite records a TableRemapping row")
-                (is (= "ws_test_schema" (:to_schema row))))))
+                (is (= "ws_test_schema" (:to_schema row)))
+                (is (= "PUBLIC__FOO"    (:to_table_name row))))))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
