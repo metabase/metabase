@@ -321,6 +321,71 @@
             {:keys [db]} (ws.table-remapping/spec-for-table database table)]
         (is (= "" db) "service-account-json must NOT be used as a project id")))))
 
+;; ----------------------------- Per-driver addressing truth table -----------------------------
+;;
+;; Mirrors the per-driver table in
+;;   ai-reports/2026-05-01-canonical-table-addressing-scheme.md
+;; Update both together. This is the executable spec for the addressing contract:
+;;
+;;   1. `qualified-name-components` returns the documented value per driver.
+;;   2. `spec-for-table` populates exactly the slots `qualified-name-components`
+;;      lists, with empty-string sentinels everywhere else.
+;;
+;; Pure: no warehouse connection. Each row needs the driver class on the test
+;; classpath — `driver-loadable?` skip pattern (above) is reused.
+
+(def ^:private addressing-truth-table
+  "Per-driver addressing contract. Each row:
+     [driver           expected-components   db-name-or-details          table-row                                expected-spec]
+
+   `db-name-or-details` is the canonical Database row data the test uses. For
+   drivers where the rewriter only cares about `:name` (Postgres/Redshift/H2/
+   MySQL/ClickHouse) we pass a `:name`. For BigQuery we pass `:details
+   {:project-id ...}` — that's the only detail key `spec-for-table` reads, and
+   making it visible here documents the load-bearing contract."
+  ;; driver               components       database-fields                                  table-row                          expected-spec
+  [[:postgres             [:schema]        {:name "analytics"}                              {:schema "public"  :name "orders"} {:db ""              :schema "public"   :table "orders"}]
+   [:redshift             [:schema]        {:name "analytics"}                              {:schema "public"  :name "orders"} {:db ""              :schema "public"   :table "orders"}]
+   [:h2                   [:schema]        {:name "mem:test"}                               {:schema "PUBLIC"  :name "ORDERS"} {:db ""              :schema "PUBLIC"   :table "ORDERS"}]
+   [:mysql                []               {:name "analytics"}                              {:schema nil      :name "orders"} {:db ""              :schema ""         :table "orders"}]
+   [:clickhouse           [:schema]        {:name "analytics"}                              {:schema nil      :name "events"} {:db ""              :schema "analytics" :table "events"}]
+   [:snowflake            [:db :schema]    {:name "ignored" :details {:db "ANALYTICS"}}     {:schema "PUBLIC" :name "ORDERS"} {:db "ANALYTICS"     :schema "PUBLIC"   :table "ORDERS"}]
+   [:sqlserver            [:db :schema]    {:name "ignored" :details {:db "AnalyticsDB"}}   {:schema "dbo"    :name "orders"} {:db "AnalyticsDB"   :schema "dbo"      :table "orders"}]
+   [:bigquery-cloud-sdk   [:db :schema]    {:name "ignored" :details {:project-id "metabase-prod"}} {:schema "core"   :name "orders"} {:db "metabase-prod" :schema "core"     :table "orders"}]])
+
+(deftest ^:parallel addressing-truth-table-qualified-name-components-test
+  (testing "qualified-name-components returns the documented AST positions per driver"
+    (doseq [[driver expected-components & _] addressing-truth-table]
+      (when (driver-loadable? driver)
+        (testing (str driver)
+          (is (= expected-components
+                 (driver/qualified-name-components driver))
+              "Update the canonical-table-addressing scheme doc and this row together if this changes."))))))
+
+(deftest ^:parallel addressing-truth-table-spec-for-table-test
+  (testing "spec-for-table produces the documented {:db, :schema, :table} shape per driver"
+    (doseq [[driver _components db-fields table-row expected-spec] addressing-truth-table]
+      (when (driver-loadable? driver)
+        (testing (str driver)
+          (let [database (assoc db-fields :engine driver)]
+            (is (= expected-spec
+                   (ws.table-remapping/spec-for-table database table-row)))))))))
+
+(deftest ^:parallel addressing-truth-table-slot-population-invariant-test
+  (testing "Invariant: slot is non-empty iff qualified-name-components includes it"
+    (doseq [[driver components db-fields table-row _expected-spec] addressing-truth-table]
+      (when (driver-loadable? driver)
+        (testing (str driver)
+          (let [database  (assoc db-fields :engine driver)
+                spec      (ws.table-remapping/spec-for-table database table-row)
+                comp-set  (set components)]
+            (is (= (contains? comp-set :db) (not= "" (:db spec)))
+                (str ":db slot population must match qualified-name-components — got "
+                     (pr-str spec)))
+            (is (= (contains? comp-set :schema) (not= "" (:schema spec)))
+                (str ":schema slot population must match qualified-name-components — got "
+                     (pr-str spec)))))))))
+
 ;; ----------------------------- Cache invalidation hooks -----------------------------
 ;;
 ;; Inserting or deleting a TableRemapping must invalidate the QP results cache for the
