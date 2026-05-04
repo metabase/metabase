@@ -1,3 +1,4 @@
+import Color from "color";
 import fetchMock from "fetch-mock";
 
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
@@ -109,6 +110,16 @@ describe("useEmbeddingThemeEditor", () => {
   });
 
   describe("hasOutOfSyncAdditionalColors", () => {
+    it("is false on a fresh draft — additional colors are pre-seeded from the brand harmony", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
+    });
+
     it("is false when filter / summarize / positive / negative / charts match the brand-derived harmony", async () => {
       const { result } = setup("new");
 
@@ -116,7 +127,6 @@ describe("useEmbeddingThemeEditor", () => {
         expect(result.current.currentTheme).not.toBeNull();
       });
 
-      // Apply the harmony so everything is in-sync, then assert.
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
@@ -265,6 +275,54 @@ describe("useEmbeddingThemeEditor", () => {
       expect(result.current.currentTheme?.settings.colors?.filter).toBe(
         filterBefore,
       );
+    });
+
+    it("derives the expected harmony for the Metabase brand color", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      // TEST_THEME's brand is the canonical Metabase blue. Trigger the
+      // generator and verify each derived color independently against the
+      // harmony spec, without going through `suggestHarmonyColors` — this
+      // catches regressions in either the algorithm or the wiring.
+      const BRAND = "#509EE3";
+      expect(result.current.currentTheme?.settings.colors?.brand).toBe(BRAND);
+
+      await act(async () => {
+        result.current.regenerateAdditionalColorsFromBrand();
+      });
+
+      const colors = result.current.currentTheme?.settings.colors;
+
+      // Filter / summarize follow the square harmony at brand ± 90°.
+      expect(colors?.filter).toBe(Color(BRAND).rotate(90).hex().toLowerCase());
+      expect(colors?.summarize).toBe(
+        Color(BRAND).rotate(-90).hex().toLowerCase(),
+      );
+
+      // Positive / negative anchor to fixed hues at lightness 50.
+      expect(colors?.positive).toBe(
+        Color(BRAND).hue(89).lightness(50).hex().toLowerCase(),
+      );
+      expect(colors?.negative).toBe(
+        Color(BRAND).hue(359).lightness(50).hex().toLowerCase(),
+      );
+
+      // Charts: brand verbatim at index 0, then 45° rotations clockwise.
+      const charts = colors?.charts as string[];
+      expect(charts).toHaveLength(8);
+      expect(charts[0]).toBe(BRAND.toLowerCase());
+      for (let i = 1; i < 8; i++) {
+        expect(charts[i]).toBe(
+          Color(BRAND)
+            .rotate(i * 45)
+            .hex()
+            .toLowerCase(),
+        );
+      }
     });
   });
 

@@ -39,6 +39,31 @@ const chartBase = (c: ChartColor): string =>
 const eqColor = (a: string | undefined, b: string | undefined) =>
   (a ?? "").toLowerCase() === (b ?? "").toLowerCase();
 
+/**
+ * Returns a copy of `settings` with `filter` / `summarize` / `positive` /
+ * `negative` / `charts` overwritten by the values that the harmony would
+ * derive from the brand color. If there is no brand color, returns the
+ * settings unchanged.
+ */
+const withBrandHarmony = (settings: MetabaseTheme): MetabaseTheme => {
+  const brand = settings.colors?.brand;
+  if (!brand) {
+    return settings;
+  }
+  const harmony = suggestHarmonyColors(brand);
+  return {
+    ...settings,
+    colors: {
+      ...settings.colors,
+      filter: harmony.filter,
+      summarize: harmony.summarize,
+      positive: harmony.positive,
+      negative: harmony.negative,
+      charts: harmony.charts,
+    },
+  };
+};
+
 export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   const dispatch = useDispatch();
   const isDraft = themeId === "new";
@@ -52,10 +77,14 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   const [sendToast] = useToast();
   const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
 
-  // Seed once on mount when in draft mode so the baseline is stable across renders.
+  // Seed once on mount when in draft mode so the baseline is stable across
+  // renders. The additional colors are pre-derived from the brand.
   const [draftInitial] = useState<ThemeEditorState | null>(() =>
     isDraft
-      ? { name: t`Untitled theme`, settings: defaultThemeSettings }
+      ? {
+          name: t`Untitled theme`,
+          settings: withBrandHarmony(defaultThemeSettings),
+        }
       : null,
   );
 
@@ -202,28 +231,13 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   }, [currentTheme]);
 
   const regenerateAdditionalColorsFromBrand = useCallback(() => {
-    if (!currentTheme) {
+    if (!currentTheme?.settings.colors?.brand) {
       return;
     }
-    const brand = currentTheme.settings.colors?.brand;
-    if (!brand) {
-      return;
-    }
-    const harmony = suggestHarmonyColors(brand);
     const snapshot = currentTheme;
     setCurrentTheme({
       ...currentTheme,
-      settings: {
-        ...currentTheme.settings,
-        colors: {
-          ...currentTheme.settings.colors,
-          filter: harmony.filter,
-          summarize: harmony.summarize,
-          positive: harmony.positive,
-          negative: harmony.negative,
-          charts: harmony.charts,
-        },
-      },
+      settings: withBrandHarmony(currentTheme.settings),
     });
     dispatch(
       addUndo({
