@@ -343,10 +343,19 @@
                                   (map quote-if-needed)
                                   (map escape-double-quotes)
                                   (str/join ","))]
-    (println 'CLICKHOUSE=> (pr-str role)
-             '=> (pr-str (format "SET ROLE %s" quoted-role))
-             'OLD=> (pr-str (old-role-statement role))) ; NOCOMMIT
     (format "SET ROLE %s" quoted-role)))
+
+(defmethod driver/set-role! :clickhouse
+  [driver ^Connection conn role]
+  (let [sql (sql-jdbc/set-role-statement driver conn role)]
+    ;; there seems to be something weird going on with ClickHouse when using `next.jdbc/execute!` in the default impl
+    ;; to set the role (I'm guessing it's a `PreparedStatement` versus `Statement` issue? So just fall back to doing
+    ;; it this way
+    (when-not (string? sql)
+      (throw (UnsupportedOperationException.
+              "The Clickhouse implementation of metabase.driver/set-role! does not support parameterized statements")))
+    (with-open [stmt (.createStatement ^Connection conn)]
+      (.execute stmt ^String sql))))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
