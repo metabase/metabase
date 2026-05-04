@@ -330,6 +330,7 @@
                                   (map quote-if-needed)
                                   (map escape-double-quotes)
                                   (str/join ","))]
+    (println 'CLICKHOUSE=> (pr-str role) '=> (pr-str (format "SET ROLE %s" quoted-role))) ; NOCOMMIT
     (format "SET ROLE %s" quoted-role)))
 
 (defmethod driver.sql/default-database-role :clickhouse
