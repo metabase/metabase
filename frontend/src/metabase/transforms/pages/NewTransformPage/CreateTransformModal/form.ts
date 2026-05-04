@@ -1,7 +1,7 @@
 import * as Yup from "yup";
 
 import * as Errors from "metabase/utils/errors";
-import { slugify } from "metabase/utils/formatting/url";
+import { slugify } from "metabase/visualizations/lib/formatting/url";
 import type {
   CreateTransformRequest,
   TransformSource,

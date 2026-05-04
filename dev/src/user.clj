@@ -2,6 +2,7 @@
   (:require
    [cider.nrepl :as cider-nrepl]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [environ.core :as env]
    [hashp.preload]
@@ -12,6 +13,68 @@
    [refactor-nrepl.middleware]))
 
 (set! *warn-on-reflection* true)
+
+(defn- parse-toml-value
+  "Parse a TOML scalar value (RHS of `key = value`). Returns the unquoted string
+  for basic strings (with `\\\"` and `\\\\` escapes), the inner text for literal
+  strings, or the raw token for bare values (integers, booleans). Returns nil for
+  values we don't handle (multi-line strings, arrays, inline tables).
+
+  Mirrors mage.bot.env/parse-toml-value — duplicated here so REPL boot doesn't
+  depend on the mage namespace classpath. Keep the two in sync."
+  [v]
+  (let [v (str/trim v)]
+    (cond
+      ;; Basic string: "..." with \" and \\ escapes. Reject multi-line ("""...) here.
+      (and (str/starts-with? v "\"")
+           (not (str/starts-with? v "\"\"\""))
+           (re-matches #"\"(?:[^\"\\]|\\.)*\"" v))
+      (-> v
+          (subs 1 (dec (count v)))
+          (str/replace #"\\(.)" "$1"))
+
+      ;; Literal string: '...' (no escapes). Reject multi-line ('''...).
+      (and (str/starts-with? v "'")
+           (not (str/starts-with? v "'''"))
+           (re-matches #"'[^']*'" v))
+      (subs v 1 (dec (count v)))
+
+      ;; Bare scalar (int, float, bool) — just hand back the token.
+      (re-matches #"[A-Za-z0-9_+\-.]+" v)
+      v
+
+      :else nil)))
+
+(defn- load-mise-local!
+  "Parse mise.local.toml and merge its [env] values into environ's map.
+  This must run before metabase.config.core loads, which it does since that namespace
+  is loaded lazily via dev/start!.
+
+  Mirrors mage.bot.env/read-mise-local-toml's tolerance: keys may contain word
+  chars, hyphens, or dots, and values may be basic strings (with escapes),
+  literal strings, or bare scalars. Lines we can't parse are silently skipped
+  rather than crashing the REPL boot."
+  []
+  (let [f (io/file "mise.local.toml")]
+    (when (.exists f)
+      (with-open [rdr (io/reader f)]
+        (let [env-vars (->> (line-seq rdr)
+                            (drop-while #(not= (str/trim %) "[env]"))
+                            (drop 1)
+                            (take-while #(not (re-matches #"\s*\[.*\]\s*" %)))
+                            (keep (fn [line]
+                                    (when-let [[_ k raw-v]
+                                               (re-matches #"\s*([\w.\-]+)\s*=\s*(.*?)\s*" line)]
+                                      (when-let [v (parse-toml-value raw-v)]
+                                        (let [kw (-> k
+                                                     str/lower-case
+                                                     (str/replace "_" "-")
+                                                     keyword)]
+                                          [kw v])))))
+                            (into {}))]
+          (alter-var-root #'environ.core/env merge env-vars))))))
+
+(load-mise-local!)
 
 (comment
   metabase.core.bootstrap/keep-me
