@@ -18,10 +18,17 @@
                             (ws/clear-instance-workspace!))))))
 
 (def ^:private fixture-path
-  "metabase_enterprise/workspaces/resources/workspace_config_example.yml")
+  "Postgres-shaped fixture used by `fixture-parses-test` and the loader
+   round-trip tests. Sibling fixtures for other drivers live in the same
+   resources dir (see `per-driver-fixtures-test` below)."
+  "metabase_enterprise/workspaces/resources/workspace_config_postgres.yml")
 
 (defn- load-fixture []
   (-> fixture-path io/resource slurp yaml/parse-string))
+
+(defn- load-fixture-by-driver [driver]
+  (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
+      io/resource slurp yaml/parse-string))
 
 (defn- workspace-section
   "Pull just the `:workspace` section out of the fixture, with the database name
@@ -284,3 +291,65 @@
           :databases {:bq-prod {:input  [{:db "metabase-prod" :schema "core"}]
                                 :output {:db "metabase-prod" :schema "ws_alice"}}}})
         (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
+
+;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
+;;;
+;;; The `resources/workspace_config_<driver>.yml` files are reference fixtures
+;;; - one per driver shape. They double as documentation (each is a complete
+;;; valid `config.yml` showing the per-driver wire format) and as test data.
+;;; This test parametrizes over all of them, asserting:
+;;;
+;;;   - the YAML parses
+;;;   - the `:workspace` section validates against the spec
+;;;   - the loader round-trips it into the atom with the per-driver expected
+;;;     output namespace
+;;;
+;;; If a driver's wire format drifts, the corresponding fixture and this test
+;;; both have to be updated together - keeps doc and code aligned.
+
+(def ^:private per-driver-fixture-expectations
+  "Per-driver fixture metadata: db-name from the fixture's `:databases`
+   section, the input vec, and the expected output namespace stored in the
+   atom after loading."
+  {:postgres   {:db-name      "test-data (postgres)"
+                :input        [{:schema "public"}]
+                :output       {:schema "mb__isolation_44490_1933"}}
+   :mysql      {:db-name      "test-data (mysql)"
+                :input        [{:schema "prod_db"}]
+                :output       {:schema "ws_alice"}}
+   :clickhouse {:db-name      "test-data (clickhouse)"
+                :input        [{:schema "prod_events"}]
+                :output       {:schema "ws_alice"}}
+   :snowflake  {:db-name      "test-data (snowflake)"
+                :input        [{:db "ANALYTICS" :schema "PUBLIC"}]
+                :output       {:db "WS_DB" :schema "WS_ALICE"}}
+   :sqlserver  {:db-name      "test-data (sqlserver)"
+                :input        [{:db "AnalyticsDB" :schema "dbo"}]
+                :output       {:db "AnalyticsDB" :schema "ws_alice"}}
+   :bigquery   {:db-name      "test-data (bigquery)"
+                :input        [{:db "metabase-prod" :schema "core"}]
+                :output       {:db "metabase-prod" :schema "ws_alice"}}})
+
+(deftest per-driver-fixtures-parse-and-validate-test
+  (testing "Each per-driver fixture YAML parses, has the expected workspace section, and round-trips through the loader"
+    (doseq [[driver expectations] per-driver-fixture-expectations]
+      (testing (str driver " fixture")
+        (let [parsed  (load-fixture-by-driver driver)
+              section (get-in parsed [:config :workspace])
+              wsd     (-> section :databases vals first)]
+          (testing "parses to the expected wire shape"
+            (is (= 1 (:version parsed)))
+            (is (= "New workspace" (:name section)))
+            (is (= (:input expectations) (:input wsd))
+                (str driver " input shape matches expectation"))
+            (is (= (:output expectations) (:output wsd))
+                (str driver " output shape matches expectation")))
+          (testing "validates against the workspace spec"
+            (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
+                (str driver " fixture must satisfy the section spec")))
+          (testing "round-trips through apply-workspace-section! into the atom"
+            (mt/with-empty-h2-app-db!
+              (mt/with-temp [:model/Database {db-id :id} {:name (:db-name expectations)}]
+                (advanced-config.file.workspace/apply-workspace-section! section)
+                (is (= (:output expectations) (ws/db-workspace-namespace db-id))
+                    (str driver " atom output matches fixture"))))))))))
