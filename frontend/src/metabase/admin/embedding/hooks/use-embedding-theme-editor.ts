@@ -9,7 +9,7 @@ import {
   useGetEmbeddingThemeQuery,
   useUpdateEmbeddingThemeMutation,
 } from "metabase/api/embedding-theme";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import type {
   ChartColor,
   MetabaseColor,
@@ -19,6 +19,7 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 interface ThemeEditorState {
   name: string;
@@ -44,6 +45,10 @@ const eqColor = (a: string | undefined, b: string | undefined) =>
  * `negative` / `charts` overwritten by the values that the harmony would
  * derive from the brand color. If there is no brand color, returns the
  * settings unchanged.
+ *
+ * Used by the regenerate-from-brand button: the user is explicitly asking
+ * to overwrite every harmony-managed color, so whitelabel customizations
+ * are not respected here.
  */
 const withBrandHarmony = (settings: MetabaseTheme): MetabaseTheme => {
   const brand = settings.colors?.brand;
@@ -64,6 +69,43 @@ const withBrandHarmony = (settings: MetabaseTheme): MetabaseTheme => {
   };
 };
 
+/**
+ * Seed for a fresh draft: fills harmony-managed colors with brand-derived
+ * values *only when* the corresponding whitelabel key is not set. This keeps
+ * a fresh draft in-sync with the harmony when no customizations exist (so
+ * the regenerate button stays hidden), while still honoring any
+ * `application-colors` overrides the admin has configured.
+ */
+const seedDraftFromHarmony = (
+  settings: MetabaseTheme,
+  whitelabelColors: ColorSettings,
+): MetabaseTheme => {
+  const brand = settings.colors?.brand;
+  if (!brand) {
+    return settings;
+  }
+  const harmony = suggestHarmonyColors(brand);
+  const existingCharts = settings.colors?.charts ?? [];
+  const charts: ChartColor[] = harmony.charts.map((harmonyChart, i) => {
+    const accentKey = `accent${i}` as keyof ColorSettings;
+    if (whitelabelColors[accentKey] !== undefined) {
+      return existingCharts[i] ?? harmonyChart;
+    }
+    return harmonyChart;
+  });
+  return {
+    ...settings,
+    colors: {
+      ...settings.colors,
+      filter: whitelabelColors.filter ?? harmony.filter,
+      summarize: whitelabelColors.summarize ?? harmony.summarize,
+      positive: whitelabelColors.success ?? harmony.positive,
+      negative: whitelabelColors.danger ?? harmony.negative,
+      charts,
+    },
+  };
+};
+
 export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   const dispatch = useDispatch();
   const isDraft = themeId === "new";
@@ -76,14 +118,19 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
   const [updateTheme] = useUpdateEmbeddingThemeMutation();
   const [sendToast] = useToast();
   const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
+  const whitelabelColors = useSetting("application-colors") ?? {};
 
   // Seed once on mount when in draft mode so the baseline is stable across
-  // renders. The additional colors are pre-derived from the brand.
+  // renders. Harmony-managed colors are pre-derived from the brand, with any
+  // whitelabel overrides preserved.
   const [draftInitial] = useState<ThemeEditorState | null>(() =>
     isDraft
       ? {
           name: t`Untitled theme`,
-          settings: withBrandHarmony(defaultThemeSettings),
+          settings: seedDraftFromHarmony(
+            defaultThemeSettings,
+            whitelabelColors,
+          ),
         }
       : null,
   );

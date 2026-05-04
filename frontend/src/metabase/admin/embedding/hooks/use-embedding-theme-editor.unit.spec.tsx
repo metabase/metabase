@@ -2,9 +2,12 @@ import Color from "color";
 import fetchMock from "fetch-mock";
 
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { performUndo } from "metabase/redux/undo";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 import {
   type ThemeEditorId,
@@ -23,7 +26,7 @@ const TEST_THEME: EmbeddingTheme = {
   updated_at: "2024-01-01T00:00:00Z",
 };
 
-function setup(themeId: ThemeEditorId = 1) {
+function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
   if (typeof themeId === "number") {
     fetchMock.get(`path:/api/embed-theme/${themeId}`, TEST_THEME);
     fetchMock.put(`path:/api/embed-theme/${themeId}`, {
@@ -32,9 +35,16 @@ function setup(themeId: ThemeEditorId = 1) {
     });
   }
 
+  const storeInitialState = applicationColors
+    ? createMockState({
+        settings: { values: { "application-colors": applicationColors } },
+      } as Partial<State>)
+    : undefined;
+
   return renderHookWithProviders(() => useEmbeddingThemeEditor(themeId), {
     withUndos: true,
     withRouter: true,
+    storeInitialState,
   });
 }
 
@@ -485,6 +495,29 @@ describe("useEmbeddingThemeEditor", () => {
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
         1,
       );
+    });
+
+    it("preserves whitelabel-provided colors when seeding the draft", async () => {
+      const whitelabel = {
+        brand: "#8e44ad",
+        filter: "#16a085",
+        summarize: "#d35400",
+        accent0: "#e74c3c",
+        accent7: "#34495e",
+      } satisfies ColorSettings;
+
+      const { result } = setup("new", whitelabel);
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      const colors = result.current.currentTheme?.settings.colors;
+      expect(colors?.brand).toBe(whitelabel.brand);
+      expect(colors?.filter).toBe(whitelabel.filter);
+      expect(colors?.summarize).toBe(whitelabel.summarize);
+      expect(colors?.charts?.[0]).toBe(whitelabel.accent0);
+      expect(colors?.charts?.[7]).toBe(whitelabel.accent7);
     });
   });
 
