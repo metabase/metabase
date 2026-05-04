@@ -33,6 +33,21 @@ describe("StrategyEditorForDatabases", () => {
     expect(PLUGIN_CACHING.canOverrideRootStrategy).toBe(true);
   });
 
+  it("shows four policy options for the default policy", async () => {
+    await userEvent.click(await screen.findByLabelText(/Edit default policy/));
+    expect(await screen.findAllByRole("radio")).toHaveLength(4);
+  });
+
+  it("shows five policy options for a database (adds 'Use default')", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+    );
+    expect(await screen.findAllByRole("radio")).toHaveLength(5);
+    expect(
+      screen.getByRole("radio", { name: /Use default/i }),
+    ).toBeInTheDocument();
+  });
+
   it("should show strategy form launchers", async () => {
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();

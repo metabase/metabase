@@ -10,7 +10,6 @@ import {
 } from "./helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
-  cacheStrategyForm,
   checkPreemptiveCachingDisabled,
   checkPreemptiveCachingEnabled,
   disablePreemptiveCaching,
@@ -61,12 +60,6 @@ describe("scenarios > admin > performance > strategy form", () => {
       cy.findByRole("textbox").click();
       H.popover().findByText("2 hours").click();
       cy.findByTestId("toast-undo").contains("Saved");
-    });
-
-    it("there are two policy options for the default policy, Adaptive and Don't cache results", () => {
-      cacheStrategyForm().findAllByRole("radio").should("have.length", 2);
-      adaptiveRadioButton().should("exist");
-      dontCacheResultsRadioButton().should("exist");
     });
 
     it("can set default policy to Don't cache results", () => {
@@ -186,14 +179,6 @@ describe("scenarios > admin > performance > strategy form", () => {
 
     ["default policy", "Sample Database"].forEach((itemName) => {
       const model = itemName === "default policy" ? "root" : "database";
-      const expectedNumberOfOptions = itemName === "default policy" ? 4 : 5;
-
-      it(`there are ${expectedNumberOfOptions} policy options for ${itemName}`, () => {
-        openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
-        cacheStrategyForm()
-          .findAllByRole("radio")
-          .should("have.length", expectedNumberOfOptions);
-      });
 
       it(`can set ${itemName} to Don't cache results`, () => {
         openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
