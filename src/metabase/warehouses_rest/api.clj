@@ -1694,10 +1694,10 @@
                                                                                    (driver.conn/effective-details would-be-database)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
-    (if (or main-conn-error write-conn-error admin-conn-error)
+    (if-let [conn-error (or main-conn-error write-conn-error admin-conn-error)]
       ;; failed to connect, return error
       {:status 400
-       :body   (or main-conn-error write-conn-error admin-conn-error)}
+       :body   conn-error}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
             pending-settings  (into {}
