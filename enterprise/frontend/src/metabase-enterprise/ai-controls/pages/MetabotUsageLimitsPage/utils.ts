@@ -68,16 +68,16 @@ const instanceLimitLabelMap: Record<
 > = {
   get tokens() {
     return {
-      daily: t`Total daily instance limit (millions of tokens)`,
-      weekly: t`Total weekly instance limit (millions of tokens)`,
-      monthly: t`Total monthly instance limit (millions of tokens)`,
+      daily: t`Total daily instance token limit`,
+      weekly: t`Total weekly instance token limit`,
+      monthly: t`Total monthly instance token limit`,
     };
   },
   get messages() {
     return {
-      daily: t`Total daily instance limit (message count)`,
-      weekly: t`Total weekly instance limit (message count)`,
-      monthly: t`Total monthly instance limit (message count)`,
+      daily: t`Total daily instance message limit`,
+      weekly: t`Total weekly instance message limit`,
+      monthly: t`Total monthly instance message limit`,
     };
   },
 };
@@ -107,20 +107,23 @@ export function getQuotaMessageInputDescription(
   return messageDescriptionMap[limitPeriod];
 }
 
-export function getMaxUsageInputSuffix(
+export function getMaxUsageInputUnit(
   limitType: MetabotLimitType,
   value?: number | null,
 ) {
-  if (limitType === "tokens" && !!value) {
-    return (
-      " " +
-      c("suffix after a numeral, e.g. '10 million'").ngettext(
-        msgid`million`,
-        `million`,
-        value,
-      )
-    );
+  // When no value is set the input shows the "Unlimited" placeholder, but the
+  // unit text is still visible — fall back to a plural-selecting count (2)
+  // so the unit reads as "messages"/"million" rather than a zero-form that
+  // some languages use for null counts.
+  const count = value ?? 2;
+
+  if (limitType === "tokens") {
+    return c(
+      "unit shown beside a token-count input, e.g. '10 million'",
+    ).ngettext(msgid`million`, `million`, count);
   }
 
-  return undefined;
+  return c(
+    "unit shown beside a message-count input, e.g. '10 messages'",
+  ).ngettext(msgid`message`, `messages`, count);
 }
