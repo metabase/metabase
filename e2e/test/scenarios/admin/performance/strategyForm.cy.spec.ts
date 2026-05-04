@@ -206,88 +206,35 @@ describe("scenarios > admin > performance > strategy form", () => {
         checkInheritanceIfNeeded(itemName, "Adaptive");
       });
 
-      describe(`can set ${itemName} to a schedule-based cache invalidation policy`, () => {
-        beforeEach(() => {
-          cy.visit("/admin");
-          cy.findByRole("link", { name: "Performance" }).click();
-          cy.log(`Open caching strategy form for ${itemName}`);
-          formLauncher(
-            itemName,
-            itemName === "default policy"
-              ? "currently"
-              : "currently inheriting the default policy",
-            "No caching",
-          ).click();
-          cy.log("View schedule options");
-          scheduleRadioButton().click();
-        });
+      // Frequency-specific cron generation is exhaustively covered in
+      // frontend/.../Schedule/Schedule.unit.spec.tsx (write-path) and
+      // cron.unit.spec.ts (transform). The strategy-to-launcher-label
+      // mapping is covered in the EE StrategyEditorForDatabases.unit.spec.tsx
+      // ("can abbreviate a 'Schedule' strategy"). What survives here is the
+      // save -> backend -> GET -> launcher re-render round-trip — one
+      // representative schedule (weekly Tuesday 2 PM) is enough.
+      it(`can save a schedule-based policy for ${itemName}`, () => {
+        cy.visit("/admin");
+        cy.findByRole("link", { name: "Performance" }).click();
+        formLauncher(
+          itemName,
+          itemName === "default policy"
+            ? "currently"
+            : "currently inheriting the default policy",
+          "No caching",
+        ).click();
+        scheduleRadioButton().click();
 
-        const selectScheduleType = (type: string) => {
-          cy.log(`Set schedule to "${type}"`);
-          cy.findByRole("textbox", { name: "Frequency" }).click();
-          cy.findByRole("listbox").findByText(type).click();
-        };
+        cy.findByRole("textbox", { name: "Frequency" }).click();
+        cy.findByRole("listbox").findByText("weekly").click();
+        cy.findByRole("textbox", { name: "Day of the week" }).click();
+        cy.findByRole("listbox").findByText("Tuesday").click();
+        cy.findByRole("textbox", { name: "Time" }).click();
+        cy.findByRole("listbox").findByText("2:00").click();
+        cy.findByRole("radio", { name: "PM" }).click();
 
-        it(`can save a new hourly schedule policy for ${itemName}`, () => {
-          selectScheduleType("hourly");
-          saveCacheStrategyForm({ strategyType: "schedule", model });
-          formLauncher(itemName, "currently", "Scheduled: hourly");
-        });
-
-        it(`can save a new daily schedule policy - for ${itemName}`, () => {
-          [12, 1, 11].forEach((time) => {
-            ["AM", "PM"].forEach((amPm) => {
-              cy.log(`Test daily at ${time} ${amPm}`);
-              selectScheduleType("daily");
-              cy.findAllByRole("textbox").eq(1).click();
-              cy.findByRole("listbox").findByText(`${time}:00`).click();
-              cy.findByLabelText(amPm).next().click();
-              saveCacheStrategyForm({ strategyType: "schedule", model });
-              formLauncher("Sample Database", "currently", "Scheduled: daily");
-
-              // reset for next iteration of loop
-              dontCacheResultsRadioButton().click();
-              saveCacheStrategyForm({ strategyType: "nocache", model });
-              scheduleRadioButton().click();
-            });
-          });
-        });
-
-        it(`can save a new weekly schedule policy - for ${itemName}`, () => {
-          [
-            ["Sunday", "12:00 AM"],
-            ["Monday", "1:00 AM"],
-            ["Tuesday", "11:00 AM"],
-            ["Wednesday", "12:00 PM"],
-            ["Thursday", "1:00 PM"],
-            ["Friday", "7:00 PM"],
-            ["Saturday", "11:00 PM"],
-          ].forEach(([day, time]) => {
-            cy.log(`testing on ${day} at ${time}`);
-            selectScheduleType("weekly");
-            cy.findAllByRole("textbox").eq(1).click();
-            cy.findByRole("listbox").findByText(day).click();
-            cy.findAllByRole("textbox").eq(2).click();
-            const [hour, amPm] = time.split(" ");
-            cy.findByRole("listbox").findByText(hour).click();
-            cy.findByLabelText(amPm).next().click();
-            saveCacheStrategyForm({ strategyType: "schedule", model });
-            formLauncher(itemName, "currently", "Scheduled: weekly");
-            cy.findAllByRole("textbox").then((searchBoxes) => {
-              const values = Cypress._.map(
-                searchBoxes,
-                (box) => (box as HTMLInputElement).value,
-              );
-              expect(values).to.deep.equal(["weekly", day, hour]);
-            });
-            cy.findByRole("radio", { name: amPm }).should("be.checked");
-
-            // reset for next iteration of loop
-            dontCacheResultsRadioButton().click();
-            saveCacheStrategyForm({ strategyType: "nocache", model });
-            scheduleRadioButton().click();
-          });
-        });
+        saveCacheStrategyForm({ strategyType: "schedule", model });
+        formLauncher(itemName, "currently", "Scheduled: weekly");
       });
     });
 
