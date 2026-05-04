@@ -430,10 +430,11 @@
    - From-side: a synthetic `:model/Database` + `:model/Table` shape is fed through
      `spec-for-table` so `:db` and `:schema` slots are filled per the driver's
      `qualified-name-components`.
-   - To-side: workspace output schema comes from `ws/db-workspace-schema`. Today the
-     atom only carries `output_schema` (single string), so `:db` is `\"\"` for all drivers.
-     When the YAML transmission lands carrying `output_db` for cross-DB workspaces
-     (Snowflake/BQ/SQL Server), this can be extended -- see audit H7.
+   - To-side: workspace output namespace comes from `ws/db-workspace-namespace`,
+     a `{:db ?, :schema ?}` map sourced from `config.yml`. The `:db` and
+     `:schema` slots both flow into the `TableRemapping` row's `to_db` /
+     `to_schema` columns - so cross-DB Snowflake / SQL Server / BigQuery
+     workspaces are now expressible end-to-end.
 
    Returns the to-side `::table-spec` so callers (notably
    [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]]) can route the
@@ -442,8 +443,8 @@
    Throws when the database is not workspaced -- a caller getting here in that case is a
    programming error; the transform-hook path should gate on [[ws/db-workspace-schema]] first."
   [db-id target]
-  (let [workspace-schema (ws/db-workspace-schema db-id)]
-    (when-not workspace-schema
+  (let [workspace-ns (ws/db-workspace-namespace db-id)]
+    (when-not workspace-ns
       (throw (ex-info "Cannot record transform-target remapping: database is not workspaced"
                       {:db-id db-id :target target})))
     (let [database     (or (t2/select-one :model/Database :id db-id)
@@ -454,11 +455,15 @@
           ;; from-side slots per the driver's qualified-name-components.
           from-table   {:name table-name :schema from-schema}
           from-spec    (spec-for-table database from-table)
-          ;; To-side: rename via [[remapped-table-name]] so two source tables sharing a name
-          ;; across different schemas (schemaA.orders vs schemaB.orders) land at distinct
-          ;; warehouse identifiers in the single workspace schema. :db slot stays "" until
-          ;; the atom carries output_db (audit H7 second half).
+          ;; To-side: rename via [[remapped-table-name]] so two source tables sharing a
+          ;; name across different schemas (schemaA.orders vs schemaB.orders) land at
+          ;; distinct warehouse identifiers in the single workspace namespace. Both :db
+          ;; and :schema slots come from `db-workspace-namespace` so cross-DB workspaces
+          ;; (Snowflake / SQL Server / BigQuery) get full namespace remapping. Slots not
+          ;; populated by the workspace config are normalized to "" via `normalize-level`
+          ;; so the storage row's unique constraint stays enforceable.
           to-spec      (-> (remapped-table-name (:engine database) from-spec)
-                           (assoc :schema workspace-schema))]
+                           (assoc :db     (normalize-level (:db workspace-ns))
+                                  :schema (normalize-level (:schema workspace-ns))))]
       (add-mapping! db-id from-spec to-spec)
       to-spec)))

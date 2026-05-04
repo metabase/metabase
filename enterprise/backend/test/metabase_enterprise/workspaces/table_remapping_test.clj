@@ -29,8 +29,8 @@
   [db-id output-schema f]
   (try
     (ws/set-instance-workspace! {:name "table-remapping-test-ws"
-                                 :databases {db-id {:input_schemas []
-                                                    :output_schema output-schema}}})
+                                 :databases {db-id {:input  [{:schema "_"}]
+                                                    :output {:schema output-schema}}}})
     (f)
     (finally
       (ws/clear-instance-workspace!))))

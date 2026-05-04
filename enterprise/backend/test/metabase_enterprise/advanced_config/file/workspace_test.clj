@@ -45,8 +45,8 @@
         (let [dbs (get-in parsed [:config :workspace :databases])]
           (is (= 1 (count dbs)))
           (let [[_db-name wsd] (first dbs)]
-            (is (= ["public"] (:input_schemas wsd)))
-            (is (= "mb__isolation_44490_1933" (:output_schema wsd)))))))))
+            (is (= [{:schema "public"}] (:input wsd)))
+            (is (= {:schema "mb__isolation_44490_1933"} (:output wsd)))))))))
 
 (deftest apply-workspace-section-populates-atom-test
   (testing "applying the :workspace section stores parsed config in the in-process atom keyed by db-id"
@@ -59,9 +59,10 @@
           (testing "atom holds the parsed config"
             (let [stored (ws/instance-workspace)]
               (is (= "New workspace" (:name stored)))
-              (is (= ["public"] (get-in stored [:databases db-id :input_schemas])))
-              (is (= "mb__isolation_44490_1933"
-                     (get-in stored [:databases db-id :output_schema]))))))))))
+              (is (= [{:schema "public"}]
+                     (get-in stored [:databases db-id :input])))
+              (is (= {:schema "mb__isolation_44490_1933"}
+                     (get-in stored [:databases db-id :output]))))))))))
 
 (deftest re-apply-replaces-atom-test
   (testing "re-applying with a different config replaces the atom — no mismatch detection, file is the truth"
@@ -71,15 +72,15 @@
         (let [section-1 (workspace-section "ws-test-db")
               section-2 (assoc section-1
                                :name "Renamed Workspace"
-                               :databases {:ws-test-db-2 {:input_schemas ["public"]
-                                                          :output_schema "different_schema"}})]
+                               :databases {:ws-test-db-2 {:input  [{:schema "public"}]
+                                                          :output {:schema "different_schema"}}})]
           (advanced-config.file.workspace/apply-workspace-section! section-1)
           (is (= "New workspace" (:name (ws/instance-workspace))))
           (advanced-config.file.workspace/apply-workspace-section! section-2)
           (is (= "Renamed Workspace" (:name (ws/instance-workspace))))
           (is (= 1 (count (:databases (ws/instance-workspace)))))
-          (is (= "different_schema"
-                 (->> (ws/instance-workspace) :databases vals first :output_schema))
+          (is (= {:schema "different_schema"}
+                 (->> (ws/instance-workspace) :databases vals first :output))
               "atom reflects the new config, not the old one"))))))
 
 (deftest unknown-database-name-throws-test
@@ -190,23 +191,45 @@
 
 (deftest valid-workspace-section?-test
   (testing "valid-workspace-section? matches the spec used by the gate"
-    (is (true? (advanced-config.file.workspace/valid-workspace-section?
-                {:name "ws" :databases {:db1 {:input_schemas ["s1"]
-                                              :output_schema "out"}}})))
-    (is (false? (advanced-config.file.workspace/valid-workspace-section? {}))
-        "empty map is invalid")
-    (is (false? (advanced-config.file.workspace/valid-workspace-section? {:name "ws"}))
-        ":databases is required")
-    (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                 {:name "ws" :databases {}}))
-        "empty :databases map is invalid")
-    (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                 {:name "ws"
-                  :databases {:db1 {:input_schemas []
-                                    :output_schema "out"}}}))
-        "empty :input_schemas is invalid")
-    (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                 {:name "ws"
-                  :databases {:db1 {:input_schemas ["s1"]
-                                    :output_schema ""}}}))
-        "blank :output_schema is invalid")))
+    (testing "structurally-valid sections"
+      (is (true? (advanced-config.file.workspace/valid-workspace-section?
+                  {:name "ws" :databases {:db1 {:input  [{:schema "s1"}]
+                                                :output {:schema "out"}}}}))
+          "minimal Postgres-shape: single :schema slot on both sides")
+      (is (true? (advanced-config.file.workspace/valid-workspace-section?
+                  {:name "ws" :databases {:db1 {:input  [{:db "ANALYTICS" :schema "PUBLIC"}]
+                                                :output {:db "WS_DB" :schema "WS_ALICE"}}}}))
+          "Snowflake-shape: 2-slot namespaces with both :db and :schema")
+      (is (true? (advanced-config.file.workspace/valid-workspace-section?
+                  {:name "ws" :databases {:db1 {:input  [{:db "MyDB"}]
+                                                :output {:db "MyDB"}}}}))
+          ":db-only is allowed (some drivers populate :db without :schema)"))
+    (testing "structural rejection"
+      (is (false? (advanced-config.file.workspace/valid-workspace-section? {}))
+          "empty map is invalid")
+      (is (false? (advanced-config.file.workspace/valid-workspace-section? {:name "ws"}))
+          ":databases is required")
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws" :databases {}}))
+          "empty :databases map is invalid")
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws"
+                    :databases {:db1 {:input  []
+                                      :output {:schema "out"}}}}))
+          "empty :input is invalid - need at least one input namespace"))
+    (testing "namespace-shape rejection (per INV-3: \"\" is invalid on the wire)"
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws"
+                    :databases {:db1 {:input  [{:schema ""}]
+                                      :output {:schema "out"}}}}))
+          "empty-string :schema on input is invalid (use missing key, not \"\")")
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws"
+                    :databases {:db1 {:input  [{:schema "s1"}]
+                                      :output {:schema ""}}}}))
+          "empty-string :schema on output is invalid")
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws"
+                    :databases {:db1 {:input  [{}]
+                                      :output {:schema "out"}}}}))
+          "an entirely empty {} namespace is invalid - at least one slot required"))))
