@@ -333,6 +333,10 @@
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
 
+(define-premium-feature ^{:added "0.62.0"} enable-workspaces?
+  "Should we enable isolated Workspaces for provisioning databases?"
+  :workspaces)
+
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -385,6 +389,7 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
+   :workspaces                     (enable-workspaces?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 

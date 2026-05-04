@@ -127,7 +127,9 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    :model/Workspace
+    :model/WorkspaceDatabase})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

@@ -6,11 +6,13 @@ import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -99,6 +101,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
+  const canAccessWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canAccessWorkspaces,
+  );
+  const hasActiveWorkspace = useSetting("has-active-workspace");
 
   const currentTab = getCurrentTab(pathname);
 
@@ -196,6 +202,24 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isGated
             />
           )}
+          {canAccessWorkspaces &&
+            (hasActiveWorkspace ? (
+              <DataStudioTab
+                label={t`Workspace`}
+                icon="folder_database"
+                to={Urls.workspaceInstance()}
+                isSelected={currentTab === "workspace"}
+                showLabel={isNavbarOpened}
+              />
+            ) : (
+              <DataStudioTab
+                label={t`Workspaces`}
+                icon="folder_database"
+                to={Urls.workspaceList()}
+                isSelected={currentTab === "workspaces"}
+                showLabel={isNavbarOpened}
+              />
+            ))}
           {canAccessTransforms && (
             <DataStudioTab
               label={t`Jobs`}

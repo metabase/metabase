@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace]
+   [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -14,6 +16,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [f] (mt/with-premium-features #{:workspaces} (f))))
 
 (defn- clean-db-fixture!
   "Run `f` with mappings cleared before and after so tests don't leak state."
@@ -182,6 +186,8 @@
 
 (deftest add-transform-target-mapping!-requires-workspaced-db-test
   (testing "throws with a clear error when db is not workspaced (db-workspace-schema returns nil)"
+    ;; Defensive: ensure no provisioned WorkspaceDatabase row leaks in from another test.
+    (t2/delete! :model/WorkspaceDatabase :database_id (mt/id) :status :provisioned)
     (clean-db-fixture!
      (mt/id)
      (fn []

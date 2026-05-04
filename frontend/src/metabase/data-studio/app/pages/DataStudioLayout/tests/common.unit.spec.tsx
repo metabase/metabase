@@ -122,4 +122,17 @@ describe("DataStudioLayout", () => {
       expect(transformsUpsellGems).toHaveLength(0);
     });
   });
+
+  describe("workspaces gating", () => {
+    it("should not render any workspaces tab on OSS", async () => {
+      setup({ remoteSyncBranch: "main", tokenFeatures: {} });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspace")).not.toBeInTheDocument();
+    });
+  });
 });

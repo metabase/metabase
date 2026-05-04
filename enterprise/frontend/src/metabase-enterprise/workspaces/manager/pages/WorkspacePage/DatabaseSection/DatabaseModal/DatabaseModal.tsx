@@ -1,0 +1,324 @@
+import { useFormikContext } from "formik";
+import { useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/common/utils/database";
+import {
+  Form,
+  FormErrorMessage,
+  FormMultiSelect,
+  FormProvider,
+  FormSelect,
+  FormSubmitButton,
+} from "metabase/forms";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import {
+  useCreateWorkspaceDatabaseMutation,
+  useUpdateWorkspaceDatabaseMutation,
+} from "metabase-enterprise/api";
+import type { Database, DatabaseId, Workspace } from "metabase-types/api";
+
+import { getAvailableDatabases } from "../../../../utils";
+
+type DatabaseValues = {
+  databaseId: string | null;
+  inputSchemas: string[];
+};
+
+const VALIDATION_SCHEMA = Yup.object({
+  databaseId: Yup.string().nullable().required(Errors.required),
+  inputSchemas: Yup.array()
+    .of(Yup.string().required())
+    .min(1, Errors.required)
+    .required(Errors.required),
+});
+
+const INITIAL_VALUES: DatabaseValues = {
+  databaseId: null,
+  inputSchemas: [],
+};
+
+type CreateDatabaseModalProps = {
+  workspace: Workspace;
+  databases: Database[];
+  opened: boolean;
+  onClose: () => void;
+};
+
+export function CreateDatabaseModal({
+  workspace,
+  databases,
+  opened,
+  onClose,
+}: CreateDatabaseModalProps) {
+  return (
+    <Modal
+      title={t`Add database`}
+      opened={opened}
+      padding="xl"
+      onClose={onClose}
+    >
+      <FocusTrap.InitialFocus />
+      <CreateDatabaseForm
+        workspace={workspace}
+        databases={databases}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+}
+
+type UpdateDatabaseModalProps = {
+  workspace: Workspace;
+  databaseId: DatabaseId;
+  databases: Database[];
+  opened: boolean;
+  onClose: () => void;
+};
+
+export function UpdateDatabaseModal({
+  workspace,
+  databaseId,
+  databases,
+  opened,
+  onClose,
+}: UpdateDatabaseModalProps) {
+  return (
+    <Modal
+      title={t`Edit database configuration`}
+      opened={opened}
+      padding="xl"
+      onClose={onClose}
+    >
+      <FocusTrap.InitialFocus />
+      <UpdateDatabaseForm
+        workspace={workspace}
+        databaseId={databaseId}
+        databases={databases}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+}
+
+type CreateDatabaseFormProps = {
+  workspace: Workspace;
+  databases: Database[];
+  onClose: () => void;
+};
+
+function CreateDatabaseForm({
+  workspace,
+  databases,
+  onClose,
+}: CreateDatabaseFormProps) {
+  const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
+  const availableDatabases = useMemo(
+    () => getAvailableDatabases(databases, workspace.databases ?? []),
+    [databases, workspace.databases],
+  );
+
+  const handleSubmit = async (values: DatabaseValues) => {
+    if (values.databaseId == null) {
+      return;
+    }
+    await createWorkspaceDatabase({
+      workspace_id: workspace.id,
+      database_id: getDatabaseId(values.databaseId),
+      input_schemas: values.inputSchemas,
+    }).unwrap();
+    onClose();
+  };
+
+  return (
+    <FormProvider
+      initialValues={INITIAL_VALUES}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      {({ values }) => (
+        <Form>
+          <Stack gap="lg">
+            <Text c="text-secondary">
+              {t`Creates a temporary isolation schema and a database user, then grants the user write access to that schema and read access to the selected schemas.`}
+            </Text>
+            <DatabaseSelect availableDatabases={availableDatabases} />
+            <DatabaseSchemaSelect
+              databaseId={
+                values.databaseId ? getDatabaseId(values.databaseId) : null
+              }
+              inputSchemas={values.inputSchemas}
+              databases={databases}
+            />
+            <FormErrorMessage />
+            <Group justify="flex-end">
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton label={t`Add database`} variant="filled" />
+            </Group>
+          </Stack>
+        </Form>
+      )}
+    </FormProvider>
+  );
+}
+
+type UpdateDatabaseFormProps = {
+  workspace: Workspace;
+  databaseId: DatabaseId;
+  databases: Database[];
+  onClose: () => void;
+};
+
+function UpdateDatabaseForm({
+  workspace,
+  databaseId,
+  databases,
+  onClose,
+}: UpdateDatabaseFormProps) {
+  const database = databases.find((db) => db.id === databaseId);
+  const workspaceDatabase = (workspace.databases ?? []).find(
+    (db) => db.database_id === databaseId,
+  );
+  const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
+  const availableDatabases = useMemo(
+    () =>
+      getAvailableDatabases(databases, workspace.databases ?? [], databaseId),
+    [databases, workspace.databases, databaseId],
+  );
+
+  if (database == null || workspaceDatabase == null) {
+    return null;
+  }
+
+  const initialValues: DatabaseValues = {
+    databaseId: getDatabaseValue(workspaceDatabase.database_id),
+    inputSchemas: workspaceDatabase.input_schemas,
+  };
+
+  const handleSubmit = async (values: DatabaseValues) => {
+    if (values.databaseId == null) {
+      return;
+    }
+    await updateWorkspaceDatabase({
+      workspace_id: workspace.id,
+      database_id: getDatabaseId(values.databaseId),
+      input_schemas: values.inputSchemas,
+    }).unwrap();
+    onClose();
+  };
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      {({ values, dirty }) => (
+        <Form>
+          <Stack gap="lg">
+            <Text c="text-secondary">
+              {t`Recreates the isolation schema and the database user with different permissions.`}
+            </Text>
+            <DatabaseSelect availableDatabases={availableDatabases} />
+            <DatabaseSchemaSelect
+              databaseId={
+                values.databaseId ? getDatabaseId(values.databaseId) : null
+              }
+              inputSchemas={values.inputSchemas}
+              databases={databases}
+            />
+            <FormErrorMessage />
+            <Group justify="flex-end">
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Save`}
+                variant="filled"
+                disabled={!dirty}
+              />
+            </Group>
+          </Stack>
+        </Form>
+      )}
+    </FormProvider>
+  );
+}
+
+type DatabaseSelectProps = {
+  availableDatabases: Database[];
+};
+
+function DatabaseSelect({ availableDatabases }: DatabaseSelectProps) {
+  const { setFieldValue } = useFormikContext<DatabaseValues>();
+
+  const handleChange = (value: string) => {
+    setFieldValue("databaseId", value);
+    setFieldValue("inputSchemas", []);
+  };
+
+  return (
+    <FormSelect
+      name="databaseId"
+      label={t`Database`}
+      placeholder={t`Select a database`}
+      data={getDatabaseOptions(availableDatabases)}
+      onChange={handleChange}
+    />
+  );
+}
+
+type DatabaseSchemaSelectProps = {
+  databaseId: DatabaseId | null;
+  inputSchemas: string[];
+  databases: Database[];
+};
+
+function DatabaseSchemaSelect({
+  databaseId,
+  inputSchemas,
+  databases,
+}: DatabaseSchemaSelectProps) {
+  const database = databases.find((db) => db.id === databaseId);
+  const hasSchemas = database != null && hasFeature(database, "schemas");
+
+  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
+    databaseId != null && hasSchemas
+      ? { id: databaseId, include_hidden: true }
+      : skipToken,
+  );
+
+  if (!hasSchemas) {
+    return null;
+  }
+
+  const isAllSelected =
+    availableSchemas.length > 0 &&
+    inputSchemas.length === availableSchemas.length;
+
+  return (
+    <FormMultiSelect
+      name="inputSchemas"
+      label={t`Schemas`}
+      placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
+      data={availableSchemas}
+      searchable
+    />
+  );
+}
+
+function getDatabaseId(value: string) {
+  return Number(value);
+}
+
+function getDatabaseValue(databaseId: DatabaseId) {
+  return String(databaseId);
+}
+
+function getDatabaseOptions(availableDatabases: Database[]) {
+  return availableDatabases.map((database) => ({
+    value: getDatabaseValue(database.id),
+    label: database.name,
+  }));
+}

@@ -374,6 +374,7 @@ export const tokenFeatures = [
   "writable_connection",
   "admin_security_center",
   "ai_controls",
+  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -729,6 +730,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
+  "has-active-workspace": boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
