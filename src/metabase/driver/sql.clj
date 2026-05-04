@@ -434,7 +434,7 @@
         (and (= 1 (count stmts)) (some #(instance? % (first stmts)) allowed-types))
         (assoc :is-single-stmt? true :sql (str (first stmts)))))
     (catch Exception e
-      {:is-single-select? false :error (.getMessage e)})))
+      {:is-single-stmt? false :error (.getMessage e)})))
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
