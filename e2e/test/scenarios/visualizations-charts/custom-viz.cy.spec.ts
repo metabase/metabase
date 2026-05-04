@@ -1850,6 +1850,71 @@ describe("sandbox", () => {
     cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
   });
 
+  it("returns a decoy when the plugin walks up to its container's parentElement/parentNode", () => {
+    const payload = `
+      setTimeout(function() {
+        var container = document.querySelector('[data-plugin-sandbox]');
+        if (!container) {
+          console.log('plugin parent test:', 'no container');
+          return;
+        }
+        const { parentElement, parentNode} = container;
+        console.log('plugin parentElement decoy:', parentElement && parentElement.getAttribute('data-plugin-sandbox-decoy'));
+        console.log('plugin parentElement id:', parentElement && parentElement.getAttribute('id'));
+        console.log('plugin parentNode decoy:', parentNode && parentNode.getAttribute && parentNode.getAttribute('data-plugin-sandbox-decoy'));
+        if (parentElement) {
+          parentElement.setAttribute('data-pwned-by-plugin', 'true');
+        }
+      }, 1000);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${String(res.body)};\n${payload}`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    cy.get<CardId>("@sandboxCardId").then((id) => {
+      cy.visit(`/question/${id}`, {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "log").as("consoleLog");
+          cy.spy(win.console, "error").as("consoleError");
+        },
+      });
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentElement decoy:",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentElement id:",
+      "sandbox-decoy",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentNode decoy:",
+      "true",
+    );
+
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <div.*> with decoy/,
+    );
+
+    cy.get("[data-plugin-sandbox]")
+      .parent()
+      .should("not.have.attr", "data-pwned-by-plugin");
+  });
+
   it("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", () => {
     const payload = `
       var seenMutations = 0;
