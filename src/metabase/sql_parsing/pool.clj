@@ -17,7 +17,7 @@
     Pool
     Pools)
    (java.io Closeable File)
-   (java.nio.file FileSystems)
+   (java.nio.file FileSystems Path)
    (java.time Duration)
    (java.util Collections)
    (java.util.concurrent TimeUnit TimeoutException)
@@ -130,11 +130,20 @@
   python-fs-and-path
   (delay
     (if (jar-resource? python-sources-resource)
-      ;; In the jar: use the jar's zip filesystem directly. Python sources and GraalPy's stdlib
-      ;; are both inside the jar, so nothing is extracted to disk and there's nothing to tamper with.
+      ;; In the jar: use the jar's zip filesystem directly. Python sources and GraalPy's stdlib are both inside the
+      ;; jar, so nothing is extracted to disk and there's nothing to tamper with.
+      ;;
+      ;; IMPORTANT: We must use the Path-based FileSystems/newFileSystem overload here, NOT the URI-based one. NIO
+      ;; maintains a global cache of zip filesystems keyed by URI. The URI-based overload registers in that cache, and
+      ;; other code (e.g. u.files/with-open-path-to-resource, u.files/find-in-current-jar) can obtain a reference to
+      ;; the same cached instance via FileSystems/getFileSystem and then close it inside a with-open block. That kills
+      ;; *our* filesystem and every subsequent GraalPy context creation fails with: PolyglotException:
+      ;; jdk.nio.zipfs.ZipFileSystem.ensureOpen The Path-based overload bypasses the cache entirely, giving us an
+      ;; independent instance whose lifecycle we fully control. This filesystem lives for the duration of the process
+      ;; (via defonce + delay) and is shared by all pooled Python contexts.
       (let [jar-path (u.files/get-jar-path)
-            jar-uri  (java.net.URI. (str "jar:file:" jar-path))
-            nio-fs   (FileSystems/newFileSystem jar-uri Collections/EMPTY_MAP)]
+            nio-fs   (FileSystems/newFileSystem (Path/of jar-path (into-array String []))
+                                                Collections/EMPTY_MAP)]
         {:fs          (-> (FileSystem/newFileSystem nio-fs)
                           FileSystem/newReadOnlyFileSystem)
          :python-path "/python-sources"
