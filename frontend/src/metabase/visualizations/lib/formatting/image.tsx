@@ -1,4 +1,5 @@
-import type { OptionsType } from "./types";
+import type { OptionsType } from "metabase/utils/formatting/types";
+
 import { getUrlProtocol } from "./url";
 
 export function formatImage(

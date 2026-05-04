@@ -1,12 +1,12 @@
 import _ from "underscore";
 
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNotNull } from "metabase/utils/types";
 import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
-} from "metabase/utils/formatting/date";
-import type { ValueAndColumnForColumnNameDate } from "metabase/utils/formatting/link";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { checkNotNull } from "metabase/utils/types";
+} from "metabase/visualizations/lib/formatting/date";
+import type { ValueAndColumnForColumnNameDate } from "metabase/visualizations/lib/formatting/link";
 import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";

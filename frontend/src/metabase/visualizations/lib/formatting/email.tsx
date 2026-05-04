@@ -1,10 +1,10 @@
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { getDataFromClicked } from "metabase/parameters/utils/click-behavior";
 import { isEmail } from "metabase/utils/email";
-import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
+import { removeNewLines } from "metabase/utils/formatting/strings";
+import type { OptionsType } from "metabase/utils/formatting/types";
 
 import { renderLinkTextForClick } from "./link";
-import { removeNewLines } from "./strings";
-import type { OptionsType } from "./types";
 
 export function formatEmail(
   value: string,
