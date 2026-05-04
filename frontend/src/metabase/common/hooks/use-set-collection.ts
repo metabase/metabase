@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -91,6 +92,7 @@ const LABELS = {
 
 export type SetCollectionOptions = {
   notify?: boolean;
+  message?: ReactNode;
 };
 
 function isCollectionDestination(
@@ -289,7 +291,7 @@ export function useSetCollection() {
     async (
       item: MovableItem,
       destination: SetCollectionDestination,
-      { notify = true }: SetCollectionOptions = {},
+      { notify = true, message }: SetCollectionOptions = {},
     ) => {
       const undoAction = notify ? await captureUndoAction(item) : null;
 
@@ -300,6 +302,7 @@ export function useSetCollection() {
           addUndo({
             subject: LABELS[item.model](),
             verb: t`moved`,
+            message,
             actions: [undoAction],
           }),
         );

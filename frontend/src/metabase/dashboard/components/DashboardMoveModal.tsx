@@ -6,9 +6,7 @@ import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModa
 import { useSetCollection } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
-import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { addUndo } from "metabase/redux/undo";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
@@ -23,7 +21,6 @@ function DashboardMoveModal({
   dashboard: Dashboard;
   onClose: () => void;
 }) {
-  const dispatch = useDispatch();
   const setCollection = useSetCollection();
 
   return (
@@ -44,16 +41,13 @@ function DashboardMoveModal({
         await setCollection(
           { model: "dashboard", id: dashboard.id },
           destination,
-          { notify: false },
-        );
-        dispatch(
-          addUndo({
+          {
             message: (
               <DashboardMoveToast
                 collectionId={destination.id || ROOT_COLLECTION.id}
               />
             ),
-          }),
+          },
         );
         onClose();
       }}
