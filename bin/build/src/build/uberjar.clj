@@ -162,13 +162,24 @@
    #"META-INF/license.*"
    #"META-INF/LICENSE.*"])
 
+(def ^:private activation-conflict-handler
+  "hive-jdbc-standalone bundles its own copy of javax.activation classes with package-private visibility on
+  LogSupport. When these overwrite the correct public versions from jakarta.activation, javax.mail (postal) fails at
+  runtime with IllegalAccessError. This handler ensures jakarta.activation's versions always win regardless of JAR
+  processing order."
+  {"com/sun/activation/registries/.*"
+   (fn [{:keys [lib path in]}]
+     (if (= lib 'com.sun.activation/jakarta.activation)
+       {:write {path {:stream in}}}
+       nil))})
+
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (b/uber {:class-dir         class-dir
                :uber-file         uberjar-filename
-               ;; merge Log4j2Plugins.dat files. (#50721)
-               :conflict-handlers log4j2-conflict-handler
+               :conflict-handlers (merge log4j2-conflict-handler
+                                         activation-conflict-handler)
                :basis             basis
                :exclude           dependency-ignore-patterns})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
