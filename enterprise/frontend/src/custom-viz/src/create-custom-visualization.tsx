@@ -14,15 +14,6 @@ export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
     >;
   };
 
-function safeReadString(value: unknown, key: string): string {
-  try {
-    const v = (value as Record<string, unknown> | null | undefined)?.[key];
-    return v == null ? "" : String(v);
-  } catch {
-    return "";
-  }
-}
-
 class PluginErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -33,33 +24,14 @@ class PluginErrorBoundary extends React.Component<
     return { error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // The error may be a near-membrane Red Proxy from the host realm; logging
-    // it directly prints "Proxy(Object) {}" which is useless. Pull off the
-    // primitive fields so authors see the real message + stack.
-    const message = safeReadString(error, "message");
-    const stack = safeReadString(error, "stack");
-    const componentStack = info?.componentStack ?? "";
-    console.error(
-      `[plugin] visualization render failed: ${message}\n${stack}${componentStack}`,
-    );
+  componentDidCatch(error: Error) {
+    const { message, stack } = error;
+    console.error(`[plugin] visualization render failed: ${message}\n${stack}`);
   }
 
   render() {
     if (this.state.error) {
-      /* eslint-disable metabase/no-color-literals, i18next/no-literal-string */
-      return (
-        <div
-          style={{
-            padding: 8,
-            color: "var(--mb-color-error, #d33)",
-            fontSize: 12,
-          }}
-        >
-          Visualization failed to render.
-        </div>
-      );
-      /* eslint-enable metabase/no-color-literals, i18next/no-literal-string */
+      return null;
     }
     return this.props.children;
   }
