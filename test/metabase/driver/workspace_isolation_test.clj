@@ -133,7 +133,8 @@
   ;; BigQuery isn't a JDBC driver (its workspace isolation goes through GCP IAM
   ;; rather than SQL ACLs), so it's covered by `workspace-isolation-perms-bigquery-test`
   ;; below. Everything else fans out through this single JDBC-shaped test.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                           (mt/normal-drivers-with-feature :workspace))
     (testing "workspace user gets read-only access to input schema, full access to output schema"
       (let [driver       driver/*driver*
             database     (mt/db)

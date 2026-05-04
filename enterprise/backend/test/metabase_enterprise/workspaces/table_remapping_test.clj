@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -128,10 +129,6 @@
              (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "PUBLIC__ORDERS"]}
                     (ws.table-remapping/all-mappings-for-db (mt/id)))))))))))
 
-(defn- driver-loadable? [engine]
-  (try (driver/the-initialized-driver engine) true
-       (catch Throwable _ false)))
-
 (defn- with-provisioned-workspace-db-namespace!
   "Variant of `with-provisioned-workspace-db!` that takes a full
    `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
@@ -152,7 +149,7 @@
     ;; Requires the :snowflake driver class on the test classpath - same skip pattern as the
     ;; per-driver spec-for-table tests above. Run with:
     ;;   ./bin/test-agent --drivers=snowflake,h2 :only '[...this test...]'
-    (when (driver-loadable? :snowflake)
+    (when (workspaces.tu/driver-loadable? :snowflake)
       ;; Synthesize the canonical Database row's :engine after :model/Database is created
       ;; so spec-for-table dispatches as Snowflake, populating :db on the from-side.
       (clean-db-fixture!
@@ -495,7 +492,7 @@
 ;; isn't on the test classpath.
 
 (deftest spec-for-table-clickhouse-engine-test
-  (when (driver-loadable? :clickhouse)
+  (when (workspaces.tu/driver-loadable? :clickhouse)
     (testing "ClickHouse fills :schema with the database name (driver emits db.table)"
       (let [database (assoc (t2/select-one :model/Database :id (mt/id)) :engine :clickhouse)
             table    (t2/select-one :model/Table :id (mt/id :orders))
@@ -505,7 +502,7 @@
             "schema-position filled from database.:name on schema-less drivers")))))
 
 (deftest spec-for-table-bigquery-engine-test
-  (when (driver-loadable? :bigquery-cloud-sdk)
+  (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
     (testing "BigQuery fills :db from connection details :project-id"
       (let [database {:engine :bigquery-cloud-sdk
                       :name "ignored"
@@ -517,7 +514,7 @@
         (is (= "orders" table))))))
 
 (deftest spec-for-table-bigquery-no-project-id-test
-  (when (driver-loadable? :bigquery-cloud-sdk)
+  (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
     (testing "BigQuery without explicit :project-id leaves :db empty (does not leak credentials blob)"
       (let [database {:engine :bigquery-cloud-sdk
                       :name "ignored"
@@ -537,7 +534,7 @@
 ;;      lists, with empty-string sentinels everywhere else.
 ;;
 ;; Pure: no warehouse connection. Each row needs the driver class on the test
-;; classpath — `driver-loadable?` skip pattern (above) is reused.
+;; classpath — `workspaces.tu/driver-loadable?` skip pattern is reused.
 
 (def ^:private addressing-truth-table
   "Per-driver addressing contract. Each row:
@@ -561,7 +558,7 @@
 (deftest ^:parallel addressing-truth-table-qualified-name-components-test
   (testing "qualified-name-components returns the documented AST positions per driver"
     (doseq [[driver expected-components & _] addressing-truth-table]
-      (when (driver-loadable? driver)
+      (when (workspaces.tu/driver-loadable? driver)
         (testing (str driver)
           (is (= expected-components
                  (driver/qualified-name-components driver))
@@ -570,7 +567,7 @@
 (deftest ^:parallel addressing-truth-table-spec-for-table-test
   (testing "spec-for-table produces the documented {:db, :schema, :table} shape per driver"
     (doseq [[driver _components db-fields table-row expected-spec] addressing-truth-table]
-      (when (driver-loadable? driver)
+      (when (workspaces.tu/driver-loadable? driver)
         (testing (str driver)
           (let [database (assoc db-fields :engine driver)]
             (is (= expected-spec
@@ -579,7 +576,7 @@
 (deftest ^:parallel addressing-truth-table-slot-population-invariant-test
   (testing "Invariant: slot is non-empty iff qualified-name-components includes it"
     (doseq [[driver components db-fields table-row _expected-spec] addressing-truth-table]
-      (when (driver-loadable? driver)
+      (when (workspaces.tu/driver-loadable? driver)
         (testing (str driver)
           (let [database  (assoc db-fields :engine driver)
                 spec      (ws.table-remapping/spec-for-table database table-row)
