@@ -29,3 +29,17 @@ export const trackStackedSeriesEnabled = () => {
     triggered_from: "viz_settings",
   });
 };
+
+export const trackTableFreezeColumnsEnabled = () => {
+  trackSimpleEvent({
+    event: "table_freeze_columns_enabled",
+    triggered_from: "viz_settings",
+  });
+};
+
+export const trackTableFreezeRowsEnabled = () => {
+  trackSimpleEvent({
+    event: "table_freeze_rows_enabled",
+    triggered_from: "viz_settings",
+  });
+};

@@ -1,5 +1,4 @@
 import { TransformSchema } from "metabase/schema";
-import type { Transform } from "metabase-types/api";
 
 import { createEntity } from "./utils";
 
@@ -12,8 +11,4 @@ export const Transforms = createEntity({
   nameOne: "transform",
   path: "/api/transform",
   schema: TransformSchema,
-
-  objectSelectors: {
-    getName: (transform: Transform) => transform && transform.name,
-  },
 });

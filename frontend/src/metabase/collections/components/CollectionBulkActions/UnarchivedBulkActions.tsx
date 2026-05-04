@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
+import { useSetArchive } from "metabase/common/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
@@ -22,6 +23,8 @@ export const UnarchivedBulkActions = ({
   setSelectedItems,
   setSelectedAction,
 }: UnarchivedBulkActionsProps) => {
+  const archive = useSetArchive();
+
   // archive
   const canArchive = useMemo(() => {
     return selected.every((item) => canArchiveItem(item, collection));
@@ -30,10 +33,9 @@ export const UnarchivedBulkActions = ({
   const handleBulkArchive = async () => {
     const actions = selected.map((item) => {
       return archiveAndTrack({
-        archive: () =>
-          item.setArchived
-            ? item.setArchived(true, { notify: false })
-            : Promise.resolve(),
+        archive: async () => {
+          await archive(item, true, { notify: false });
+        },
         model: item.model,
         modelId: item.id,
         triggeredFrom: "collection",

@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
+import { useSetArchive } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
@@ -42,7 +43,6 @@ interface OwnProps {
 
 interface DispatchProps {
   onEnableImplicitActions: () => void;
-  onArchiveAction: (action: WritebackAction) => void;
   onDeleteAction: (action: WritebackAction) => void;
 }
 
@@ -63,8 +63,6 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
     onEnableImplicitActions: () =>
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
-    onArchiveAction: (action: WritebackAction) =>
-      dispatch(Actions.objectActions.setArchived(action, true)),
     onDeleteAction: (action: WritebackAction) =>
       dispatch(Actions.actions.delete(action.id)),
   };
@@ -75,9 +73,14 @@ function ModelActionDetails({
   actions,
   databases,
   onEnableImplicitActions,
-  onArchiveAction,
   onDeleteAction,
 }: Props) {
+  const archive = useSetArchive();
+  const onArchiveAction = useCallback(
+    (action: WritebackAction) =>
+      archive({ id: action.id, model: "action" }, true),
+    [archive],
+  );
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 

@@ -2,6 +2,7 @@
   "Tests for the `v_metabot_conversations` SQL view."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -329,7 +330,7 @@
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at t3 :deleted_at t3}]
         (let [row (first (query-view [convo-id]))]
           ;; Compare instants to avoid DB-specific timestamp type differences
-          (is (= (.toInstant t2-ts) (.toInstant (:last_message_at row)))))))))
+          (is (= (t/instant t2-ts) (t/instant (:last_message_at row)))))))))
 
 (deftest multiple-conversations-independent-test
   (testing "multiple conversations aggregate independently"

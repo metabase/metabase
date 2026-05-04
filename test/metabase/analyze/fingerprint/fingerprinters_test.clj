@@ -114,28 +114,28 @@
                          [#t "2013" #t "2018" #t "2015"])))))))
 
 (deftest ^:parallel fingerprint-numeric-values-test
-  (is (= {:global {:distinct-count 3
+  (is (= {:global {:distinct-count 99
                    :nil%           0.0}
-          :type   {:type/Number {:avg             2.0
-                                 :min             1.0
-                                 :max             3.0
-                                 :q1              1.25
-                                 :q3              2.75
-                                 :sd              1.0
+          :type   {:type/Number {:avg 49.0
+                                 :min 0.0
+                                 :max 98.0
+                                 :q1  24.0
+                                 :q3  74.0
+                                 :sd  28.722813232690143
                                  :skewness        0.0
-                                 :excess-kurtosis nil
-                                 :mode-fraction   (/ 1.0 3.0)
-                                 :top-3-fraction  1.0
-                                 :zero-fraction   0.0}}}
+                                 :excess-kurtosis -1.2000000000000002
+                                 :mode-fraction   0.010101010101010102
+                                 :top-3-fraction  0.030303030303030304
+                                 :zero-fraction   0.0101010101010101}}}
          (transduce identity
                     (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
-                    [1.0 2.0 3.0])))
+                    (map double (range 99)))))
   (testing "we respect effective_type"
     (let [result (transduce identity
                             (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Number}))
                             ["1" "2" "1.3" "2.3"])]
       (is (= {:distinct-count 4, :nil% 0.0} (:global result)))
-      (is (= {:min 1.0 :q1 1.15 :q3 2.15 :max 2.3 :avg 1.65}
+      (is (= {:min 1.0 :q1 1.0 :q3 2.0 :max 2.3 :avg 1.65}
              (select-keys (get-in result [:type :type/Number])
                           [:min :q1 :q3 :max :avg])))
       (is (some? (get-in result [:type :type/Number :skewness])))
@@ -145,9 +145,26 @@
                             (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
                             [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil])]
       (is (= {:distinct-count 7, :nil% 0.25} (:global result)))
-      (is (= {:avg 2.0, :min 1.0, :max 3.0, :q1 1.25, :q3 2.75, :sd 1.0}
+      (is (= {:avg 2.0, :min 1.0, :max 3.0, :q1 1.0, :q3 3.0, :sd 1.0}
              (select-keys (get-in result [:type :type/Number])
-                          [:avg :min :max :q1 :q3 :sd]))))))
+                          [:avg :min :max :q1 :q3 :sd])))
+      (is (=? {:global {:distinct-count 4, :nil% 0.0},
+               :type   {:type/Number {:min 1.0, :q1 1.0, :q3 2.0, :max 2.3, :sd 0.6027713773341707, :avg 1.65}}}
+              (transduce identity
+                         (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Number}))
+                         ["1" "2" "1.3" "2.3"])))))
+  (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
+    (is (=? {:global {:distinct-count 7
+                      :nil%           0.25}
+             :type   {:type/Number {:avg 2.0
+                                    :min 1.0
+                                    :max 3.0
+                                    :q1  1.0
+                                    :q3  3.0
+                                    :sd  1.0}}}
+            (transduce identity
+                       (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
+                       [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil])))))
 
 (deftest ^:parallel fingerprint-string-values-test
   (is (= {:global {:distinct-count 5
@@ -214,11 +231,11 @@
         (is (=? {:global {:distinct-count 4
                           :nil%           0.0}
                  :type   {:type/Number {:min 1.0
-                                        :q1  #(< 1.44 % 1.46)
-                                        :q3  #(< 2.4 % 2.5)
+                                        :q1  2.0
+                                        :q3  2.0
                                         :max 4.0
                                         :sd  #(< 0.76 % 0.78)
-                                        :avg 2.03}}}
+                                        :avg #(< 2.02 % 2.04)}}}
                 (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :price))))))))
 
 (deftest ^:parallel valid-serialized-json?-test
