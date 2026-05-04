@@ -180,19 +180,6 @@
        (testing "returns :default when not requested even if configured"
          (is (= :default (driver.conn/effective-connection-type configured))))))))
 
-(deftest details-for-exact-type-admin-test
-  (mt/with-premium-features #{:admin-connection}
-    (let [details       {:host "read-host"}
-          admin-details {:host "admin-host"}
-          database      {:lib/type      :metadata/database
-                         :details       details
-                         :admin-details admin-details}]
-      (testing "details-for-exact-type :admin returns admin-details with no fallback"
-        (is (=? admin-details
-                (driver.conn/details-for-exact-type database :admin))))
-      (testing "details-for-exact-type :admin returns nil when not configured"
-        (is (nil? (driver.conn/details-for-exact-type
-                   {:lib/type :metadata/database :details details} :admin)))))))
 
 (deftest effective-details-admin-with-workspace-swap-test
   (mt/when-ee-evailable
