@@ -6,7 +6,6 @@ import { useMCPServerURL } from "./utils";
 
 const CURSOR_DEEPLINK = {
   url: "cursor://anysphere.cursor-deeplink/mcp/install",
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Cursor MCP registration name, not user-facing
   mcpName: "Metabase",
 } as const;
 
