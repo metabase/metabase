@@ -313,7 +313,7 @@
   to quote identifiers as needed.
 
   This may either return a raw SQL string, or `[sql & args]` to be passed in to a parameterized statement. It is
-  preferable to pass the role separately whenever possible to prevent possible SQL injection issues.)"
+  preferable to pass the role separately whenever possible to prevent possible SQL injection issues."
   {:added "0.61.0" :arglists '([driver ^java.sql.Connection connection ^String role])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
