@@ -77,7 +77,12 @@
     (is (empty? (l/check-schema "/p" {:type "object" :additionalProperties false :properties {}})))
     (is (empty? (l/check-schema "/p" {:type "object" :additionalProperties true :properties {}}))))
   (testing "non-object schema doesn't trigger the additionalProperties rule"
-    (is (empty? (l/check-schema "/p" {:type "string"})))))
+    (is (empty? (l/check-schema "/p" {:type "string"}))))
+  (testing "non-map property values (e.g. boolean schemas) don't crash the check"
+    (is (= [] (l/check-schema "/p" {:type                 "object"
+                                    :additionalProperties false
+                                    :required             ["x"]
+                                    :properties           {:x true}})))))
 
 (deftest classify-violations-test
   (let [v1       {:path "/a" :pointer "$" :msg "x"}

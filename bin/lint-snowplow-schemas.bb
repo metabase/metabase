@@ -37,6 +37,7 @@
 
 (defn schema-files []
   (->> (fs/glob schemas-root "**")
+       (filter fs/regular-file?)
        (map str)
        (filter #(re-matches iglu-path-re %))
        sort))
@@ -64,7 +65,12 @@
                              [{:pointer "$"
                                :msg "object schema must explicitly set 'additionalProperties' (true or false)"}])
         required           (set (:required schema))
-        nullable-required  (for [[prop {t :type}] (:properties schema)
+        ;; JSON Schema permits boolean property schemas (e.g. `"foo": true`); skip non-map
+        ;; values rather than letting the destructure throw and surface a misleading
+        ;; "unparseable" error for the whole file.
+        nullable-required  (for [[prop prop-schema] (:properties schema)
+                                 :when (map? prop-schema)
+                                 :let  [t (:type prop-schema)]
                                  :when (and (contains? required (name prop))
                                             (nullable-type? t))]
                              {:pointer (str "$.properties." (name prop))
@@ -81,9 +87,8 @@
   (let [baselined? #(and (not (:fatal %))
                          (contains? baseline (select-keys % [:path :pointer])))
         {grandfathered true new-problems false} (group-by baselined? violations)
-        stale (remove (fn [{:keys [path pointer]}]
-                        (some #(and (= path (:path %)) (= pointer (:pointer %))) violations))
-                      baseline)]
+        violation-keys (into #{} (map #(select-keys % [:path :pointer])) violations)
+        stale (remove #(contains? violation-keys %) baseline)]
     {:new-problems  (vec new-problems)
      :grandfathered (vec grandfathered)
      :stale         (vec stale)}))
