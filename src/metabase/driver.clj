@@ -1394,6 +1394,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;;; TODO (Cam 2026-05-04) -- this is JDBC-specific, should be moved to [[metabase.driver.sql-jdbc]] or one of its
+;;; sub-namespaces
 (defmulti set-role!
   "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
   impersonation (an EE-only feature)."
