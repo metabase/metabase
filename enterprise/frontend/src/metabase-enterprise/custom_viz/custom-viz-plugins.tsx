@@ -8,7 +8,6 @@ import type {
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { shallowEqual } from "react-redux";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
@@ -430,23 +429,14 @@ function createCustomVizWrapper(
       ) => void,
     };
 
-    const prevPropsRef = useRef(pluginProps);
-
-    // Mount on first commit, push prop changes on every later commit.
-    // No dep array: the effect runs after every render and bails via
-    // shallow-equal in the update branch. Cleanup is deliberately *not*
-    // returned from here — we only want unmount on teardown, not on each
-    // render — so it lives in the separate effect below.
     useEffect(() => {
       if (!containerRef.current) {
         return;
       }
       if (!handleRef.current) {
         handleRef.current = mount(containerRef.current, pluginProps);
-        prevPropsRef.current = pluginProps;
-      } else if (!shallowEqual(prevPropsRef.current, pluginProps)) {
+      } else {
         handleRef.current.update(pluginProps);
-        prevPropsRef.current = pluginProps;
       }
     });
 
