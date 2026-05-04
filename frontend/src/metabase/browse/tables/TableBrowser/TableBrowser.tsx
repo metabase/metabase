@@ -1,15 +1,14 @@
 import _ from "underscore";
 
 import { Tables } from "metabase/entities/tables";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import * as Urls from "metabase/utils/urls";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type { DatabaseId, Table } from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
@@ -59,7 +58,7 @@ const getReloadInterval = (
 export const getTableUrl = (table: Table, metadata?: Metadata): string => {
   const metadataTable = metadata?.table(table.id);
   const question = metadataTable?.newQuestion();
-  return question ? ML_Urls.getUrl(question) : "";
+  return question ? Urls.question(question) : "";
 };
 
 export const TableBrowser = _.compose(

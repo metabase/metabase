@@ -5,8 +5,8 @@ import { addSectionToDashboard } from "metabase/dashboard/actions";
 import { SectionLayoutPreview } from "metabase/dashboard/components/DashboardHeader/SectionLayoutPreview";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { type SectionLayout, layoutOptions } from "metabase/dashboard/sections";
+import { useDispatch } from "metabase/redux";
 import { Flex, Menu } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import AddSectionButtonS from "./AddSectionButton.module.css";
 
