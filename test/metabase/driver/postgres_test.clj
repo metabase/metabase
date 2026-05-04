@@ -1730,22 +1730,15 @@
        (fn [conn]
          (are [role expected] (= expected
                                  (driver.sql-jdbc/set-role-statement :postgres conn role))
-           "MY_ROLE"        "SET ROLE \"MY_ROLE\";"
-           "ROLE123"        "SET ROLE \"ROLE123\";"
-           "lowercase_role" "SET ROLE lowercase_role;"
-           "Role.123"       "SET ROLE \"Role.123\";"
-           "$role"          "SET ROLE \"$role\";"
+           "MY_ROLE"                      "SET ROLE MY_ROLE;"
+           "ROLE123"                      "SET ROLE ROLE123;"
+           "lowercase_role"               "SET ROLE lowercase_role;"
+           "Role.123"                     "SET ROLE \"Role.123\";"
+           "$role"                        "SET ROLE \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET ROLE \"role\"\"; SELECT sleep(10); --\";"
            ;; None (special role in Postgres to revert back to login role; should not be quoted)
-           "none"           "SET ROLE none;"
-           "NONE"           "SET ROLE NONE;"))))))
-
-(deftest ^:parallel set-role-statement-escape-quotes-test
-  (mt/test-driver :postgres
-    (is (= "SET ROLE \"role\"\"; SELECT sleep(10); --\";"
-           (sql-jdbc.execute/do-with-connection-with-options
-            :postgres (mt/id) nil
-            (fn [conn]
-              (driver.sql-jdbc/set-role-statement :postgres conn "role\"; SELECT sleep(10); --")))))))
+           "none"                         "SET ROLE none;"
+           "NONE"                         "SET ROLE NONE;"))))))
 
 (deftest get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"

@@ -713,10 +713,20 @@
           (is (= "SUPER" (:database_type multi-field)))
           (is (= :type/JSON (:effective_type multi-field))))))))
 
-(deftest ^:parallel set-role-statement-escape-quotes-test
-  (mt/test-driver :redshift
-    (is (= "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
-           (sql-jdbc.execute/do-with-connection-with-options
-            :redshift (mt/id) nil
-            (fn [conn]
-              (driver.sql-jdbc/set-role-statement :redshift conn "role\"; SELECT sleep(10); --")))))))
+(deftest ^:parallel set-role-statement-test
+  (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
+    (mt/test-driver :redshift
+      (sql-jdbc.execute/do-with-connection-with-options
+       :redshift (mt/id) nil
+       (fn [conn]
+         (are [role expected] (= expected
+                                 (driver.sql-jdbc/set-role-statement :redshift conn role))
+           "MY_ROLE"                      "SET SESSION AUTHORIZATION MY_ROLE;"
+           "ROLE123"                      "SET SESSION AUTHORIZATION ROLE123;"
+           "lowercase_role"               "SET SESSION AUTHORIZATION lowercase_role;"
+           "Role.123"                     "SET SESSION AUTHORIZATION \"Role.123\";"
+           "$role"                        "SET SESSION AUTHORIZATION \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
+           ;; None (special role in Postgres to revert back to login role; should not be quoted)
+           "none"                         "SET SESSION AUTHORIZATION none;"
+           "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))

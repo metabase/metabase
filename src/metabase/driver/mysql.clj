@@ -1226,8 +1226,6 @@
       (str (first parts) \@ (second parts))
       (first parts))))
 
-;; TODO (Cam 2026-04-27): `... I don't think this will work correctly in that situation. Maybe not a problem unless we
-;; have people trying to use that
 (defmethod sql-jdbc/set-role-statement :mysql
   [_driver conn role]
   (format "SET ROLE %s;" (quote-role conn role)))

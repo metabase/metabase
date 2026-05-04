@@ -535,6 +535,12 @@
        clojure.lang.ExceptionInfo
        #"\QInvalid ClickHouse role; for security reasons Metabase only supports numbers, letters, and underscores in role names.\E"
        (sql-jdbc/set-role-statement :clickhouse nil "\"x\"; SELECT sleep(10); --\"")))
-  (is (= "SET ROLE \"x\""
-         (sql-jdbc/set-role-statement :clickhouse nil "x")
-         (sql-jdbc/set-role-statement :clickhouse nil "\"x\""))))
+  (are [role sql] (= sql
+                     (sql-jdbc/set-role-statement :clickhouse nil role))
+    "x"     "SET ROLE \"x\""
+    ;; don't re-quote something that already has quotes
+    "\"x\"" "SET ROLE \"x\""
+    ;; split on commas and quote separately
+    "x,y"   "SET ROLE \"x\",\"y\""
+    ;; default database role, don't quote
+    "NONE"  "SET ROLE NONE"))

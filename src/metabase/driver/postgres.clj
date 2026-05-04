@@ -1292,9 +1292,11 @@
 
 (defmethod sql-jdbc/set-role-statement :postgres
   [driver conn role]
-  (format "SET ROLE %s;" (if (= (u/lower-case-en role) "none")
-                           role ; None is a special role in Postgres to revert back to login role; should not be quoted
-                           (memoized-quote-identifier driver conn role))))
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (memoized-quote-identifier driver conn))]
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]

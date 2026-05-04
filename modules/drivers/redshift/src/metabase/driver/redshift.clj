@@ -659,7 +659,11 @@
 
 (defmethod sql-jdbc/set-role-statement :redshift
   [driver conn role]
-  (format "SET SESSION AUTHORIZATION %s;" (driver.postgres/memoized-quote-identifier driver conn role)))
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (driver.postgres/memoized-quote-identifier driver conn))]
+    (format "SET SESSION AUTHORIZATION %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :redshift
   [_ _]
