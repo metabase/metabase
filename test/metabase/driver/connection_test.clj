@@ -180,7 +180,6 @@
        (testing "returns :default when not requested even if configured"
          (is (= :default (driver.conn/effective-connection-type configured))))))))
 
-
 (deftest effective-details-admin-with-workspace-swap-test
   (mt/when-ee-evailable
    (mt/with-premium-features #{:admin-connection}
