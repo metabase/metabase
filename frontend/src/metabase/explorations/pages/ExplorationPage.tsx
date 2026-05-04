@@ -10,6 +10,7 @@ import { Center, Group } from "metabase/ui";
 import type {
   Exploration,
   ExplorationQuery,
+  ExplorationQueryGroup,
   ExplorationQueryId,
   ExplorationThread,
   ExplorationThreadId,
@@ -33,8 +34,19 @@ export type ExplorationQueryWithName = Omit<ExplorationQuery, "name"> & {
   name: string; // we only render queries with names
 };
 
-export type ThreadsWithSortedQueries = Omit<ExplorationThread, "queries"> & {
+export type ExplorationQueryGroupWithSortedQueries = Omit<
+  ExplorationQueryGroup,
+  "query_ids"
+> & {
   queries: ExplorationQueryWithName[];
+};
+
+export type ThreadsWithSortedQueries = Omit<
+  ExplorationThread,
+  "queries" | "groups"
+> & {
+  queries: ExplorationQueryWithName[];
+  groups: ExplorationQueryGroupWithSortedQueries[];
 };
 
 function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
@@ -90,19 +102,43 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
     if (!exploration?.threads) {
       return [];
     }
+    const byScoreDesc = (
+      a: ExplorationQueryWithName,
+      b: ExplorationQueryWithName,
+    ) => (b.interestingness_score ?? -1) - (a.interestingness_score ?? -1);
+
     return exploration.threads.map((thread) => {
+      const namedQueries =
+        thread.queries?.filter((q): q is ExplorationQueryWithName =>
+          Boolean(q.name),
+        ) ?? [];
+      const queryById = new Map(namedQueries.map((q) => [q.id, q]));
+
+      // Backend always returns groups today, but fall back to one-singleton-per-query
+      // so the sidebar still works if an older response shape comes through.
+      const rawGroups: ExplorationQueryGroup[] = thread.groups ?? [];
+      const groups: ExplorationQueryGroupWithSortedQueries[] =
+        rawGroups.length > 0
+          ? rawGroups
+              .map(({ query_ids, ...rest }) => ({
+                ...rest,
+                queries: query_ids
+                  .map((id) => queryById.get(id))
+                  .filter((q): q is ExplorationQueryWithName => Boolean(q))
+                  .toSorted(byScoreDesc),
+              }))
+              .filter((g) => g.queries.length > 0)
+          : namedQueries.toSorted(byScoreDesc).map((q) => ({
+              id: `fallback:${q.id}`,
+              type: "auto" as const,
+              name: q.name,
+              queries: [q],
+            }));
+
       return {
         ...thread,
-        queries:
-          thread.queries
-            ?.filter((query): query is ExplorationQueryWithName =>
-              Boolean(query.name),
-            )
-            .toSorted(
-              (a, b) =>
-                (b.interestingness_score ?? -1) -
-                (a.interestingness_score ?? -1),
-            ) ?? [],
+        queries: groups.flatMap((g) => g.queries),
+        groups,
       };
     });
   }, [exploration]);

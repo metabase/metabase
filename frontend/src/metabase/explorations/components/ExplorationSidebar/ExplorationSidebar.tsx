@@ -15,10 +15,10 @@ import type {
   Exploration,
   ExplorationQueryId,
   ExplorationQueryStatus,
-  ExplorationThread,
 } from "metabase-types/api";
 
 import type {
+  ExplorationQueryGroupWithSortedQueries,
   ExplorationQueryWithName,
   ThreadsWithSortedQueries,
 } from "../../pages/ExplorationPage";
@@ -58,16 +58,14 @@ export function ExplorationSidebar({
         <Stack mih={0} key={thread.id} gap="md">
           <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
           {thread.queries.length > 0 ? (
-            <Stack mih={0} gap="xs" pr="md" className={S.threadList}>
-              {thread.queries.map((query) => (
-                <ExplorationQueryRow
-                  key={query.id}
-                  query={query}
-                  isSelected={selectedQueryId === query.id}
-                  buttonRef={
-                    selectedQueryId === query.id ? selectedQueryRef : undefined
-                  }
-                  onSelect={() => setSelectedQueryId(query.id)}
+            <Stack mih={0} gap="md" pr="md" className={S.threadList}>
+              {thread.groups.map((group) => (
+                <ExplorationGroup
+                  key={group.id}
+                  group={group}
+                  selectedQueryId={selectedQueryId}
+                  selectedQueryRef={selectedQueryRef}
+                  setSelectedQueryId={setSelectedQueryId}
                 />
               ))}
             </Stack>
@@ -76,6 +74,57 @@ export function ExplorationSidebar({
           )}
         </Stack>
       ))}
+    </Stack>
+  );
+}
+
+interface ExplorationGroupProps {
+  group: ExplorationQueryGroupWithSortedQueries;
+  selectedQueryId: ExplorationQueryId | null;
+  selectedQueryRef: Ref<HTMLButtonElement>;
+  setSelectedQueryId: (queryId: ExplorationQueryId) => void;
+}
+
+function ExplorationGroup({
+  group,
+  selectedQueryId,
+  selectedQueryRef,
+  setSelectedQueryId,
+}: ExplorationGroupProps) {
+  const isSingleton = group.queries.length === 1;
+
+  if (isSingleton) {
+    const [query] = group.queries;
+    return (
+      <ExplorationQueryRow
+        query={query}
+        isSelected={selectedQueryId === query.id}
+        buttonRef={selectedQueryId === query.id ? selectedQueryRef : undefined}
+        onSelect={() => setSelectedQueryId(query.id)}
+      />
+    );
+  }
+
+  return (
+    <Stack gap="xs">
+      {group.name && (
+        <Text size="sm" c="text-secondary" fw="bold" px="0.75rem">
+          {group.name}
+        </Text>
+      )}
+      <Stack gap="xs" className={S.groupMembers}>
+        {group.queries.map((query) => (
+          <ExplorationQueryRow
+            key={query.id}
+            query={query}
+            isSelected={selectedQueryId === query.id}
+            buttonRef={
+              selectedQueryId === query.id ? selectedQueryRef : undefined
+            }
+            onSelect={() => setSelectedQueryId(query.id)}
+          />
+        ))}
+      </Stack>
     </Stack>
   );
 }
@@ -169,7 +218,10 @@ function ExplorationQueryStatusIcon({
   return <Icon name="document" c="text-secondary" aria-label={label} />;
 }
 
-function getExplorationThreadName(thread: ExplorationThread, index: number) {
+function getExplorationThreadName(
+  thread: { name: string | null },
+  index: number,
+) {
   if (thread.name) {
     return thread.name;
   }

@@ -1,6 +1,7 @@
 (ns metabase.explorations.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.explorations.groups :as explorations.groups]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
@@ -647,3 +648,112 @@
         (is (zero? (t2/count :model/ExplorationThreadDimension :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    auto-groups (pure fn)                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest auto-groups-bundles-by-card-and-dimension-test
+  (testing "Queries sharing card_id + dimension_id are bundled regardless of segment_id"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"      :interestingness_score 0.5 :position 0}
+                   {:id 2 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7 :position 1}
+                   {:id 3 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3 :position 2}
+                   {:id 4 :card_id 10 :dimension_id "d2" :segment_id nil :name "Rev by D2"      :interestingness_score 0.4 :position 3}
+                   {:id 5 :card_id 20 :dimension_id "d1" :segment_id nil :name "Cnt by D1"      :interestingness_score 0.9 :position 4}])
+          by-id  (into {} (map (juxt :id identity)) groups)]
+      (is (= 3 (count groups)) "three (card, dim) pairs => three groups")
+      (is (= [1 3 1] (mapv #(count (:query_ids %)) groups))
+          "sorted by max score desc: (20,d1)=0.9, (10,d1)=0.7 (bundles 3 variants), (10,d2)=0.4")
+      (testing "members enumerated in input/position order"
+        (is (= [1 2 3] (:query_ids (get by-id "auto:10:d1"))))
+        (is (= [4]     (:query_ids (get by-id "auto:10:d2"))))
+        (is (= [5]     (:query_ids (get by-id "auto:20:d1")))))
+      (testing "each group is type=auto with a stable composite id"
+        (is (every? #(= "auto" (:type %)) groups))
+        (is (= #{"auto:10:d1" "auto:10:d2" "auto:20:d1"}
+               (set (map :id groups))))))))
+
+(deftest auto-groups-name-from-unsegmented-base-test
+  (testing "Group :name is taken from the unsegmented (segment_id=nil) base query"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)"}
+                   {:id 2 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"}
+                   {:id 3 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)"}])]
+      (is (= 1 (count groups)))
+      (is (= "Rev by D1" (-> groups first :name))
+          "even when base isn't first in the input, its name wins"))))
+
+(deftest auto-groups-sort-order-test
+  (testing "Groups are ordered by max interestingness desc; nil-score groups sort last"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "low"  :interestingness_score 0.2}
+                   {:id 2 :card_id 11 :dimension_id "d1" :segment_id nil :name "high" :interestingness_score 0.9}
+                   {:id 3 :card_id 11 :dimension_id "d1" :segment_id 100 :name "high (S)" :interestingness_score 0.4}
+                   {:id 4 :card_id 12 :dimension_id "d1" :segment_id nil :name "none" :interestingness_score nil}])]
+      (is (= ["high" "low" "none"] (mapv :name groups))
+          "0.9 > 0.2 > nil; max-within-group drives the ordering"))))
+
+(deftest auto-groups-empty-input-test
+  (testing "An empty input returns an empty vector (no nil)"
+    (is (= [] (explorations.groups/auto-groups [])))))
+
+(deftest exploration-get-includes-groups-test
+  (testing "GET /:id attaches :groups to each thread, partitioning queries by (card_id, dimension_id)"
+    (mt/with-temp [:model/User u {:email "groups@example.com"}
+                   :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
+                   :model/Segment _seg-a {:name "alpha"
+                                          :table_id (mt/id :venues)
+                                          :definition (mt/mbql-query venues {:filter [:= $price 1]})}
+                   :model/Segment _seg-b {:name "beta"
+                                          :table_id (mt/id :venues)
+                                          :definition (mt/mbql-query venues {:filter [:= $price 4]})}]
+      (let [body {:name "groups"
+                  :metrics    [{:card_id (:id metric)
+                                :dimension_mappings (venues-dimension-mappings)}]
+                  :dimensions [{:dimension_id "category" :display_name "Category"}
+                               {:dimension_id "price"    :display_name "Price"}]}
+            {eid :id} (mt/user-http-request u :post 200 "exploration" body)
+            resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+            thread    (-> resp :threads first)
+            queries   (:queries thread)
+            groups    (:groups thread)]
+        (is (= 6 (count queries)) "2 dimensions × (1 base + 2 segments) = 6 queries")
+        (is (= 2 (count groups)) "2 (card, dim) pairs => 2 groups")
+        (testing "each group is type=auto with a string id and a list of query_ids"
+          (is (every? #(= "auto" (:type %)) groups))
+          (is (every? #(string? (:id %)) groups))
+          (is (every? #(seq (:query_ids %)) groups)))
+        (testing "every query appears in exactly one group's :query_ids"
+          (let [all-member-ids (mapcat :query_ids groups)
+                query-ids      (map :id queries)]
+            (is (= (count queries) (count all-member-ids))
+                "members across groups equal the total query count")
+            (is (= (set query-ids) (set all-member-ids))
+                "every query id is a member of some group")))
+        (testing "members on the same thread share the same (card, dim)"
+          (let [qid->q (into {} (map (juxt :id identity)) queries)]
+            (doseq [g groups]
+              (let [members  (map qid->q (:query_ids g))
+                    pair-set (set (map (juxt :card_id :dimension_id) members))]
+                (is (= 1 (count pair-set))
+                    (str "group " (:id g) " bundles a single (card, dim) partition"))))))
+        (testing "group :name is the unsegmented base query's name"
+          (let [qid->name (into {} (map (juxt :id :name)) queries)]
+            (doseq [g groups]
+              (let [base-name (some (fn [qid]
+                                      (let [q (some #(when (= qid (:id %)) %) queries)]
+                                        (when (nil? (:segment_id q)) (:name q))))
+                                    (:query_ids g))]
+                (is (= base-name (:name g))
+                    (str "group " (:id g) " name matches the base query"))
+                (is (contains? (set (vals qid->name)) (:name g)))))))))))
+
+(deftest exploration-get-empty-thread-has-empty-groups-test
+  (testing "A thread with no queries gets :groups => []"
+    (mt/with-temp [:model/User u {:email "no-groups@example.com"}]
+      (let [{eid :id} (mt/user-http-request u :post 200 "exploration" {:name "no-groups"})
+            resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+            thread    (-> resp :threads first)]
+        (is (= [] (:queries thread)))
+        (is (= [] (:groups thread)))))))

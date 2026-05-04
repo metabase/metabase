@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.explorations.core :as explorations]
+   [metabase.explorations.groups :as explorations.groups]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
@@ -25,10 +26,14 @@
 (defn- get-exploration-or-404 [id]
   (api/check-404 (t2/select-one :model/Exploration :id id)))
 
+(defn- attach-thread-groups [thread]
+  (assoc thread :groups (explorations.groups/auto-groups (:queries thread))))
+
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator
-                  [:threads :metrics :dimensions :timelines :queries])))
+                  [:threads :metrics :dimensions :timelines :queries])
+      (update :threads #(some->> % (mapv attach-thread-groups)))))
 
 (defn- find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted dimension_mappings."
@@ -186,6 +191,17 @@
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]])
 
+(mr/def ::ExplorationQueryGroup
+  "Schema for an auto-derived group bundling related queries on a single thread.
+   `query_ids` references queries that exist on the same thread. The `:type` field
+   exists so future user-defined groups (`\"user\"`) can land alongside without
+   changing the response shape."
+  [:map
+   [:id        :string]
+   [:type      [:enum "auto"]]
+   [:name      [:maybe :string]]
+   [:query_ids [:sequential ms/PositiveInt]]])
+
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
   [:map
@@ -197,7 +213,8 @@
    [:metrics               {:optional true} [:maybe [:sequential :map]]]
    [:dimensions            {:optional true} [:maybe [:sequential :map]]]
    [:timelines             {:optional true} [:maybe [:sequential :map]]]
-   [:queries               {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]])
+   [:queries               {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
+   [:groups                {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]])
 
 (mr/def ::ExplorationQueryStreamResponse
   "Schema for `GET /query/:id`. On success the body is a streamed dataset (api/csv/json/xlsx),

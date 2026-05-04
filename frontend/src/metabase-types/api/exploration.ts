@@ -103,6 +103,15 @@ export interface ExplorationQuery {
   segment_id: SegmentId | null;
 }
 
+export type ExplorationQueryGroupType = "auto";
+
+export interface ExplorationQueryGroup {
+  id: string;
+  type: ExplorationQueryGroupType;
+  name: string | null;
+  query_ids: ExplorationQueryId[];
+}
+
 export interface ExplorationThread {
   id: ExplorationThreadId;
   exploration_id: ExplorationId;
@@ -117,6 +126,7 @@ export interface ExplorationThread {
   dimensions?: ExplorationThreadDimension[];
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
+  groups?: ExplorationQueryGroup[];
 }
 
 export interface ExplorationCreator {
