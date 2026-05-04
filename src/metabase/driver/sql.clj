@@ -10,6 +10,7 @@
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
@@ -27,7 +28,10 @@
    [potemkin :as p])
   (:import
    [net.sf.jsqlparser.parser CCJSqlParserUtil]
-   [net.sf.jsqlparser.statement.select PlainSelect Select]))
+   [net.sf.jsqlparser.statement.delete Delete]
+   [net.sf.jsqlparser.statement.insert Insert]
+   [net.sf.jsqlparser.statement.select PlainSelect Select]
+   [net.sf.jsqlparser.statement.update Update]))
 
 (set! *warn-on-reflection* true)
 
@@ -416,37 +420,45 @@
 
 (p/import-vars [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution])
 
-(defn- is-single-select-stmt?
+(defn- is-single-stmt-of-type?
   "Parses a query and checks that it is a single SELECT statement.
    Also returns the query reconstructed from the parsed AST.
 
    We're using JSqlParser because macaw doesn't handle SQL strings containing multiple statements
    such as `SELECT 1; SELECT 2`. This should be updated to use SQLGlot in a version that has it."
-  [sql]
+  [sql stmt-type]
   (try
-    (let [stmts (CCJSqlParserUtil/parseStatements sql)]
-      (cond-> {:is-single-select? false}
-        (and (= 1 (count stmts)) (some #(instance? % (first stmts)) [PlainSelect Select]))
-        (assoc :is-single-select? true :sql (str (first stmts)))))
+    (let [stmts (CCJSqlParserUtil/parseStatements sql)
+          allowed-types (if (= stmt-type "read") [PlainSelect Select] [Insert Update Delete])]
+      (cond-> {:is-single-stmt? false}
+        (and (= 1 (count stmts)) (some #(instance? % (first stmts)) allowed-types))
+        (assoc :is-single-stmt? true :sql (str (first stmts)))))
     (catch Exception e
       {:is-single-select? false :error (.getMessage e)})))
 
 (defn validate-impersonated-query*
-  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  "Validates a native query by parsing it and ensuring that it is a single statement.
+   Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
+   For regular impersonated queries, ensure that it is a single select statement.
+   For custom actions, ensure that it is a single write statement (insert, update, delete)."
   [_driver query]
   (update query :stages
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [{:keys [is-single-select? sql error]} (is-single-select-stmt? (:native stage))]
+                      (let [[stmt-type allowed-stmts] (if (= driver.conn/*connection-type* :write-data)
+                                                        ["write" (tru "insert, update, or delete")]
+                                                        ["read" (tru "select")])
+                            {:keys [is-single-stmt? sql error]}
+                            (is-single-stmt-of-type? (:native stage) stmt-type)]
                         (cond error
                               (do
                                 (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
                                 (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
                                                 {:type qp.error-type/invalid-query
                                                  :sql  (:native stage)})))
-                              (not is-single-select?)
-                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                              (not is-single-stmt?)
+                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
                                               {:type qp.error-type/invalid-query
                                                :sql  (:native stage)}))
                               :else (assoc stage :native sql)))
