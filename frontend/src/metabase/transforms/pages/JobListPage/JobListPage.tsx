@@ -27,6 +27,9 @@ import {
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
+import { JobDisabledBadge } from "../../components/JobDisabledBadge";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
+
 export const JobListPage = () => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,6 +66,19 @@ export const JobListPage = () => {
               <DateTime value={row.original.last_run.start_time} />
             </Ellipsified>
           ) : null,
+      },
+      {
+        id: "disabled",
+        header: "",
+        width: 100,
+        cell: ({ row }) =>
+          row.original.disabled ? <JobDisabledBadge /> : null,
+      },
+      {
+        id: "actions",
+        header: "",
+        width: 40,
+        cell: ({ row }) => <JobMoreMenu job={row.original} />,
       },
     ],
     [],
@@ -115,7 +131,7 @@ export const JobListPage = () => {
         <Flex direction="column" flex={1} mih={0}>
           <Card withBorder p={0}>
             {isLoading ? (
-              <TreeTableSkeleton columnWidths={[0.6, 0.3]} />
+              <TreeTableSkeleton columnWidths={[0.55, 0.3, 0.1, 0.05]} />
             ) : (
               <TreeTable
                 instance={treeTableInstance}

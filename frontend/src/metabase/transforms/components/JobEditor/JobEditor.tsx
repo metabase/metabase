@@ -8,11 +8,12 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { Group, Stack, Text } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
+import { JobDisabledBadge } from "../JobDisabledBadge";
 
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
@@ -52,16 +53,7 @@ export function JobEditor({
               onChange={onNameChange}
               readOnly={readOnly}
             />
-            {job.disabled && (
-              <Text
-                bg="warning"
-                fz="sm"
-                lh="1rem"
-                bdrs="xs"
-                px="sm"
-                py="xs"
-              >{t`Disabled`}</Text>
-            )}
+            {job.disabled && <JobDisabledBadge />}
           </Group>
         }
         py={0}

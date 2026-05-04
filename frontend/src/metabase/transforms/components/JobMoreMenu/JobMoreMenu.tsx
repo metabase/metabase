@@ -70,7 +70,7 @@ function JobMenu({ isDisabled, onOpenModal, onToggleDisabled }: JobMenuProps) {
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         <Menu.Item
           leftSection={<Icon name={isDisabled ? "play" : "pause"} />}
           onClick={onToggleDisabled}
