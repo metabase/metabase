@@ -531,16 +531,15 @@
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
 
 (deftest ^:parallel set-role-statement-escape-quotes-test
-  (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo
-       #"\QInvalid ClickHouse role; for security reasons Metabase only supports numbers, letters, and underscores in role names.\E"
-       (sql-jdbc/set-role-statement :clickhouse nil "\"x\"; SELECT sleep(10); --\"")))
   (are [role sql] (= sql
                      (sql-jdbc/set-role-statement :clickhouse nil role))
-    "x"     "SET ROLE \"x\""
+    "x"                             "SET ROLE \"x\""
     ;; don't re-quote something that already has quotes
-    "\"x\"" "SET ROLE \"x\""
+    "\"x\""                         "SET ROLE \"x\""
     ;; split on commas and quote separately
-    "x,y"   "SET ROLE \"x\",\"y\""
+    "x,y"                           "SET ROLE \"x\",\"y\""
     ;; default database role, don't quote
-    "NONE"  "SET ROLE NONE"))
+    "NONE"                          "SET ROLE NONE"
+    ;; escape double-quotes in the role
+    "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))

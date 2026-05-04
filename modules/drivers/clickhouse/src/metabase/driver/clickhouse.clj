@@ -318,28 +318,21 @@
 
 (defmethod sql-jdbc/set-role-statement :clickhouse
   [_driver _conn role]
-  ;; since Clickhouse does not truly support prepared statements with protocol-level safety and has no
-  ;; `quote_ident()` function or similar, quote the identifier client-side, but strictly validate it to make
-  ;; sure it doesn't contain anything potentially malicious.
-  (when-not (some (fn [pattern]
-                    (re-matches pattern role))
-                  ;; only alphanumeric, but allow roles that are already quoted for whatever reason
-                  [#"^[A-Za-z0-9_,]{0,127}$"
-                   #"^\"[A-Za-z0-9_,]{0,125}\"$"])
-    (throw (ex-info (tru "Invalid ClickHouse role; for security reasons Metabase only supports numbers, letters, and underscores in role names.")
-                    {:type driver-api/qp.error-type.invalid-parameter})))
-  (let [default-role     (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed  (fn [r]
-                           (if (or (re-matches #"\".*\"" r) (= role default-role))
-                             r
-                             (format "\"%s\"" r)))
-        escape-if-needed #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
-        quoted-role      (->> (str/split role #",")
-                              (map quote-if-needed)
-                              (map escape-if-needed)
-                              (str/join ","))
-        statement        (format "SET ROLE %s" quoted-role)]
-    statement))
+  ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
+  ;; `quote_ident()` function or similar, escape/quote the identifier client-side.
+  (let [default-role         (driver.sql/default-database-role :clickhouse nil)
+        quote-if-needed      (fn [role]
+                               (if (or (and (str/starts-with? role "\"")
+                                            (str/ends-with? role "\""))
+                                       (= role default-role))
+                                 role
+                                 (str \" role \")))
+        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
+        quoted-role          (->> (str/split role #",")
+                                  (map quote-if-needed)
+                                  (map escape-double-quotes)
+                                  (str/join ","))]
+    (format "SET ROLE %s" quoted-role)))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
