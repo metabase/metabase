@@ -128,6 +128,62 @@
              (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "PUBLIC__ORDERS"]}
                     (ws.table-remapping/all-mappings-for-db (mt/id)))))))))))
 
+(defn- driver-loadable? [engine]
+  (try (driver/the-initialized-driver engine) true
+       (catch Throwable _ false)))
+
+(defn- with-provisioned-workspace-db-namespace!
+  "Variant of `with-provisioned-workspace-db!` that takes a full
+   `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
+   string. Used to exercise cross-DB workspaces (Snowflake / SQL Server /
+   BigQuery) where the to-side `:db` slot must flow through to the
+   `TableRemapping` row."
+  [db-id output-namespace f]
+  (try
+    (ws/set-instance-workspace! {:name "ws-3-slot"
+                                 :databases {db-id {:input  [{:schema "_"}]
+                                                    :output output-namespace}}})
+    (f)
+    (finally
+      (ws/clear-instance-workspace!))))
+
+(deftest add-transform-target-mapping!-flows-both-slots-from-namespace-test
+  (testing "When the workspace output namespace populates :db, both slots flow into the TableRemapping row"
+    ;; Requires the :snowflake driver class on the test classpath - same skip pattern as the
+    ;; per-driver spec-for-table tests above. Run with:
+    ;;   ./bin/test-agent --drivers=snowflake,h2 :only '[...this test...]'
+    (when (driver-loadable? :snowflake)
+      ;; Synthesize the canonical Database row's :engine after :model/Database is created
+      ;; so spec-for-table dispatches as Snowflake, populating :db on the from-side.
+      (clean-db-fixture!
+       (mt/id)
+       (fn []
+         (with-redefs [t2/select-one (let [orig t2/select-one]
+                                       (fn [model & args]
+                                         (let [row (apply orig model args)]
+                                           (if (and row
+                                                    (= model :model/Database)
+                                                    (= (:id row) (mt/id)))
+                                             (-> row
+                                                 (assoc :engine :snowflake
+                                                        :details {:db "ANALYTICS"}))
+                                             row))))]
+           (with-provisioned-workspace-db-namespace!
+             (mt/id) {:db "WS_DB" :schema "WS_ALICE"}
+             (fn []
+               (let [to-spec (ws.table-remapping/add-transform-target-mapping!
+                              (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})]
+                 (testing "to-side spec carries both :db and :schema from the workspace namespace"
+                   (is (= "WS_DB" (:db to-spec)))
+                   (is (= "WS_ALICE" (:schema to-spec)))
+                   (is (= "PUBLIC__ORDERS" (:table to-spec))
+                       "table is renamed via remapped-table-name to avoid cross-schema collisions"))
+                 (testing "TableRemapping row stores both slots, source-side too"
+                   (is (= {["ANALYTICS" "PUBLIC" "ORDERS"]
+                           ["WS_DB" "WS_ALICE" "PUBLIC__ORDERS"]}
+                          (ws.table-remapping/all-mappings-for-db (mt/id)))
+                       "from_db = ANALYTICS (from spec-for-table on :snowflake), to_db = WS_DB (from workspace namespace)")))))))))))
+
 (deftest workspace-remap-schema+name-redirects-sync-fetch-test
   (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"
     (let [db-id (mt/id)]
@@ -415,19 +471,19 @@
 ;; Per-driver hierarchy resolution. Verifies the {db, schema, table} shape we'd
 ;; persist in `:model/TableRemapping` rows for a given (database, table) pair.
 
-(deftest spec-for-table-h2-test
+(deftest ^:parallel spec-for-table-h2-test
   (testing "H2 (default test driver) populates :schema only"
-    (let [database  (t2/select-one :model/Database :id (mt/id))
-          table-row (t2/select-one :model/Table :id (mt/id :orders))
+    (let [database  {:engine :h2 :name "test-data (h2)"}
+          table-row {:name "ORDERS" :schema "PUBLIC"}
           spec      (ws.table-remapping/spec-for-table database table-row)]
       (is (= "" (:db spec)) "db slot is the empty-string sentinel for non-catalog drivers")
       (is (= "PUBLIC" (:schema spec)))
       (is (= "ORDERS" (:table spec))))))
 
-(deftest spec-for-table-mysql-engine-test
+(deftest ^:parallel spec-for-table-mysql-engine-test
   (testing "MySQL populates neither :db nor :schema (bare table)"
-    (let [database (assoc (t2/select-one :model/Database :id (mt/id)) :engine :mysql)
-          table    (t2/select-one :model/Table :id (mt/id :orders))
+    (let [database {:engine :mysql :name "test-data"}
+          table    {:name "orders" :schema nil}
           {:keys [db schema]} (ws.table-remapping/spec-for-table database table)]
       (is (= "" db))
       (is (= "" schema)))))
@@ -437,10 +493,6 @@
 ;; not for warehouse interaction, but because `(driver/qualified-name-components engine)`
 ;; triggers driver lazy-load via `dispatch-on-initialized-driver`. Skipped when the driver
 ;; isn't on the test classpath.
-
-(defn- driver-loadable? [engine]
-  (try (driver/the-initialized-driver engine) true
-       (catch Throwable _ false)))
 
 (deftest spec-for-table-clickhouse-engine-test
   (when (driver-loadable? :clickhouse)

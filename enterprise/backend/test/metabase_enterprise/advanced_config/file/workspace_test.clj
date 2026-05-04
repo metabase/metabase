@@ -233,3 +233,54 @@
                     :databases {:db1 {:input  [{}]
                                       :output {:schema "out"}}}}))
           "an entirely empty {} namespace is invalid - at least one slot required"))))
+
+;;; ----------------------------------------- per-driver shapes -----------------------------------------
+;;;
+;;; Drivers with different cardinalities should round-trip through the wire format
+;;; without modification.
+
+(deftest mysql-cardinality-upgrade-section-test
+  (testing "MySQL workspace: source-side has only :schema (used as the input filter), output adds :schema (the workspace database)"
+    (let [section {:name "ws"
+                   :databases {:mysql-prod {:input  [{:schema "prod"}]
+                                            :output {:schema "ws_alice"}}}}]
+      (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
+          "MySQL-style workspace passes validation - same wire shape as Postgres"))
+    (testing "loader stores MySQL output namespace round-trip"
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod"}]
+          (advanced-config.file.workspace/apply-workspace-section!
+           {:name "ws"
+            :databases {:mysql-prod {:input  [{:schema "prod"}]
+                                     :output {:schema "ws_alice"}}}})
+          (is (= {:schema "ws_alice"} (ws/db-workspace-namespace db-id)))
+          (is (= "ws_alice" (ws/db-workspace-schema db-id))
+              "shim returns the :schema slot for callers that haven't migrated"))))))
+
+(deftest snowflake-3-slot-section-test
+  (testing "Snowflake workspace: both :db and :schema populated on both sides (cross-DB workspace expressible end-to-end)"
+    (let [section {:name "ws"
+                   :databases {:snowflake-prod {:input  [{:db "ANALYTICS" :schema "PUBLIC"}]
+                                                :output {:db "WS_DB" :schema "WS_ALICE"}}}}]
+      (is (true? (advanced-config.file.workspace/valid-workspace-section? section))))
+    (testing "loader stores both Snowflake slots and reader returns the full namespace map"
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:name "snowflake-prod"}]
+          (advanced-config.file.workspace/apply-workspace-section!
+           {:name "ws"
+            :databases {:snowflake-prod {:input  [{:db "ANALYTICS" :schema "PUBLIC"}]
+                                         :output {:db "WS_DB" :schema "WS_ALICE"}}}})
+          (is (= {:db "WS_DB" :schema "WS_ALICE"} (ws/db-workspace-namespace db-id))
+              "reader returns the full {:db, :schema} namespace, not just :schema")
+          (is (= "WS_ALICE" (ws/db-workspace-schema db-id))
+              "shim still works - returns just the :schema slot"))))))
+
+(deftest bigquery-3-slot-section-test
+  (testing "BigQuery workspace: project + dataset both populated"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod"}]
+        (advanced-config.file.workspace/apply-workspace-section!
+         {:name "ws"
+          :databases {:bq-prod {:input  [{:db "metabase-prod" :schema "core"}]
+                                :output {:db "metabase-prod" :schema "ws_alice"}}}})
+        (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
