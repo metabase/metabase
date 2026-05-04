@@ -7,6 +7,13 @@ databaseChangeLog:
       id: v60.2026-04-17T10:00:00
       author: sloansparger
       comment: metabot_feedback table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v61.2026-04-17T10:00:00
+              author: sloansparger
+              changeLogFile: migrations/061_update_migrations.yaml
       changes:
         - createTable:
             tableName: metabot_feedback

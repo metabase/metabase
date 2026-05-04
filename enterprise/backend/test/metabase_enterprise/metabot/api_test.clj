@@ -52,16 +52,16 @@
                 (mt/user-http-request :rasta :post 204 "metabot/feedback" body)
                 (is (= expected-url (:url @captured)))
                 (let [sent (:body @captured)]
-                  (is (= 1 (:metabot_id sent)))
-                  (is (= {:message_id        external-id
-                          :positive          true
-                          :issue_type        nil
-                          :freeform_feedback "ok"}
-                         (:feedback sent)))
-                  (is (map? (:conversation_data sent)))
-                  (is (contains? sent :version))
-                  (is (contains? sent :submission_time))
-                  (is (false? (:is_admin sent))))))))))
+                  (is (=? {:metabot_id        1
+                           :feedback          {:message_id        external-id
+                                               :positive          true
+                                               :issue_type        nil
+                                               :freeform_feedback "ok"}
+                           :conversation_data map?
+                           :version           some?
+                           :submission_time   string?
+                           :is_admin          false}
+                          sent)))))))))
 
     (testing "404s when the message_id does not resolve to a message the caller owns"
       (mt/user-http-request :rasta :post 404 "metabot/feedback"

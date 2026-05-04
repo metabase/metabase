@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.premium-features.core :as premium-features]
@@ -55,14 +56,12 @@
 (defn- upsert-feedback!
   "Insert or update the `metabot_feedback` row for `message-row-id`."
   [message-row-id {:keys [positive issue_type freeform_feedback]}]
-  (let [base-fields {:positive          positive
-                     :issue_type        issue_type
-                     :freeform_feedback freeform_feedback}]
-    (t2/with-transaction [_]
-      (if (t2/exists? :model/MetabotFeedback :message_id message-row-id)
-        (t2/update! :model/MetabotFeedback message-row-id
-                    (assoc base-fields :updated_at (java.time.OffsetDateTime/now)))
-        (t2/insert! :model/MetabotFeedback (assoc base-fields :message_id message-row-id))))))
+  (app-db/update-or-insert! :model/MetabotFeedback {:message_id message-row-id}
+                            (fn [existing]
+                              (cond-> {:positive          positive
+                                       :issue_type        issue_type
+                                       :freeform_feedback freeform_feedback}
+                                existing (assoc :updated_at (java.time.OffsetDateTime/now))))))
 
 (defn persist-feedback!
   "Upsert a `metabot_feedback` row for the rated message and return the
