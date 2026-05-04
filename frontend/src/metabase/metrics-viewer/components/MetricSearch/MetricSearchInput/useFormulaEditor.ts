@@ -11,6 +11,10 @@ import type {
   SelectedMetric,
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
+import {
+  logMetricsViewerDebug,
+  summarizeFormulaEntities,
+} from "../../../utils/debug";
 import { computeMetricSlots } from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
@@ -258,6 +262,21 @@ export function useFormulaEditor({
         metricNamesRef.current,
       );
 
+    logMetricsViewerDebug("formula-commit", newText, {
+      text: newText,
+      trackedIdentities: trackedIdentities.map((identity) => ({
+        sourceId: identity.sourceId,
+        from: identity.from,
+        to: identity.to,
+        slotIndex: identity.slotIndex,
+        hasDefinition: identity.definition != null,
+        customName: identity.customName,
+      })),
+      parsedEntities: summarizeFormulaEntities(parsedEntities),
+      reconciledEntities: summarizeFormulaEntities(reconciledEntities),
+      slotMapping: Array.from(slotMapping.entries()),
+    });
+
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
     for (const entry of reconciledEntities) {
@@ -412,6 +431,19 @@ export function useFormulaEditor({
         metric.sourceType === "metric"
           ? createMetricSourceId(metric.id)
           : createMeasureSourceId(metric.id);
+
+      logMetricsViewerDebug("formula-select", sourceId, {
+        metric,
+        docText,
+        cursorPos,
+        replaceFrom,
+        replaceTo,
+        insertText,
+        newCursorPos,
+        metricFrom,
+        metricTo,
+        isAtEndOfFormula,
+      });
 
       // Dispatch through the view (not setEditText) — the value-prop sync
       // in @uiw/react-codemirror does a full doc replacement that destroys

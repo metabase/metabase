@@ -16,6 +16,12 @@ import {
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
+import {
+  logMetricsViewerDebug,
+  summarizeFormulaEntities,
+  summarizeTabs,
+  summarizeViewerState,
+} from "../utils/debug";
 import { parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
@@ -102,6 +108,14 @@ export function useViewerUrl(
       const restoredFormulaEntities =
         deserializeFormulaEntities(serializedState);
 
+      logMetricsViewerDebug("url-restore", hash || "<empty>", {
+        locationHash: location.hash,
+        locationSearch: location.search,
+        formulaEntities: summarizeFormulaEntities(restoredFormulaEntities),
+        tabs: summarizeTabs(serializedState.tabs.map(deserializeTab)),
+        selectedTabId: serializedState.selectedTabId,
+      });
+
       restoredFormulaEntities.forEach((entity) => {
         if (isMetricEntry(entity)) {
           const { type, id } = parseSourceId(entity.id);
@@ -185,6 +199,10 @@ export function useViewerUrl(
     if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
       const url = Urls.metricsViewer(hash);
+      logMetricsViewerDebug("url-sync", hash, {
+        action: !window.location.hash ? "replace" : "push",
+        state: summarizeViewerState(state),
+      });
       if (!window.location.hash) {
         dispatch(replace(url));
       } else {

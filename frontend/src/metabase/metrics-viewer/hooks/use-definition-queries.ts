@@ -27,6 +27,10 @@ import {
   isMetricEntry,
 } from "../types/viewer-state";
 import {
+  getMetricDatasetRequestDebugKey,
+  logMetricsViewerDebug,
+} from "../utils/debug";
+import {
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
@@ -276,17 +280,33 @@ export function useDefinitionQueries(
   useListSegmentsQuery(); // FIXME segments don't have any filters yet. We should load only segments that are related to the formula
 
   useEffect(() => {
-    const requestsToMake = [...datasetRequestsByEntityIndex.values()];
+    const requestEntries = [...datasetRequestsByEntityIndex.entries()];
+    const requestsToMake = requestEntries.map(([, request]) => request);
 
     if (requestsToMake.length === 0) {
       return;
     }
+
+    const requestKeys = requestsToMake.map(getMetricDatasetRequestDebugKey);
+    logMetricsViewerDebug("dataset-subscribe", requestKeys.join("|"), {
+      requests: requestEntries.map(([entityIndex, request], index) => ({
+        entityIndex,
+        key: requestKeys[index],
+        hasProjections: Boolean(request.definition.projections?.length),
+        hasFilters: Boolean(request.definition.filters?.length),
+        hasExpression: "expression" in request.definition,
+      })),
+    });
 
     const subscriptions = requestsToMake.map((request) =>
       dispatch(metricApi.endpoints.getMetricDataset.initiate(request)),
     );
 
     return () => {
+      logMetricsViewerDebug("dataset-unsubscribe", requestKeys.join("|"), {
+        requestCount: requestsToMake.length,
+        requestKeys,
+      });
       subscriptions.forEach((subscription) => subscription.unsubscribe());
     };
   }, [datasetRequestsByEntityIndex, dispatch]);

@@ -28,6 +28,11 @@ import {
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
+import {
+  logMetricsViewerDebug,
+  summarizeViewerState,
+  summarizeViewerStateDiff,
+} from "../utils/debug";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
 import { computeMetricSlots } from "../utils/metric-slots";
@@ -256,8 +261,32 @@ export function useViewerState(): UseViewerStateResult {
   const dispatch = useDispatch();
   const store = useStore();
 
-  const [state, setState] = useState<MetricsViewerPageState>(
+  const [state, setBaseState] = useState<MetricsViewerPageState>(
     getInitialMetricsViewerPageState,
+  );
+  const setState = useCallback(
+    (
+      update:
+        | MetricsViewerPageState
+        | ((prev: MetricsViewerPageState) => MetricsViewerPageState),
+      caller = "unknown",
+    ) => {
+      setBaseState((prev) => {
+        const next = typeof update === "function" ? update(prev) : update;
+
+        if (next !== prev) {
+          logMetricsViewerDebug("state-update", caller, {
+            caller,
+            diff: summarizeViewerStateDiff(prev, next),
+            previous: summarizeViewerState(prev),
+            next: summarizeViewerState(next),
+          });
+        }
+
+        return next;
+      });
+    },
+    [],
   );
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -267,7 +296,33 @@ export function useViewerState(): UseViewerStateResult {
 
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  const initialize: (newState: MetricsViewerPageState) => void = setState;
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      const message = String(event.error?.message ?? event.message ?? "");
+      const isMaximumDepthError =
+        message.includes("Maximum update depth exceeded") ||
+        message.includes(["Minified React error ", "185"].join(""));
+
+      if (isMaximumDepthError) {
+        logMetricsViewerDebug("react-max-depth-error", message, {
+          message,
+          state: summarizeViewerState(stateRef.current),
+          loadingIds: Array.from(loadingRef.current),
+          initialLoadComplete,
+        });
+      }
+    };
+
+    window.addEventListener("error", handleError);
+    return () => {
+      window.removeEventListener("error", handleError);
+    };
+  }, [initialLoadComplete]);
+
+  const initialize = useCallback(
+    (newState: MetricsViewerPageState) => setState(newState, "initialize"),
+    [setState],
+  );
 
   const addDefinition = useCallback(
     (entry: MetricsViewerDefinitionEntry) =>
@@ -283,8 +338,8 @@ export function useViewerState(): UseViewerStateResult {
             [entry.id]: entry,
           },
         };
-      }),
-    [],
+      }, "addDefinition"),
+    [setState],
   );
 
   const removeDefinition = useCallback(
@@ -327,8 +382,8 @@ export function useViewerState(): UseViewerStateResult {
           tabs: newTabs,
           selectedTabId: getValidSelectedTabId(prev.selectedTabId, newTabs),
         };
-      }),
-    [],
+      }, "removeDefinition"),
+    [setState],
   );
 
   const updateDefinition = useCallback(
@@ -362,8 +417,8 @@ export function useViewerState(): UseViewerStateResult {
           tabs: newTabs,
           selectedTabId: getValidSelectedTabId(prev.selectedTabId, newTabs),
         };
-      }),
-    [],
+      }, "updateDefinition"),
+    [setState],
   );
 
   const replaceDefinition = useCallback(
@@ -416,13 +471,14 @@ export function useViewerState(): UseViewerStateResult {
           formulaEntities: newFormulaEntities,
           tabs: newTabs,
         };
-      }),
-    [],
+      }, "replaceDefinition"),
+    [setState],
   );
 
   const selectTab = useCallback(
-    (tabId: string) => setState((prev) => ({ ...prev, selectedTabId: tabId })),
-    [],
+    (tabId: string) =>
+      setState((prev) => ({ ...prev, selectedTabId: tabId }), "selectTab"),
+    [setState],
   );
 
   const addTab = useCallback(
@@ -442,8 +498,8 @@ export function useViewerState(): UseViewerStateResult {
           selectedTabId:
             prev.selectedTabId == null ? tab.id : prev.selectedTabId,
         };
-      }),
-    [],
+      }, "addTab"),
+    [setState],
   );
 
   const removeTab = useCallback(
@@ -459,19 +515,22 @@ export function useViewerState(): UseViewerStateResult {
             ? (newTabs[0]?.id ?? null)
             : prev.selectedTabId,
         };
-      }),
-    [],
+      }, "removeTab"),
+    [setState],
   );
 
   const updateTab = useCallback(
     (tabId: string, updates: Partial<MetricsViewerTabState>) =>
-      setState((prev) => ({
-        ...prev,
-        tabs: prev.tabs.map((tab) =>
-          tab.id === tabId ? { ...tab, ...updates } : tab,
-        ),
-      })),
-    [],
+      setState(
+        (prev) => ({
+          ...prev,
+          tabs: prev.tabs.map((tab) =>
+            tab.id === tabId ? { ...tab, ...updates } : tab,
+          ),
+        }),
+        "updateTab",
+      ),
+    [setState],
   );
 
   const setDefinitionDimension = useCallback(
@@ -508,25 +567,28 @@ export function useViewerState(): UseViewerStateResult {
             };
           }),
         };
-      }),
-    [],
+      }, "setDefinitionDimension"),
+    [setState],
   );
 
   const removeDefinitionDimension = useCallback(
     (tabId: string, slotIndex: number) =>
-      setState((prev) => ({
-        ...prev,
-        tabs: prev.tabs.map((tab) => {
-          if (tab.id !== tabId) {
-            return tab;
-          }
-          return {
-            ...tab,
-            dimensionMapping: { ...tab.dimensionMapping, [slotIndex]: null },
-          };
+      setState(
+        (prev) => ({
+          ...prev,
+          tabs: prev.tabs.map((tab) => {
+            if (tab.id !== tabId) {
+              return tab;
+            }
+            return {
+              ...tab,
+              dimensionMapping: { ...tab.dimensionMapping, [slotIndex]: null },
+            };
+          }),
         }),
-      })),
-    [],
+        "removeDefinitionDimension",
+      ),
+    [setState],
   );
 
   const setFormulaEntities = useCallback(
@@ -571,8 +633,8 @@ export function useViewerState(): UseViewerStateResult {
           formulaEntities,
           tabs,
         };
-      }),
-    [],
+      }, "setFormulaEntities"),
+    [setState],
   );
 
   const setBreakoutDimension = useCallback(
@@ -609,8 +671,8 @@ export function useViewerState(): UseViewerStateResult {
           ...prev,
           formulaEntities: newEntities,
         };
-      }),
-    [],
+      }, "setBreakoutDimension"),
+    [setState],
   );
 
   const clearLoading = useCallback((id: MetricSourceId) => {
