@@ -1,6 +1,5 @@
 import { PLUGIN_API } from "metabase/plugins";
-import { updateMetadata } from "metabase/redux/metadata";
-import { QueryMetadataSchema } from "metabase/schema";
+import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -36,7 +35,7 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -71,6 +70,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
+        onQueryStarted: hydrateLegacyEntities([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
         query: ({ id, ignore_error }) => ({
@@ -80,6 +80,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
+        onQueryStarted: hydrateLegacyEntities(DashboardSchema),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,
@@ -92,10 +93,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-          handleQueryFulfilled(queryFulfilled, (data) =>
-            dispatch(updateMetadata(data, QueryMetadataSchema)),
-          ),
+        onQueryStarted: hydrateLegacyEntities(QueryMetadataSchema),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,

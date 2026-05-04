@@ -1526,7 +1526,6 @@
   {:team "DevEx"
    :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
@@ -3104,6 +3103,7 @@
               permissions
               premium-features
               settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}

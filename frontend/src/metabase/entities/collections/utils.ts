@@ -1,5 +1,4 @@
 import {
-  isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
   isSyncedCollection,
@@ -13,11 +12,7 @@ import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
 
-import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "./constants";
-
-export function normalizedCollection(collection: Collection) {
-  return isRootCollection(collection) ? ROOT_COLLECTION : collection;
-}
+import { PERSONAL_COLLECTIONS } from "./constants";
 
 export function getCollectionIcon(
   collection: Partial<Collection>,

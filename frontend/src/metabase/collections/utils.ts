@@ -5,6 +5,7 @@ import {
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
   getLibraryCollectionType,
 } from "metabase/data-studio/utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   type CardType,
@@ -181,6 +182,24 @@ export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
+export function normalizedCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(collection: CollectionType | null | undefined) {
+  return !collection || isRootCollection(collection)
+    ? ROOT_COLLECTION
+    : collection;
+}
+
+export type ItemWithCollection<CollectionType = Collection> = {
+  collection?: CollectionType;
+};
+
+export function getCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(item: ItemWithCollection<CollectionType> | null | undefined) {
+  return normalizedCollection(item?.collection);
+}
+
 export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
@@ -222,10 +241,6 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
     default:
       return true;
   }
-}
-
-export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && item.setPinned != null && !item.archived;
 }
 
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {

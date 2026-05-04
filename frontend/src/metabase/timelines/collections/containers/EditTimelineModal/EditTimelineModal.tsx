@@ -1,8 +1,10 @@
+import type { ComponentProps } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { useSetArchive } from "metabase/common/hooks";
 import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/redux";
+import { connect, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
 import * as Urls from "metabase/urls";
@@ -27,14 +29,22 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(Timelines.actions.update(timeline));
     dispatch(push(Urls.timelineInCollection(timeline)));
   },
-  onArchive: async (timeline: Timeline) => {
-    await dispatch(Timelines.actions.setArchived(timeline, true));
-    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
-  },
 });
+
+function EditTimelineModalContainer(
+  props: ComponentProps<typeof EditTimelineModal>,
+) {
+  const archive = useSetArchive();
+  const dispatch = useDispatch();
+  const onArchive = async (timeline: Timeline) => {
+    await archive({ id: timeline.id, model: "timeline" }, true);
+    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
+  };
+  return <EditTimelineModal {...props} onArchive={onArchive} />;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.load(timelineProps),
   connect(null, mapDispatchToProps),
-)(EditTimelineModal);
+)(EditTimelineModalContainer);

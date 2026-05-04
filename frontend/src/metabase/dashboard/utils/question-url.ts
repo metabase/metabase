@@ -1,3 +1,4 @@
+import { convertParametersToMbql } from "metabase/querying/parameters/utils/query";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -32,9 +33,10 @@ export function getStructuredQuestionUrlWithParameters(
     const composed = needsComposing
       ? question.composeQuestionAdhoc().setParameters(parameters)
       : questionWithParameters;
-    const withMbqlFilters = composed
-      .setParameterValues(parameterValues)
-      ._convertParametersToMbql({ isComposed: needsComposing });
+    const withMbqlFilters = convertParametersToMbql(
+      composed.setParameterValues(parameterValues),
+      { isComposed: needsComposing },
+    );
 
     return Urls.question(withMbqlFilters, {
       originalQuestion,
