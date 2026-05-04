@@ -29,13 +29,8 @@ const RULES = [
   { from: ["app/*"], allow: ["lib/*", "feature/*", "app/*"] },
 ];
 
-const {
-  affectedModules,
-  computeStats,
-  directlyTouchedModules,
-  fileToModule,
-  selectTests,
-} = createAffectedTests(ELEMENTS, RULES);
+const { affectedModules, directlyTouchedModules, fileToModule, selectTests } =
+  createAffectedTests(ELEMENTS, RULES);
 
 describe("fileToModule", () => {
   it.each([
@@ -115,39 +110,5 @@ describe("selectTests", () => {
       "src/foo/foo.unit.spec.ts",
       "src/utils/colors.unit.spec.ts",
     ]);
-  });
-});
-
-describe("computeStats", () => {
-  it("aggregates module + test counts", () => {
-    const stats = computeStats({
-      changedFiles: ["src/foo/x.ts"],
-      unitTestFiles: [
-        "src/foo/a.unit.spec.ts",
-        "src/foo/b.unit.spec.ts",
-        "src/bar/c.unit.spec.ts",
-        "src/utils/d.unit.spec.ts",
-      ],
-      storyFiles: ["src/foo/Foo.stories.tsx", "src/bar/Bar.stories.tsx"],
-      e2eTestFiles: [
-        "e2e/test/scenarios/a.cy.spec.ts",
-        "e2e/test/scenarios/b.cy.spec.ts",
-        "e2e/test/scenarios/c.cy.spec.ts",
-      ],
-    });
-    expect(stats).toEqual({
-      modules_directly_touched: 1,
-      modules_affected: 3,
-      affected_modules: ["app/main", "feature/foo", "feature/super"],
-      unit_tests_total: 4,
-      unit_tests_to_run: 2,
-      unit_tests_to_skip: 2,
-      loki_stories_total: 2,
-      loki_stories_to_run: 1,
-      loki_stories_to_skip: 1,
-      e2e_tests_total: 3,
-      e2e_tests_to_run: 3,
-      e2e_tests_to_skip: 0,
-    });
   });
 });

@@ -12,10 +12,10 @@ on:
       skip-custom-viz:
         type: boolean
         default: false
-      # JSON array of affected module types from compute-affected-tests in
-      # run-tests.yml. Currently unused — will gate per-module test selection
+      # JSON array of unit-test paths produced by compute-test-selection in
+      # run-tests.yml. Currently unused — will drive Jest --testPathPatterns
       # once module-boundary violations reach zero.
-      affected-modules:
+      unit-tests-to-run:
         type: string
         default: ""
   workflow_dispatch:

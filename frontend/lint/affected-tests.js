@@ -91,42 +91,12 @@ function createAffectedTests(elements, rules) {
     });
   }
 
-  function computeStats({
-    changedFiles,
-    unitTestFiles,
-    storyFiles,
-    e2eTestFiles,
-  }) {
-    const direct = directlyTouchedModules(changedFiles);
-    const affected = affectedModules(changedFiles);
-    const unitToRun = selectTests(affected, unitTestFiles);
-    const storiesToRun = selectTests(affected, storyFiles);
-    return {
-      modules_directly_touched: direct.size,
-      modules_affected: affected.size,
-      // Sorted for stable output — downstream consumers diff/hash this list.
-      affected_modules: [...affected].sort(),
-      unit_tests_total: unitTestFiles.length,
-      unit_tests_to_run: unitToRun.length,
-      unit_tests_to_skip: unitTestFiles.length - unitToRun.length,
-      loki_stories_total: storyFiles.length,
-      loki_stories_to_run: storiesToRun.length,
-      loki_stories_to_skip: storyFiles.length - storiesToRun.length,
-      // E2E specs don't map to modules; counts are emitted as run = total and
-      // skip = 0 so the schema is ready for when module-aware selection lands.
-      e2e_tests_total: e2eTestFiles.length,
-      e2e_tests_to_run: e2eTestFiles.length,
-      e2e_tests_to_skip: 0,
-    };
-  }
-
   return {
     fileToModule,
     directlyTouchedModules,
     affectedModules,
     selectTests,
-    computeStats,
   };
 }
 
-module.exports = { createAffectedTests };
+module.exports = { createAffectedTests, globToRegex };

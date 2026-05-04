@@ -1,4 +1,4 @@
-// Used by the compute-affected-tests job in .github/workflows/run-tests.yml.
+// Used by the decide-what-runs job in .github/workflows/run-tests.yml.
 // Test files are listed via `git ls-files` (no glob lib needed) so counts
 // match what's tracked at HEAD.
 
@@ -9,10 +9,11 @@ const {
   rules,
 } = require("../../frontend/lint/module-boundaries");
 const {
-  createAffectedTests,
-} = require("../../frontend/lint/affected-tests");
+  SUITES,
+  createTestSelection,
+} = require("../../frontend/lint/test-suites");
 
-const { computeStats } = createAffectedTests(elements, rules);
+const { decideAll } = createTestSelection({ elements, rules, suites: SUITES });
 
 const BASE_SHA = process.env.BASE_SHA;
 const HEAD_SHA = process.env.HEAD_SHA ?? "HEAD";
@@ -68,15 +69,13 @@ const changedFiles = gitLines([
   `${BASE_SHA}...${HEAD_SHA}`,
 ]);
 
-const unitTestFiles = gitLines(["ls-files", "--", ...UNIT_GLOBS]);
-const storyFiles = gitLines(["ls-files", "--", ...STORY_GLOBS]);
-const e2eTestFiles = gitLines(["ls-files", "--", ...E2E_GLOBS]);
-
-const stats = computeStats({
+const result = decideAll({
   changedFiles,
-  unitTestFiles,
-  storyFiles,
-  e2eTestFiles,
+  suiteFiles: {
+    unit: gitLines(["ls-files", "--", ...UNIT_GLOBS]),
+    loki: gitLines(["ls-files", "--", ...STORY_GLOBS]),
+    e2e: gitLines(["ls-files", "--", ...E2E_GLOBS]),
+  },
 });
 
-console.log(JSON.stringify(stats));
+console.log(JSON.stringify(result));
