@@ -400,11 +400,6 @@ function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return isObject(value) && typeof value.mount === "function";
 }
 
-type CustomVizWrapperProps = Omit<VisualizationProps, "width" | "height"> & {
-  width: number | null;
-  height: number | null;
-};
-
 function createCustomVizWrapper(
   mount: GenericVizMount,
   pluginId: CustomVizPluginId,
@@ -413,7 +408,7 @@ function createCustomVizWrapper(
     onVisualizationClick,
     onHoverChange,
     ...rest
-  }: CustomVizWrapperProps) {
+  }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const handleRef = useRef<GenericVizMountHandle | null>(null);
