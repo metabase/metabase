@@ -11,6 +11,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import {
@@ -25,8 +26,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import S from "../components/BrowseContainer.module.css";
 

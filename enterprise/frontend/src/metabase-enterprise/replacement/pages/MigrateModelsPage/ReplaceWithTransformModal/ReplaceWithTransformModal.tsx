@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -10,6 +9,7 @@ import {
 } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { hasFeature } from "metabase/common/utils/database";
 import {
   Form,
   FormErrorMessage,
@@ -30,7 +30,7 @@ import {
   Text,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { slugify } from "metabase/utils/formatting/url";
+import { slugify } from "metabase/visualizations/lib/formatting/url";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
 import type { Card, Database } from "metabase-types/api";
 

@@ -1,8 +1,12 @@
 import { useMemo } from "react";
 
+import {
+  type IconData,
+  type IconModel,
+  getIcon,
+} from "metabase/common/utils/icon";
 import { Anchor, Group, Icon } from "metabase/ui";
-import { type IconData, type IconModel, getIcon } from "metabase/utils/icon";
-import { modelToUrl } from "metabase/utils/urls";
+import { modelToUrl } from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";

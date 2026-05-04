@@ -13,8 +13,8 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
-import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
+import { ReturnToSetupGuideModal } from "metabase/embedding/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import {
   PLUGIN_DATABASE_REPLICATION,
@@ -22,9 +22,9 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
-import { connect, useSelector } from "metabase/utils/redux";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";

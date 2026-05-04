@@ -5,10 +5,10 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Modal } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";

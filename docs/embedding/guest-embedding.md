@@ -55,6 +55,9 @@ Add the embed script and configuration to your HTML:
   window.metabaseConfig = {
     isGuest: true,
     instanceUrl: "YOUR_METABASE_URL",
+    // Optional. Set this if you want the embed to fetch a fresh JWT
+    // when the current one expires. See "Refreshing the JWT" below.
+    // guestEmbedProviderUri: "/your/apps/endpoint",
   };
 </script>
 ```
@@ -100,12 +103,14 @@ Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regeneratin
 
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute            | Description                                                           |
-| -------------------- | --------------------------------------------------------------------- |
-| `token`              | Required. The signed JWT token from your server.                      |
-| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
-| `with-downloads`\*   | Enable or disable downloads. Values: `"true"` or `"false"`.           |
-| `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
+| Attribute               | Description                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `token`                 | Required. The signed JWT token from your server.                                                     |
+| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                               |
+| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                          |
+| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                |
+| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                   |
+| `custom-context`        | Forwarded to your [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) endpoint as `customContext`. Either a string (e.g., `"gadgets-tab"`), or a JSON-stringified object like `initial-parameters` (e.g., `'{"tab":"gadgets","region":"us-east"}'`). |
 
 \* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
@@ -252,7 +257,7 @@ Things to keep in mind if you need to make changes to your locked parameters.
 
 ### Include all locked parameters in your JWT
 
-Once you publish a question or dashboard with a locked parameter, you _must_ include the name of the locked parameter in the `params` object when you sign the JWT. If you leave the parameter out, Metabase will refuse the request and log: `You must specify a value for :parameter in the JWT`.
+Once you publish a question or dashboard with a locked parameter, you _must_ include the name of the locked parameter in the `params` object when you sign the JWT. If you leave the parameter out, Metabase will refuse the request and log: `You must specify a value for :<parameter-name> in the JWT`. For example, if your locked parameter is `category`, the error will read `You must specify a value for :category in the JWT`.
 
 ### Pass an empty array to turn off a locked parameter
 
@@ -301,6 +306,146 @@ Because Metabase doesn't render locked parameters as filter widgets, you can use
 - Reuse one dashboard in different ways in different parts of your app. For example, a sales dashboard that's locked by "region" in one place and by "team" in another.
 
 When the end-user changes a value in your custom widget, re-sign a new JWT on your server with the updated `params` and swap it onto the web component's `token` attribute. The embed will re-request the data with the new locked value.
+
+## Refreshing or initializing the JWT from your server
+
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data, and any filter selections the viewer made will reset on the next request. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
+
+The endpoint can serve two flows:
+
+- **Refreshing tokens**: when the embed's current JWT is about to expire, the embed POSTs to your endpoint to get the new JWT, and swaps it in.
+- **Initializing with a token** (optional): if you don't want to pre-render a JWT in the HTML at all, the embed can call the same endpoint on load to fetch that first JWT.
+
+### Setting the endpoint URL in the guest embed
+
+Add `guestEmbedProviderUri` to your `metabaseConfig`. The value is a path (or full URL) to an endpoint in your app:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    guestEmbedProviderUri: "/api/metabase-guest-token",
+  };
+</script>
+```
+
+When the embed needs a token, it sends a `POST` request to `guestEmbedProviderUri` with a JSON body, which includes cookies, so you can authenticate the request with your app's existing session.
+
+Request:
+
+```json
+{
+  "entityType": "dashboard",
+  "entityId": 10,
+  "customContext": "..."
+}
+```
+
+| Field           | Description                                                                    |
+| --------------- | ------------------------------------------------------------------------------ |
+| `entityType`    | `"dashboard"` or `"question"`.                                                 |
+| `entityId`      | The ID of the dashboard or question being embedded.                            |
+| `customContext` | Optional. The string or object you set on the `custom-context` attribute. |
+
+Response: a JSON object with a single `jwt` field:
+
+```json
+{ "jwt": "YOUR_NEWLY_SIGNED_JWT" }
+```
+
+### Refresh flow
+
+Pre-render an initial JWT on the component (just like a regular guest embed) and configure `guestEmbedProviderUri`. When the JWT expires, the embed will call your endpoint to get a fresh one and swap it in.
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    guestEmbedProviderUri: "/api/metabase-guest-token",
+  };
+</script>
+
+<metabase-dashboard token="YOUR_INITIAL_JWT"></metabase-dashboard>
+```
+
+### Initialize the embed without a JWT in the HTML
+
+If you don't want to render the JWT in the HTML at all, omit the `token` attribute and use `dashboard-id` (or `question-id`) instead. If you've set the `guestEmbedProviderUri`, then the embed will call that endpoint on load to fetch the first JWT.
+
+```html
+<metabase-dashboard dashboard-id="10"></metabase-dashboard>
+```
+
+This way you can keep all your token-issuing logic in one place on your server.
+
+### Example endpoint (Node.js / Express)
+
+```javascript
+const jwt = require("jsonwebtoken");
+const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
+
+app.post("/api/metabase-guest-token", (req, res) => {
+  // Authenticate using your app's existing session.
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(403).json({ error: "Not signed in" });
+  }
+
+  const { entityType, entityId, customContext } = req.body;
+
+  const payload = {
+    resource: { [entityType]: entityId },
+    params: paramsFor(user, customContext),
+    exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+  };
+
+  res.json({ jwt: jwt.sign(payload, METABASE_SECRET_KEY) });
+});
+```
+
+Because the embed's request includes your app's session cookie, your endpoint can:
+
+- Refuse to issue a JWT (with a `403`) for visitors who aren't signed in to your app.
+- Compute different `params` (i.e., locked filter values) per visitor.
+
+### Sending custom context
+
+When you embed the same dashboard or question more than once on a page, you can use the `custom-context` attribute to tell your endpoint which copy is requesting a token. The value you pass is forwarded to your endpoint as `customContext`.
+
+For example, two copies of the same dashboard scoped to different categories:
+
+```html
+<metabase-dashboard
+  dashboard-id="10"
+  custom-context="gadgets-tab"
+></metabase-dashboard>
+```
+
+You can also pass a JSON-stringified object (the embed parses it before forwarding it on, so your endpoint receives a real object):
+
+```html
+<metabase-dashboard
+  dashboard-id="10"
+  custom-context='{"tab":"gadgets","region":"us-east"}'
+></metabase-dashboard>
+```
+
+Your endpoint can switch on `customContext` to set different locked parameters, like so:
+
+```javascript
+function paramsFor(user, customContext) {
+  switch (customContext) {
+    case "gadgets-tab":
+      return { category: ["Gadget"] };
+    case "doohickeys-tab":
+      return { category: ["Doohickey"] };
+    default:
+      return {};
+  }
+}
+```
 
 ## Disabling embedding for a question or dashboard
 
@@ -359,6 +504,7 @@ When a visitor views your page:
 2. The web component sends the token to Metabase.
 3. Metabase verifies the JWT signature using your secret key.
 4. If valid, Metabase returns the embedded content.
+5. If you've configured [JWT refresh](#refreshing-or-initializing-the-jwt-from-your-server), the embed will fetch a fresh JWT from your endpoint when it next needs to make a data request after the current token has expired — not on a background timer. An idle embed makes no refresh requests. (Optionally, the embed can also fetch the very first JWT from your endpoint on load.) The embed keeps working without a page reload.
 
 For interactive filters, you can pass initial parameter values via the `initial-parameters` attribute. When a visitor changes a filter, the web component handles the update automatically.
 

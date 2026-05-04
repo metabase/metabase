@@ -11,17 +11,20 @@ import _ from "underscore";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PDF_EXPORT_ROOT_ID,
+} from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/setup/selectors";
+import * as Urls from "metabase/urls";
 import api, { GET, POST } from "metabase/utils/api";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
-import { createAsyncThunk } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import { isUuid } from "metabase/utils/uuid";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -201,6 +204,7 @@ export const downloadDashboardToPdf = createAsyncThunk(
     await saveDashboardPdf({
       fileName,
       selector: cardNodeSelector,
+      parametersNodeSelector: `#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`,
       dashboardName: dashboard.name,
       includeBranding,
     });

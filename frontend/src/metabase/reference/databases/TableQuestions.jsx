@@ -11,10 +11,10 @@ import S from "metabase/common/components/List/List.module.css";
 import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -89,7 +89,7 @@ class TableQuestions extends Component {
                           description={t`Created ${dayjs(
                             entity.created_at,
                           ).fromNow()} by ${entity.creator.common_name}`}
-                          url={Urls.question(entity)}
+                          url={Urls.card(entity)}
                           icon={visualizations.get(entity.display).iconName}
                         />
                       ),
