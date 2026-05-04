@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena :as athena]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -75,6 +76,11 @@
       "us-west-2"      "//athena.us-west-2.amazonaws.com:443"
       "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
       "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
+
+(deftest ^:parallel connection-spec-application-name-test
+  (testing "connection spec includes ApplicationName"
+    (is (= driver-api/mb-app-id-string
+           (:ApplicationName (sql-jdbc.conn/connection-details->spec :athena {:region "us-east-1"}))))))
 
 (deftest ^:parallel athena-subname-uses-hostname-test
   (mt/test-driver :athena
