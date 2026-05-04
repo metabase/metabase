@@ -13,9 +13,9 @@
 
 (deftest nullable-type?-test
   (testing "scalar 'null' is nullable"
-    (is (true? (boolean (l/nullable-type? "null")))))
+    (is (l/nullable-type? "null")))
   (testing "vector containing 'null' is nullable"
-    (is (true? (boolean (l/nullable-type? ["string" "null"])))))
+    (is (l/nullable-type? ["string" "null"])))
   (testing "scalar non-null is not nullable"
     (is (not (l/nullable-type? "string"))))
   (testing "vector without 'null' is not nullable"
