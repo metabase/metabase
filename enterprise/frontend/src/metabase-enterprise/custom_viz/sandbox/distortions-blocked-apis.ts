@@ -1,110 +1,88 @@
-// Native APIs that must never be invoked from a sandboxed plugin. Matched
-// by `getFunctionName` output, which returns either a friendly name from
-// FUNCTION_NAMES (e.g. "Document.write") for host-realm refs, or the bare
-// .name property (e.g. "write") for cross-realm refs that don't match the
-// host weakmap. Both forms are listed here so blocking works regardless of
-// whether near-membrane preserved identity.
-//
-// Only blocks NATIVE functions (the isUserDefinedFunction check above lets
-// user code freely define functions of the same name). The bare-name match
-// is broad on purpose: every native function that ends up named "fetch",
-// "open", "write" in any realm is dangerous in this context.
-export const BLOCKED_NATIVE_NAMES = new Set([
-  // ---- Bare names (cross-realm or unrecognized refs) ----
+// Map<host-realm ref → friendly label> for native APIs that must never be
+// invoked from a sandboxed plugin. distortionCallback is called by
+// near-membrane with the blue-realm reference, so identity comparison against
+// these captured refs is sufficient. Refs that don't exist in the running
+// browser (e.g. Navigator.share on desktop Firefox) are skipped — there's
+// nothing to block if the API isn't there.
 
-  // Network exfiltration
-  "fetch",
-  "XMLHttpRequest",
-  "WebSocket",
-  "EventSource",
-  "sendBeacon",
+const method = (proto: object, key: string): object | undefined =>
+  Object.getOwnPropertyDescriptor(proto, key)?.value as object | undefined;
 
-  // Document destruction / navigation
-  "write",
-  "writeln",
-  "open", // window.open, document.open, XMLHttpRequest.open
-  "close", // window.close, document.close
-  "execCommand",
-  "navigate",
+const getter = (proto: object, key: string): object | undefined =>
+  Object.getOwnPropertyDescriptor(proto, key)?.get;
 
-  // Cookie / session / domain
-  "get cookie",
-  "set cookie",
-  "set domain",
+const setter = (proto: object, key: string): object | undefined =>
+  Object.getOwnPropertyDescriptor(proto, key)?.set;
 
-  // Storage exfiltration
-  "get localStorage",
-  "get sessionStorage",
-  "get indexedDB",
-  "get caches",
+export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
-  // Hardware / device APIs
-  "get clipboard",
-  "get geolocation",
-  "get mediaDevices",
-  "get serviceWorker",
-  "get credentials",
-  "get permissions",
-  "get usb",
-  "get bluetooth",
-  "get share",
+const block = (ref: object | undefined, label: string) => {
+  if (ref) {
+    BLOCKED_NATIVE_REFS.set(ref, label);
+  }
+};
+
+// Network exfiltration
+block(window.fetch, "window.fetch");
+block(window.XMLHttpRequest, "window.XMLHttpRequest");
+block(window.WebSocket, "window.WebSocket");
+block(window.EventSource, "window.EventSource");
+block(method(Navigator.prototype, "sendBeacon"), "Navigator.sendBeacon");
+
+// Document mutation / navigation
+block(method(Document.prototype, "write"), "Document.write");
+block(method(Document.prototype, "writeln"), "Document.writeln");
+block(method(Document.prototype, "open"), "Document.open");
+block(method(Document.prototype, "close"), "Document.close");
+block(method(Document.prototype, "execCommand"), "Document.execCommand");
+
+// Cookie / domain
+block(getter(Document.prototype, "cookie"), "Document.get cookie");
+block(setter(Document.prototype, "cookie"), "Document.set cookie");
+block(setter(Document.prototype, "domain"), "Document.set domain");
+
+// Storage exfiltration
+block(getter(Window.prototype, "localStorage"), "Window.get localStorage");
+block(getter(Window.prototype, "sessionStorage"), "Window.get sessionStorage");
+block(getter(Window.prototype, "indexedDB"), "Window.get indexedDB");
+block(getter(Window.prototype, "caches"), "Window.get caches");
+
+// Window navigation
+block(window.open, "window.open");
+block(window.close, "window.close");
+block(method(Window.prototype, "open"), "window.open");
+block(method(Window.prototype, "close"), "window.close");
+
+// Navigator getters — credential / device leaks
+const NAVIGATOR_BLOCKED_GETTERS = [
+  "clipboard",
+  "geolocation",
+  "mediaDevices",
+  "serviceWorker",
+  "credentials",
+  "permissions",
+  "usb",
+  "bluetooth",
   "share",
-  "get hid",
-  "get serial",
-  "get xr",
-  "get wakeLock",
-  "get locks",
-  "get storage",
-  "get presentation",
+  "hid",
+  "serial",
+  "xr",
+  "wakeLock",
+  "locks",
+  "storage",
+  "presentation",
+];
+for (const key of NAVIGATOR_BLOCKED_GETTERS) {
+  block(getter(Navigator.prototype, key), `Navigator.get ${key}`);
+}
+block(method(Navigator.prototype, "share"), "Navigator.share");
 
-  // Location / History — sandbox shouldn't navigate or rewrite the host
-  "assign", // location.assign
-  "reload",
-  "pushState",
-  "replaceState",
-  "go", // history.go
-  "back",
-  "forward",
-  "set href", // location.href setter
-
-  // ---- Friendly names from FUNCTION_NAMES (host-realm matches) ----
-
-  "window.fetch",
-  "window.XMLHttpRequest",
-  "window.WebSocket",
-  "window.EventSource",
-  "window.open",
-  "window.close",
-  "Window.open",
-  "Window.close",
-  "Document.write",
-  "Document.writeln",
-  "Document.open",
-  "Document.close",
-  "Document.execCommand",
-  "Document.get cookie",
-  "Document.set cookie",
-  "Document.set domain",
-  "Navigator.sendBeacon",
-  "Navigator.share",
-  "Navigator.get clipboard",
-  "Navigator.get geolocation",
-  "Navigator.get mediaDevices",
-  "Navigator.get serviceWorker",
-  "Navigator.get credentials",
-  "Navigator.get permissions",
-  "Navigator.get usb",
-  "Navigator.get bluetooth",
-  "Navigator.get share",
-  "Navigator.get presentation",
-  "Navigator.get hid",
-  "Navigator.get serial",
-  "Navigator.get xr",
-  "Navigator.get wakeLock",
-  "Navigator.get locks",
-  "Navigator.get storage",
-  "Window.get localStorage",
-  "Window.get sessionStorage",
-  "Window.get indexedDB",
-  "Window.get caches",
-]);
+// Location & History — sandbox shouldn't navigate or rewrite the host
+block(method(Location.prototype, "assign"), "Location.assign");
+block(method(Location.prototype, "reload"), "Location.reload");
+block(setter(Location.prototype, "href"), "Location.set href");
+block(method(History.prototype, "pushState"), "History.pushState");
+block(method(History.prototype, "replaceState"), "History.replaceState");
+block(method(History.prototype, "go"), "History.go");
+block(method(History.prototype, "back"), "History.back");
+block(method(History.prototype, "forward"), "History.forward");

@@ -1,5 +1,4 @@
-import { getFunctionName } from "./debugging";
-import { BLOCKED_NATIVE_NAMES } from "./distortions-blocked-apis";
+import { BLOCKED_NATIVE_REFS } from "./distortions-blocked-apis";
 import {
   CREATE_ELEMENT,
   CREATE_ELEMENT_NS,
@@ -20,6 +19,7 @@ import {
   getSafeSandboxDomElement,
   isDomElement,
 } from "./distortions-dom-read";
+
 export function makeDistortionCallback(pluginId: string) {
   return function distortionCallback(value: object): object {
     if (isDomElement(value)) {
@@ -61,14 +61,12 @@ export function makeDistortionCallback(pluginId: string) {
       return setAttributeNSDistortion(pluginId);
     }
 
-    // Identity-based allowlisting is unreliable: near-membrane wrapped host functions
-    // differ from those in the host realm. Name matching is
-    // crossing into the sandbox iframe, so the runtime reference often
-    // realm-agnostic.
-    const name = getFunctionName(value);
-    if (BLOCKED_NATIVE_NAMES.has(name)) {
+    const blockedLabel = BLOCKED_NATIVE_REFS.get(value);
+    if (blockedLabel) {
       return function blocked() {
-        throw new Error(`[plugin ${pluginId}] blocked API call: ${name}`);
+        throw new Error(
+          `[plugin ${pluginId}] blocked API call: ${blockedLabel}`,
+        );
       };
     }
 

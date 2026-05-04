@@ -1638,7 +1638,7 @@ describe("sandbox", () => {
     {
       name: "document.cookie setter",
       payload: 'document.cookie = "${document.cookie}stolen=1;";',
-      errorPattern: blockedPattern(/API call: set cookie/),
+      errorPattern: blockedPattern(/API call: Document\.set cookie/),
     },
     {
       name: "window.open",
