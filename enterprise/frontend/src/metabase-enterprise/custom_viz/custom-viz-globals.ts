@@ -1,4 +1,4 @@
-import type { ColumnTypes } from "custom-viz";
+import type { ColumnTypes, CustomVisualization } from "custom-viz";
 
 import {
   measureText,
@@ -17,7 +17,7 @@ declare global {
       measureTextWidth: typeof measureTextWidth;
       measureTextHeight: typeof measureTextHeight;
     };
-    __customVizPlugin__?: unknown;
+    __customVizPlugin__?: CustomVisualization<Record<string, unknown>>;
   }
 }
 
