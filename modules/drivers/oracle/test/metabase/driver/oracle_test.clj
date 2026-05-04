@@ -110,9 +110,8 @@
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (let [expected [{:type :group
-                       :fields [{:name "host"}
-                                {:name "port"}]}
+      (let [expected [{:name "host"}
+                      {:name "port"}
                       {:name "sid"}
                       {:name "service-name"}
                       {:name "user"}
