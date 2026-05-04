@@ -121,9 +121,9 @@
 
 ;;; -------------------------------------------------- Python path delay --------------------------------------------------
 
-(defn- ^FileSystem read-only-polyglot-fs
+(defn- read-only-polyglot-fs
   "Wrap an NIO `java.nio.file.FileSystem` as a read-only polyglot FileSystem suitable for GraalPy."
-  [^java.nio.file.FileSystem nio-fs]
+  ^FileSystem [^java.nio.file.FileSystem nio-fs]
   (-> nio-fs FileSystem/newFileSystem FileSystem/newReadOnlyFileSystem))
 
 (defonce ^:private
