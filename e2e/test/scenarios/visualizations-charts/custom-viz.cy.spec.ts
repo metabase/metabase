@@ -686,8 +686,12 @@ describe("admin > custom visualizations", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
 
-      cy.findByTestId("demo-viz-click-target").click();
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
       cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTestId("demo-viz-click-target").click();
       H.popover().findByText("See these Orders").should("be.visible").click();
       cy.wait("@dataset");
 
