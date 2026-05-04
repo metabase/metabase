@@ -48,8 +48,9 @@ jobs:
       - name: Lint (igluctl)
         # igluctl recursively parses every file as JSON, so it chokes on colocated
         # *.md docs and on two schemas whose internal `self.version` doesn't match
-        # the filename version (pending Snowcat audit). Stage a filtered copy to
-        # keep the gate strict for everything else.
+        # the filename version (pending Snowcat audit). Stage a filtered copy and
+        # patch only the `self.version` mismatch so igluctl still lints the rest
+        # of those schemas.
         run: |
           set -euo pipefail
           LINT_ROOT="$RUNNER_TEMP/iglu-lint"
@@ -57,10 +58,16 @@ jobs:
           mkdir -p "$LINT_ROOT"
           cp -r snowplow/iglu-client-embedded/schemas "$LINT_ROOT/"
           find "$LINT_ROOT" -name '*.md' -delete
-          # TODO(BOT-1403): drop these exclusions once the Snowcat audit fixes the
-          # internal `self.version` mismatch on these two schemas.
-          rm -f "$LINT_ROOT/schemas/com.metabase/embed_share/jsonschema/1-0-2"
-          rm -f "$LINT_ROOT/schemas/com.metabase/serialization/jsonschema/1-0-1"
+          # TODO(BOT-1403): drop these patches once the Snowcat audit fixes the
+          # internal `self.version` mismatch on these two schemas. We rewrite
+          # only `self.version` in the staged copy so the file's path version
+          # matches what igluctl expects; every other lint rule still runs.
+          # Each `sed` invocation uses the schema's wrong/right pair, so it
+          # silently no-ops once the underlying schema is fixed.
+          sed -i 's/"version": "1-0-1"/"version": "1-0-2"/' \
+            "$LINT_ROOT/schemas/com.metabase/embed_share/jsonschema/1-0-2"
+          sed -i 's/"version": "1-0-0"/"version": "1-0-1"/' \
+            "$LINT_ROOT/schemas/com.metabase/serialization/jsonschema/1-0-1"
           igluctl lint "$LINT_ROOT/schemas"
       - name: Lint (Metabase schema rules)
         run: ./bin/lint-snowplow-schemas.bb
