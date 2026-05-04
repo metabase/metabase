@@ -10,7 +10,7 @@ import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";

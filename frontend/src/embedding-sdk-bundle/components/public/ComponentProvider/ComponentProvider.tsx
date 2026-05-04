@@ -111,9 +111,7 @@ export const ComponentProviderInternal = (
   }, [reduxStore, isGuestEmbed]);
 
   useEffect(() => {
-    if (fontFamily) {
-      reduxStore.dispatch(setOptions({ font: fontFamily }));
-    }
+    reduxStore.dispatch(setOptions({ font: fontFamily }));
   }, [reduxStore, fontFamily]);
 
   useEffect(() => {

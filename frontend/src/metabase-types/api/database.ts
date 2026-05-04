@@ -188,6 +188,7 @@ export interface ListDatabaseSchemaTablesRequest {
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
   "can-write-metadata"?: boolean;
+  include_measures?: boolean;
 }
 
 export interface ListVirtualDatabaseTablesRequest {

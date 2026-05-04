@@ -16,7 +16,7 @@
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]
-  (select-keys entity [:name :slug :is_active]))
+  (select-keys entity [:name :slug :is_active :attributes]))
 
 (t2/deftransforms :model/Tenant
   {:attributes mi/transform-json-no-keywordization})
