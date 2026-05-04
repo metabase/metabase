@@ -4,10 +4,8 @@ import { documentApi, useGetDocumentQuery } from "metabase/api";
 import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
 import type {
-  CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
-  Document,
   GetDocumentRequest,
   UpdateDocumentRequest,
 } from "metabase-types/api";
@@ -62,16 +60,5 @@ export const Documents = createEntity({
         dispatch,
         documentApi.endpoints.deleteDocument,
       ),
-  },
-
-  objectActions: {
-    copy:
-      ({ id }: Document, overrides: Omit<CopyDocumentRequest, "id">) =>
-      async (dispatch: Dispatch) => {
-        const result = await dispatch(
-          documentApi.endpoints.copyDocument.initiate({ id, ...overrides }),
-        );
-        return (result as { data: Document }).data;
-      },
   },
 });
