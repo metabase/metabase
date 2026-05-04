@@ -83,25 +83,13 @@ describe("scenarios > admin > performance > strategy form", () => {
       });
     });
 
-    describe("adaptive strategy", () => {
-      it("can set default policy to adaptive", () => {
-        adaptiveRadioButton().click();
-        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-        adaptiveRadioButton().should("be.checked");
-      });
-
-      it("can configure both a minimum query duration and a multiplier for the default adaptive policy", () => {
-        adaptiveRadioButton().click();
-        cy.findByLabelText(/Minimum query duration/).type("1234");
-        cy.findByLabelText(/Multiplier/).type("4");
-        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-        adaptiveRadioButton().should("be.checked");
-        cy.findByLabelText(/Minimum query duration/).should(
-          "have.value",
-          "1234",
-        );
-        cy.findByLabelText(/Multiplier/).should("have.value", "4");
-      });
+    // Configure-both / input-binding coverage lives in
+    // frontend/.../StrategyEditorForDatabases.unit.spec.tsx ("lets user change
+    // the default policy to 'Adaptive', then 'No caching'").
+    it("can set default policy to adaptive", () => {
+      adaptiveRadioButton().click();
+      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+      adaptiveRadioButton().should("be.checked");
     });
   });
 
@@ -204,46 +192,18 @@ describe("scenarios > admin > performance > strategy form", () => {
         checkInheritanceIfNeeded(itemName, "Duration");
       });
 
-      describe("adaptive strategy", () => {
-        beforeEach(() => {
-          openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
-          adaptiveRadioButton().click();
-        });
-
-        it(`can set ${itemName} to adaptive`, () => {
-          saveCacheStrategyForm({ strategyType: "ttl", model });
-          formLauncher(itemName, "currently", "Adaptive");
-          checkInheritanceIfNeeded(itemName, "Adaptive");
-        });
-
-        it(`can configure a minimum query duration for ${itemName}'s adaptive policy`, () => {
-          cy.findByLabelText(/Minimum query duration/).type("1000");
-          saveCacheStrategyForm({ strategyType: "ttl", model });
-          formLauncher(itemName, "currently", "Adaptive");
-          cy.findByLabelText(/Minimum query duration/).should(
-            "have.value",
-            "1000",
-          );
-        });
-
-        it(`can configure a multiplier for ${itemName}'s adaptive policy`, () => {
-          cy.findByLabelText(/Multiplier/).type("3");
-          saveCacheStrategyForm({ strategyType: "ttl", model });
-          formLauncher(itemName, "currently", "Adaptive");
-          cy.findByLabelText(/Multiplier/).should("have.value", "3");
-        });
-
-        it(`can configure both a minimum query duration and a multiplier for ${itemName}'s adaptive policy`, () => {
-          cy.findByLabelText(/Minimum query duration/).type("1234");
-          cy.findByLabelText(/Multiplier/).type("4");
-          saveCacheStrategyForm({ strategyType: "ttl", model });
-          formLauncher(itemName, "currently", "Adaptive");
-          cy.findByLabelText(/Minimum query duration/).should(
-            "have.value",
-            "1234",
-          );
-          cy.findByLabelText(/Multiplier/).should("have.value", "4");
-        });
+      // Min-duration / multiplier input binding is covered by the EE Jest
+      // spec at enterprise/.../StrategyEditorForDatabases.unit.spec.tsx
+      // ("lets user change the default policy from 'Duration' to 'Adaptive'
+      // to 'Don't cache results'"). What survives here is the
+      // save -> launcher-label round-trip plus the inheritance check for
+      // default policy.
+      it(`can set ${itemName} to adaptive`, () => {
+        openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
+        adaptiveRadioButton().click();
+        saveCacheStrategyForm({ strategyType: "ttl", model });
+        formLauncher(itemName, "currently", "Adaptive");
+        checkInheritanceIfNeeded(itemName, "Adaptive");
       });
 
       describe(`can set ${itemName} to a schedule-based cache invalidation policy`, () => {
