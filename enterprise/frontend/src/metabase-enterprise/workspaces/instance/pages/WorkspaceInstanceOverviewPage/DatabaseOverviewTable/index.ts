@@ -1,1 +1,0 @@
-export { DatabaseOverviewTable } from "./DatabaseOverviewTable";

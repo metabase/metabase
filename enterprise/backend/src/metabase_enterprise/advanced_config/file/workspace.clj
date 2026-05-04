@@ -3,15 +3,12 @@
 
    On boot, parses the section and stores it in the in-process atom
    `metabase-enterprise.workspaces.core/workspace-instance-config`. That atom is the
-   instance-side source of truth for `db-workspace-schema` and the
-   `/api/workspace-instance/current` endpoint.
+   instance-side source of truth for `db-workspace-schema`.
 
    The atom is fresh per process — every boot re-reads `config.yml` and replaces the
    prior value. There is no durable storage of instance-side workspace state, by
    design: the file IS the source of truth, and a different file at boot means a
-   different workspace, no questions asked. (This deliberately differs from the
-   manager-side `:model/Workspace` rows, which are durable because they're written
-   by CRUD endpoints, not by config.)"
+   different workspace, no questions asked."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]

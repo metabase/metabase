@@ -288,9 +288,9 @@
         ;;
         ;;   2. If the file contains a `:workspace` section, the entire file is treated as a workspace bring-up
         ;;      manifest and runs without the premium token. Workspace child instances bootstrap from a `config.yml`
-        ;;      that the parent emits *before* the child has any token; the file is the delivery mechanism for the
-        ;;      token (and the workspace itself). The `defenterprise` gates on workspace mode (`active?`,
-        ;;      `db-workspace-schema`, etc.) still keep non-`:workspaces` builds from acting on the rows.
+        ;;      *before* their token is installed; the file is the delivery mechanism for the token (and the
+        ;;      workspace itself). The `defenterprise` gates on workspace mode (`workspace-mode?`,
+        ;;      `db-workspace-schema`) still keep non-EE builds from acting on the rows.
         (when-not (or (= section-name :settings)
                       bring-up?)
           (when-not (premium-features/enable-config-text-file?)

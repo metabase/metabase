@@ -51,13 +51,11 @@ const createRemoteSyncSettings = ({
 const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
   tokenFeatures?: Partial<TokenFeatures>,
-  hasActiveWorkspace = false,
 ) => {
   const remoteSyncSettings = createRemoteSyncSettings(settings);
   setupPropertiesEndpoints(
     createMockSettings({
       ...remoteSyncSettings,
-      "has-active-workspace": hasActiveWorkspace,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   );
@@ -102,14 +100,12 @@ interface StoreStateOptions {
   isAdmin?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
-  hasActiveWorkspace?: boolean;
 }
 
 const createStoreState = ({
   isAdmin = true,
   remoteSyncSettings = {},
   tokenFeatures,
-  hasActiveWorkspace = false,
 }: StoreStateOptions = {}) => {
   const settings = createRemoteSyncSettings(remoteSyncSettings);
 
@@ -123,7 +119,6 @@ const createStoreState = ({
     }),
     settings: mockSettings({
       ...settings,
-      "has-active-workspace": hasActiveWorkspace,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
@@ -139,7 +134,6 @@ interface SetupOpts {
   isNavbarOpened?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
-  hasActiveWorkspace?: boolean;
 }
 
 export const setup = ({
@@ -152,7 +146,6 @@ export const setup = ({
   isNavbarOpened = true,
   enterprisePlugins,
   tokenFeatures,
-  hasActiveWorkspace = false,
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -180,11 +173,7 @@ export const setup = ({
   };
 
   setupSettingsEndpoints([]);
-  setupRemoteSyncSettingsEndpoints(
-    remoteSyncSettings,
-    tokenFeatures,
-    hasActiveWorkspace,
-  );
+  setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
@@ -193,7 +182,6 @@ export const setup = ({
     isAdmin,
     remoteSyncSettings,
     tokenFeatures,
-    hasActiveWorkspace,
   });
 
   if (enterprisePlugins) {

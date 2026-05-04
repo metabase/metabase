@@ -19,5 +19,3 @@ export * from "./table";
 export * from "./tags";
 export * from "./tenants";
 export * from "./upload-management";
-export * from "./workspace-manager";
-export * from "./workspace-instance";

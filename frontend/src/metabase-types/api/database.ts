@@ -57,8 +57,7 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table"
-  | "workspace";
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

@@ -1,1 +1,0 @@
-export { WorkspaceDetailsSection } from "./WorkspaceDetailsSection";

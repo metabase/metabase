@@ -163,8 +163,7 @@
    isolated warehouse table when a `TableRemapping` row exists — sync asks the
    driver there, while app-db rows keep their logical identity. Deliberately
    ungated on premium features: if rows exist they must be respected, regardless
-   of current token state (matches the rationale for
-   `reconcile-workspace-database-refs-before-delete!`)."
+   of current token state."
   :feature :none
   [db-id schema table-name]
   (remap-table db-id schema table-name))

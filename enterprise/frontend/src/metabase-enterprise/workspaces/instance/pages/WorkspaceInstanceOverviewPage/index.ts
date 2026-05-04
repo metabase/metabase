@@ -1,1 +1,0 @@
-export { WorkspaceInstanceOverviewPage } from "./WorkspaceInstanceOverviewPage";

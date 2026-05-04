@@ -1,1 +1,0 @@
-export { SchemaTableCell } from "./SchemaTableCell";
