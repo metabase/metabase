@@ -35,3 +35,6 @@ export function Default() {
 export function ColorHarmony() {
   return <ColorHarmonyDemo />;
 }
+// Interactive demo: HSL sliders + draggable hue ring make the rendered output
+// non-deterministic across snapshots, so skip Loki.
+ColorHarmony.parameters = { loki: { skip: true } };
