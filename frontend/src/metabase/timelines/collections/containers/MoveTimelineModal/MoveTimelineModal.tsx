@@ -2,9 +2,9 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { collectionApi } from "metabase/api";
+import { collectionApi, useGetCollectionQuery } from "metabase/api";
 import { useSetCollection } from "metabase/common/hooks";
-import { getTimelineName } from "metabase/common/utils/timelines";
+import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import { Timelines } from "metabase/entities/timelines";
 import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -31,11 +31,18 @@ const timelineProps = {
 function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
   const dispatch = useDispatch();
   const setCollection = useSetCollection();
+  const { data: sourceCollection } = useGetCollectionQuery({
+    id: props.timeline.collection_id ?? "root",
+  });
 
   const handleSubmit = useCallback(
     async (timeline: Timeline, collectionId: CollectionId) => {
+      const name =
+        timeline.default && sourceCollection
+          ? getDefaultTimelineName(sourceCollection)
+          : timeline.name;
       await setCollection(
-        { model: "timeline", id: timeline.id, name: getTimelineName(timeline) },
+        { model: "timeline", id: timeline.id, name },
         { id: collectionId },
       );
       const { data: collection } = await dispatch(
@@ -52,7 +59,7 @@ function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
         ),
       );
     },
-    [dispatch, setCollection],
+    [dispatch, setCollection, sourceCollection],
   );
 
   return <MoveTimelineModal {...props} onSubmit={handleSubmit} />;
