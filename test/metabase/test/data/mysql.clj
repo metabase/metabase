@@ -66,7 +66,7 @@
   [_ context {:keys [database-name]}]
   (merge
    {:host (tx/db-test-env-var-or-throw :mysql :host "localhost")
-    :port (tx/db-test-env-var-or-throw :mysql :port 3307) ; NOCOMMIT
+    :port (tx/db-test-env-var-or-throw :mysql :port 3306)
     :user (tx/db-test-env-var :mysql :user "root")
     ;; MySQL 8+ uses caching_sha2_password by default, which requires RSA key exchange
     ;; for password auth over non-SSL connections. Needed for workspace isolation tests
