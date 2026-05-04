@@ -23,7 +23,7 @@ The main factors to consider in this decision are:
 
 ### Platform support coverage change
 
-H2 runs on any JVM. Zonky's embedded Postgres ships per-platform native binaries, so support is tied to which classifiers we bundle. Source of truth for available classifiers: https://mvnrepository.com/artifact/io.zonky.test.postgres
+H2 runs on any JVM. Zonky's Embedded Postgres requires a binary specific to the running platform, so support is tied to which binaries we bundle (or fetch at runtime). Source of truth for available binaries: https://mvnrepository.com/artifact/io.zonky.test.postgres
 
 The "Embedded PG (recommended bundle)" column reflects the **minimum-viable 7-classifier bundle** described in the size analysis below. The "Embedded PG (full bundle)" column reflects bundling all 13 actively maintained classifiers.
 
