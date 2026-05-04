@@ -1482,7 +1482,6 @@
   {:team "DevEx"
    :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
@@ -2667,7 +2666,6 @@
            app-db
            audit-app
            classloader
-           config
            driver
            lib
            models
@@ -2986,7 +2984,8 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api}
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.init}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2997,6 +2996,7 @@
               models
               permissions
               premium-features
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}

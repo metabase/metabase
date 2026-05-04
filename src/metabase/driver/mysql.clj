@@ -210,10 +210,15 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
+(def ^:private disallowed-additional-opts #"(?:allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
+
 (defmethod driver/can-connect? :mysql
   [driver details]
   ;; delegate to parent method to check whether we can connect; if so, check if it's an unsupported version and issue
   ;; a warning if it is
+  (let [match (re-find disallowed-additional-opts (:additional-options details ""))]
+    (when match
+      (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
