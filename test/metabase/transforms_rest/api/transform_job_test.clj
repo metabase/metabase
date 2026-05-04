@@ -59,6 +59,7 @@
               (is (= (:id job) (:id response)))
               (is (= "Test Job" (:name response)))
               (is (= [(:id tag)] (:tag_ids response)))
+              (is (false? (:disabled response)))
               (is (nil? (:last_run response)))))
 
           (testing "Returns 404 for non-existent job"
@@ -172,6 +173,26 @@
                                                    {:schedule "invalid"})]
                 (is (string? response))
                 (is (re-find #"Invalid cron expression" response))))))))))
+
+(deftest update-job-disabled-test
+  (testing "PUT /api/transform-job/:id can toggle the disabled flag"
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/TransformJob job {:name "Toggle Me" :schedule "0 0 0 * * ?"}]
+          (testing "Defaults to false"
+            (is (false? (:disabled (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job)))))))
+          (testing "Can be set to true"
+            (let [response (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                                 {:disabled true})]
+              (is (true? (:disabled response))))
+            (is (true? (:disabled (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
+            (is (true? (t2/select-one-fn :disabled :model/TransformJob :id (:id job)))))
+          (testing "Can be set back to false"
+            (let [response (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                                 {:disabled false})]
+              (is (false? (:disabled response))))
+            (is (false? (:disabled (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
+            (is (false? (t2/select-one-fn :disabled :model/TransformJob :id (:id job))))))))))
 
 (deftest update-job-remove-tags-test
   (testing "PUT /api/transform-job/:id"

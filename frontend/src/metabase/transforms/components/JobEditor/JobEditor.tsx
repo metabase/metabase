@@ -8,7 +8,7 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { Stack } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
@@ -45,12 +45,24 @@ export function JobEditor({
     <PageContainer data-testid="transforms-job-editor" gap="2.5rem">
       <PaneHeader
         title={
-          <PaneHeaderInput
-            initialValue={job.name}
-            maxLength={NAME_MAX_LENGTH}
-            onChange={onNameChange}
-            readOnly={readOnly}
-          />
+          <Group align="center" gap="sm" wrap="nowrap">
+            <PaneHeaderInput
+              initialValue={job.name}
+              maxLength={NAME_MAX_LENGTH}
+              onChange={onNameChange}
+              readOnly={readOnly}
+            />
+            {job.disabled && (
+              <Text
+                bg="warning"
+                fz="sm"
+                lh="1rem"
+                bdrs="xs"
+                px="sm"
+                py="xs"
+              >{t`Disabled`}</Text>
+            )}
+          </Group>
         }
         py={0}
         breadcrumbs={

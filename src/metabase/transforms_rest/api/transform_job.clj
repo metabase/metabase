@@ -43,6 +43,7 @@
    [:description [:maybe [:or :string LocalizedString]]]
    [:schedule :string]
    [:ui_display_type [:enum :cron/raw :cron/builder]]
+   [:disabled :boolean]
    [:entity_id [:maybe :string]]
    [:created_at :any]
    [:updated_at :any]
@@ -127,14 +128,15 @@
                         [:job-id ms/PositiveInt]]
    _query-params
    {tag-ids :tag_ids
-    :keys [name description schedule ui_display_type]} :- [:map
-                                                           [:name {:optional true} ms/NonBlankString]
-                                                           [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                           [:schedule {:optional true} ms/NonBlankString]
-                                                           [:ui_display_type
-                                                            {:optional true}
-                                                            (ms/enum-decode-keyword ui-display-types)]
-                                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    :keys [name description schedule ui_display_type disabled]} :- [:map
+                                                                    [:name {:optional true} ms/NonBlankString]
+                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                                    [:schedule {:optional true} ms/NonBlankString]
+                                                                    [:ui_display_type
+                                                                     {:optional true}
+                                                                     (ms/enum-decode-keyword ui-display-types)]
+                                                                    [:disabled {:optional true} :boolean]
+                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
     ;; Check write permission on both current state and final state (with new tags if provided)
@@ -155,7 +157,8 @@
                                      :name name
                                      :description description
                                      :schedule schedule
-                                     :ui_display_type ui_display_type)]
+                                     :ui_display_type ui_display_type
+                                     :disabled disabled)]
       (t2/update! :model/TransformJob job-id updates))
     (when schedule
       (transforms.core/update-job! job-id schedule))

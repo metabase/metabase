@@ -2,6 +2,7 @@ import { type MouseEvent, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useUpdateTransformJobMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -17,10 +18,28 @@ type JobMoreMenuProps = {
 
 export function JobMoreMenu({ job }: JobMoreMenuProps) {
   const [modalType, setModalType] = useState<JobMoreMenuModalType>();
+  const [updateJob] = useUpdateTransformJobMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
+  const handleToggleDisabled = async () => {
+    const nextDisabled = !job.disabled;
+    const { error } = await updateJob({ id: job.id, disabled: nextDisabled });
+    if (error) {
+      sendErrorToast(
+        nextDisabled ? t`Failed to disable job` : t`Failed to enable job`,
+      );
+    } else {
+      sendSuccessToast(nextDisabled ? t`Job disabled` : t`Job enabled`);
+    }
+  };
 
   return (
     <>
-      <JobMenu onOpenModal={setModalType} />
+      <JobMenu
+        isDisabled={job.disabled}
+        onOpenModal={setModalType}
+        onToggleDisabled={handleToggleDisabled}
+      />
       {modalType != null && (
         <JobModal
           job={job}
@@ -33,10 +52,12 @@ export function JobMoreMenu({ job }: JobMoreMenuProps) {
 }
 
 type JobMenuProps = {
+  isDisabled: boolean;
   onOpenModal: (modalType: JobMoreMenuModalType) => void;
+  onToggleDisabled: () => void;
 };
 
-function JobMenu({ onOpenModal }: JobMenuProps) {
+function JobMenu({ isDisabled, onOpenModal, onToggleDisabled }: JobMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -50,6 +71,12 @@ function JobMenu({ onOpenModal }: JobMenuProps) {
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<Icon name={isDisabled ? "play" : "pause"} />}
+          onClick={onToggleDisabled}
+        >
+          {isDisabled ? t`Re-enable` : t`Disable`}
+        </Menu.Item>
         <Menu.Item
           leftSection={<Icon name="trash" />}
           onClick={() => onOpenModal("delete")}
