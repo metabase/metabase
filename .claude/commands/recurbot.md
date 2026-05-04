@@ -1,4 +1,6 @@
-Review this conversation and generate a structured improvement report. Save it to `.bot/SUGGESTIONS-<TIMESTAMP>.md` (where `<TIMESTAMP>` is `YYYYMMDD-HHMMSS` — construct it from the current date/time you already know).
+Review this conversation and generate a structured improvement report.
+
+Generate `TIMESTAMP` by running `./bin/mage -bot-timestamp` (do **NOT** use `date` directly), then set `OUTPUT_DIR=.bot/recurbot/<TIMESTAMP>` and save the report to `<OUTPUT_DIR>/SUGGESTIONS.md`. All artifacts for the run live directly under `<OUTPUT_DIR>/` so parallel `/recurbot` invocations in the same checkout never collide.
 
 ## What to analyze
 
@@ -34,7 +36,7 @@ Read back through the full conversation history from this session. Look at every
 
 ## Report format
 
-Write `.bot/SUGGESTIONS-<TIMESTAMP>.md` with this structure:
+Write `<OUTPUT_DIR>/SUGGESTIONS.md` with this structure:
 
 ```markdown
 # Session Improvement Report
