@@ -9,10 +9,12 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -97,6 +99,19 @@
              [:database {:optional true} [:maybe :int]]]]
   (run-streaming-query
    (-> query
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints)))
+
+(api.macros/defendpoint :post "/external"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
+  "Execute a query supplied in serialized (portable) form. The query body is deserialized via
+  [[serdes/import-mbql]] — database, table, and field references are resolved by name — and then
+  executed through the same pipeline as `POST /api/dataset/`."
+  [_route-params
+   _query-params
+   query :- ::lib.schema/external-query]
+  (run-streaming-query
+   (-> (serdes/import-mbql query)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)))
 
