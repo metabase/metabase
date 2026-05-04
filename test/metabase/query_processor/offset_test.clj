@@ -241,7 +241,7 @@
 
 (deftest ^:parallel offset-with-date-field-in-breakout-and-custom-expression
   (testing "A query with an offset and a date field in the breakout and a custom expression works (#65503)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
       (let [mp (mt/metadata-provider)
             orders (lib.metadata/table mp (mt/id :orders))
             created-at (lib.metadata/field mp (mt/id :orders :created_at))
@@ -250,12 +250,13 @@
                       (lib/expression "test" created-at)
                       (lib/breakout (lib/with-temporal-bucket created-at :year))
                       (lib/aggregate (lib/sum total))
-                      (lib/aggregate (lib/offset (lib/sum total) -1)))]
-        (is (= [["2016-01-01T00:00:00Z" 42156.94 nil]
-                ["2017-01-01T00:00:00Z" 205256.4 42156.94]
-                ["2018-01-01T00:00:00Z" 510043.47 205256.4]
-                ["2019-01-01T00:00:00Z" 577064.96 510043.47]
-                ["2020-01-01T00:00:00Z" 176095.93 577064.96]]
+                      (lib/aggregate (lib/offset (lib/sum total) -1))
+                      (assoc-in [:middleware :format-rows?] false))]
+        (is (= [[#t "2016-01-01" 42156.94 nil]
+                [#t "2017-01-01" 205256.4 42156.94]
+                [#t "2018-01-01" 510043.47 205256.4]
+                [#t "2019-01-01" 577064.96 510043.47]
+                [#t "2020-01-01" 176095.93 577064.96]]
                (->> query
                     (qp/process-query)
-                    (mt/formatted-rows [identity 2.0 2.0]))))))))
+                    (mt/formatted-rows [->local-date 2.0 2.0]))))))))
