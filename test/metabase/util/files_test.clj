@@ -6,7 +6,7 @@
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
-   (java.nio.file FileSystem Files)
+   (java.nio.file ClosedFileSystemException FileSystem Files)
    (java.util.zip ZipEntry ZipOutputStream)))
 
 (deftest is-regular-file-test
@@ -34,17 +34,16 @@
   (Files/readString (.getPath fs "/hello.txt" (u/varargs String))))
 
 (deftest nio-fs-bypasses-uri-cache-test
-  (testing "nio-fs can open multiple independent filesystems for the same zip simultaneously"
+  (testing "nio-fs returns independent filesystems for the same zip — closing one cannot kill another"
     (mt/with-temp-file [zip-path]
       (write-test-zip! zip-path)
-      ;; Two simultaneous with-open bindings — the URI-based FileSystems/newFileSystem overload would throw
-      ;; FileSystemAlreadyExistsException on the second open since the cache entry is still live. The Path-based
-      ;; overload returns independent instances that can both read the zip contents.
       (with-open [fs1 (u.files/nio-fs zip-path)
                   fs2 (u.files/nio-fs zip-path)]
+        ;; Both filesystems read the entry — distinguishes Path-based (works) from URI-based (would throw
+        ;; FileSystemAlreadyExistsException on the second open since the cache entry would still be live).
         (is (= "hi" (read-hello fs1)))
-        (is (= "hi" (read-hello fs2))))
-      ;; A follow-up open succeeds — closing the previous instances didn't leave the helper in a permanently closed
-      ;; state.
-      (with-open [fs (u.files/nio-fs zip-path)]
-        (is (= "hi" (read-hello fs)))))))
+        (is (= "hi" (read-hello fs2)))
+        ;; Closing fs1 must not affect fs2.
+        (.close fs1)
+        (is (thrown? ClosedFileSystemException (read-hello fs1)))
+        (is (= "hi" (read-hello fs2)))))))
