@@ -28,6 +28,7 @@ import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
 import { JobDisabledBadge } from "../../components/JobDisabledBadge";
+import { JobListMoreMenu } from "../../components/JobListMoreMenu";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 
 export const JobListPage = () => {
@@ -126,6 +127,7 @@ export const JobListPage = () => {
             component={ForwardRefLink}
             to={Urls.newTransformJob()}
           >{t`New`}</Button>
+          {jobs.length > 0 && <JobListMoreMenu jobs={jobs} />}
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>

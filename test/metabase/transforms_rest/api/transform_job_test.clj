@@ -194,6 +194,29 @@
             (is (false? (:disabled (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
             (is (false? (t2/select-one-fn :disabled :model/TransformJob :id (:id job))))))))))
 
+(deftest update-all-jobs-disabled-test
+  (testing "PUT /api/transform-job/disabled flips every job's disabled flag"
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/TransformJob job-1 {:name "Job 1" :schedule "0 0 0 * * ?"}
+                       :model/TransformJob job-2 {:name "Job 2" :schedule "0 0 0 * * ?" :disabled true}
+                       :model/TransformJob job-3 {:name "Job 3" :schedule "0 0 0 * * ?"}]
+          (let [job-ids [(:id job-1) (:id job-2) (:id job-3)]
+                disabled-by-id (fn [] (t2/select-fn->fn :id :disabled :model/TransformJob :id [:in job-ids]))]
+            (testing "Disables all jobs"
+              (let [response (mt/user-http-request :lucky :put 200 "transform-job/disabled" {:disabled true})]
+                (is (pos? (:updated response))))
+              (is (every? true? (vals (disabled-by-id)))))
+            (testing "Re-enables all jobs"
+              (let [response (mt/user-http-request :lucky :put 200 "transform-job/disabled" {:disabled false})]
+                (is (pos? (:updated response))))
+              (is (every? false? (vals (disabled-by-id)))))))))))
+
+(deftest update-all-jobs-disabled-permissions-test
+  (testing "PUT /api/transform-job/disabled requires data analyst"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/user-http-request :rasta :put 403 "transform-job/disabled" {:disabled true}))))
+
 (deftest update-job-remove-tags-test
   (testing "PUT /api/transform-job/:id"
     (mt/with-data-analyst-role! (mt/user->id :lucky)

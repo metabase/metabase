@@ -122,6 +122,16 @@
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
+(api.macros/defendpoint :put "/disabled" :- [:map {:closed true}
+                                             [:updated :int]]
+  "Enable or disable every transform job."
+  [_route-params
+   _query-params
+   {:keys [disabled]} :- [:map [:disabled :boolean]]]
+  (log/info "Setting disabled =" disabled "on all transform jobs")
+  (api/check-data-analyst)
+  {:updated (t2/update! :model/TransformJob {} {:disabled disabled})})
+
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."
   [{:keys [job-id]} :- [:map

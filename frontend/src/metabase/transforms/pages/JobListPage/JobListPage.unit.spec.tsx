@@ -87,6 +87,11 @@ async function findRow(jobId: number) {
 }
 
 describe("JobListPage", () => {
+  it("hides the bulk-action menu when there are no jobs", async () => {
+    await setup({ jobs: [] });
+    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+  });
+
   it("renders a Disabled badge only on disabled rows", async () => {
     await setup({
       jobs: [
