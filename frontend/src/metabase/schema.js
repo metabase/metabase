@@ -10,11 +10,8 @@ import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 export const ActionSchema = new schema.Entity("actions");
 export const QuestionSchema = new schema.Entity("questions");
 export const CacheConfigSchema = new schema.Entity("cacheConfigs");
-export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
-export const TransformSchema = new schema.Entity("transforms");
 export const DashboardSchema = new schema.Entity("dashboards");
-export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 export const GroupSchema = new schema.Entity("groups");
 
@@ -131,10 +128,8 @@ export const ENTITIES_SCHEMA_MAP = {
   actions: ActionSchema,
   questions: QuestionSchema,
   cacheConfigs: CacheConfigSchema,
-  indexedEntity: IndexedEntitySchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
-  pulses: PulseSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,
   measures: MeasureSchema,
