@@ -3,7 +3,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v61.2026-04-27T00:00:00
+      id: v62.2026-05-04T00:00:00
       author: galdre
       comment: Add admin_details column to metabase_database for separate admin (highest-privilege) connection credentials
       preConditions:
