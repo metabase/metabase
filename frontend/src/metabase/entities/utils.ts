@@ -28,10 +28,6 @@ export const entityTypeForModel = (model: string): string => {
   if (model === "card" || model === "dataset" || model === "metric") {
     return "questions";
   }
-  if (model === "indexed-entity") {
-    // handle non-standard plural 🙃
-    return "indexedEntities";
-  }
   return `${model}s`;
 };
 
