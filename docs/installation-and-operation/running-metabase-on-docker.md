@@ -337,13 +337,13 @@ secrets:
 
 We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
-- `MB_DB_USER`
-- `MB_DB_PASS`
-- `MB_DB_CONNECTION_URI`
-- `MB_EMAIL_SMTP_PASSWORD`
-- `MB_EMAIL_SMTP_USERNAME`
-- `MB_LDAP_PASSWORD`
-- `MB_LDAP_BIND_DN`
+- [`MB_DB_USER`](../configuring-metabase/environment-variables.md#mb_db_user)
+- [`MB_DB_PASS`](../configuring-metabase/environment-variables.md#mb_db_pass)
+- [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md#mb_db_connection_uri)
+- [`MB_EMAIL_SMTP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_email_smtp_password)
+- [`MB_EMAIL_SMTP_USERNAME`](../configuring-metabase/environment-variables.md#mb_email_smtp_username)
+- [`MB_LDAP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_ldap_password)
+- [`MB_LDAP_BIND_DN`](../configuring-metabase/environment-variables.md#mb_ldap_bind_dn)
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 
