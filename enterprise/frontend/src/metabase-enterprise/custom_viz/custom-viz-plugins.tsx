@@ -9,6 +9,7 @@ import type {
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -418,7 +419,7 @@ function createCustomVizWrapper(
     const containerRef = useRef<HTMLDivElement | null>(null);
     const handleRef = useRef<GenericVizMountHandle | null>(null);
 
-    const pluginProps = {
+    const pluginProps: GenericVizPluginProps = {
       ...rest,
       colorScheme: resolvedColorScheme,
       onClick: onVisualizationClick as unknown as (
@@ -427,7 +428,7 @@ function createCustomVizWrapper(
       onHover: onHoverChange as unknown as (
         hoverObject?: CustomVizHoverObject | null,
       ) => void,
-    } satisfies GenericVizPluginProps;
+    };
 
     const prevPropsRef = useRef(pluginProps);
 
@@ -449,16 +450,10 @@ function createCustomVizWrapper(
       }
     });
 
-    // Unmount on teardown only. The cleanup reads refs (which are stable),
-    // so an empty dep array is genuine — no exhaustive-deps suppression
-    // needed.
-    useEffect(
-      () => () => {
-        handleRef.current?.unmount();
-        handleRef.current = null;
-      },
-      [],
-    );
+    useUnmount(() => {
+      handleRef.current?.unmount();
+      handleRef.current = null;
+    });
 
     return (
       <div
