@@ -32,6 +32,7 @@ import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { trackCustomVizSelected } from "./analytics";
@@ -396,11 +397,7 @@ type GenericVizMountHandle =
   CustomVisualizationMountHandle<GenericVizPluginProps>;
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { mount?: unknown }).mount === "function"
-  );
+  return isObject(value) && typeof value.mount === "function";
 }
 
 type CustomVizWrapperProps = Omit<VisualizationProps, "width" | "height"> & {
