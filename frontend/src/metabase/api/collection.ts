@@ -1,5 +1,8 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { ObjectUnionSchema } from "metabase/schema";
+import {
+  CollectionSchema,
+  ObjectUnionSchema,
+  SnippetCollectionSchema,
+} from "metabase/schema";
 import type {
   Collection,
   CreateCollectionRequest,
@@ -25,7 +28,23 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+
+const flattenCollectionTree = (tree: Collection[]): Collection[] =>
+  tree.flatMap((collection) => [
+    collection,
+    ...flattenCollectionTree(collection.children ?? []),
+  ]);
+
+// Snippet collections live in their own entity slice (`snippetCollections`),
+// so hydrating them through `CollectionSchema` would clobber regular
+// collections. Hydrate through the matching schema instead.
+const collectionSchemaForRequest = (
+  request: { namespace?: string | null } | void,
+) =>
+  request?.namespace === "snippets"
+    ? SnippetCollectionSchema
+    : CollectionSchema;
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -42,6 +61,11 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
+        onQueryStarted: (request, lifecycle) =>
+          hydrateLegacyEntities([collectionSchemaForRequest(request)])(
+            request,
+            lifecycle,
+          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -57,6 +81,11 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
+      onQueryStarted: (request, lifecycle) =>
+        hydrateLegacyEntities<Collection[]>(
+          [collectionSchemaForRequest(request)],
+          flattenCollectionTree,
+        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -71,15 +100,10 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
-      // Hydrate the legacy entity store so legacy entity actions (e.g.
-      // Dashboards.actions.setCollection) can read the original object to
-      // build their undo payloads.
-      //
-      // TODO: Remove once entity actions are migrated.
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (response) =>
-          dispatch(updateMetadata(response.data, [ObjectUnionSchema])),
-        ),
+      onQueryStarted: hydrateLegacyEntities<ListCollectionItemsResponse>(
+        [ObjectUnionSchema],
+        (response) => response.data,
+      ),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -92,6 +116,11 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
+      onQueryStarted: (request, lifecycle) =>
+        hydrateLegacyEntities(collectionSchemaForRequest(request))(
+          request,
+          lifecycle,
+        ),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
