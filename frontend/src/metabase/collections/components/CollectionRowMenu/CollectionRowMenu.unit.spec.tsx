@@ -28,10 +28,14 @@ const setup = ({
     settings: mockSettings({
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,
-      "token-features": createMockTokenFeatures({ remote_sync: true }),
+      "token-features": createMockTokenFeatures({
+        library: true,
+        remote_sync: true,
+      }),
     }),
     currentUser: createMockUser({ is_superuser: isAdmin }),
   });
+  setupEnterpriseOnlyPlugin("library");
   setupEnterpriseOnlyPlugin("remote_sync");
 
   return renderWithProviders(

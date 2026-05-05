@@ -80,10 +80,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
       void dispatch(
         addUndo({
           message: t`"${collection.name}" has been archived`,
-          action: async () => {
-            await updateCollection({ id: collection.id, archived: false });
-            invalidateTags();
-          },
+          icon: "check_filled",
         }),
       );
       invalidateTags();

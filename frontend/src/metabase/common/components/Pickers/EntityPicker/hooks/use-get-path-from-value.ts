@@ -511,7 +511,7 @@ async function getCollectionPathFromValue({
 
         const syntheticItem =
           PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem({
-            collectionId: collection.id,
+            collectionId: libraryCollection.id,
             type: collection.type,
           });
 
