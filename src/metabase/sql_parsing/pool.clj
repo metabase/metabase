@@ -18,8 +18,10 @@
     Pools)
    (java.io Closeable File)
    (java.net URI)
-   (java.nio.file AccessMode DirectoryStream$Filter Files FileSystems Path)
+   (java.nio.channels SeekableByteChannel)
+   (java.nio.file AccessMode DirectoryStream DirectoryStream$Filter Files FileSystems Path)
    (java.time Duration)
+   (java.util Map Set)
    (java.util.concurrent TimeUnit TimeoutException)
    (org.graalvm.polyglot Context HostAccess)
    (org.graalvm.polyglot.io FileSystem IOAccess)))
@@ -136,27 +138,26 @@
         (.getPath provider uri))
       (^Path parsePath [_ ^String s]
         (.getPath nio-fs s (into-array String [])))
-      (checkAccess [_ p modes opts]
-        (if (.isEmpty ^java.util.Set modes)
-          (when-not (Files/exists ^Path p ^"[Ljava.nio.file.LinkOption;" opts)
+      (^void checkAccess [_ ^Path p ^Set modes ^"[Ljava.nio.file.LinkOption;" opts]
+        (if (.isEmpty modes)
+          (when-not (Files/exists p opts)
             (throw (java.nio.file.NoSuchFileException. (str p))))
           (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes))))
-      (createDirectory [_ p attrs]
-        (Files/createDirectory ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
-      (delete [_ p]
-        (Files/delete ^Path p))
-      (newByteChannel [_ p opts attrs]
-        (Files/newByteChannel ^Path p
-                              ^java.util.Set opts
-                              ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
-      (newDirectoryStream [_ dir filter]
-        (Files/newDirectoryStream ^Path dir ^DirectoryStream$Filter filter))
-      (toAbsolutePath [_ p]
-        (.toAbsolutePath ^Path p))
-      (toRealPath [_ p opts]
-        (.toRealPath ^Path p ^"[Ljava.nio.file.LinkOption;" opts))
-      (readAttributes [_ p attrs opts]
-        (Files/readAttributes ^Path p ^String attrs ^"[Ljava.nio.file.LinkOption;" opts)))))
+      (^void createDirectory [_ ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
+        (Files/createDirectory p attrs))
+      (^void delete [_ ^Path p]
+        (Files/delete p))
+      (^SeekableByteChannel newByteChannel
+        [_ ^Path p ^Set opts ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
+        (Files/newByteChannel p opts attrs))
+      (^DirectoryStream newDirectoryStream [_ ^Path dir ^DirectoryStream$Filter filter]
+        (Files/newDirectoryStream dir filter))
+      (^Path toAbsolutePath [_ ^Path p]
+        (.toAbsolutePath p))
+      (^Path toRealPath [_ ^Path p ^"[Ljava.nio.file.LinkOption;" opts]
+        (.toRealPath p opts))
+      (^Map readAttributes [_ ^Path p ^String attrs ^"[Ljava.nio.file.LinkOption;" opts]
+        (Files/readAttributes p attrs opts)))))
 
 (defn- read-only-polyglot-fs
   "Wrap an NIO `java.nio.file.FileSystem` as a read-only polyglot FileSystem suitable for GraalPy."
