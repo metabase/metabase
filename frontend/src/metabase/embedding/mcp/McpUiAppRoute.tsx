@@ -1,10 +1,11 @@
 import { type CSSProperties, useEffect, useMemo } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
+import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import { McpQueryBar } from "./McpQueryBar";
@@ -27,9 +28,9 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, hostContext, app } = useMcpApp();
+  const { query, hostContext, app, isClaude } = useMcpApp();
 
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
+  const handleDrillThrough = useHandleMcpDrillThrough(app, { isClaude });
 
   const { instanceUrl = "", sessionToken = "" } =
     (window.metabaseConfig as {
@@ -118,7 +119,10 @@ export function McpUiAppRoute() {
           gap="sm"
         >
           <Box px="lg" style={{ flexShrink: 0 }}>
-            <McpQuestionTitle />
+            <Stack align="flex-start" gap="xs">
+              <SdkInternalNavigationBackButton />
+              <McpQuestionTitle />
+            </Stack>
           </Box>
 
           <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
