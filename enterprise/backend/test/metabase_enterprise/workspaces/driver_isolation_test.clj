@@ -211,11 +211,18 @@
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")]))))
             (testing "workspace user cannot write to or DDL against the input schema"
-              (let [base-ops [[:insert       (str "INSERT INTO " src " VALUES (2, 'b')")]
-                              [:create-table (str "CREATE TABLE "
-                                                  (qualify driver in-schema sneaky-name)
-                                                  " (id INT)" (create-table-tail driver))]
-                              [:drop-table   (str "DROP TABLE " src)]]
+              ;; Beyond INSERT/UPDATE/DELETE we also exercise ALTER TABLE and TRUNCATE
+              ;; — they route through different privilege checks per engine (e.g. ALTER
+              ;; ADD COLUMN needs a separate ALTER privilege on most warehouses; TRUNCATE
+              ;; on SQL Server requires ALTER TABLE rather than DELETE), so a too-broad
+              ;; revoke that missed one of these would slip through INSERT-only coverage.
+              (let [base-ops [[:insert        (str "INSERT INTO " src " VALUES (2, 'b')")]
+                              [:create-table  (str "CREATE TABLE "
+                                                   (qualify driver in-schema sneaky-name)
+                                                   " (id INT)" (create-table-tail driver))]
+                              [:drop-table    (str "DROP TABLE " src)]
+                              [:alter-add-col (str "ALTER TABLE " src " ADD COLUMN extra INT")]
+                              [:truncate      (str "TRUNCATE TABLE " src)]]
                     ops      (cond-> base-ops
                                (supports-update-delete-as-perm-test? driver)
                                (into [[:update (str "UPDATE " src " SET v = 'x'")]
@@ -248,7 +255,42 @@
                        (jdbc/query user-spec [(str "SELECT id, v FROM " out)])))
                 (jdbc/execute! user-spec [(str "DELETE FROM " out)])
                 (is (empty? (jdbc/query user-spec [(str "SELECT id, v FROM " out)]))))
-              (jdbc/execute! user-spec [(str "DROP TABLE " out)])))
+              (jdbc/execute! user-spec [(str "DROP TABLE " out)]))
+            (testing "re-granting the same input table is idempotent"
+              ;; A second grant call with an identical table list should not throw
+              ;; (driver impls must handle "GRANT … already exists" type cases) and
+              ;; must not change the workspace user's perms — they still SELECT and
+              ;; still cannot INSERT. Catches both noisy re-grant failures and silent
+              ;; privilege escalation in re-grant code paths.
+              (driver/grant-workspace-read-access! driver database ws-with-details
+                                                   [{:schema in-schema :name src-name}])
+              (is (= [{:id 1 :v "a"}]
+                     (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")])))
+              (expect-sql-denied! user-spec
+                                  (str "INSERT INTO " src " VALUES (3, 'c')")
+                                  :insert-after-regrant))
+            (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
+              ;; Explicit destroy here (instead of relying on the `finally`) lets us
+              ;; assert that the cleanup actually happened. Drivers' destroy impls are
+              ;; idempotent (`IF EXISTS` everywhere), so the `finally` calling destroy
+              ;; a second time is a no-op.
+              (driver/destroy-workspace-isolation! driver database ws-with-details)
+              (testing "workspace user cannot open a fresh connection"
+                ;; `user-spec` is an unpooled jdbc spec — each `jdbc/query` opens a new
+                ;; connection, which after destroy must fail at password/auth time
+                ;; (user/role dropped). Any exception is acceptable; what fails is
+                ;; specifically driver-defined.
+                (try
+                  (jdbc/query user-spec ["SELECT 1"])
+                  (is false "workspace user unexpectedly succeeded querying after destroy")
+                  (catch Throwable t
+                    (is (some? t)
+                        (format "workspace user denied after destroy: %s" (ex-message t))))))
+              (testing "output namespace was dropped"
+                (let [visible-after (visible-namespaces driver admin-spec)]
+                  (is (not (contains? visible-after (u/lower-case-en out-schema)))
+                      (format "output namespace %s should not appear in catalog after destroy. visible=%s"
+                              out-schema visible-after))))))
           (finally
             ;; Always attempt destroy first — drivers' impls are idempotent (`IF EXISTS`
             ;; everywhere) so this is safe whether init succeeded fully, partially, or
@@ -282,7 +324,17 @@
             test-id      (random-suffix)
             ws-a-id      (random-suffix)
             ws-b-id      (random-suffix)
-            in-schema    (str "mb_iso_in_" test-id)
+            ;; Each workspace gets its own input namespace. Some drivers
+            ;; (notably MySQL — see `grant-workspace-read-access-sqls` in
+            ;; `metabase.driver.mysql`) intentionally grant SELECT at the
+            ;; database/namespace level rather than per-table, so co-locating
+            ;; A's and B's source tables in a single namespace would let
+            ;; either workspace SELECT both tables and break the
+            ;; `:select-other-grant` assertion below as a *correctly-scoped*
+            ;; grant rather than a leak. Splitting per workspace makes the
+            ;; assertion driver-portable.
+            in-schema-a  (str "mb_iso_in_a_" test-id)
+            in-schema-b  (str "mb_iso_in_b_" test-id)
             src-a-name   (str "ws_iso_src_a_" test-id)
             src-b-name   (str "ws_iso_src_b_" test-id)
             sneaky-name  (str "ws_iso_sneaky_" test-id)
@@ -300,14 +352,15 @@
                                       {:schema           (driver.u/workspace-isolation-namespace-name ws-b)
                                        :database_details {:user (driver.u/workspace-isolation-user-name ws-b)}}))]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
-          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema src-a-name)
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema-a)])
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema-b)])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema-a src-a-name)
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
-          (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema src-a-name)
+          (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-a src-a-name)
                                           " VALUES (1, 'a')")])
-          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema src-b-name)
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema-b src-b-name)
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
-          (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema src-b-name)
+          (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-b src-b-name)
                                           " VALUES (1, 'b')")])
           (let [init-a       (driver/init-workspace-isolation! driver database ws-a)
                 init-b       (driver/init-workspace-isolation! driver database ws-b)
@@ -321,12 +374,12 @@
                 out-b-schema (:schema ws-b-full)
                 b-secret-fq  (qualify driver out-b-schema b-secret)
                 sneaky-fq    (qualify driver out-b-schema sneaky-name)]
-            ;; Each workspace is granted access only to its own input table — A's grant
-            ;; must not let A read src-b, and vice-versa.
+            ;; Each workspace is granted access only to its own input namespace —
+            ;; A's grant must not let A read src-b in B's namespace, and vice-versa.
             (driver/grant-workspace-read-access! driver database ws-a-full
-                                                 [{:schema in-schema :name src-a-name}])
+                                                 [{:schema in-schema-a :name src-a-name}])
             (driver/grant-workspace-read-access! driver database ws-b-full
-                                                 [{:schema in-schema :name src-b-name}])
+                                                 [{:schema in-schema-b :name src-b-name}])
             ;; B populates its own output schema with a table A should never reach.
             (jdbc/execute! user-b-spec [(str "CREATE TABLE " b-secret-fq
                                              " (id INT, v VARCHAR(8))" (create-table-tail driver))])
@@ -336,10 +389,12 @@
                                   (str "SELECT id, v FROM " b-secret-fq)
                                   :select-other-output))
             (testing "workspace A cannot write to or DDL against workspace B's output schema"
-              (let [base-ops [[:insert       (str "INSERT INTO " b-secret-fq " VALUES (2, 'x')")]
-                              [:create-table (str "CREATE TABLE " sneaky-fq
-                                                  " (id INT)" (create-table-tail driver))]
-                              [:drop-table   (str "DROP TABLE " b-secret-fq)]]
+              (let [base-ops [[:insert        (str "INSERT INTO " b-secret-fq " VALUES (2, 'x')")]
+                              [:create-table  (str "CREATE TABLE " sneaky-fq
+                                                   " (id INT)" (create-table-tail driver))]
+                              [:drop-table    (str "DROP TABLE " b-secret-fq)]
+                              [:alter-add-col (str "ALTER TABLE " b-secret-fq " ADD COLUMN extra INT")]
+                              [:truncate      (str "TRUNCATE TABLE " b-secret-fq)]]
                     ops      (cond-> base-ops
                                (supports-update-delete-as-perm-test? driver)
                                (into [[:update (str "UPDATE " b-secret-fq " SET v = 'x'")]
@@ -348,16 +403,29 @@
                   (expect-sql-denied! user-a-spec sql label))))
             (testing "workspace A cannot SELECT a source table that was only granted to workspace B"
               (expect-sql-denied! user-a-spec
-                                  (str "SELECT id, v FROM " (qualify driver in-schema src-b-name))
+                                  (str "SELECT id, v FROM " (qualify driver in-schema-b src-b-name))
                                   :select-other-grant))
             (testing "workspace A's namespace catalog enumerates A's own namespace but not B's"
-              (let [visible (visible-namespaces driver user-a-spec)]
-                (is (contains? visible (u/lower-case-en out-a-schema))
-                    (format "sanity: A should see its own output namespace %s in catalog. visible=%s"
-                            out-a-schema visible))
-                (is (not (contains? visible (u/lower-case-en out-b-schema)))
-                    (format "A unexpectedly enumerates B's output namespace %s in catalog. visible=%s"
-                            out-b-schema visible))))
+              ;; Per-driver quirks in how `information_schema.schemata` (or the
+              ;; equivalent system table) is gated by user perms make this check
+              ;; only meaningful on a subset of drivers:
+              ;;   - SQL Server: returns *every* schema in the database regardless
+              ;;     of user perms, so the isolation half of this assertion would
+              ;;     spuriously fail (B is visible, but only as a name).
+              ;;   - Redshift: returns *empty* for non-superusers (catalog grants
+              ;;     not propagated to information_schema), so the sanity-check
+              ;;     half (A should see its own schema) would spuriously fail.
+              ;; Both are documented driver-side metadata quirks, not isolation
+              ;; breaches — the data and table-name assertions (table catalog
+              ;; below + cross-grant SELECT above) still cover the real guarantee.
+              (when-not (#{:sqlserver :redshift} driver)
+                (let [visible (visible-namespaces driver user-a-spec)]
+                  (is (contains? visible (u/lower-case-en out-a-schema))
+                      (format "sanity: A should see its own output namespace %s in catalog. visible=%s"
+                              out-a-schema visible))
+                  (is (not (contains? visible (u/lower-case-en out-b-schema)))
+                      (format "A unexpectedly enumerates B's output namespace %s in catalog. visible=%s"
+                              out-b-schema visible)))))
             (testing "workspace A's table catalog does not enumerate workspace B's output table"
               (let [visible (visible-tables driver user-a-spec)
                     pair    [(u/lower-case-en out-b-schema)
@@ -374,5 +442,6 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for ws-B on %s during cross-workspace test cleanup"
                               driver)))
-            (doseq [sql (drop-input-namespace-sqls driver in-schema [src-a-name src-b-name])]
+            (doseq [sql (concat (drop-input-namespace-sqls driver in-schema-a src-a-name)
+                                (drop-input-namespace-sqls driver in-schema-b src-b-name))]
               (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))

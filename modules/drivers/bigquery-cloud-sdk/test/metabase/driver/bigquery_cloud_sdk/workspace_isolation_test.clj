@@ -204,18 +204,60 @@
                                  (.iterateAll ^TableResult result))]
                 (is (= [{:id 1 :v "a"}] rows))))
             (testing "workspace SA cannot write to or DDL against the input dataset"
-              (doseq [[label sql] [[:insert       (format "INSERT INTO %s (id, v) VALUES (2, 'b')" (qual in-dataset src-name))]
-                                   [:update       (format "UPDATE %s SET v = 'x' WHERE id = 1" (qual in-dataset src-name))]
-                                   [:delete       (format "DELETE FROM %s WHERE id = 1" (qual in-dataset src-name))]
-                                   [:create-table (format "CREATE TABLE %s (id INT64)" (qual in-dataset sneaky-name))]
-                                   [:drop-table   (format "DROP TABLE %s" (qual in-dataset src-name))]]]
+              ;; Beyond INSERT/UPDATE/DELETE we exercise ALTER TABLE and TRUNCATE
+              ;; — BigQuery routes these through different IAM-permission checks
+              ;; than DML, so a missed permission would slip through INSERT-only
+              ;; coverage. Every assertion expects a 403 from the workspace SA.
+              (doseq [[label sql] [[:insert        (format "INSERT INTO %s (id, v) VALUES (2, 'b')" (qual in-dataset src-name))]
+                                   [:update        (format "UPDATE %s SET v = 'x' WHERE id = 1" (qual in-dataset src-name))]
+                                   [:delete        (format "DELETE FROM %s WHERE id = 1" (qual in-dataset src-name))]
+                                   [:create-table  (format "CREATE TABLE %s (id INT64)" (qual in-dataset sneaky-name))]
+                                   [:drop-table    (format "DROP TABLE %s" (qual in-dataset src-name))]
+                                   [:alter-add-col (format "ALTER TABLE %s ADD COLUMN extra INT64" (qual in-dataset src-name))]
+                                   [:truncate      (format "TRUNCATE TABLE %s" (qual in-dataset src-name))]]]
                 (expect-bq-write-denied! user-client sql label)))
             (testing "workspace SA has full read+write access to its own output dataset"
               (run-sql user-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-dataset out-name)))
               (run-sql user-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual out-dataset out-name)))
               (run-sql user-client (format "UPDATE %s SET v = 'b' WHERE id = 1" (qual out-dataset out-name)))
               (run-sql user-client (format "DELETE FROM %s WHERE id = 1" (qual out-dataset out-name)))
-              (run-sql user-client (format "DROP TABLE %s" (qual out-dataset out-name)))))
+              (run-sql user-client (format "DROP TABLE %s" (qual out-dataset out-name))))
+            (testing "re-granting the same input table is idempotent"
+              ;; Second grant call with an identical table list must not throw and
+              ;; must not change the workspace SA's perms — still SELECT, still no
+              ;; INSERT. Catches both noisy re-grant failures and silent IAM-binding
+              ;; escalation.
+              (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
+                                                   [{:schema in-dataset :name src-name}])
+              (let [result (run-sql user-client (format "SELECT id FROM %s" (qual in-dataset src-name)))
+                    rows   (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
+                                 (.iterateAll ^TableResult result))]
+                (is (= [{:id 1}] rows)))
+              (expect-bq-write-denied! user-client
+                                       (format "INSERT INTO %s (id, v) VALUES (3, 'c')" (qual in-dataset src-name))
+                                       :insert-after-regrant))
+            (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
+              ;; Explicit destroy here (instead of relying on the `finally`) lets us
+              ;; assert the cleanup actually happened. destroy is idempotent so
+              ;; finally re-calling it is a no-op.
+              (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
+              (testing "workspace SA is deleted from IAM"
+                ;; Asking IAM directly is more reliable than querying through the
+                ;; impersonated client, because `ImpersonatedCredentials` caches
+                ;; the access token for up to an hour and may keep working past
+                ;; SA deletion until the cached token expires.
+                (let [sa-name (format "projects/%s/serviceAccounts/%s" project-id ws-sa-email)]
+                  (try
+                    (.getServiceAccount iam-client sa-name)
+                    (is false (format "workspace SA %s should be deleted after destroy" ws-sa-email))
+                    (catch Throwable t
+                      (is (some? t)
+                          (format "workspace SA correctly absent after destroy: %s" (ex-message t)))))))
+              (testing "workspace output dataset is dropped"
+                (let [ds-id (DatasetId/of project-id out-dataset)
+                      ds   (.getDataset admin-client ds-id (u/varargs BigQuery$DatasetOption []))]
+                  (is (nil? ds)
+                      (format "output dataset %s should be removed after destroy" out-dataset))))))
           (finally
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
@@ -309,11 +351,13 @@
                                  (format "SELECT id, v FROM %s" (qual out-b-ds b-secret))
                                  :select-other-output))
             (testing "workspace A's SA cannot write to or DDL against workspace B's output dataset"
-              (doseq [[label sql] [[:insert       (format "INSERT INTO %s (id, v) VALUES (2, 'x')" (qual out-b-ds b-secret))]
-                                   [:update       (format "UPDATE %s SET v = 'x' WHERE id = 1" (qual out-b-ds b-secret))]
-                                   [:delete       (format "DELETE FROM %s WHERE id = 1" (qual out-b-ds b-secret))]
-                                   [:create-table (format "CREATE TABLE %s (id INT64)" (qual out-b-ds sneaky-name))]
-                                   [:drop-table   (format "DROP TABLE %s" (qual out-b-ds b-secret))]]]
+              (doseq [[label sql] [[:insert        (format "INSERT INTO %s (id, v) VALUES (2, 'x')" (qual out-b-ds b-secret))]
+                                   [:update        (format "UPDATE %s SET v = 'x' WHERE id = 1" (qual out-b-ds b-secret))]
+                                   [:delete        (format "DELETE FROM %s WHERE id = 1" (qual out-b-ds b-secret))]
+                                   [:create-table  (format "CREATE TABLE %s (id INT64)" (qual out-b-ds sneaky-name))]
+                                   [:drop-table    (format "DROP TABLE %s" (qual out-b-ds b-secret))]
+                                   [:alter-add-col (format "ALTER TABLE %s ADD COLUMN extra INT64" (qual out-b-ds b-secret))]
+                                   [:truncate      (format "TRUNCATE TABLE %s" (qual out-b-ds b-secret))]]]
                 (expect-bq-denied! a-client sql label)))
             (testing "workspace A's SA cannot SELECT a source table that was only granted to workspace B"
               (expect-bq-denied! a-client
