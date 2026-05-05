@@ -326,6 +326,17 @@ export const getRoutes = (store) => {
           <Route path="explorations">
             <IndexRoute component={NewExplorationPage} />
             <Route path=":id" component={ExplorationPage} />
+            <Route path=":id/:entityType/:entityId" component={ExplorationPage}>
+              <ModalRoute
+                path="comments/:childTargetId"
+                modal={CommentsSidesheet}
+                noWrap
+                modalProps={{
+                  enableTransition: false,
+                  closeOnClickOutside: false,
+                }}
+              />
+            </Route>
           </Route>
 
           <Route path="table">

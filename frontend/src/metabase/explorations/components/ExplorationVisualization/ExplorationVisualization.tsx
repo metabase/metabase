@@ -13,6 +13,7 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   ExplorationQuery,
+  ExplorationThread,
   Timeline,
   TimelineEvent,
   TimelineId,
@@ -24,6 +25,7 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
 
 interface ExplorationVisualizationProps {
   explorationQuery: ExplorationQuery;
+  explorationThread: ExplorationThread;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -63,6 +65,7 @@ function ExplorationVisualizationBody(props: ExplorationVisualizationProps) {
 
 function ExplorationVisualizationChart({
   explorationQuery,
+  explorationThread,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
@@ -115,10 +118,12 @@ function ExplorationVisualizationChart({
     <>
       <ExplorationVisualizationHeader
         explorationQuery={explorationQuery}
+        explorationThread={explorationThread}
         availableTimelines={availableTimelines}
         selectedTimelineId={selectedTimelineId}
         onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
+        showDocumentMenu
       />
       <Visualization
         rawSeries={series}

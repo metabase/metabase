@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { push } from "react-router-redux";
 
 import {
   skipToken,
@@ -6,7 +7,8 @@ import {
   useListTimelinesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Group } from "metabase/ui";
+import { useDispatch } from "metabase/redux";
+import { Box, Group } from "metabase/ui";
 import type {
   DocumentId,
   Exploration,
@@ -31,7 +33,8 @@ import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../utils";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 interface ExplorationPageProps {
-  params: { id: string };
+  params: { id: string; entityType?: "query" | "document"; entityId?: string };
+  children?: React.ReactNode;
 }
 
 function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
@@ -55,45 +58,39 @@ interface SelectedDocumentId {
 
 export type SelectedEntityId = SelectedQueryId | SelectedDocumentId;
 
-// todo delete me
-const DEFAULT_DOCUMENT = {
-  type: "document",
-  id: 1,
-  exploration_thread_id: 1,
-  name: "Findings",
-};
+export function ExplorationPage({ params, children }: ExplorationPageProps) {
+  const selectedEntityId: SelectedEntityId | null = useMemo(() => {
+    if (params.entityType && params.entityId) {
+      return { type: params.entityType, id: Number(params.entityId) };
+    }
+    return null;
+  }, [params.entityType, params.entityId]);
 
-export function ExplorationPage({ params }: ExplorationPageProps) {
+  const dispatch = useDispatch();
+
+  const setSelectedEntityId = useCallback(
+    (entityId: SelectedEntityId) => {
+      dispatch(
+        push(`/explorations/${params.id}/${entityId.type}/${entityId.id}`),
+      );
+    },
+    [dispatch, params.id],
+  );
+
   // Poll the exploration while any query is still in a non-terminal state.
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
-  const [selectedEntityId, setSelectedEntityId] =
-    useState<SelectedEntityId | null>(null);
   const [selectedTimelineIdByThreadId, setSelectedTimelineIdByThreadId] =
     useState<Record<ExplorationThreadId, TimelineId | null>>({});
 
   const {
-    data: _exploration,
+    data: exploration,
     isLoading,
     error,
   } = useGetExplorationQuery(Number(params.id), {
     pollingInterval: shouldPoll ? QUERY_POLL_INTERVAL_MS : 0,
   });
-
-  // todo delete me
-  const exploration: Exploration | undefined = useMemo(() => {
-    if (!_exploration) {
-      return undefined;
-    }
-    return {
-      ..._exploration,
-      threads: _exploration?.threads?.map((thread) => ({
-        ...thread,
-        documents: [...(thread.documents ?? []), DEFAULT_DOCUMENT],
-      })),
-    };
-  }, [_exploration]);
 
   useEffect(() => {
     setShouldPoll(hasUnsettledQueries(exploration));
@@ -148,7 +145,7 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
         id: threadsWithSortedQueries[0].queries[0].id,
       });
     }
-  }, [threadsWithSortedQueries, selectedEntityId]);
+  }, [threadsWithSortedQueries, selectedEntityId, setSelectedEntityId]);
 
   const queryIdToQueryAndThread: Map<
     ExplorationQueryId,
@@ -284,9 +281,10 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
         setSelectedEntityId={setSelectedEntityId}
         threadsWithSortedQueries={threadsWithSortedQueries}
       />
-      {selectedQuery && (
+      {selectedThread && selectedQuery && (
         <ExplorationVisualization
           explorationQuery={selectedQuery}
+          explorationThread={selectedThread}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}
@@ -296,6 +294,7 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
       {selectedDocument && (
         <ExplorationDocumentComponent document={selectedDocument} />
       )}
+      <Box bg="background-primary">{children}</Box>
     </Group>
   );
 }

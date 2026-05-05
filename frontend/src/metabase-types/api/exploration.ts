@@ -108,6 +108,10 @@ export interface ExplorationDocument {
   id: DocumentId;
   exploration_thread_id: ExplorationThreadId;
   name: string;
+  creator_id: UserId;
+  content_type: string;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export type ExplorationQueryGroupId = string;

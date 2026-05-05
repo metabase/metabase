@@ -1,9 +1,12 @@
 import type {
   CreateExplorationRequest,
   Dataset,
+  DocumentId,
   Exploration,
+  ExplorationDocument,
   ExplorationId,
   ExplorationQueryId,
+  ExplorationThreadId,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
 } from "metabase-types/api";
@@ -52,6 +55,25 @@ export const explorationApi = Api.injectEndpoints({
       // inside one session is instant (no skeleton flash on re-select).
       keepUnusedDataFor: 30 * 60,
     }),
+    appendChartToDocument: builder.mutation<
+      ExplorationDocument,
+      {
+        threadId: ExplorationThreadId;
+        documentId: DocumentId;
+        exploration_query_id: ExplorationQueryId;
+      }
+    >({
+      query: ({ threadId, documentId, ...body }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/documents/${documentId}/append`,
+        body,
+      }),
+      invalidatesTags: (result, error) =>
+        invalidateTags(error, [
+          ...(result ? [idTag("document", result.id)] : []),
+          listTag("revision"),
+        ]),
+    }),
   }),
 });
 
@@ -60,4 +82,5 @@ export const {
   useGetExplorationQuery,
   useCreateExplorationMutation,
   useGetExplorationQueryResultQuery,
+  useAppendChartToDocumentMutation,
 } = explorationApi;
