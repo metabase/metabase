@@ -1775,6 +1775,11 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: Document\.parseHTMLUnsafe/),
     },
     {
+      name: "XSLTProcessor constructor",
+      payload: "new XSLTProcessor();",
+      errorPattern: blockedPattern(/API call: XSLTProcessor/),
+    },
+    {
       name: "window.alert",
       payload: 'window.alert("pwned");',
       errorPattern: blockedPattern(/API call: window\.alert/),

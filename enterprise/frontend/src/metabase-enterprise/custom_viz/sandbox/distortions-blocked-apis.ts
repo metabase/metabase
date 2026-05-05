@@ -226,6 +226,22 @@ block(
 );
 block(method(Document, "parseHTMLUnsafe"), "Document.parseHTMLUnsafe");
 
+block(window.XSLTProcessor, "XSLTProcessor");
+if (window.XSLTProcessor) {
+  block(
+    method(XSLTProcessor.prototype, "importStylesheet"),
+    "XSLTProcessor.importStylesheet",
+  );
+  block(
+    method(XSLTProcessor.prototype, "transformToFragment"),
+    "XSLTProcessor.transformToFragment",
+  );
+  block(
+    method(XSLTProcessor.prototype, "transformToDocument"),
+    "XSLTProcessor.transformToDocument",
+  );
+}
+
 // Programmatic activation — `.click()` on a synthesized <a> can navigate the
 // host or trigger a download. Anchor href/target setters skip the
 // `setAttribute("href", "javascript:...")` distortion, so block at the
