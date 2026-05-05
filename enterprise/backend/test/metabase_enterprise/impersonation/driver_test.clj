@@ -469,10 +469,12 @@
                                                            :filter [:= $id 2]}))))
                 (is (thrown?
                      clojure.lang.ExceptionInfo
-                     (mt/rows (mt/run-mbql-query venues {:fields [$id $name]}))))
+                     (mt/rows (mt/run-mbql-query venues {:fields [$id $name]})))
+                    "Should throw permission denied exception")
                 (is (thrown?
                      clojure.lang.ExceptionInfo
-                     (mt/rows (mt/run-mbql-query products)))))
+                     (mt/rows (mt/run-mbql-query products)))
+                    "Should throw permission denied exception"))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-b}}
                 (is (= [[1 "Gizmo"]]

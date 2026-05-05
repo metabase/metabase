@@ -8,6 +8,8 @@ The user provided: `$ARGUMENTS`
 
 Parse as: `<branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inner-args...]`
 
+**Arg-order sanity check:** If the first token starts with `/` (e.g. the user wrote `/autobot /qabot my-branch`), stop immediately and tell the user the correct order is `/autobot <branch> [from <base>] /<command> [args]`. Do not try to guess.
+
 The first token can be either a branch name OR a PR preview environment URL:
 
 - **Branch name** (e.g., `master`, `my-feature-branch`) — launches a local dev environment in a worktree (normal mode).
@@ -40,6 +42,8 @@ Extract the bot name from the inner command by stripping the leading `/` (e.g., 
 
 ### 2. Preflight checks
 
+**Where inner-bot files live:** Inner-bot slash commands are at `.claude/commands/<bot-name>*.md` (e.g. `.claude/commands/qabot.md`, `.claude/commands/qabot-discover.md`). They are NOT under `.claude/skills/`. Read them directly with `Read`; do not `find`/`grep` `.claude/skills/` looking for them.
+
 #### Autobot infrastructure checks
 
 Verify these are available (stop if any fail):
@@ -53,14 +57,21 @@ If no precheck skill exists for the inner bot, skip this step.
 
 ### 3. Discover context
 
-Run the `/<bot-name>-discover` skill, passing the inner-args as its arguments. For example, if the command is `/fixbot MB-12345`, run `/fixbot-discover MB-12345`.
+Generate a timestamp in `YYYYMMDD-HHMMSS` format (use the current wall-clock time if known; otherwise run `./bin/mage -bot-timestamp` — do NOT use `date` directly). Set:
+
+- `TIMESTAMP=<YYYYMMDD-HHMMSS>`
+- `OUTPUT_DIR=.bot/<BOT_NAME>/<TIMESTAMP>`
+
+Run `mkdir -p <OUTPUT_DIR>` before invoking discover so subsequent file copies / writes never fail on a missing parent directory. The discover skill must be the only producer of artifacts inside `<OUTPUT_DIR>` — do not pre-copy `linear-context.txt` from a previous run; let discover regenerate it.
+
+Run the `/<bot-name>-discover` skill, passing the inner-args plus `--output-dir <OUTPUT_DIR>`. For example, if the command is `/fixbot MB-12345`, run `/fixbot-discover MB-12345 --output-dir <OUTPUT_DIR>`.
 
 This will:
 - Gather external context (Linear issues, PR descriptions, etc.)
 - Determine the correct app database
-- Write results to `.bot/<bot-name>/discover/result.env`
+- Write results to `<OUTPUT_DIR>/config.env` (per-run, not in any shared location)
 
-After the discover skill completes, read `.bot/<bot-name>/discover/result.env` and extract the `APP_DB` value. If the file doesn't exist or APP_DB is missing, default to `postgres`.
+After the discover skill completes, read `<OUTPUT_DIR>/config.env` and extract the `APP_DB` value. If the file doesn't exist or APP_DB is missing, default to `postgres`.
 
 ### 4. Launch the autobot session
 
@@ -86,4 +97,4 @@ Tell the user:
 - How to attach: `tmux attach -t <session-name>`
 - How to stop: `/autobot-stop <session-name>` (or `/autobot-stop` from inside the session)
 - How to list all sessions: `/autobot-list`
-- How to remove: `/autobot-quit <session-name>`
+- How to remove: `/autobot-kill <session-name>`

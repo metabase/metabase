@@ -64,7 +64,9 @@ const elements = [
   createElement({ type: "shared", name: "collections", enforceOutgoing: true }),
   createElement({ type: "shared", name: "comments", enforceOutgoing: true }),
   createElement({ type: "shared", name: "data-grid", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "data-studio", enforceOutgoing: true }),
   createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
@@ -118,7 +120,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   // feature
-  createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "dashboard", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "query_builder",

@@ -1516,7 +1516,6 @@
   {:team "DevEx"
    :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
@@ -2589,7 +2588,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -2601,7 +2599,6 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   xrays
@@ -3080,6 +3077,7 @@
               permissions
               premium-features
               settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
@@ -3303,6 +3301,7 @@
            lib
            logger
            models
+           permissions
            plugins
            premium-features
            search

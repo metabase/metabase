@@ -107,10 +107,6 @@ export const Databases = createEntity({
     ),
   },
 
-  objectSelectors: {
-    getName: (db) => db && db.name,
-  },
-
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 

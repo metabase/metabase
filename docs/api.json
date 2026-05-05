@@ -25023,8 +25023,16 @@
       "get" : {
         "operationId" : "get-api-ee-data-complexity-score-complexity",
         "summary" : "GET /api/ee/data-complexity-score/complexity",
-        "description" : "Return the current Data Complexity Score for this instance.\n  Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent\n  requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db\n  catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered\n  deployment each node can still run one pass concurrently.",
-        "parameters" : [ ],
+        "description" : "Return the most recently stored Data Complexity Score for this instance.\n  Pass `force-recalculation=true` to recompute, persist, and return a fresh score.\n  Superuser-only.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "force-recalculation",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response",
@@ -25039,7 +25047,7 @@
                         "components" : {
                           "type" : "object",
                           "properties" : {
-                            "entity-count" : {
+                            "entity_count" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25070,7 +25078,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "field-count" : {
+                            "field_count" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25101,7 +25109,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "name-collisions" : {
+                            "name_collisions" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25132,7 +25140,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "repeated-measures" : {
+                            "repeated_measures" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25163,7 +25171,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "synonym-pairs" : {
+                            "synonym_pairs" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25195,7 +25203,7 @@
                               } ]
                             }
                           },
-                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ]
+                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
                         },
                         "total" : {
                           "oneOf" : [ {
@@ -25211,31 +25219,32 @@
                     "meta" : {
                       "type" : "object",
                       "properties" : {
-                        "embedding-model" : {
+                        "calculated_at" : { },
+                        "embedding_model" : {
                           "oneOf" : [ {
                             "type" : "object",
                             "properties" : {
-                              "model-name" : {
+                              "model_name" : {
                                 "type" : "string"
                               },
                               "provider" : {
                                 "type" : "string"
                               }
                             },
-                            "required" : [ "provider", "model-name" ]
+                            "required" : [ "provider", "model_name" ]
                           }, {
                             "type" : "null"
                           } ]
                         },
-                        "formula-version" : {
+                        "formula_version" : {
                           "type" : "integer",
                           "minimum" : 1
                         },
-                        "synonym-threshold" : {
+                        "synonym_threshold" : {
                           "type" : "number"
                         }
                       },
-                      "required" : [ "formula-version", "synonym-threshold" ]
+                      "required" : [ "formula_version", "synonym_threshold" ]
                     },
                     "metabot" : {
                       "type" : "object",
@@ -25243,7 +25252,7 @@
                         "components" : {
                           "type" : "object",
                           "properties" : {
-                            "entity-count" : {
+                            "entity_count" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25274,7 +25283,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "field-count" : {
+                            "field_count" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25305,7 +25314,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "name-collisions" : {
+                            "name_collisions" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25336,7 +25345,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "repeated-measures" : {
+                            "repeated_measures" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25367,7 +25376,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "synonym-pairs" : {
+                            "synonym_pairs" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25399,7 +25408,7 @@
                               } ]
                             }
                           },
-                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ]
+                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
                         },
                         "total" : {
                           "oneOf" : [ {
@@ -25418,7 +25427,7 @@
                         "components" : {
                           "type" : "object",
                           "properties" : {
-                            "entity-count" : {
+                            "entity_count" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25449,7 +25458,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "field-count" : {
+                            "field_count" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25480,7 +25489,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "name-collisions" : {
+                            "name_collisions" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25511,7 +25520,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "repeated-measures" : {
+                            "repeated_measures" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25542,7 +25551,7 @@
                                 "additionalProperties" : false
                               } ]
                             },
-                            "synonym-pairs" : {
+                            "synonym_pairs" : {
                               "anyOf" : [ {
                                 "type" : "object",
                                 "properties" : {
@@ -25574,7 +25583,7 @@
                               } ]
                             }
                           },
-                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ]
+                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
                         },
                         "total" : {
                           "oneOf" : [ {
@@ -26986,6 +26995,530 @@
           }
         },
         "tags" : [ "/api/ee/logs" ]
+      }
+    },
+    "/api/ee/metabot-analytics/conversations" : {
+      "get" : {
+        "operationId" : "get-api-ee-metabot-analytics-conversations",
+        "summary" : "GET /api/ee/metabot-analytics/conversations",
+        "description" : "Return paginated list of AI conversations with summary statistics.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sort_by",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "created_at", "message_count", "total_tokens" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_dir",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "asc", "desc" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "user_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "group_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenant_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "date",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "user" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : {
+                                "email" : {
+                                  "type" : "string"
+                                },
+                                "first_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                },
+                                "id" : {
+                                  "description" : "value must be an integer greater than zero.",
+                                  "type" : "integer",
+                                  "minimum" : 1
+                                },
+                                "last_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                }
+                              },
+                              "required" : [ "id", "email", "first_name", "last_name" ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "summary" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
+                          "user_message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
+                          "profile_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "conversation_id" : {
+                            "description" : "value must be a valid UUID.",
+                            "type" : "string",
+                            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                          },
+                          "last_message_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "created_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "ip_address" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "search_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
+                          "assistant_message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
+                          "total_tokens" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
+                          "query_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          }
+                        },
+                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "user" ]
+                      }
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/metabot-analytics" ]
+      }
+    },
+    "/api/ee/metabot-analytics/conversations/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-metabot-analytics-conversations-id",
+        "summary" : "GET /api/ee/metabot-analytics/conversations/{id}",
+        "description" : "Return full details for a specific conversation including all messages.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "queries" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "tables" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "mbql" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "database_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "query_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "query_type" : {
+                            "type" : "string",
+                            "enum" : [ "sql", "notebook" ]
+                          },
+                          "display" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "tool" : {
+                            "type" : "string",
+                            "enum" : [ "construct_notebook_query", "create_sql_query", "edit_sql_query", "replace_sql_query" ]
+                          },
+                          "call_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "sql" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          }
+                        },
+                        "required" : [ "tool", "call_id", "message_id", "query_id", "query_type", "sql", "mbql", "display", "database_id", "tables" ]
+                      }
+                    },
+                    "slack_permalink" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "email" : {
+                            "type" : "string"
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "email", "first_name", "last_name" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "summary" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "feedback" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "user_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "positive" : {
+                            "type" : "boolean"
+                          },
+                          "external_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : {
+                                "email" : {
+                                  "type" : "string"
+                                },
+                                "first_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                },
+                                "id" : {
+                                  "description" : "value must be an integer greater than zero.",
+                                  "type" : "integer",
+                                  "minimum" : 1
+                                },
+                                "last_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                }
+                              },
+                              "required" : [ "id", "email", "first_name", "last_name" ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "updated_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "issue_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "created_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "freeform_feedback" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          }
+                        },
+                        "required" : [ "id", "message_id", "user_id", "external_id", "positive", "issue_type", "freeform_feedback", "created_at", "updated_at" ]
+                      }
+                    },
+                    "message_count" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
+                    "ip_address" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "search_count" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total_tokens" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "query_count" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "chat_messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "feedback" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/metabot-analytics" ]
       }
     },
     "/api/ee/metabot/usage" : {
@@ -33357,6 +33890,169 @@
         "tags" : [ "/api/metabot" ]
       }
     },
+    "/api/metabot/conversations" : {
+      "get" : {
+        "operationId" : "get-api-metabot-conversations",
+        "summary" : "GET /api/metabot/conversations",
+        "description" : "List conversations visible in the current user's history, most-recent first.\n\n  New conversations are participation-based (the user authored at least one\n  message); legacy conversations created before message authors were stamped\n  fall back to the conversation originator.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "conversation_id" : {
+                            "description" : "value must be a valid UUID.",
+                            "type" : "string",
+                            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                          },
+                          "created_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "last_message_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
+                          "summary" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "conversation_id", "created_at", "summary", "user_id", "message_count", "last_message_at" ]
+                      }
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}" : {
+      "get" : {
+        "operationId" : "get-api-metabot-conversations-id",
+        "summary" : "GET /api/metabot/conversations/{id}",
+        "description" : "Return a single conversation with its flattened chat messages.\n\n  Accessible to any participant in the conversation or to any superuser.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "chat_messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
+                    "summary" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "summary", "user_id", "chat_messages" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
     "/api/metabot/document/generate-content" : {
       "post" : {
         "operationId" : "post-api-metabot-document-generate-content",
@@ -33469,7 +34165,7 @@
       "post" : {
         "operationId" : "post-api-metabot-feedback",
         "summary" : "POST /api/metabot/feedback",
-        "description" : "Proxy Metabot feedback to Harbormaster, adding the premium embedding token.",
+        "description" : "Persist Metabot feedback locally and proxy it to Harbormaster.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -33487,7 +34183,35 @@
             "application/json" : {
               "schema" : {
                 "type" : "object",
-                "properties" : { }
+                "properties" : {
+                  "freeform_feedback" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "issue_type" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "message_id" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "metabot_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "positive" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "metabot_id", "message_id", "positive" ]
               }
             }
           }
