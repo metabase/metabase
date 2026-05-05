@@ -86,14 +86,17 @@ describe("MetabotNavPane", () => {
 
     expect(
       screen.getByRole("link", { name: /Usage controls/ }),
-    ).toHaveAttribute("href", "/admin/metabot/1/usage-controls");
+    ).toHaveAttribute(
+      "href",
+      "/admin/metabot/1/usage-controls/ai-feature-access",
+    );
     expect(screen.getByRole("link", { name: /Customization/ })).toHaveAttribute(
       "href",
       "/admin/metabot/1/customization",
     );
     expect(
       screen.getByRole("link", { name: /System prompts/ }),
-    ).toHaveAttribute("href", "/admin/metabot/1/system-prompts");
+    ).toHaveAttribute("href", "/admin/metabot/1/system-prompts/metabot-chat");
   });
 
   it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {
