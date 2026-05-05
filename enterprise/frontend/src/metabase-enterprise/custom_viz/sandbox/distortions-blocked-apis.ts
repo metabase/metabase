@@ -119,6 +119,15 @@ block(getter(Window.prototype, "sessionStorage"), "Window.get sessionStorage");
 block(getter(Window.prototype, "indexedDB"), "Window.get indexedDB");
 block(getter(Window.prototype, "caches"), "Window.get caches");
 
+block(getter(StorageEvent.prototype, "key"), "StorageEvent.get key");
+block(getter(StorageEvent.prototype, "oldValue"), "StorageEvent.get oldValue");
+block(getter(StorageEvent.prototype, "newValue"), "StorageEvent.get newValue");
+block(getter(StorageEvent.prototype, "url"), "StorageEvent.get url");
+block(
+  getter(StorageEvent.prototype, "storageArea"),
+  "StorageEvent.get storageArea",
+);
+
 // Window navigation
 block(window.open, "window.open");
 block(window.close, "window.close");

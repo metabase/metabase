@@ -1598,6 +1598,29 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: Window\.get cookieStore/),
     },
     {
+      name: "StorageEvent.newValue getter",
+      payload:
+        'var e = new StorageEvent("storage", { newValue: "secret" }); var x = e.newValue;',
+      errorPattern: blockedPattern(/API call: StorageEvent\.get newValue/),
+    },
+    {
+      // document-level keydown listener is a global keylogger — captures
+      // every keystroke the user types anywhere on the host page.
+      name: 'document.addEventListener("keydown")',
+      payload: 'document.addEventListener("keydown", function(){}, true);',
+      errorPattern: blockedPattern(
+        /addEventListener for global event type: keydown/,
+      ),
+    },
+    {
+      // Same threat class — clipboard sniffer.
+      name: 'document.addEventListener("paste")',
+      payload: 'document.addEventListener("paste", function(){}, true);',
+      errorPattern: blockedPattern(
+        /addEventListener for global event type: paste/,
+      ),
+    },
+    {
       name: 'setAttribute("onclick", ...)',
       payload: 'document.body.setAttribute("onclick", "alert(1)");',
       errorPattern: blockedPattern(

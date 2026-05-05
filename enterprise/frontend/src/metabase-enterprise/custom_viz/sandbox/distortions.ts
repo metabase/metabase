@@ -31,6 +31,10 @@ import {
   getSafeSandboxDomElement,
   isDomElement,
 } from "./distortions-dom-read";
+import {
+  ADD_EVENT_LISTENER,
+  addEventListenerDistortion,
+} from "./distortions-event";
 
 export function makeDistortionCallback(pluginId: CustomVizPluginId) {
   return function distortionCallback(value: object): object {
@@ -51,6 +55,10 @@ export function makeDistortionCallback(pluginId: CustomVizPluginId) {
 
     if (value === ACTIVE_ELEMENT_GETTER) {
       return activeElementDistortion(pluginId);
+    }
+
+    if (value === ADD_EVENT_LISTENER) {
+      return addEventListenerDistortion(pluginId);
     }
 
     if (value === CREATE_ELEMENT) {
