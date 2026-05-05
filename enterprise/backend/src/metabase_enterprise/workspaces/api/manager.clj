@@ -128,7 +128,7 @@
    [:input_schemas [:sequential :string]]])
 
 (api.macros/defendpoint :get "/database" :- [:sequential AvailableDatabaseResponse]
-  "List databases eligible for workspace assignment, paired with the schemas
+  "List databases eligible for workspace assignment, paired with the input schemas
   discovered for each. Excludes the sample DB, the audit DB, router parents/children,
   and any database whose driver does not support the `:workspace` feature."
   []

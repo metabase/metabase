@@ -145,7 +145,7 @@
   (workspace/list-workspaces))
 
 (defn available-databases
-  "Return databases eligible for workspace assignment, paired with the schemas
+  "Return databases eligible for workspace assignment, paired with the input schemas
    discovered for each (from `:model/Table`).
 
    A database is eligible iff:
@@ -155,30 +155,30 @@
 
    Returns `[{:database_id <id> :input_schemas [\"schema_a\" ...]} ...]`."
   []
-  (let [databases      (into []
-                             (filter (fn [{:keys [id engine] :as db}]
-                                       (and (driver.u/supports? engine :workspace db)
-                                            (not (database-routing/db-routing-enabled? id)))))
-                             (t2/select [:model/Database :id :engine]
-                                        {:where    [:and
-                                                    [:= :is_sample false]
-                                                    [:= :is_audit false]
-                                                    [:= :router_database_id nil]]
-                                         :order-by [[:id :asc]]}))
-        db-id->schemas (when (seq databases)
-                         (-> (t2/select [:model/Table :db_id :schema]
-                                        {:where    [:and
-                                                    [:in :db_id (map :id databases)]
-                                                    [:= :active true]
-                                                    [:not= :schema nil]
-                                                    [:not= :schema ""]]
-                                         :group-by [:db_id :schema]
-                                         :order-by [[:db_id :asc] [:schema :asc]]})
-                             (->> (group-by :db_id))
-                             (update-vals #(mapv :schema %))))]
+  (let [databases            (into []
+                                   (filter (fn [{:keys [id engine] :as db}]
+                                             (and (driver.u/supports? engine :workspace db)
+                                                  (not (database-routing/db-routing-enabled? id)))))
+                                   (t2/select [:model/Database :id :engine]
+                                              {:where    [:and
+                                                          [:= :is_sample false]
+                                                          [:= :is_audit false]
+                                                          [:= :router_database_id nil]]
+                                               :order-by [[:id :asc]]}))
+        db-id->input-schemas (when (seq databases)
+                               (-> (t2/select [:model/Table :db_id :schema]
+                                              {:where    [:and
+                                                          [:in :db_id (map :id databases)]
+                                                          [:= :active true]
+                                                          [:not= :schema nil]
+                                                          [:not= :schema ""]]
+                                               :group-by [:db_id :schema]
+                                               :order-by [[:db_id :asc] [:schema :asc]]})
+                                   (->> (group-by :db_id))
+                                   (update-vals #(mapv :schema %))))]
     (mapv (fn [{:keys [id]}]
             {:database_id   id
-             :input_schemas (get db-id->schemas id [])})
+             :input_schemas (get db-id->input-schemas id [])})
           databases)))
 
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
