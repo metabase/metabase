@@ -14,7 +14,7 @@ export function SchemaViewerUpsellPage() {
       header={t`Schema viewer`}
       title={t`Visualize your database structure`}
       description={t`Explore tables and their relationships at a glance. Follow foreign keys, expand into related tables, and see how your schema fits together.`}
-      image="app/assets/img/data-studio-dependencies-upsell.png"
+      image="app/assets/img/schema-viewer.svg"
     />
   );
 }
