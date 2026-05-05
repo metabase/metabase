@@ -372,10 +372,11 @@
    in `metabase.transforms.execute/resolve-target` so writes land in isolation;
    `:model/Table` rows must stay at the canonical schema, so we invert here."
   [db-id target]
-  (if-let [[from-schema _from-name] (ws.table-remapping/canonical-schema+name
-                                     db-id (:schema target) (:name target))]
-    (assoc target :schema from-schema)
-    target))
+  (merge target
+         (zipmap
+          [:schema :name]
+          (ws.table-remapping/canonical-schema+name
+           db-id (:schema target) (:name target)))))
 
 (defn- sync-table!
   ([database target] (sync-table! database target nil))

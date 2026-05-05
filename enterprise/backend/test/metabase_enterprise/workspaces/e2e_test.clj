@@ -123,6 +123,10 @@
                                               (= src-name (:name %)))
                                         tables)
                                   "the input-schema source table appears in the app db")
+                              (is (some #(and (= main-schema (:schema %))
+                                              (= tgt-name (:name %)))
+                                        tables)
+                                  "the input-schema output table appears in the app db")
                               (is (= [] (filter #(= isolation-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
                                   "no app-db Table row points at the isolation schema")))
                           ;; --- Assertion: describe-database stays in main ------
@@ -134,7 +138,26 @@
                                   "the input-schema source table is described")
                               (is (not-any? #(= isolation-schema (:schema %)) described)
                                   "no isolation-schema table is described")))
-                          (testing "app db Table rows are confined to the input schema"
+                          ;; --- Assertion: a Card querying the canonical output table ----
+                          ;; reads the remapped (isolation-schema) data, not the canonical
+                          ;; main-schema table.
+                          (let [out-table (t2/select-one :model/Table
+                                                         :db_id  (:id ws-db)
+                                                         :schema main-schema
+                                                         :name   tgt-name)]
+                            (is (some? out-table)
+                                "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
+                            (mt/with-temp [:model/Card card
+                                           {:name          (str "ws-e2e-card-" run-id)
+                                            :database_id   (:id ws-db)
+                                            :dataset_query {:database (:id ws-db)
+                                                            :type     :query
+                                                            :query    {:source-table (:id out-table)}}}]
+                              (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
+                                (testing "card query returns the transform output (read-side remap engaged)"
+                                  (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
+                                      "card returns the rows the transform wrote to the isolation schema")))))
+                          (testing "app db Table rows stay confined to the input schema after card run"
                             (let [tables (t2/select :model/Table :db_id (:id ws-db) :active true)]
                               (is (some #(and (= main-schema (:schema %))
                                               (= src-name (:name %)))
@@ -156,3 +179,17 @@
 
 (comment
   (workspace-full-e2e-test))
+
+; Start of dev workflow
+; Case 1:
+; In canonical schema, No transforms exist, no transform output tables exist
+; Start dev workflow, create transform, create transform output table in isolation schema, finish development, push to production
+; Case 2:
+; In canonical schema, transform exists, transform output table exists
+; Start dev workflow, modify transform, create tranform output table in isolation schema, finish dev, push to prod
+; Case 3:
+; In canonical schema, no transforms exist, no output tables exist
+; Start dev workflow, create transform, create transform output table. Asshole coworker starts dev concurrently, uses your same output table name, creates that table in canonical schema.
+; Case 4:
+; In canonical schema, transform exists, output table exists
+; Start dev workflow, modify transform, create tx output table in iso schema. Tranform output table gets deleted in canonical schema.
