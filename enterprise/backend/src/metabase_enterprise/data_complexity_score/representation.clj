@@ -6,7 +6,6 @@
 
   Layout (subset that the scorer reads):
 
-      <dir>/databases/<db>/<db>.yaml
       <dir>/databases/<db>/schemas/<schema>/tables/<table>/<table>.yaml
       <dir>/databases/<db>/schemas/<schema>/tables/<table>/fields/<field>.yaml
       <dir>/databases/<db>/schemas/<schema>/tables/<table>/measures/<measure>.yaml
@@ -14,6 +13,9 @@
       <dir>/collections/<coll>/<coll>.yaml           (Collection metadata; type: library marks the root)
       <dir>/collections/<coll>/cards/<card>.yaml
       <dir>/embeddings.json                          (sidecar — not part of the serdes spec)
+
+  The Database self-yaml (`<db>/<db>.yaml`) sits in the export but is not consumed — `db_id` is
+  read from each Table's own YAML.
 
   Library membership is derived from `Collection.type = \"library\"` plus the `parent_id` chain.
 
@@ -41,10 +43,10 @@
   (and (.isFile f) (str/ends-with? (.getName f) ".yaml")))
 
 (defn- list-dirs ^java.util.List [^File dir]
-  (when (.isDirectory dir) (filterv #(.isDirectory ^File %) (.listFiles dir))))
+  (if (.isDirectory dir) (filterv #(.isDirectory ^File %) (.listFiles dir)) []))
 
 (defn- list-yamls [^File dir]
-  (when (.isDirectory dir) (filterv yaml-file? (.listFiles dir))))
+  (if (.isDirectory dir) (filterv yaml-file? (.listFiles dir)) []))
 
 (defn- entity-model
   "Read the serdes model name (e.g. \"Collection\", \"Card\") from a parsed YAML map.
@@ -131,11 +133,13 @@
   (str db_id "/" (or schema "") "/" name))
 
 (defn- ->table-entity [{:keys [table fields measures]}]
+  ;; Field.active defaults to true and Measure.archived defaults to false: treat both missing
+  ;; AND explicit nil as the default, so only an explicit `false`/`true` flips the predicate.
   {:id            (table-path-id table)
    :name          (:name table)
    :kind          :table
-   :field-count   (count (filter #(get % :active true) fields))
-   :measure-names (mapv :name (remove #(get % :archived false) measures))})
+   :field-count   (count (remove #(false? (:active %)) fields))
+   :measure-names (mapv :name (remove #(true? (:archived %)) measures))})
 
 (defn- ->card-entity [{:keys [entity_id name type]}]
   {:id            entity_id

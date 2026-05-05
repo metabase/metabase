@@ -28,7 +28,9 @@
     ;;   Universe-only — 2 unpublished tables (events, event_log) + 1 model card (Revenue) in
     ;;                 the Outside collection.
     ;;   Embeddings  — orthogonal except clients≈customers (library synonym) and
-    ;;                 events≈event_log (extra universe-only synonym).
+    ;;                 events≈event_log (extra universe-only synonym). The customers key is in
+    ;;                 raw display-name form ("  Customers ") to exercise the on-disk →
+    ;;                 file-embedder → scorer normalization path end-to-end.
     ;;   Measures    — "revenue" on orders + subscriptions (library repeat) plus a third on
     ;;                 events (extra universe repeat).
     (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
@@ -121,6 +123,17 @@
     (is (= #{} (#'representation/library-collection-ids
                 [{:entity_id "any" :type nil}
                  {:entity_id "kid" :parent_id "any"}])))))
+
+(deftest ^:parallel list-table-dirs-schema-less-branch-test
+  (testing "list-table-dirs picks up tables under <db>/tables/ (schema-less, e.g. MongoDB exports)"
+    (let [tmp-dir   (empty-tmp-dir "schema-less-")
+          table-dir (io/file tmp-dir "tables/widgets")]
+      (io/make-parents (io/file table-dir "placeholder"))
+      (.mkdirs table-dir)
+      (let [dirs (#'representation/list-table-dirs tmp-dir)]
+        (is (= [(.getCanonicalPath table-dir)] (mapv #(.getCanonicalPath ^java.io.File %) dirs))))))
+  (testing "list-table-dirs returns [] for an empty database dir (no schemas/, no tables/)"
+    (is (= [] (vec (#'representation/list-table-dirs (empty-tmp-dir "empty-db-")))))))
 
 (deftest ^:parallel resolve-embeddings-file-test
   (let [tmp-dir (empty-tmp-dir "emb-resolve-")
