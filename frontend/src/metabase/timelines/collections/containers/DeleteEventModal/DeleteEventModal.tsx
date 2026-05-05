@@ -1,42 +1,33 @@
 import { push } from "react-router-redux";
-import _ from "underscore";
 
 import {
   skipToken,
   useDeleteTimelineEventMutation,
   useGetTimelineEventQuery,
+  useGetTimelineQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Timelines } from "metabase/entities/timelines";
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import type { ModalParams } from "../../types";
-
-interface DeleteEventModalContainerProps {
-  params: ModalParams;
-  timeline: Timeline;
-}
-
-const timelineProps = {
-  id: (state: State, props: DeleteEventModalContainerProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-};
-
-function DeleteEventModalContainer({
-  params,
-  timeline,
-}: DeleteEventModalContainerProps) {
+function DeleteEventModalContainer({ params }: ModalComponentProps) {
   const dispatch = useDispatch();
+  const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const {
+    data: timeline,
+    isLoading: isTimelineLoading,
+    error: timelineError,
+  } = useGetTimelineQuery(
+    timelineId != null ? { id: timelineId, include: "events" } : skipToken,
+  );
+  const {
     data: event,
-    isLoading,
-    error,
+    isLoading: isEventLoading,
+    error: eventError,
   } = useGetTimelineEventQuery(eventId ?? skipToken);
   const [deleteTimelineEvent] = useDeleteTimelineEventMutation();
 
@@ -45,7 +36,10 @@ function DeleteEventModalContainer({
     dispatch(push(Urls.timelineArchiveInCollection(timeline)));
   };
 
-  if (isLoading || error || !event) {
+  const isLoading = isTimelineLoading || isEventLoading;
+  const error = timelineError ?? eventError;
+
+  if (isLoading || error || !event || !timeline) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
@@ -55,6 +49,4 @@ function DeleteEventModalContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(Timelines.load(timelineProps))(
-  DeleteEventModalContainer,
-);
+export default DeleteEventModalContainer;
