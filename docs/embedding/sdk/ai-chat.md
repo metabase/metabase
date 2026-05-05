@@ -65,7 +65,7 @@ If `MetabotQuestion`'s built-in layouts don't fit your app, use the `useMetabot`
 
 `MetabotQuestion` renders agent text messages internally, including markdown formatting, transcript scrolling, and input styling. The `useMetabot` hook hands you the raw conversation state. Which means you own the rendering. In particular, agent text messages (`message.type === 'text'`) contain **markdown**: links, bold, lists, inline code. The snippets below render `message.message` as plain text for brevity, but production usage should pass the text through a markdown renderer (`react-markdown`, `markdown-to-jsx`, or your own) so links and formatting display correctly.
 
-The `Chart` component on each chart message, and the `CurrentChart` returned by the hook, accept the same props as [`StaticQuestion`](./questions.md#static-question) except `questionId`, `token`, and `query`, which the SDK already wires for you. Most apps will set `drills` (to allow click-actions on chart elements) and `height`. The `height="100%"` only works if the parent has a defined height. The dedicated-chart snippet below sets `height: 600` on the outer flex container for that reason.
+The `Chart` component on each chart message, and the `CurrentChart` returned by the hook, accept the same props as [`StaticQuestion`](./questions.md#staticquestion) except `questionId`, `token`, and `query`, which the SDK already wires for you. Most apps will set `drills` (to allow click-actions on chart elements) and `height`. The `height="100%"` only works if the parent has a defined height. The dedicated-chart snippet below sets `height: 600` on the outer flex container for that reason.
 
 ### Inline charts
 
