@@ -667,7 +667,7 @@
   {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
 
 (defmethod sql.qp/->honeysql [:clickhouse ::h2x/identifier]
-  [driver [_identifier identifier-type components :as identifier]]
+  [_driver [_identifier identifier-type components :as identifier]]
   (let [enable-multiple-db? (-> (driver-api/metadata-provider)
                                 driver-api/database
                                 driver.conn/effective-details
