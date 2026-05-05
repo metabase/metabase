@@ -76,7 +76,7 @@ export function logMetricsViewerDebug(
       ? new Error().stack?.split("\n").slice(2, 8).join("\n")
       : undefined;
 
-  console.warn(`${DEBUG_PREFIX} ${event}`, {
+  console.log(`${DEBUG_PREFIX} ${event}`, {
     countInWindow: count,
     key,
     ...payload,
