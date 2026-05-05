@@ -1780,6 +1780,20 @@ describe("sandbox", () => {
       payload: 'document.createElement("a").target = "_blank";',
       errorPattern: blockedPattern(/API call: HTMLAnchorElement\.set target/),
     },
+    {
+      name: "FontFace.load",
+      payload:
+        'new FontFace("x", "url(/api/canary-should-be-blocked-by-sandbox)").load();',
+      errorPattern: blockedPattern(/API call: FontFace\.load/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {
