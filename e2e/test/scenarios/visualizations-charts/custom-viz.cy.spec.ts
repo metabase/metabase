@@ -1536,28 +1536,23 @@ describe("admin > custom visualizations", () => {
 });
 
 describe("sandbox", () => {
-  let sandboxCardId: number;
-  before(() => {
+  beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.updateSetting("custom-viz-enabled", true);
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
-    H.createQuestion({
-      name: "Custom Viz Sandbox Test",
-      query: {
-        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-        aggregation: [["count"]],
+    H.createQuestion(
+      {
+        name: "Custom Viz Sandbox Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: H.CUSTOM_VIZ_DISPLAY,
       },
-      display: H.CUSTOM_VIZ_DISPLAY,
-    }).then(({ body }) => {
-      sandboxCardId = body.id;
-    });
-  });
-
-  beforeEach(() => {
-    cy.signInAsAdmin();
-    cy.wrap(sandboxCardId).as("sandboxCardId");
+      { wrapId: true, idAlias: "sandboxCardId" },
+    );
   });
 
   const blockedPattern = (suffix: RegExp) =>
