@@ -2,6 +2,7 @@ import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useCallback } from "react";
 
 import { utf8_to_b64 } from "metabase/utils/encoding";
+import type * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import { storeDrillQuery } from "../api";
@@ -12,6 +13,9 @@ interface McpGlobalConfig {
   mcpSessionId?: string;
 }
 
+type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
+  T extends `drill-thru/${infer Name}` ? Name : never;
+
 // Drills that refine the current visualization without changing what it is.
 // The chart's conceptual title stays the same — zoom, granularity, ordering.
 // Match by prefix, e.g. "sort" matches both "sort.ascending" and "sort.descending".
@@ -21,7 +25,7 @@ const STAY_DRILL_PREFIXES = [
   "zoom-in.timeseries",
   "zoom-in.geographic",
   "sort",
-];
+] as const satisfies readonly DrillThruName[];
 
 const isStayDrill = (drillName: string | undefined) =>
   drillName != null &&
