@@ -1790,13 +1790,11 @@ describe("sandbox", () => {
         });
       }).as("injectedBundle");
 
-      cy.get<number>("@sandboxCardId").then((id) => {
-        cy.visit(`/question/${id}`, {
-          onBeforeLoad(win) {
-            cy.spy(win.console, "log").as("consoleLog");
-            cy.spy(win.console, "error").as("consoleError");
-          },
-        });
+      H.visitQuestion("@sandboxCardId", {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "log").as("consoleLog");
+          cy.spy(win.console, "error").as("consoleError");
+        },
       });
       cy.wait("@injectedBundle");
 
@@ -1843,12 +1841,11 @@ describe("sandbox", () => {
       });
     }).as("injectedBundle");
 
-    cy.get<CardId>("@sandboxCardId").then((id) => {
-      cy.visit(`/question/${id}`, {
-        onBeforeLoad(win) {
-          cy.spy(win.console, "error").as("consoleError");
-        },
-      });
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
     });
     cy.wait("@injectedBundle");
 
@@ -1884,13 +1881,11 @@ describe("sandbox", () => {
       });
     }).as("injectedBundle");
 
-    cy.get<CardId>("@sandboxCardId").then((id) => {
-      cy.visit(`/question/${id}`, {
-        onBeforeLoad(win) {
-          cy.spy(win.console, "log").as("consoleLog");
-          cy.spy(win.console, "error").as("consoleError");
-        },
-      });
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
     });
     cy.wait("@injectedBundle");
 
@@ -1946,13 +1941,11 @@ describe("sandbox", () => {
       });
     }).as("injectedBundle");
 
-    cy.get<CardId>("@sandboxCardId").then((id) => {
-      cy.visit(`/question/${id}`, {
-        onBeforeLoad(win) {
-          cy.spy(win.console, "log").as("consoleLog");
-          cy.spy(win.console, "error").as("consoleError");
-        },
-      });
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
     });
     cy.wait("@injectedBundle");
 
@@ -2009,13 +2002,11 @@ describe("sandbox", () => {
       });
     }).as("injectedBundle");
 
-    cy.get<CardId>("@sandboxCardId").then((id) => {
-      cy.visit(`/question/${id}`, {
-        onBeforeLoad(win) {
-          cy.spy(win.console, "log").as("consoleLog");
-          cy.spy(win.console, "error").as("consoleError");
-        },
-      });
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
     });
     cy.wait("@injectedBundle");
 
