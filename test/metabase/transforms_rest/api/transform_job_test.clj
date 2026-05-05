@@ -240,7 +240,13 @@
                                       {:active false})
                 (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
                                       {:schedule "0 0 1 * * ?"})
-                (is (nil? (transforms.schedule/existing-trigger (:id job)))))
+                (is (nil? (transforms.schedule/existing-trigger (:id job))))
+                (testing "but the new schedule is persisted in the DB"
+                  (is (= "0 0 1 * * ?" (t2/select-one-fn :schedule :model/TransformJob :id (:id job)))))
+                (testing "and reactivating builds a trigger using the updated schedule"
+                  (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
+                                        {:active true})
+                  (is (= "0 0 1 * * ?" (:schedule (transforms.schedule/existing-trigger (:id job)))))))
               (finally
                 (transforms.schedule/delete-job! (:id job))))))))))
 

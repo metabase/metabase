@@ -129,12 +129,19 @@
   [_route-params
    _query-params
    {:keys [active]} :- [:map [:active :boolean]]]
-  (log/info "Setting active =" active "on all transform jobs")
   (api/check-data-analyst)
-  (let [op  (if active transforms.core/activate-job! transforms.core/deactivate-job!)
-        ids (t2/select-pks-vec :model/TransformJob :active (not active))]
-    (run! op ids)
-    {:updated (count ids)}))
+  (log/info "Setting active =" active "on all transform jobs")
+  (let [op     (if active transforms.core/activate-job! transforms.core/deactivate-job!)
+        verb   (if active "activate" "deactivate")
+        ids    (t2/select-pks-vec :model/TransformJob :active (not active))
+        try-op (fn [id]
+                 (try
+                   (op id)
+                   true
+                   (catch Throwable t
+                     (log/errorf t "Failed to %s transform job %d" verb id)
+                     false)))]
+    {:updated (count (filter try-op ids))}))
 
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."
