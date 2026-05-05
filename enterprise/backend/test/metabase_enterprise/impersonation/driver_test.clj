@@ -1020,7 +1020,7 @@
 
 (deftest reject-multiple-impersonated-action-write-statements-test
   (testing "Impersonated custom actions with multiple statements are rejected"
-    (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :connection-impersonation) :postgres) ;; Postgres is only fixed in >= 60
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a (u/lower-case-en (mt/random-name))]
