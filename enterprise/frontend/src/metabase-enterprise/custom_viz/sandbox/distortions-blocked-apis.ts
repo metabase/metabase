@@ -118,7 +118,7 @@ for (const key of NAVIGATOR_BLOCKED_GETTERS) {
 }
 block(method(Navigator.prototype, "share"), "Navigator.share");
 
-// Location & History — sandbox shouldn't navigate or rewrite the host
+// Location & History
 block(method(Location.prototype, "assign"), "Location.assign");
 block(method(Location.prototype, "reload"), "Location.reload");
 block(setter(Location.prototype, "href"), "Location.set href");
@@ -127,6 +127,7 @@ block(method(History.prototype, "replaceState"), "History.replaceState");
 block(method(History.prototype, "go"), "History.go");
 block(method(History.prototype, "back"), "History.back");
 block(method(History.prototype, "forward"), "History.forward");
+block(getter(History.prototype, "state"), "History.get state");
 
 // HTML parsing — these construct DOM from string input without going through
 // the innerHTML/outerHTML/insertAdjacentHTML setters that DOMPurify

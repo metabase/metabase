@@ -1821,6 +1821,11 @@ describe("sandbox", () => {
       payload: 'new CSSStyleSheet().replaceSync("");',
       errorPattern: blockedPattern(/API call: CSSStyleSheet\.replaceSync/),
     },
+    {
+      name: "history.state getter",
+      payload: "var x = history.state;",
+      errorPattern: blockedPattern(/API call: History\.get state/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {
