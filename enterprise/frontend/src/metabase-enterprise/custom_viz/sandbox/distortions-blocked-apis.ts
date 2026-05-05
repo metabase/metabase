@@ -15,6 +15,22 @@ const block = (ref: object | undefined, label: string) => {
   }
 };
 
+// Some IDL mixin attributes (e.g. `cookieStore` from
+// `WindowOrWorkerGlobalScope`) end up on different prototypes across
+// browsers — sometimes on `Window.prototype`, sometimes as an own
+// property of the global. Walk the chain so the lookup is robust.
+const getterFromChain = (obj: object, key: string): object | undefined => {
+  let current: object | null = obj;
+  while (current) {
+    const desc = Object.getOwnPropertyDescriptor(current, key);
+    if (desc) {
+      return desc.get;
+    }
+    current = Object.getPrototypeOf(current);
+  }
+  return undefined;
+};
+
 // Network exfiltration
 block(window.fetch, "window.fetch");
 block(window.XMLHttpRequest, "window.XMLHttpRequest");
@@ -74,6 +90,13 @@ block(
 block(getter(Document.prototype, "cookie"), "Document.get cookie");
 block(setter(Document.prototype, "cookie"), "Document.set cookie");
 block(setter(Document.prototype, "domain"), "Document.set domain");
+block(getterFromChain(window, "cookieStore"), "Window.get cookieStore");
+if (window.CookieStore) {
+  block(method(window.CookieStore.prototype, "get"), "CookieStore.get");
+  block(method(window.CookieStore.prototype, "getAll"), "CookieStore.getAll");
+  block(method(window.CookieStore.prototype, "set"), "CookieStore.set");
+  block(method(window.CookieStore.prototype, "delete"), "CookieStore.delete");
+}
 
 // Referrer — URL of the page that linked here, which can leak internal
 // admin URLs or embed-link query params. Unlike `location.href`, the plugin
