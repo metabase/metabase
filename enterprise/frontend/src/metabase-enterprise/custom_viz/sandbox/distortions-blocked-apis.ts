@@ -180,6 +180,10 @@ block(
   "DOMParser.parseFromString",
 );
 block(method(Element.prototype, "setHTMLUnsafe"), "Element.setHTMLUnsafe");
+block(
+  method(ShadowRoot.prototype, "setHTMLUnsafe"),
+  "ShadowRoot.setHTMLUnsafe",
+);
 block(method(Document, "parseHTMLUnsafe"), "Document.parseHTMLUnsafe");
 
 // Programmatic activation — `.click()` on a synthesized <a> can navigate the

@@ -19,7 +19,7 @@ export const SET_ATTR_VALUE_DESCRIPTOR = Object.getOwnPropertyDescriptor(
 
 type SanitizedSetterInfo = {
   name: string;
-  originalSet: (this: Element, value: string) => void;
+  originalSet: (this: Element | ShadowRoot, value: string) => void;
 };
 
 export const SANITIZED_SETTERS = new Map<object, SanitizedSetterInfo>();
@@ -32,6 +32,17 @@ for (const key of ["innerHTML", "outerHTML"] as const) {
       originalSet: descriptor.set,
     });
   }
+}
+
+const shadowInnerHTMLDescriptor = Object.getOwnPropertyDescriptor(
+  ShadowRoot.prototype,
+  "innerHTML",
+);
+if (shadowInnerHTMLDescriptor?.set) {
+  SANITIZED_SETTERS.set(shadowInnerHTMLDescriptor.set, {
+    name: "ShadowRoot.innerHTML",
+    originalSet: shadowInnerHTMLDescriptor.set,
+  });
 }
 
 // DOMPurify exposes the list of nodes/attributes it stripped from the most
@@ -54,9 +65,9 @@ function logSanitizationIfStripped(
 export function sanitizedSetterDistortion(
   pluginId: CustomVizPluginId,
   name: string,
-  originalSet: (this: Element, value: string) => void,
+  originalSet: (this: Element | ShadowRoot, value: string) => void,
 ) {
-  return function (this: Element, value: string) {
+  return function (this: Element | ShadowRoot, value: string) {
     const sanitized = DOMPurify.sanitize(value);
     logSanitizationIfStripped(pluginId, name);
     originalSet.call(this, sanitized);

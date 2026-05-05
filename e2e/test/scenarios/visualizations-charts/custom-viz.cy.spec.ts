@@ -1899,6 +1899,12 @@ describe("sandbox", () => {
         /Attr\.set value with javascript: URL: href/,
       ),
     },
+    {
+      name: "ShadowRoot.setHTMLUnsafe",
+      payload:
+        'document.createElement("div").attachShadow({ mode: "open" }).setHTMLUnsafe("<x>");',
+      errorPattern: blockedPattern(/API call: ShadowRoot\.setHTMLUnsafe/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {
@@ -2020,6 +2026,43 @@ describe("sandbox", () => {
     cy.get("@consoleError").should(
       "have.been.calledWithMatch",
       /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
+    );
+  });
+
+  it("sanitizes ShadowRoot.innerHTML through DOMPurify before it reaches the DOM", () => {
+    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+      "canary",
+    );
+
+    const payload = `
+      var host = document.createElement('div');
+      var shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+      document.body.appendChild(host);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+    cy.get("@canary.all").should("have.length", 0);
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] DOMPurify stripped content from ShadowRoot\.innerHTML/,
     );
   });
 
