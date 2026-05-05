@@ -12,10 +12,6 @@ import {
   useCustomVizPlugins,
   useCustomVizPluginsIcon,
 } from "./custom-viz-plugins";
-import {
-  customVizRegistry,
-  registerCustomVizPlugin,
-} from "./custom-viz-static";
 
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
@@ -29,8 +25,6 @@ export function initializePlugin() {
       getPluginAssetUrl,
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
-      customVizRegistry,
-      registerCustomVizPlugin,
     });
   }
 }
