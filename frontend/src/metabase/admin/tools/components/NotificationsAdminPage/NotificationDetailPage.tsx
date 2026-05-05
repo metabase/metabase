@@ -14,6 +14,7 @@ import { Link as MBLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { formatNotificationSchedule } from "metabase/notifications/utils";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
   Anchor,
@@ -29,8 +30,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   AdminNotificationDetail,
   NotificationHandler,
@@ -48,8 +48,8 @@ import { ChangeOwnerModal } from "./ChangeOwnerModal";
 import {
   getChannelIconName,
   getChannelLabel,
-  getHealthColor,
-  getHealthLabel,
+  getStatusColor,
+  getStatusLabel,
 } from "./utils";
 
 const RECENT_RUNS_LIMIT = 5;
@@ -172,8 +172,8 @@ export const NotificationDetailPage = ({
   }
 
   const handlers = notification.handlers ?? [];
-  const isOrphanedCard = notification.health === "orphaned_card";
-  const isOrphanedCreator = notification.health === "orphaned_creator";
+  const isOrphanedCard = notification.status === "orphaned_card";
+  const isOrphanedCreator = notification.status === "orphaned_creator";
 
   return (
     <SettingsPageWrapper>
@@ -261,7 +261,7 @@ const DetailHeader = ({
             <Title order={2}>
               <MBLink
                 variant="brand"
-                to={Urls.question({ id: cardId, name: cardName })}
+                to={Urls.card({ id: cardId, name: cardName })}
               >
                 {cardName}
               </MBLink>
@@ -269,8 +269,8 @@ const DetailHeader = ({
           ) : (
             <Title order={2}>{cardName}</Title>
           )}
-          <Badge color={getHealthColor(notification.health)} variant="light">
-            {getHealthLabel(notification.health)}
+          <Badge color={getStatusColor(notification.status)} variant="light">
+            {getStatusLabel(notification.status)}
           </Badge>
           {isOrphanedCard && (
             <Badge color="error" variant="light">{t`Deleted`}</Badge>

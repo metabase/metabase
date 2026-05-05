@@ -9,7 +9,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { AdminNotificationDetail } from "metabase-types/api";
 import {
   createMockAdminNotificationListItem,

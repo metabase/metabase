@@ -15,10 +15,10 @@ import {
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { NotificationId } from "metabase-types/api";
 
 import {
@@ -57,8 +57,8 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
     setSelectedIds([]);
   }, [
     urlState.page,
+    urlState.active,
     urlState.status,
-    urlState.health,
     urlState.creator_id,
     urlState.card_id,
     urlState.recipient_email,
@@ -246,7 +246,7 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
               : t`${selectedCount} alerts selected`
           }
         >
-          {urlState.status === "archived" ? (
+          {urlState.active === false ? (
             <BulkActionButton
               onClick={handleUnarchive}
               disabled={isBulkLoading}

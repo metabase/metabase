@@ -19,20 +19,20 @@ import {
   Icon,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   AdminNotificationListItem,
   NotificationChannelType,
   NotificationHandler,
-  NotificationHealth,
   NotificationId,
+  NotificationStatus,
 } from "metabase-types/api";
 
 import {
   getChannelIconName,
   getChannelLabel,
-  getHealthColor,
-  getHealthLabel,
+  getStatusColor,
+  getStatusLabel,
 } from "./utils";
 
 const COLUMN_COUNT = 8;
@@ -87,7 +87,7 @@ export const NotificationsTable = ({
           <th>{t`Schedule`}</th>
           <Box component="th" miw={110}>{t`Recipients`}</Box>
           <Box component="th" miw={180}>{t`Last sent`}</Box>
-          <Box component="th" miw={120}>{t`Health`}</Box>
+          <Box component="th" miw={120}>{t`Status`}</Box>
         </tr>
       </thead>
 
@@ -136,7 +136,7 @@ const NotificationRow = memo(function NotificationRow({
   onToggle,
   onRowClick,
 }: NotificationRowProps) {
-  const isOrphanedCard = notification.health === "orphaned_card";
+  const isOrphanedCard = notification.status === "orphaned_card";
 
   const handlers = useMemo(
     () => notification.handlers ?? [],
@@ -205,7 +205,7 @@ const NotificationRow = memo(function NotificationRow({
         )}
       </td>
       <td>
-        <HealthBadge health={notification.health} />
+        <StatusBadge status={notification.status} />
       </td>
     </tr>
   );
@@ -226,7 +226,7 @@ const CardCell = ({ notification, isOrphaned }: CardCellProps) => {
       <Ellipsified maw={260} tooltip={name}>
         <Link
           variant="brand"
-          to={Urls.question({ id: cardId, name })}
+          to={Urls.card({ id: cardId, name })}
           onClick={(event) => event.stopPropagation()}
         >
           {name}
@@ -261,13 +261,13 @@ type RecipientsCellProps = {
   handlers: NotificationHandler[];
 };
 
-const HealthBadge = ({ health }: { health: NotificationHealth }) => (
+const StatusBadge = ({ status }: { status: NotificationStatus }) => (
   <Badge
-    color={getHealthColor(health)}
+    color={getStatusColor(status)}
     variant="light"
     styles={{ label: { overflow: "visible" } }}
   >
-    {getHealthLabel(health)}
+    {getStatusLabel(status)}
   </Badge>
 );
 

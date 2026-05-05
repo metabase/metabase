@@ -1,10 +1,11 @@
 (ns metabase-enterprise.notification-admin.api
   "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
-  and `check-superuser`. Health + last_sent_at are derived from SQL joins on notification_card,
+  and `check-superuser`. Status + last_sent_at are derived from SQL joins on notification_card,
   report_card, core_user, and a windowed task_run subquery. Classification is a single SQL `CASE`
-  expression ([[health-expr]]) referenced both as a projected column and in the `:health` filter
+  expression ([[status-expr]]) referenced both as a projected column and in the `:status` filter
   WHERE clause, so the filter and the response field can't drift."
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -21,11 +22,14 @@
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::health-state
+(mr/def ::status-state
   [:enum :healthy :orphaned_card :orphaned_creator :failing :abandoned])
 
-(mr/def ::status-filter
-  [:enum "active" "archived" "all"])
+(mr/def ::sort-column
+  [:enum :last_sent_at :card_name :creator_name :updated_at])
+
+(mr/def ::sort-direction
+  [:enum :asc :desc])
 
 (mr/def ::list-row
   [:map
@@ -36,7 +40,7 @@
    [:updated_at   ms/TemporalInstant]
    [:payload_type :keyword]
    [:payload_id   [:maybe ms/PositiveInt]]
-   [:health       ::health-state]
+   [:status       ::status-state]
    [:last_sent_at [:maybe ms/TemporalInstant]]])
 
 (mr/def ::list-response
@@ -52,29 +56,43 @@
   [:map
    [:updated ms/IntGreaterThanOrEqualToZero]])
 
-(defn- recipient-email-exists
-  "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has a handler
-  whose recipient is a user with this email. Raw-value recipients are intentionally not matched
-  — their email lives inside the `:details` JSON column and narrowing it in SQL would require
-  either a cross-DB LIKE on the serialized text or a JSON-operator abstraction. If that coverage
-  becomes important, revisit it separately."
-  [email]
-  [:exists
-   {:select [[1]]
-    :from   [[(t2/table-name :model/NotificationHandler) :nh]]
-    :join   [[(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id]
-             [:core_user :cu]                                   [:= :cu.id :nr.user_id]]
-    :where  [:and
-             [:= :nh.notification_id :notification.id]
-             [:= :cu.email email]]}])
+(defn- details-as-text
+  "Cast `notification_recipient.details` (JSON column) to a portable text type for substring
+  matching. MySQL needs `CHAR`; H2 and Postgres take `TEXT`. Mirrors the pattern in
+  [[metabase.settings.models.setting.cache]]."
+  []
+  (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :nr.details))
 
-(def ^:private health-lookback-days
+(defn- recipient-email-exists
+  "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has a recipient
+  matching `email`. Two paths joined with OR:
+    - **user recipients**: `core_user.email` matches case-insensitively.
+    - **raw-value recipients**: the JSON-serialized `details` column contains the email substring.
+  The raw-value path is a substring LIKE on the cast-to-text JSON column — the JSON shape is
+  `{\"value\":\"…\"}` (plus optional `channel_id`), so a bare email substring effectively anchors
+  to the `value` field with a vanishingly small false-positive surface."
+  [email]
+  (let [lower-email (str/lower-case email)]
+    [:exists
+     {:select    [[1]]
+      :from      [[(t2/table-name :model/NotificationHandler) :nh]]
+      :join      [[(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id]]
+      :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
+      :where     [:and
+                  [:= :nh.notification_id :notification.id]
+                  [:or
+                   [:= [:lower :cu.email] lower-email]
+                   [:and
+                    [:= :nr.type "notification-recipient/raw-value"]
+                    [:like [:lower (details-as-text)] (str "%" lower-email "%")]]]]}]))
+
+(def ^:private status-lookback-days
   "How far back to consider alert-type TaskRuns when computing `failing`/`abandoned`/`healthy`."
   90)
 
 (defn- latest-run-per-card
   "Honey.sql subquery: one row per card with the most recent alert-type TaskRun's status and
-  ended_at, within [[health-lookback-days]]. Uses `ROW_NUMBER() OVER (PARTITION BY entity_id)`
+  ended_at, within [[status-lookback-days]]. Uses `ROW_NUMBER() OVER (PARTITION BY entity_id)`
   — supported on H2, Postgres 8.4+, MySQL 8.0+, MariaDB 10.2+."
   []
   {:select [:entity_id :status :ended_at]
@@ -88,13 +106,13 @@
                        [:= :run_type "alert"]
                        [:= :entity_type "card"]
                        [:> :started_at (h2x/add-interval-honeysql-form
-                                        (mdb/db-type) (mi/now) (- health-lookback-days) :day)]]}
+                                        (mdb/db-type) (mi/now) (- status-lookback-days) :day)]]}
              :sub]]
    :where  [:= :sub.rn 1]})
 
-(def ^:private health-expr
-  "SQL `CASE` classifying a notification's health from the joined report_card / core_user /
-  latest-run columns. Shared between the SELECT projection and the `:health` WHERE filter so
+(def ^:private status-expr
+  "SQL `CASE` classifying a notification's status from the joined report_card / core_user /
+  latest-run columns. Shared between the SELECT projection and the `:status` WHERE filter so
   they can't drift."
   [:case
    [:or [:= :c.id nil] [:= :c.archived true]] "orphaned_card"
@@ -108,21 +126,48 @@
   also has `ended_at` populated — this `CASE` is what keeps those out of `last_sent_at`."
   [:case [:= :lr.status "success"] :lr.ended_at :else nil])
 
+(def ^:private sort-column->order-by
+  "Maps the public `sort_column` enum to the SQL expression used in `ORDER BY`. Uses raw
+  expressions rather than the SELECT aliases because H2 does not resolve aliases inside
+  expressions (e.g. wrapping `last_sent_at` in a `CASE` for nulls-last). Whitelist; any value
+  outside this map is rejected by the `::sort-column` malli enum upstream."
+  {:last_sent_at last-sent-at-expr
+   :card_name    :c.name
+   :creator_name [:coalesce :cu.last_name :cu.first_name :cu.email]
+   :updated_at   :notification.updated_at})
+
+(defn- channel-exists
+  "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has at least one
+  handler for this channel. Subquery instead of JOIN so the outer query needs no `DISTINCT` —
+  required because `SELECT DISTINCT … ORDER BY <expr>` is rejected by H2."
+  [channel]
+  [:exists
+   {:select [[1]]
+    :from   [(t2/table-name :model/NotificationHandler)]
+    :where  [:and
+             [:= :notification_handler.notification_id :notification.id]
+             [:= :notification_handler.channel_type channel]]}])
+
 (defn- base-list-query
-  "Select notifications plus `:health` / `:last_sent_at` computed inline. The health joins run
-  unconditionally because [[health-expr]] references them on every row."
-  [{:keys [status creator_id card_id recipient_email channel]}]
-  (cond-> {:select-distinct [:notification.id
-                             :notification.active
-                             :notification.creator_id
-                             :notification.created_at
-                             :notification.updated_at
-                             :notification.payload_type
-                             :notification.payload_id
-                             [health-expr       :health]
-                             [last-sent-at-expr :last_sent_at]]
-           :from            [:notification]
-           :where           [:= :notification.payload_type "notification/card"]}
+  "Select notifications plus `:status` / `:last_sent_at` / `:card_name` / `:creator_name`
+  computed inline. The status joins run unconditionally because [[status-expr]] references them
+  on every row. We project `card_name` and `creator_name` so they're sortable by alias under
+  `SELECT … ORDER BY` (alias-only sort keys side-step the H2 DISTINCT-vs-expression restriction
+  even though we no longer use DISTINCT — keeps the contract uniform)."
+  [{:keys [active creator_id card_id recipient_email channel]}]
+  (cond-> {:select [:notification.id
+                    :notification.active
+                    :notification.creator_id
+                    :notification.created_at
+                    :notification.updated_at
+                    :notification.payload_type
+                    :notification.payload_id
+                    [status-expr                                            :status]
+                    [last-sent-at-expr                                      :last_sent_at]
+                    [:c.name                                                :card_name]
+                    [[:coalesce :cu.last_name :cu.first_name :cu.email]     :creator_name]]
+           :from   [:notification]
+           :where  [:= :notification.payload_type "notification/card"]}
 
     true
     (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
@@ -130,11 +175,8 @@
         (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id])
         (sql.helpers/left-join [(latest-run-per-card) :lr] [:= :lr.entity_id :nc.card_id]))
 
-    (= status "active")
-    (sql.helpers/where [:= :notification.active true])
-
-    (= status "archived")
-    (sql.helpers/where [:= :notification.active false])
+    (some? active)
+    (sql.helpers/where [:= :notification.active active])
 
     creator_id
     (sql.helpers/where [:= :notification.creator_id creator_id])
@@ -143,39 +185,49 @@
     (sql.helpers/where [:= :nc.card_id card_id])
 
     channel
-    (-> (sql.helpers/left-join
-         :notification_handler
-         [:= :notification_handler.notification_id :notification.id])
-        (sql.helpers/where [:= :notification_handler.channel_type channel]))
+    (sql.helpers/where (channel-exists channel))
 
     recipient_email
     (sql.helpers/where (recipient-email-exists recipient_email))))
 
-(defn- health-where
-  "WHERE clause filtering to rows where [[health-expr]] equals `health`. Comparing against the
+(defn- status-where
+  "WHERE clause filtering to rows where [[status-expr]] equals `status`. Comparing against the
   same `CASE` expression the SELECT projects keeps filter and classifier from drifting."
-  [health]
-  [:= health-expr (name health)])
+  [status]
+  [:= status-expr (name status)])
+
+(defn- order-by-clauses
+  "Resolve `sort_column` + `sort_direction` (both already malli-validated enums) into an
+  honeysql `:order-by` vector. Pushes nulls last unconditionally — H2/Postgres/MySQL all default
+  to NULLS-FIRST under DESC, which would surface never-sent alerts at the top of the table; the
+  pre-cond CASE forces nulls to the trailing slot regardless of dialect or direction. Always
+  tie-breaks on `notification.id desc` so paging is stable across pages with equal sort keys."
+  [sort-column sort-direction]
+  (let [col (sort-column->order-by sort-column)
+        dir (or sort-direction :desc)]
+    [[[:case [:= col nil] 1 :else 0] :asc]
+     [col dir]
+     [:notification.id :desc]]))
 
 (defn- list-query
-  [{:keys [health] :as filters}]
-  (cond-> (base-list-query (dissoc filters :health))
-    health (sql.helpers/where (health-where health))
-    true   (assoc :order-by [[:notification.updated_at :desc] [:notification.id :desc]])))
+  [{:keys [status sort_column sort_direction] :as filters}]
+  (cond-> (base-list-query (dissoc filters :status :sort_column :sort_direction))
+    status (sql.helpers/where (status-where status))
+    true   (assoc :order-by (order-by-clauses (or sort_column :updated_at) sort_direction))))
 
 (defn- count-query
   [filters]
   (-> (list-query filters)
-      (assoc :select [[[:count [:distinct :notification.id]] :count]])
-      (dissoc :select-distinct :order-by)))
+      (assoc :select [[[:count :notification.id] :count]])
+      (dissoc :order-by)))
 
-(defn- coerce-health
-  "`:health` comes from SQL as a string; coerce to the keyword the response schema expects."
+(defn- coerce-status
+  "`:status` comes from SQL as a string; coerce to the keyword the response schema expects."
   [row]
-  (update row :health keyword))
+  (update row :status keyword))
 
 (defn- list-notifications
-  "Single SQL query. Health joins (card, creator, latest-run window) are always applied so we can
+  "Single SQL query. Status joins (card, creator, latest-run window) are always applied so we can
   classify every row inline — no separate post-query materialization. Pagination in SQL."
   [{:keys [limit offset] :as filters}]
   (let [base-filters (dissoc filters :limit :offset)
@@ -184,7 +236,7 @@
                                        :limit  limit
                                        :offset offset))
         total        (or (:count (t2/query-one (count-query base-filters))) 0)]
-    {:data   (vec (models.notification/hydrate-notification (mapv coerce-health page-rows)))
+    {:data   (vec (models.notification/hydrate-notification (mapv coerce-status page-rows)))
      :total  total
      :limit  limit
      :offset offset}))
@@ -195,38 +247,42 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- ::list-response
   "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +
-  `offset` query params — handled by the offset-paging middleware) and filtering."
+  `offset` query params — handled by the offset-paging middleware), filtering, and sorting."
   [_route
-   {:keys [status health creator_id card_id recipient_email channel]} :-
+   {:keys [active status creator_id card_id recipient_email channel sort_column sort_direction]} :-
    [:map
-    [:status          {:default "active"} ::status-filter]
-    [:health          {:optional true}    ::health-state]
-    [:creator_id      {:optional true}    ms/PositiveInt]
-    [:card_id         {:optional true}    ms/PositiveInt]
-    [:recipient_email {:optional true}    ms/NonBlankString]
-    [:channel         {:optional true}    ms/NonBlankString]]]
+    [:active          {:optional true} [:maybe ms/BooleanValue]]
+    [:status          {:optional true} ::status-state]
+    [:creator_id      {:optional true} ms/PositiveInt]
+    [:card_id         {:optional true} ms/PositiveInt]
+    [:recipient_email {:optional true} ms/NonBlankString]
+    [:channel         {:optional true} ms/NonBlankString]
+    [:sort_column     {:default :updated_at} ::sort-column]
+    [:sort_direction  {:default :desc}       ::sort-direction]]]
   (api/check-superuser)
   (list-notifications {:limit           (or (request/limit) 50)
                        :offset          (or (request/offset) 0)
+                       :active          active
                        :status          status
-                       :health          health
                        :creator_id      creator_id
                        :card_id         card_id
                        :recipient_email recipient_email
-                       :channel         channel}))
+                       :channel         channel
+                       :sort_column     sort_column
+                       :sort_direction  sort_direction}))
 
 (defn- get-notification-detail
-  "Fetch a single card-type notification with `:health` and `:last_sent_at`. Returns nil if the
+  "Fetch a single card-type notification with `:status` and `:last_sent_at`. Returns nil if the
   notification doesn't exist or isn't a card-type notification — the caller maps that to a 404."
   [id]
   (when-let [row (t2/select-one :model/Notification
                                 (-> (list-query {})
                                     (sql.helpers/where [:= :notification.id id])
                                     (dissoc :order-by)))]
-    (models.notification/hydrate-notification (coerce-health row))))
+    (models.notification/hydrate-notification (coerce-status row))))
 
 (api.macros/defendpoint :get "/:id" :- ::detail-response
-  "Get a single card-type notification with health and last_sent_at. 404 if the notification
+  "Get a single card-type notification with status and last_sent_at. 404 if the notification
   doesn't exist or isn't a card-type notification."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]

@@ -169,27 +169,37 @@ export type Notification = NotificationPayload & {
 };
 
 //#region Admin API types
-export type NotificationHealth =
+export type NotificationStatus =
   | "healthy"
   | "orphaned_card"
   | "orphaned_creator"
   | "failing"
   | "abandoned";
 
+export type AdminNotificationSortColumn =
+  | "last_sent_at"
+  | "card_name"
+  | "creator_name"
+  | "updated_at";
+
+export type AdminNotificationSortDirection = "asc" | "desc";
+
 export type AdminNotificationListItem = Notification & {
-  health: NotificationHealth;
+  status: NotificationStatus;
   last_sent_at: string | null;
 };
 
 export type AdminNotificationListParams = {
   limit?: number;
   offset?: number;
-  status?: "active" | "archived" | "all";
-  health?: NotificationHealth;
+  active?: boolean;
+  status?: NotificationStatus;
   creator_id?: UserId;
   card_id?: CardId;
   recipient_email?: string;
   channel?: NotificationChannelType;
+  sort_column?: AdminNotificationSortColumn;
+  sort_direction?: AdminNotificationSortDirection;
 };
 
 export type AdminNotificationListResponse = {

@@ -110,6 +110,6 @@ export const createMockAdminNotificationListItem = (
   opts?: Partial<AdminNotificationListItem>,
 ): AdminNotificationListItem => ({
   ...createMockNotification(opts),
-  health: opts?.health ?? "healthy",
+  status: opts?.status ?? "healthy",
   last_sent_at: opts?.last_sent_at ?? null,
 });

@@ -62,8 +62,8 @@
                                          :limit 100 :offset 0)]
           (is (>= (count (:data resp)) 2)))))))
 
-(deftest filter-by-status-test
-  (testing "status=active returns only active notifications (default)"
+(deftest filter-by-active-test
+  (testing "?active=true|false filters on the notification.active boolean; omitted = both"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}  {}
                      :model/NotificationCard {nc1 :id}      {:card_id card-id}
@@ -76,20 +76,20 @@
                                                              :payload_id   nc2
                                                              :active       false
                                                              :creator_id   (mt/user->id :crowberto)}]
-        (testing "default is active-only"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
+        (testing "?active=true returns only active"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :active true)
                 ids            (set (map :id data))]
             (is (contains? ids (:id active-notif)))
             (is (not (contains? ids (:id archived-notif))))))
-        (testing "status=archived returns only archived"
+        (testing "?active=false returns only archived"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :status "archived")
+                                                     :active false)
                 ids            (set (map :id data))]
             (is (not (contains? ids (:id active-notif))))
             (is (contains? ids (:id archived-notif)))))
-        (testing "status=all returns both"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :status "all")
+        (testing "omitting ?active returns both"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
                 ids            (set (map :id data))]
             (is (contains? ids (:id active-notif)))
             (is (contains? ids (:id archived-notif)))))))))
@@ -155,8 +155,8 @@
           (is (contains? ids (:id email-notif)))
           (is (not (contains? ids (:id slack-notif)))))))))
 
-(deftest filter-by-recipient-email-test
-  (testing "recipient_email matches a user recipient by core_user.email"
+(deftest filter-by-recipient-email-user-recipient-test
+  (testing "recipient_email matches a user recipient via case-insensitive core_user.email"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User                  {target-user :id
                                                    target-email :email} {}
@@ -180,35 +180,51 @@
                      :model/NotificationRecipient _other-r              {:notification_handler_id other-handler
                                                                          :type                    :notification-recipient/user
                                                                          :user_id                 other-user}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                   :recipient_email target-email)
-              ids            (set (map :id data))]
-          (is (contains? ids (:id target-notif)))
-          (is (not (contains? ids (:id other-notif)))))))))
+        (testing "exact (case-sensitive original)"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :recipient_email target-email)
+                ids            (set (map :id data))]
+            (is (contains? ids (:id target-notif)))
+            (is (not (contains? ids (:id other-notif))))))
+        (testing "case-insensitive — uppercased query still matches a lowercased stored email"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :recipient_email (clojure.string/upper-case target-email))
+                ids            (set (map :id data))]
+            (is (contains? ids (:id target-notif)))))))))
 
-(deftest filter-by-recipient-email-ignores-raw-value-test
-  (testing "recipient_email only matches user recipients; raw-value (external) recipients are not searched"
+(deftest filter-by-recipient-email-raw-value-test
+  (testing "recipient_email also matches raw-value (external) recipients via the JSON details column"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card                  {card-id :id}        {}
-                     :model/NotificationCard      {nc :id}             {:card_id card-id}
-                     :model/Notification          raw-notif            {:payload_type :notification/card
-                                                                        :payload_id   nc
-                                                                        :creator_id   (mt/user->id :crowberto)}
-                     :model/NotificationHandler   {raw-handler :id}    {:notification_id (:id raw-notif)
-                                                                        :channel_type    :channel/email}
-                     :model/NotificationRecipient _raw-r               {:notification_handler_id raw-handler
-                                                                        :type                    :notification-recipient/raw-value
-                                                                        :details                 {:value "external@example.com"}}]
+      (mt/with-temp [:model/Card                  {card-id :id}      {}
+                     :model/NotificationCard      {nc1 :id}          {:card_id card-id}
+                     :model/NotificationCard      {nc2 :id}          {:card_id card-id}
+                     :model/Notification          raw-notif          {:payload_type :notification/card
+                                                                      :payload_id   nc1
+                                                                      :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification          unrelated-notif    {:payload_type :notification/card
+                                                                      :payload_id   nc2
+                                                                      :creator_id   (mt/user->id :crowberto)}
+                     :model/NotificationHandler   {raw-handler :id}  {:notification_id (:id raw-notif)
+                                                                      :channel_type    :channel/email}
+                     :model/NotificationHandler   {un-handler :id}   {:notification_id (:id unrelated-notif)
+                                                                      :channel_type    :channel/email}
+                     :model/NotificationRecipient _raw-r             {:notification_handler_id raw-handler
+                                                                      :type                    :notification-recipient/raw-value
+                                                                      :details                 {:value "external@example.com"}}
+                     :model/NotificationRecipient _other-raw         {:notification_handler_id un-handler
+                                                                      :type                    :notification-recipient/raw-value
+                                                                      :details                 {:value "someone-else@example.com"}}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :recipient_email "external@example.com")
               ids            (set (map :id data))]
-          (is (not (contains? ids (:id raw-notif)))))))))
+          (is (contains? ids (:id raw-notif)))
+          (is (not (contains? ids (:id unrelated-notif)))))))))
 
 (defn- find-row-by-id [data id]
   (some #(when (= id (:id %)) %) data))
 
-(deftest health-healthy-test
-  (testing "health=:healthy when card exists, creator is active, no failed task_history"
+(deftest status-healthy-test
+  (testing ":status=:healthy when card exists, creator is active, no failed task_history"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
                      :model/NotificationCard {nc :id}         {:card_id card-id}
@@ -218,10 +234,10 @@
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
-          (is (= "healthy" (:health row))))))))
+          (is (= "healthy" (:status row))))))))
 
-(deftest health-orphaned-card-test
-  (testing "health=:orphaned_card when the associated card is archived"
+(deftest status-orphaned-card-test
+  (testing ":status=:orphaned_card when the associated card is archived"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}    {:archived true}
                      :model/NotificationCard {nc :id}         {:card_id card-id}
@@ -231,10 +247,10 @@
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
-          (is (= "orphaned_card" (:health row))))))))
+          (is (= "orphaned_card" (:status row))))))))
 
-(deftest health-orphaned-creator-test
-  (testing "health=:orphaned_creator when the creator user is deactivated"
+(deftest status-orphaned-creator-test
+  (testing ":status=:orphaned_creator when the creator user is deactivated"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {creator :id}    {:is_active false}
                      :model/Card             {card-id :id}    {:archived false}
@@ -245,10 +261,10 @@
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
-          (is (= "orphaned_creator" (:health row))))))))
+          (is (= "orphaned_creator" (:status row))))))))
 
-(deftest health-failing-test
-  (testing "health=:failing when the latest alert-type TaskRun for the card is :failed"
+(deftest status-failing-test
+  (testing ":status=:failing when the latest alert-type TaskRun for the card is :failed"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
                      :model/NotificationCard {nc :id}         {:card_id card-id}
@@ -262,10 +278,10 @@
                                                                :started_at  (t/instant)
                                                                :ended_at    (t/instant)}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
-          (is (= "failing" (:health (find-row-by-id data nid)))))))))
+          (is (= "failing" (:status (find-row-by-id data nid)))))))))
 
-(deftest health-abandoned-test
-  (testing "health=:abandoned when the latest TaskRun has status=:abandoned (orphaned run)"
+(deftest status-abandoned-test
+  (testing ":status=:abandoned when the latest TaskRun has status=:abandoned (orphaned run)"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
                      :model/NotificationCard {nc :id}         {:card_id card-id}
@@ -279,7 +295,7 @@
                                                                :started_at  (t/instant)
                                                                :ended_at    (t/instant)}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
-          (is (= "abandoned" (:health (find-row-by-id data nid)))))))))
+          (is (= "abandoned" (:status (find-row-by-id data nid)))))))))
 
 (deftest last-sent-at-test
   (testing "last_sent_at is populated from the latest successful TaskRun for the notification's card"
@@ -314,8 +330,8 @@
         (is (contains? resp :limit))
         (is (contains? resp :offset))))))
 
-(deftest filter-by-health-test
-  (testing "?health=<state> returns only rows matching that computed health state"
+(deftest filter-by-status-test
+  (testing "?status=<state> returns only rows matching that computed status state"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {inactive :id}     {:is_active false}
                      :model/Card             {healthy-card :id} {:archived false}
@@ -344,40 +360,40 @@
                                                                  :status      :failed
                                                                  :started_at  (t/instant)
                                                                  :ended_at    (t/instant)}]
-        (testing "health=healthy"
+        (testing "status=healthy"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :health "healthy")
+                                                     :status "healthy")
                 ids            (set (map :id data))]
             (is (contains? ids (:id healthy-n)))
             (is (not (contains? ids (:id orph-card-n))))
             (is (not (contains? ids (:id orph-user-n))))
             (is (not (contains? ids (:id failing-n))))))
-        (testing "health=orphaned_card"
+        (testing "status=orphaned_card"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :health "orphaned_card")
+                                                     :status "orphaned_card")
                 ids            (set (map :id data))]
             (is (contains? ids (:id orph-card-n)))
             (is (not (contains? ids (:id healthy-n))))
             (is (not (contains? ids (:id orph-user-n))))
             (is (not (contains? ids (:id failing-n))))))
-        (testing "health=orphaned_creator"
+        (testing "status=orphaned_creator"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :health "orphaned_creator")
+                                                     :status "orphaned_creator")
                 ids            (set (map :id data))]
             (is (contains? ids (:id orph-user-n)))
             (is (not (contains? ids (:id healthy-n))))
             (is (not (contains? ids (:id orph-card-n))))
             (is (not (contains? ids (:id failing-n))))))
-        (testing "health=failing"
+        (testing "status=failing"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :health "failing")
+                                                     :status "failing")
                 ids            (set (map :id data))]
             (is (contains? ids (:id failing-n)))
             (is (not (contains? ids (:id healthy-n))))
             (is (not (contains? ids (:id orph-card-n))))
             (is (not (contains? ids (:id orph-user-n))))))))))
 
-(deftest filter-by-health-in-flight-run-is-healthy-test
+(deftest filter-by-status-in-flight-run-is-healthy-test
   (testing "a notification whose latest TaskRun is :started (in-flight) classifies as :healthy"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
@@ -390,16 +406,16 @@
                                                             :entity_id   card-id
                                                             :status      :started
                                                             :started_at  (t/instant)}]
-        (testing "unfiltered list reports health=healthy"
+        (testing "unfiltered list reports status=healthy"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
-            (is (= "healthy" (:health (find-row-by-id data nid))))))
-        (testing "?health=healthy includes the in-flight notification"
+            (is (= "healthy" (:status (find-row-by-id data nid))))))
+        (testing "?status=healthy includes the in-flight notification"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                     :health "healthy")]
+                                                     :status "healthy")]
             (is (some? (find-row-by-id data nid)))))))))
 
 (deftest filter-compound-test
-  (testing "multiple filters AND together (status + creator_id)"
+  (testing "multiple filters AND together (active + creator_id)"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User             {target-user :id} {}
                      :model/User             {other-user :id}  {}
@@ -411,7 +427,7 @@
                                                                 :payload_id   nc1
                                                                 :active       true
                                                                 :creator_id   target-user}
-                     :model/Notification     wrong-status      {:payload_type :notification/card
+                     :model/Notification     wrong-active      {:payload_type :notification/card
                                                                 :payload_id   nc2
                                                                 :active       false
                                                                 :creator_id   target-user}
@@ -420,12 +436,86 @@
                                                                 :active       true
                                                                 :creator_id   other-user}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
-                                                   :status "active"
+                                                   :active true
                                                    :creator_id target-user)
               ids            (set (map :id data))]
           (is (contains? ids (:id matching)))
-          (is (not (contains? ids (:id wrong-status))))
+          (is (not (contains? ids (:id wrong-active))))
           (is (not (contains? ids (:id wrong-creator)))))))))
+
+;; ---------------------------------------------------------------------------------------------
+;; Sort
+;; ---------------------------------------------------------------------------------------------
+
+(deftest sort-by-last-sent-at-test
+  (testing "?sort_column=last_sent_at orders rows by the latest successful TaskRun"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-old :id}   {:archived false}
+                     :model/Card             {card-new :id}   {:archived false}
+                     :model/Card             {card-never :id} {:archived false}
+                     :model/NotificationCard {nc-old :id}     {:card_id card-old}
+                     :model/NotificationCard {nc-new :id}     {:card_id card-new}
+                     :model/NotificationCard {nc-never :id}   {:card_id card-never}
+                     :model/Notification     {old-id :id}     {:payload_type :notification/card
+                                                               :payload_id   nc-old
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {new-id :id}     {:payload_type :notification/card
+                                                               :payload_id   nc-new
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     {never-id :id}   {:payload_type :notification/card
+                                                               :payload_id   nc-never
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          _old             {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-old
+                                                               :status      :success
+                                                               :started_at  (t/minus (t/instant) (t/days 5))
+                                                               :ended_at    (t/minus (t/instant) (t/days 5))}
+                     :model/TaskRun          _new             {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-new
+                                                               :status      :success
+                                                               :started_at  (t/instant)
+                                                               :ended_at    (t/instant)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :sort_column "last_sent_at"
+                                                   :sort_direction "desc")
+              ids            (->> data (map :id) (filter #{old-id new-id never-id}) vec)]
+          (is (= [new-id old-id never-id] ids)
+              "newest-sent first, oldest-sent next, never-sent last (desc + null-trailing)"))))))
+
+(deftest sort-by-updated-at-test
+  (testing "?sort_column=updated_at orders rows by notification.updated_at"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc1 :id}     {:card_id card-id}
+                     :model/NotificationCard {nc2 :id}     {:card_id card-id}
+                     :model/Notification     n-older       {:payload_type :notification/card
+                                                            :payload_id   nc1
+                                                            :creator_id   (mt/user->id :crowberto)
+                                                            :updated_at   (t/minus (t/instant) (t/days 2))}
+                     :model/Notification     n-newer       {:payload_type :notification/card
+                                                            :payload_id   nc2
+                                                            :creator_id   (mt/user->id :crowberto)
+                                                            :updated_at   (t/instant)}]
+        (testing "desc puts newer first"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :sort_column "updated_at"
+                                                     :sort_direction "desc")
+                seen           (->> data (map :id) (filter #{(:id n-older) (:id n-newer)}) vec)]
+            (is (= [(:id n-newer) (:id n-older)] seen))))
+        (testing "asc puts older first"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :sort_column "updated_at"
+                                                     :sort_direction "asc")
+                seen           (->> data (map :id) (filter #{(:id n-older) (:id n-newer)}) vec)]
+            (is (= [(:id n-older) (:id n-newer)] seen))))))))
+
+(deftest sort-rejects-unknown-column-test
+  (testing "?sort_column=<unknown> is rejected with 400 by the malli enum"
+    (mt/with-premium-features #{:audit-app}
+      (mt/user-http-request :crowberto :get 400 "ee/notifications"
+                            :sort_column "name; DROP TABLE notification"))))
 
 ;; ---------------------------------------------------------------------------------------------
 ;; POST /bulk
@@ -546,8 +636,8 @@
 ;; GET /:id (Task B9 — detail endpoint)
 ;; ---------------------------------------------------------------------------------------------
 
-(deftest detail-returns-notification-with-health-test
-  (testing "GET /:id returns the hydrated notification with :health and :last_sent_at"
+(deftest detail-returns-notification-with-status-test
+  (testing "GET /:id returns the hydrated notification with :status and :last_sent_at"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
@@ -556,7 +646,7 @@
                                                             :creator_id   (mt/user->id :crowberto)}]
         (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))]
           (is (= nid (:id resp)))
-          (is (contains? resp :health))
+          (is (contains? resp :status))
           (is (contains? resp :last_sent_at)))))))
 
 (deftest detail-404-for-missing-id-test

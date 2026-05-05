@@ -8,35 +8,39 @@ import {
 import type { BadgeProps } from "metabase/ui";
 import type {
   AdminNotificationListParams,
+  AdminNotificationSortColumn,
+  AdminNotificationSortDirection,
   CardId,
   NotificationChannelType,
-  NotificationHealth,
+  NotificationStatus,
   UserId,
 } from "metabase-types/api";
 
-type HealthBadgeColor = NonNullable<BadgeProps["color"]>;
-
-export type NotificationStatusFilter = "active" | "archived" | "all";
-
-export const DEFAULT_STATUS: NotificationStatusFilter = "active";
+type StatusBadgeColor = NonNullable<BadgeProps["color"]>;
 
 export type NotificationsUrlState = {
   page: number;
-  status: NotificationStatusFilter;
-  health: NotificationHealth | null;
+  active: boolean | null;
+  status: NotificationStatus | null;
   creator_id: UserId | null;
   card_id: CardId | null;
   recipient_email: string;
   channel: NotificationChannelType | null;
+  sort_column: AdminNotificationSortColumn;
+  sort_direction: AdminNotificationSortDirection;
 };
 
-const HEALTH_VALUES = [
+export const DEFAULT_ACTIVE: boolean | null = true;
+export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "updated_at";
+export const DEFAULT_SORT_DIRECTION: AdminNotificationSortDirection = "desc";
+
+const STATUS_VALUES = [
   "healthy",
   "orphaned_card",
   "orphaned_creator",
   "failing",
   "abandoned",
-] as const satisfies readonly NotificationHealth[];
+] as const satisfies readonly NotificationStatus[];
 
 const CHANNEL_VALUES = [
   "channel/email",
@@ -44,11 +48,17 @@ const CHANNEL_VALUES = [
   "channel/http",
 ] as const satisfies readonly NotificationChannelType[];
 
-const STATUS_VALUES = [
-  "active",
-  "archived",
-  "all",
-] as const satisfies readonly NotificationStatusFilter[];
+const SORT_COLUMN_VALUES = [
+  "last_sent_at",
+  "card_name",
+  "creator_name",
+  "updated_at",
+] as const satisfies readonly AdminNotificationSortColumn[];
+
+const SORT_DIRECTION_VALUES = [
+  "asc",
+  "desc",
+] as const satisfies readonly AdminNotificationSortDirection[];
 
 function parsePage(param: QueryParam): number {
   const value = getFirstParamValue(param);
@@ -56,17 +66,24 @@ function parsePage(param: QueryParam): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-function parseStatus(param: QueryParam): NotificationStatusFilter {
+function parseActive(param: QueryParam): boolean | null {
   const value = getFirstParamValue(param);
-  return value && (STATUS_VALUES as readonly string[]).includes(value)
-    ? (value as NotificationStatusFilter)
-    : DEFAULT_STATUS;
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  if (value === "all") {
+    return null;
+  }
+  return DEFAULT_ACTIVE;
 }
 
-function parseHealth(param: QueryParam): NotificationHealth | null {
+function parseStatus(param: QueryParam): NotificationStatus | null {
   const value = getFirstParamValue(param);
-  return value && (HEALTH_VALUES as readonly string[]).includes(value)
-    ? (value as NotificationHealth)
+  return value && (STATUS_VALUES as readonly string[]).includes(value)
+    ? (value as NotificationStatus)
     : null;
 }
 
@@ -91,24 +108,51 @@ function parseEmail(param: QueryParam): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function parseSortColumn(param: QueryParam): AdminNotificationSortColumn {
+  const value = getFirstParamValue(param);
+  return value && (SORT_COLUMN_VALUES as readonly string[]).includes(value)
+    ? (value as AdminNotificationSortColumn)
+    : DEFAULT_SORT_COLUMN;
+}
+
+function parseSortDirection(param: QueryParam): AdminNotificationSortDirection {
+  const value = getFirstParamValue(param);
+  return value && (SORT_DIRECTION_VALUES as readonly string[]).includes(value)
+    ? (value as AdminNotificationSortDirection)
+    : DEFAULT_SORT_DIRECTION;
+}
+
 export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
+    active: parseActive(query.active),
     status: parseStatus(query.status),
-    health: parseHealth(query.health),
     creator_id: parseId(query.creator_id),
     card_id: parseId(query.card_id),
     recipient_email: parseEmail(query.recipient_email),
     channel: parseChannel(query.channel),
+    sort_column: parseSortColumn(query.sort_column),
+    sort_direction: parseSortDirection(query.sort_direction),
   }),
   serialize: (state) => ({
     page: state.page === 0 ? undefined : String(state.page),
-    status: state.status === DEFAULT_STATUS ? undefined : state.status,
-    health: state.health ?? undefined,
+    active:
+      state.active === DEFAULT_ACTIVE
+        ? undefined
+        : state.active === null
+          ? "all"
+          : String(state.active),
+    status: state.status ?? undefined,
     creator_id: state.creator_id == null ? undefined : String(state.creator_id),
     card_id: state.card_id == null ? undefined : String(state.card_id),
     recipient_email: state.recipient_email || undefined,
     channel: state.channel ?? undefined,
+    sort_column:
+      state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
+    sort_direction:
+      state.sort_direction === DEFAULT_SORT_DIRECTION
+        ? undefined
+        : state.sort_direction,
   }),
 };
 
@@ -119,17 +163,19 @@ export function buildListParams(
   return {
     limit: pageSize,
     offset: state.page * pageSize,
-    status: state.status,
-    health: state.health ?? undefined,
+    active: state.active ?? undefined,
+    status: state.status ?? undefined,
     creator_id: state.creator_id ?? undefined,
     card_id: state.card_id ?? undefined,
     recipient_email: state.recipient_email || undefined,
     channel: state.channel ?? undefined,
+    sort_column: state.sort_column,
+    sort_direction: state.sort_direction,
   };
 }
 
-export function getHealthLabel(health: NotificationHealth): string {
-  switch (health) {
+export function getStatusLabel(status: NotificationStatus): string {
+  switch (status) {
     case "healthy":
       return t`Healthy`;
     case "orphaned_card":
@@ -143,8 +189,8 @@ export function getHealthLabel(health: NotificationHealth): string {
   }
 }
 
-export function getHealthColor(health: NotificationHealth): HealthBadgeColor {
-  switch (health) {
+export function getStatusColor(status: NotificationStatus): StatusBadgeColor {
+  switch (status) {
     case "healthy":
       return "success";
     case "failing":

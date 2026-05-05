@@ -12,7 +12,7 @@ import {
   within,
 } from "__support__/ui";
 import { createMockLocation } from "metabase/redux/store/mocks";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { AdminNotificationListItem } from "metabase-types/api";
 import {
   createMockAdminNotificationListItem,
@@ -73,7 +73,7 @@ describe("NotificationsAdminPage", () => {
       notifications: [
         alertFor({
           id: 11,
-          health: "healthy",
+          status: "healthy",
           last_sent_at: "2026-04-21T16:00:00.000Z",
         }),
       ],
@@ -87,12 +87,12 @@ describe("NotificationsAdminPage", () => {
     expect(within(row).getByText("Healthy")).toBeInTheDocument();
   });
 
-  it("shows the new short health labels", async () => {
+  it("shows the new short status labels", async () => {
     setup({
       notifications: [
-        alertFor({ id: 1, health: "orphaned_card" }),
-        alertFor({ id: 2, health: "orphaned_creator" }),
-        alertFor({ id: 3, health: "failing" }),
+        alertFor({ id: 1, status: "orphaned_card" }),
+        alertFor({ id: 2, status: "orphaned_creator" }),
+        alertFor({ id: 3, status: "failing" }),
       ],
     });
 
@@ -101,7 +101,7 @@ describe("NotificationsAdminPage", () => {
     expect(screen.getByText("Orphaned")).toBeInTheDocument();
     expect(screen.getByText("No owner")).toBeInTheDocument();
     expect(screen.getByText("Failing")).toBeInTheDocument();
-    // "Deactivated" is no longer used as a health label (it read as
+    // "Deactivated" is no longer used as a status label (it read as
     // "the alert is off", but really means "the creator is deactivated")
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
@@ -110,8 +110,8 @@ describe("NotificationsAdminPage", () => {
     setup();
     await waitForLoaderToBeRemoved();
 
+    expect(screen.getByPlaceholderText("Filter by active")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Filter by status")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Filter by health")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Filter by channel"),
     ).toBeInTheDocument();

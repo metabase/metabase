@@ -9,15 +9,14 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   CardId,
   NotificationChannelType,
-  NotificationHealth,
+  NotificationStatus,
   UserId,
 } from "metabase-types/api";
 
 import {
-  type NotificationStatusFilter,
   type NotificationsUrlState,
   getChannelLabel,
-  getHealthLabel,
+  getStatusLabel,
 } from "./utils";
 
 type Props = {
@@ -25,8 +24,10 @@ type Props = {
   onChange: (patch: Partial<NotificationsUrlState>) => void;
 };
 
-const getStatusOptions = (): {
-  value: NotificationStatusFilter;
+type ActiveFilterValue = "active" | "archived" | "all";
+
+const getActiveOptions = (): {
+  value: ActiveFilterValue;
   label: string;
 }[] => [
   { value: "active", label: t`Active` },
@@ -34,13 +35,19 @@ const getStatusOptions = (): {
   { value: "all", label: t`All` },
 ];
 
-const getHealthOptions = (): { value: NotificationHealth; label: string }[] => [
-  { value: "healthy", label: getHealthLabel("healthy") },
-  { value: "orphaned_card", label: getHealthLabel("orphaned_card") },
-  { value: "orphaned_creator", label: getHealthLabel("orphaned_creator") },
-  { value: "failing", label: getHealthLabel("failing") },
-  { value: "abandoned", label: getHealthLabel("abandoned") },
+const getStatusOptions = (): { value: NotificationStatus; label: string }[] => [
+  { value: "healthy", label: getStatusLabel("healthy") },
+  { value: "orphaned_card", label: getStatusLabel("orphaned_card") },
+  { value: "orphaned_creator", label: getStatusLabel("orphaned_creator") },
+  { value: "failing", label: getStatusLabel("failing") },
+  { value: "abandoned", label: getStatusLabel("abandoned") },
 ];
+
+const activeUrlValue = (active: boolean | null): ActiveFilterValue =>
+  active === true ? "active" : active === false ? "archived" : "all";
+
+const activeFromUrlValue = (value: ActiveFilterValue): boolean | null =>
+  value === "active" ? true : value === "archived" ? false : null;
 
 const getChannelOptions = (): {
   value: NotificationChannelType;
@@ -52,19 +59,19 @@ const getChannelOptions = (): {
 ];
 
 export const NotificationsFilters = ({ state, onChange }: Props) => {
+  const activeOptions = getActiveOptions();
   const statusOptions = getStatusOptions();
-  const healthOptions = getHealthOptions();
   const channelOptions = getChannelOptions();
   return (
     <Flex gap="md" wrap="wrap">
       <Select
-        data={statusOptions}
-        value={state.status}
-        placeholder={t`Filter by status`}
+        data={activeOptions}
+        value={activeUrlValue(state.active)}
+        placeholder={t`Filter by active`}
         onChange={(value) => {
           if (value) {
             onChange({
-              status: value as NotificationStatusFilter,
+              active: activeFromUrlValue(value as ActiveFilterValue),
               page: 0,
             });
           }
@@ -74,12 +81,12 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
       />
 
       <Select
-        data={healthOptions}
-        value={state.health}
-        placeholder={t`Filter by health`}
+        data={statusOptions}
+        value={state.status}
+        placeholder={t`Filter by status`}
         onChange={(value) =>
           onChange({
-            health: (value as NotificationHealth | null) ?? null,
+            status: (value as NotificationStatus | null) ?? null,
             page: 0,
           })
         }
