@@ -24,8 +24,7 @@
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
-   (java.nio.charset StandardCharsets)
-   (java.util UUID)))
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
@@ -72,10 +71,10 @@
 (defn- handle-tools-list [id _params token-scopes]
   (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes)}))
 
-(defn- handle-tools-call [id params token-scopes]
+(defn- handle-tools-call [id params session-id token-scopes]
   (let [tool-name (:name params)
         arguments (or (:arguments params) {})]
-    (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
+    (jsonrpc-response id (mcp.tools/call-tool token-scopes session-id tool-name arguments))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -88,7 +87,8 @@
        :scope-denied) (jsonrpc-error id -32602 "Resource not found")
       :ok             (let [user-id     api/*current-user-id*
                             session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))]
-                        (jsonrpc-response id (mcp.resources/read-resource uri {:session-key session-key}))))))
+                        (jsonrpc-response id (mcp.resources/read-resource uri {:session-key session-key
+                                                                               :session-id  session-id}))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -100,7 +100,7 @@
     (case method
       "notifications/initialized" nil
       "tools/list"                (handle-tools-list id params token-scopes)
-      "tools/call"                (handle-tools-call id params token-scopes)
+      "tools/call"                (handle-tools-call id params session-id token-scopes)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
       "ping"                      (handle-ping id params)
@@ -161,15 +161,6 @@
                   (catch Exception _ false))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
-(defn- valid-session-id?
-  "Return true if `session-id` looks like a UUID (the format `create!` produces).
-   This is a format check only — any well-formed UUID is accepted. Authentication
-   is handled separately by cookie or bearer token, not by the session ID."
-  [session-id]
-  (and (string? session-id)
-       (try (UUID/fromString session-id) true
-            (catch IllegalArgumentException _ false))))
-
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
    `core_session` has been materialized, verifies it belongs to `user-id`."
@@ -178,7 +169,7 @@
     (str/blank? session-id)
     {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
 
-    (not (valid-session-id? session-id))
+    (not (mcp.session/valid-id? session-id))
     {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
 
     (not (mcp.session/owned-by-user? session-id user-id))
@@ -309,19 +300,26 @@
    Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error    (validate-origin request)
-           bearer-token    (oauth-server/extract-bearer-token request)
-           session-auth    api/*current-user-id*]
+     (let [origin-error (validate-origin request)
+           bearer-token (oauth-server/extract-bearer-token request)
+           session-auth api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    (if-let [throttle-err (check-throttle user-id)]
                      (respond throttle-err)
                      (try
                        (let [request (assoc request :token-scopes token-scopes)]
-                         (case (:request-method request)
-                           :post   (respond (handle-post user-id request))
-                           :get    (handle-get user-id request respond raise)
-                           :delete (respond (handle-delete user-id request))
+                         (cond
+                           (= :post (:request-method request))
+                           (respond (handle-post user-id request))
+
+                           (= :get (:request-method request))
+                           (handle-get user-id request respond raise)
+
+                           (= :delete (:request-method request))
+                           (respond (handle-delete user-id request))
+
+                           :else
                            (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
                        (catch Throwable e
                          (raise e))))))]
