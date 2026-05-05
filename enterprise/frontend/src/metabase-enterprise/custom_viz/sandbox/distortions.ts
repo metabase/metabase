@@ -10,8 +10,10 @@ import {
   SET_ATTRIBUTE_NODE,
   SET_ATTRIBUTE_NODE_NS,
   SET_ATTRIBUTE_NS,
+  SET_ATTR_VALUE_DESCRIPTOR,
   SET_NAMED_ITEM,
   SET_NAMED_ITEM_NS,
+  attrValueSetterDistortion,
   createElementDistortion,
   createElementNSDistortion,
   insertAdjacentHTMLDistortion,
@@ -85,6 +87,10 @@ export function makeDistortionCallback(pluginId: CustomVizPluginId) {
 
     if (value === SET_NAMED_ITEM_NS) {
       return setNamedItemNSDistortion(pluginId);
+    }
+
+    if (value === SET_ATTR_VALUE_DESCRIPTOR) {
+      return attrValueSetterDistortion(pluginId);
     }
 
     const blockedLabel = BLOCKED_NATIVE_REFS.get(value);

@@ -12,6 +12,11 @@ export const SET_ATTRIBUTE_NODE_NS = Element.prototype.setAttributeNodeNS;
 export const SET_NAMED_ITEM = NamedNodeMap.prototype.setNamedItem;
 export const SET_NAMED_ITEM_NS = NamedNodeMap.prototype.setNamedItemNS;
 
+export const SET_ATTR_VALUE_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  Attr.prototype,
+  "value",
+)?.set;
+
 type SanitizedSetterInfo = {
   name: string;
   originalSet: (this: Element, value: string) => void;
@@ -214,6 +219,13 @@ export function setNamedItemNSDistortion(pluginId: CustomVizPluginId) {
   return function setNamedItemNS(this: NamedNodeMap, attr: Attr) {
     assertSafeAttrAssignment(pluginId, "setNamedItemNS", attr.name, attr.value);
     return SET_NAMED_ITEM_NS.call(this, attr);
+  };
+}
+
+export function attrValueSetterDistortion(pluginId: CustomVizPluginId) {
+  return function (this: Attr, val: string) {
+    assertSafeAttrAssignment(pluginId, "Attr.set value", this.name, val);
+    SET_ATTR_VALUE_DESCRIPTOR?.call(this, val);
   };
 }
 
