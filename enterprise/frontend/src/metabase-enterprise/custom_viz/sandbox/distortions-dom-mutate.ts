@@ -45,6 +45,13 @@ if (shadowInnerHTMLDescriptor?.set) {
   });
 }
 
+const PURIFY_CONFIG = {
+  FORBID_TAGS: ["form", "a", "style", "frame"],
+  FORBID_ATTR: ["target", "formaction", "action"],
+  ALLOWED_URI_REGEXP:
+    /^(?:#|\/|https?:|data:image\/(?:png|jpeg|gif|svg\+xml|webp);)/i,
+};
+
 // DOMPurify exposes the list of nodes/attributes it stripped from the most
 // recent sanitize call as `DOMPurify.removed`. Reading it immediately after
 // sanitize lets us log only when something dangerous was actually removed,
@@ -68,7 +75,7 @@ export function sanitizedSetterDistortion(
   originalSet: (this: Element | ShadowRoot, value: string) => void,
 ) {
   return function (this: Element | ShadowRoot, value: string) {
-    const sanitized = DOMPurify.sanitize(value);
+    const sanitized = DOMPurify.sanitize(value, PURIFY_CONFIG);
     logSanitizationIfStripped(pluginId, name);
     originalSet.call(this, sanitized);
   };
@@ -246,7 +253,7 @@ export function insertAdjacentHTMLDistortion(pluginId: CustomVizPluginId) {
     position: InsertPosition,
     html: string,
   ) {
-    const sanitized = DOMPurify.sanitize(html);
+    const sanitized = DOMPurify.sanitize(html, PURIFY_CONFIG);
     logSanitizationIfStripped(pluginId, "insertAdjacentHTML");
     INSERT_ADJACENT_HTML.call(this, position, sanitized);
   };
