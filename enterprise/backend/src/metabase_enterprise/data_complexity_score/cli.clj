@@ -37,7 +37,8 @@
       (not (.exists f))       (throw (ex-info (str "--representation-dir does not exist: " path)
                                               {:cli-validation true :path path}))
       (not (.isDirectory f))  (throw (ex-info (str "--representation-dir must be a directory: " path)
-                                              {:cli-validation true :path path})))))
+                                              {:cli-validation true :path path}))
+      :else                   nil)))
 
 (def ^:private cli-options
   [["-r" "--representation-dir PATH" "Directory of representation JSON files (required)."]
@@ -85,8 +86,7 @@
       :else           (try
                         (write-result! (run-cli options) (:output options))
                         (catch clojure.lang.ExceptionInfo e
-                          (let [data (ex-data e)]
-                            (if (or (:cli-validation data) (:resolved-path data))
-                              (fail! (ex-message e))
-                              (throw e)))))))
+                          (if (:cli-validation (ex-data e))
+                            (fail! (ex-message e))
+                            (throw e))))))
   (System/exit 0))

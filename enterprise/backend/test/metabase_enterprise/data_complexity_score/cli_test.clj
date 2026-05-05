@@ -25,8 +25,8 @@
     ;; Fixture summary:
     ;;   Library     — 4 published tables (orders, subscriptions, clients, customers) + 2 metric
     ;;                 cards (Revenue x2).
-    ;;   Universe-only — 2 unpublished tables (events, event_log) + 1 model card (Revenue) in
-    ;;                 the Outside collection.
+    ;;   Universe-only — 2 unpublished tables (events, event_log) + 1 schema-less Table (widgets,
+    ;;                 active but not published) + 1 model card (Revenue) in the Outside collection.
     ;;   Embeddings  — orthogonal except clients≈customers (library synonym) and
     ;;                 events≈event_log (extra universe-only synonym). The customers key is in
     ;;                 raw display-name form ("  Customers ") to exercise the on-disk →
@@ -43,19 +43,23 @@
                              :repeated-measures {:measurement 1.0 :score 2}}}
                (:library result))))
       (testing "universe score matches the hand-derived total"
-        (is (= {:total      399
-                :components {:entity-count      {:measurement 9.0 :score 90}
-                             :name-collisions   {:measurement 2.0 :score 200}
-                             :synonym-pairs     {:measurement 2.0 :score 100}
-                             :field-count       {:measurement 5.0 :score 5}
-                             :repeated-measures {:measurement 2.0 :score 4}}}
+        (is (= {:total      409
+                :components {:entity-count      {:measurement 10.0 :score 100}
+                             :name-collisions   {:measurement 2.0  :score 200}
+                             :synonym-pairs     {:measurement 2.0  :score 100}
+                             :field-count       {:measurement 5.0  :score 5}
+                             :repeated-measures {:measurement 2.0  :score 4}}}
                (:universe result))))
       (testing "meta has formula-version + threshold + weights but no :embedding-model (offline mode)"
         (is (= {:formula-version   1
                 :synonym-threshold 0.8
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}
-               (:meta result)))))))
+               (:meta result))))))
+  (testing "the schema-less widgets table (under databases/<db>/tables/, no schema dir) loads into :universe"
+    (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)]
+      (is (some #(= "widgets" (:name %)) universe)
+          "schema-less Table directory should be picked up by the loader"))))
 
 (deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in

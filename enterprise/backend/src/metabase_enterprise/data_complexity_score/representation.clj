@@ -6,6 +6,7 @@
 
   Layout (subset that the scorer reads):
 
+      <dir>/databases/<db>/<db>.yaml                 (Database metadata; `is_audit: true` excludes the DB)
       <dir>/databases/<db>/schemas/<schema>/tables/<table>/<table>.yaml
       <dir>/databases/<db>/schemas/<schema>/tables/<table>/fields/<field>.yaml
       <dir>/databases/<db>/schemas/<schema>/tables/<table>/measures/<measure>.yaml
@@ -14,14 +15,9 @@
       <dir>/collections/<coll>/cards/<card>.yaml
       <dir>/embeddings.json                          (sidecar — not part of the serdes spec)
 
-  The Database self-yaml (`<db>/<db>.yaml`) sits in the export but is not consumed — `db_id` is
-  read from each Table's own YAML.
-
   Library membership is derived from `Collection.type = \"library\"` plus the `parent_id` chain.
 
   Caveats vs. the live appdb scorer in [[metabase-enterprise.data-complexity-score.complexity]]:
-    - Audit DB: serdes exports normally exclude it, so we don't filter it. Audit content in the
-      export will count toward the score.
     - `:metabot` catalog: requires premium-feature gates and a Metabot config row that aren't in
       an export. The CLI flags `:metabot` as a universe fallback (see `cli/run-cli`)."
   (:require
@@ -42,7 +38,7 @@
 (defn- yaml-file? [^File f]
   (and (.isFile f) (str/ends-with? (.getName f) ".yaml")))
 
-(defn- list-dirs ^java.util.List [^File dir]
+(defn- list-dirs [^File dir]
   (if (.isDirectory dir) (filterv #(.isDirectory ^File %) (.listFiles dir)) []))
 
 (defn- list-yamls [^File dir]
@@ -98,7 +94,7 @@
 
 (defn- table-self-yaml
   "Path to the Table's self-named `<dir>.yaml` inside `table-dir`, or nil if missing."
-  ^File [^File table-dir]
+  [^File table-dir]
   (let [f (io/file table-dir (str (.getName table-dir) ".yaml"))]
     (when (.exists f) f)))
 
@@ -109,13 +105,43 @@
                   (list-dirs (io/file db-dir "schemas")))
           (list-dirs (io/file db-dir "tables"))))
 
+(defn- database-self-yaml
+  "Path to the Database's self-named `<db-dir>/<db-dir>.yaml`, or nil if missing."
+  [^File db-dir]
+  (let [f (io/file db-dir (str (.getName db-dir) ".yaml"))]
+    (when (.exists f) f)))
+
+(defn- audit-database-names
+  "Set of database names whose self-yaml has `:is_audit true`. Mirrors the live appdb scorer's
+  `[:not= audit/audit-db-id]` filter — the v2 serdes extract path doesn't exclude the audit DB,
+  so anything in the export carrying `:is_audit true` would otherwise inflate `:universe`."
+  [^File databases-dir]
+  (if (.isDirectory databases-dir)
+    (into #{}
+          (keep (fn [^File db-dir]
+                  (when-let [self (database-self-yaml db-dir)]
+                    (let [parsed (load-yaml self)]
+                      (when (true? (:is_audit parsed))
+                        (:name parsed))))))
+          (list-dirs databases-dir))
+    #{}))
+
+(defn- load-yamls-of-model
+  "Parse every YAML in `dir` and keep only those whose serdes model equals `model`.
+  Serdes co-locates side-car models in the same directory — e.g. FieldValues and FieldUserSettings
+  live next to Field YAMLs under `fields/` (`<field>___fieldvalues.yaml`,
+  `<field>___fieldusersettings.yaml`). Without this filter the side-cars would be counted as
+  Fields and inflate `:field-count`."
+  [dir model]
+  (filterv #(= model (entity-model %)) (mapv load-yaml (list-yamls dir))))
+
 (defn- load-table
   "Load one Table directory into `{:table :fields :measures}`, or nil if its self-yaml is missing."
   [^File table-dir]
   (when-let [self (table-self-yaml table-dir)]
     {:table    (load-yaml self)
-     :fields   (mapv load-yaml (list-yamls (io/file table-dir "fields")))
-     :measures (mapv load-yaml (list-yamls (io/file table-dir "measures")))}))
+     :fields   (load-yamls-of-model (io/file table-dir "fields")   "Field")
+     :measures (load-yamls-of-model (io/file table-dir "measures") "Measure")}))
 
 (defn- walk-databases-tree
   "Walk `<dir>/databases/<db>/...` and return one `{:table :fields :measures}` per Table dir."
@@ -159,7 +185,8 @@
         f     (if (.isAbsolute given) given (io/file dir embeddings-path))]
     (when-not (.exists f)
       (throw (ex-info (str "Embeddings file not found: " (.getPath f))
-                      {:embeddings-path embeddings-path
+                      {:cli-validation  true
+                       :embeddings-path embeddings-path
                        :resolved-path   (.getPath f)
                        :dir             (str dir)})))
     f))
@@ -188,17 +215,24 @@
       Throws when the resolved file is missing. Defaults to `<dir>/embeddings.json` when absent."
   [dir & {:keys [embeddings-path]}]
   (let [dir-file        (io/file dir)
+        databases-dir   (io/file dir-file "databases")
         {:keys [collections cards]} (walk-collections-tree (io/file dir-file "collections"))
-        tables          (walk-databases-tree (io/file dir-file "databases"))
+        tables          (walk-databases-tree databases-dir)
         embeddings      (load-embeddings dir embeddings-path)
         lib-coll-ids    (library-collection-ids collections)
+        audit-db-names  (audit-database-names databases-dir)
+        non-audit-card? (fn [c] (not (contains? audit-db-names (:database_id c))))
+        non-audit-table? (fn [{t :table}] (not (contains? audit-db-names (:db_id t))))
         ;; In serdes: Card.archived is in :copy without a default → absent means false.
         ;; Field.active defaults to true; Measure.archived defaults to false (in shapers).
         universe-card?  (fn [c] (and (contains? #{"metric" "model"} (:type c))
-                                     (not (get c :archived false))))
+                                     (not (get c :archived false))
+                                     (non-audit-card? c)))
         library-card?   (fn [c] (and (universe-card? c)
                                      (contains? lib-coll-ids (:collection_id c))))
-        universe-table? (fn [{t :table}] (get t :active true))
+        universe-table? (fn [{t :table :as bundle}]
+                          (and (get t :active true)
+                               (non-audit-table? bundle)))
         library-table?  (fn [{t :table :as bundle}]
                           (and (universe-table? bundle)
                                (:is_published t)
