@@ -46,9 +46,9 @@
               ;; All identifiers carry `run-id` — we share a single test DB across
               ;; runs, so any leftover state from a failed run has to be
               ;; distinguishable from this one.
-              main-schema (str "ws_e2e_main_" run-id)
-              src-name (str "ws_e2e_src_" run-id)
-              tgt-name (str "ws_e2e_out_" run-id)
+              main-schema (str "canonical_schema_" run-id)
+              src-name (str "x_input_table_" run-id)
+              tgt-name (str "x_output_table" run-id)
               workspace {:id   (Long/parseLong run-id 16)
                          :name (str "wsd-e2e-" run-id)}
               ;; Pre-init synthetic ws-state for cleanup. Every driver's destroy
@@ -107,7 +107,7 @@
                             mp (mt/metadata-provider)
                             query (lib/query mp (lib.metadata/table mp (:id src-table)))]
                         (mt/with-temp [:model/Transform transform
-                                       {:name   (str "ws-e2e-transform-" run-id)
+                                       {:name   (str "transform-" run-id)
                                         :source {:type :query :query query}
                                         ;; Canonical target — the workspace
                                         ;; transform-hook rewrites `:schema` to
