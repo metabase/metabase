@@ -501,13 +501,7 @@
                   test-field)))))))
 
 (deftest metadata-export-parent-field-test
-  (testing "GET /api/ee/serialization/metadata/export — parent_id and nfc_path emission per the wire-format contract.
-
-           Convention A (real parent storage row, child carries `parent_id` int): emit `:parent_id` portable, emit `:nfc_path` (parent ancestry) verbatim, append leaf `name` to the `:id`.
-
-           Convention B (Postgres JSONB unfolded leaf, no parent storage row, `:nfc_path` non-empty, `parent_id` NULL): omit `:parent_id` (no parent row exists), emit `:nfc_path` verbatim, `:id` is `[db schema table & nfc-path]` (no `name` appended — the path already ends at the leaf's structural location).
-
-           Flat root (no parent, no `:nfc_path`): omit both."
+  (testing "GET /api/ee/serialization/metadata/export — parent_id and nfc_path emission across storage shapes"
     (mt/with-premium-features #{:serialization}
       (mt/with-temp [:model/Database {db-id :id  db-name :name}   {:engine :h2}
                      :model/Table    {t-id  :id t-name  :name}    {:db_id db-id :schema "PUBLIC"}
@@ -533,13 +527,13 @@
             (is (=? {:id [db-name "PUBLIC" t-name root-name]} test-root))
             (is (not (contains? test-root :parent_id)))
             (is (not (contains? test-root :nfc_path))))
-          (testing "Convention A child: :parent_id portable, :nfc_path = parent ancestry, :id appends the leaf name"
+          (testing "child with real parent: :parent_id portable, :nfc_path = parent ancestry, :id appends the leaf name"
             (is (=? {:id        [db-name "PUBLIC" t-name parent-name child-name]
                      :parent_id [db-name "PUBLIC" t-name parent-name]
                      :nfc_path  [parent-name]
                      :name      child-name}
                     test-child)))
-          (testing "Convention B leaf (no parent storage row): :parent_id omitted, :nfc_path verbatim, :id = [db schema table & nfc-path]"
+          (testing "JSON-unfolded leaf (no parent storage row): :parent_id omitted, :nfc_path verbatim, :id = [db schema table & nfc-path]"
             (is (=? {:id       [db-name "PUBLIC" t-name "data" "city"]
                      :nfc_path ["data" "city"]
                      :name     convb-name}

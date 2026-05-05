@@ -118,10 +118,8 @@
         (is (= "public" (:schema inserted)))
         (is (= "fresh-table" (:name inserted)))))))
 
-(deftest process-tables-patches-description-on-match-when-source-has-description-test
-  (testing "patch-on-match policy: when a source row has a non-nil description and the
-            target row exists, the target's description is updated to the source's. See
-            METADATA_FILE_IMPORT_PLAN.md §10c — flipping this is one line in the processor."
+(deftest process-tables-updates-description-on-match-test
+  (testing "description is updated on match"
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-patch-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
                                               :description "old description"}]
@@ -132,8 +130,7 @@
              (:description (t2/select-one :model/Table :id tbl-id)))))))
 
 (deftest process-tables-leaves-target-description-untouched-when-source-has-none-test
-  (testing "patch-on-match policy: when the source row has no description, the target
-            row's existing description is left intact (no UPDATE issued)"
+  (testing "no description, no update"
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-no-patch-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
                                               :description "preserved"}]
@@ -218,10 +215,6 @@
     (is (= [] (into [] (processors/process-tables! []))))))
 
 ;;; ======================== process-fields! ========================
-;;;
-;;; Tuple shape: `[ln row]`. Bare batches — the processor self-resolves portable
-;;; `:table_id` and `:parent_id` references via batched natural-key SELECTs and
-;;; inserts placeholder stubs for missing parents per §11c.
 
 (deftest process-fields-inserts-root-field-test
   (testing "a root field (no :parent_id) is inserted with parent_id=NULL,
@@ -310,10 +303,7 @@
         (is (= existing-id (:target-id r)))))))
 
 (deftest process-fields-clobbers-metadata-on-match-test
-  (testing "clobber-on-match (§11b): when the row matches an existing target, the
-            full metadata payload (description, semantic_type, effective_type,
-            coercion_strategy, base_type, database_type, plus active=true) is
-            written. parent_id and fk_target_field_id are not touched."
+  (testing "matched rows: full payload overwritten; parent_id and fk_target_field_id untouched"
     (mt/with-temp [:model/Database {db-id :id} {:name "fld-clobber-db" :engine :postgres}
                    :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {fld-id :id} {:table_id tbl-id :name "zip"
@@ -415,7 +405,7 @@
   (testing "empty input → empty output"
     (is (= [] (into [] (processors/process-fields! []))))))
 
-;;; ---------- stub-path tests (§11c) ----------
+;;; ---------- stub-path tests ----------
 
 (deftest process-fields-stub-row?-predicate-test
   (testing "stub-row? identifies rows by the :database_type sentinel \"__stub__\""
@@ -509,9 +499,7 @@
             "child's parent_id points at the parent stub")))))
 
 (deftest process-fields-clobbers-pre-existing-stub-on-real-row-arrival-test
-  (testing "if target appdb starts with a stub from a prior import (or batch), the
-            real row's match query (no :active=true scope, §7) finds the stub,
-            and clobber flips it to active=true with real metadata"
+  (testing "real row finds and overwrites the pre-existing stub"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fld-prior-stub-db" :engine :postgres}
                    :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {stub-id :id} {:table_id tbl-id :name "address"
@@ -531,15 +519,14 @@
         (is (= :type/Structured (:base_type row)) "base_type clobbered to real")
         (is (= "json" (:database_type row))    "database_type clobbered from __stub__ to real")))))
 
-;;; ---------- Convention B (JSON-unfolded leaves) ----------
+;;; ---------- JSON-unfolded leaves ----------
 
-(deftest process-fields-convention-b-inserts-flat-leaf-with-nfc-path-test
-  (testing "Convention B leaf: wire row has :nfc_path but no :parent_id. Inserts
-            with parent_id=NULL and stores nfc_path verbatim. NO stubs created."
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-conv-b-db" :engine :postgres}
+(deftest process-fields-inserts-json-unfolded-leaf-with-nfc-path-test
+  (testing "wire row with :nfc_path but no :parent_id: stores nfc_path verbatim, no stubs"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-json-leaf-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
-      (let [batch [[1 {:id ["fld-conv-b-db" "public" "events" "payload" "address" "zip"]
-                       :table_id ["fld-conv-b-db" "public" "events"]
+      (let [batch [[1 {:id ["fld-json-leaf-db" "public" "events" "payload" "address" "zip"]
+                       :table_id ["fld-json-leaf-db" "public" "events"]
                        :name "payload → address → zip"
                        :nfc_path ["payload" "address" "zip"]
                        :base_type "type/Text"
@@ -549,7 +536,7 @@
         (is (= :inserted (:status r)))
         (is (= "payload → address → zip" (:name row)))
         (is (nil? (:parent_id row))
-            "parent_id stays NULL — Convention B leaves have no parent row")
+            "parent_id stays NULL — no parent row exists")
         (is (= ["payload" "address" "zip"]
                (json/decode (:nfc_path
                              (first (t2/query
@@ -560,15 +547,14 @@
                            [(str "SELECT id FROM metabase_field WHERE database_type = '__stub__' "
                                  "AND table_id = ?")
                             tbl-id])))
-            "no stubs were created — Convention B doesn't trigger ensure-ancestors!")))))
+            "no stubs were created — :nfc_path alone doesn't trigger ensure-ancestors!")))))
 
-(deftest process-fields-convention-b-idempotent-test
-  (testing "Re-importing a Convention B leaf matches the existing row by
-            (table_id, name, parent_id=NULL); no duplicate, no new stubs."
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-conv-b-idem-db" :engine :postgres}
+(deftest process-fields-json-unfolded-leaf-idempotent-test
+  (testing "re-importing matches the existing row, no duplicate, no new stubs"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-json-leaf-idem-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
-      (let [batch [[1 {:id ["fld-conv-b-idem-db" "public" "events" "payload" "address" "zip"]
-                       :table_id ["fld-conv-b-idem-db" "public" "events"]
+      (let [batch [[1 {:id ["fld-json-leaf-idem-db" "public" "events" "payload" "address" "zip"]
+                       :table_id ["fld-json-leaf-idem-db" "public" "events"]
                        :name "payload → address → zip"
                        :nfc_path ["payload" "address" "zip"]
                        :base_type "type/Text"
@@ -577,7 +563,7 @@
             [r2] (into [] (processors/process-fields! batch))]
         (is (= :inserted (:status r1)))
         (is (= :matched (:status r2))
-            "second pass matches the existing Convention B leaf")
+            "second pass matches the existing row")
         (is (= (:target-id r1) (:target-id r2))
             "same int id — no duplicate row inserted")
         (is (= 1 (t2/count :model/Field :table_id tbl-id))

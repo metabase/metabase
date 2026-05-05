@@ -220,23 +220,15 @@
       :ok)))
 
 (defn initialize-from-env!
-  "If `MB_TABLE_METADATA_PATH` is set
-  in the environment, run the import pipeline against the referenced files.
-  Returns `:ok` on success, including the no-env-vars case (silent no-op).
+  "If `MB_TABLE_METADATA_PATH` is set in the environment, run the import
+  pipeline against the referenced file. Returns `:ok` on success, including
+  the no-env-vars case (silent no-op).
 
-  Hard-fails if the referenced file doesn't exist or isn't readable.
-
-  Invoked once during boot from
-  `metabase.core.config-from-file/init-from-file-if-code-available!`
-  (integration tracked as item 13 in the implementation checklist)."
+  Hard-fails if the referenced file doesn't exist or isn't readable."
   []
-  (let [metadata-path (env-path table-metadata-path-key)]
-    (cond
-      (nil? metadata-path)
-      :ok
-
-      :else
-      (let [metadata-file (assert-file-readable! metadata-path)]
-        (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
-        (import-metadata-file! metadata-file)
-        :ok))))
+  (if-let [metadata-path (env-path table-metadata-path-key)]
+    (let [metadata-file (assert-file-readable! metadata-path)]
+      (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
+      (import-metadata-file! metadata-file)
+      :ok)
+    :ok))

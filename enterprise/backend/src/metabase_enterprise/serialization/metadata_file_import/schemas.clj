@@ -3,10 +3,6 @@
   The shapes mirror the rows produced by `GET /api/database/metadata`, so the import
   side validates the same structure the export side emits.
 
-  Shared between the file loader (`metabase-enterprise.serialization.metadata-file-import`)
-  and the pure batch processors (`metabase.warehouses-rest.metadata-import-core`)
-  so both agree on the per-line contract.
-
   Identifiers are **portable**: a database is identified by name; a table by
   `[db-name schema-or-nil table-name]`; a field by `[db-name schema-or-nil
   table-name & nfc-path leaf-name]` (length ≥ 4). The list types accept both
@@ -49,15 +45,12 @@
    [:description {:optional true} :string]])
 
 (mr/def ::field-info
-  ;; Per the export-side wire-format contract, `:id` is required (the field's natural
-  ;; key — used to resolve `:parent_id` and `:fk_target_field_id` references against
-  ;; already-imported rows, and to detect re-imports). `:parent_id` and `:nfc_path`
-  ;; are independently optional:
-  ;;   - `:parent_id` is present iff the source row had a non-NULL storage parent_id
-  ;;     (Convention A child). Resolved via :id lookup at import time.
-  ;;   - `:nfc_path` is present iff the source row had a non-empty storage nfc_path
-  ;;     column. Stored verbatim in `metabase_field.nfc_path`.
-  ;;   - Both absent on flat root fields and Convention A parents.
+  ;; `:id` is required (the field's natural key — used to resolve `:parent_id`
+  ;; and `:fk_target_field_id` references and to detect re-imports). `:parent_id`
+  ;; and `:nfc_path` are independently optional:
+  ;;   - `:parent_id` present iff the source row had a non-NULL storage parent_id.
+  ;;   - `:nfc_path`  present iff the source row had a non-empty storage nfc_path.
+  ;;   - Both absent on flat root fields and top-level parents.
   [:map
    [:id ::portable-field-id]
    [:table_id ::portable-table-id]

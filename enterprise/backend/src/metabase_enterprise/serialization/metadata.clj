@@ -69,14 +69,7 @@
                        :where  [:and (visible-db-where :db) (visible-table-where :table)]}))
 
 (defn- reducible-fields-query
-  "Raw reducible-query streaming visible-field rows for [[reducible-fields]]. Visibility
-  filters on the FK target chain are folded into the LEFT JOIN ON clauses (rather than the
-  WHERE) so that an inaccessible target fails the join and the `fk_*` columns come back as
-  NULL — [[format-field-row]] then drops the `:fk_target_field_id` for that row.
-
-  `:parent_id_int` and `:fk_parent_id_int` are pulled (as the raw integer storage column
-  values, not for emission) so [[format-field-row]] can decide convention-aware `:id`
-  construction and `:parent_id` emission gating per the wire-format contract."
+  "Raw reducible-query streaming visible-field rows for [[reducible-fields]]."
   []
   (t2/reducible-query
    {:select    [[:db.name :db_name]
@@ -90,6 +83,9 @@
                 [:field.semantic_type :semantic_type]
                 [:field.coercion_strategy :coercion_strategy]
                 [:field.nfc_path :nfc_path]
+                ;; raw int storage values (not for emission) — used by
+                ;; format-field-row to build :id and decide whether to
+                ;; emit :parent_id. See external-field-id.
                 [:field.parent_id :parent_id_int]
                 [:fk_db.name :fk_db_name]
                 [:fk_table.schema :fk_table_schema]
@@ -100,6 +96,9 @@
     :from      [[:metabase_field :field]]
     :join      [[:metabase_table :table]    [:= :field.table_id :table.id]
                 [:metabase_database :db]    [:= :table.db_id :db.id]]
+    ;; FK-target visibility lives in LEFT JOIN ON predicates (not WHERE)
+    ;; so an inaccessible target fails the join — fk_* cols come back
+    ;; NULL and format-field-row drops :fk_target_field_id for that row.
     :left-join [[:metabase_field :fk_field]    [:and [:= :field.fk_target_field_id :fk_field.id] (visible-field-where :fk_field)]
                 [:metabase_table :fk_table]    [:and [:= :fk_field.table_id :fk_table.id]        (visible-table-where :fk_table)]
                 [:metabase_database :fk_db]    [:and [:= :fk_table.db_id :fk_db.id]              (visible-db-where :fk_db)]]
@@ -126,18 +125,18 @@
   [db-name schema table-name])
 
 (defn- external-field-id
-  "Portable id for a field. Convention-aware — branches on `has-parent?` (true when
-  the storage row has a non-NULL `parent_id` column) and on whether `nfc-path` is set:
+  "Portable id for a field. Three cases, branching on whether the storage row
+  had a non-NULL `parent_id` (`has-parent?`) and whether `nfc-path` is set:
 
-    - **Convention A child** (`has-parent?` true): the row has a real parent storage row
-      with int id, and `nfc-path` is the parent ancestry chain. The portable id is
-      `[db schema table & nfc-path & field-name]` — the leaf name is appended.
-    - **Convention B leaf** (`has-parent?` false, `nfc-path` non-empty): the row has
-      no parent storage row; `nfc-path` is the FULL structural path including the leaf,
-      and `field-name` is the synthesized arrow-joined display label. The portable id
-      is `[db schema table & nfc-path]` — `nfc-path` is used verbatim, `field-name`
-      is NOT appended (the path already terminates at the leaf's structural location).
-    - **Flat root** (`has-parent?` false, `nfc-path` empty/nil): `[db schema table field-name]`."
+    - `has-parent?` true: the row has a real parent storage row, and `nfc-path`
+      is the parent ancestry chain. Portable id:
+      `[db schema table & nfc-path & field-name]` — leaf name appended.
+    - `has-parent?` false, `nfc-path` non-empty: no parent storage row;
+      `nfc-path` is the full structural path including the leaf, and
+      `field-name` is the synthesized arrow-joined display label. Portable
+      id: `[db schema table & nfc-path]` — `field-name` NOT appended
+      (`nfc-path` already terminates at the leaf).
+    - `has-parent?` false, `nfc-path` empty/nil: `[db schema table field-name]`."
   [db-name schema table-name field-name nfc-path has-parent?]
   (cond
     has-parent?    (-> [db-name schema table-name] (into nfc-path) (conj field-name))
@@ -161,20 +160,13 @@
 
 (defn format-field-row
   "JSON shape for one field row, with portable references for `:id`, `:table_id`,
-  `:parent_id`, and `:fk_target_field_id`. The convention is encoded in the **presence
-  or absence** of optional wire keys; the importer never has to interpret either:
+  `:parent_id`, and `:fk_target_field_id`.
 
-    - `:parent_id` is emitted only when storage `parent_id` is non-NULL (a real parent
-      storage row exists). Convention B leaves and flat roots get no `:parent_id`.
-    - `:nfc_path` is emitted verbatim when the storage column is non-empty. Under
-      Convention A on a child, this is the parent ancestry chain (no leaf). Under
-      Convention B, this is the full structural path including the leaf.
-    - `:id` is built convention-aware via [[external-field-id]] — see that function's
-      docstring for the three cases.
-
-  The FK target gets the same convention-aware treatment via the same
-  [[external-field-id]] function — `:fk_parent_id_int` and `:fk_field_nfc_path` are
-  pulled to enable that.
+    - `:id` is built via [[external-field-id]].
+    - `:parent_id` is emitted only when storage `parent_id` is non-NULL.
+    - `:nfc_path` is emitted verbatim when the storage column is non-empty.
+    - `:fk_target_field_id` is the portable id of the FK target row, built
+      via the same [[external-field-id]] function.
 
   Optional fields are omitted when nil."
   [{:keys [db_name table_schema table_name field_name description base_type database_type
@@ -184,21 +176,11 @@
   (let [nfc-path        (decode-nfc-path nfc_path)
         has-parent?     (some? parent_id_int)
         parent-id       (when has-parent?
-                          ;; The parent's portable id collapses to `[db schema table & nfc-path]`
-                          ;; in every Convention A case:
-                          ;; - If the parent itself has a parent (grandparent exists), the
-                          ;;   parent is a Convention A child; its `name` = last element of
-                          ;;   the child's `nfc-path`; its `nfc-path` = (butlast child-nfc-path).
-                          ;;   `external-field-id` for that case yields parent.nfc-path ++ parent.name
-                          ;;   which is exactly the child's full nfc-path.
-                          ;; - If the parent has no parent (it's a flat structural root in
-                          ;;   Convention A), the parent's `name` = (last child-nfc-path) and
-                          ;;   `nfc-path` is nil. `external-field-id`'s flat-root branch yields
-                          ;;   `[db schema table parent.name]` = `[db schema table (last child-nfc-path)]`,
-                          ;;   which (since the child's nfc-path here is length 1) equals
-                          ;;   `[db schema table & nfc-path]`.
-                          ;; Either way the result is `(into [db schema table] nfc-path)`,
-                          ;; so we can construct it directly without re-reading the parent row.
+                          ;; The parent's portable id is always
+                          ;; `(into [db schema table] nfc-path)`, regardless of the parent's
+                          ;; own parent state. Both has-parent? branches in external-field-id
+                          ;; produce that expression when applied to the parent — so we can
+                          ;; construct it directly without re-reading the parent row.
                           (into [db_name table_schema table_name] nfc-path))
         fk-field-nfc    (decode-nfc-path fk_field_nfc_path)
         fk-has-parent?  (some? fk_parent_id_int)
