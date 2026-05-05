@@ -236,23 +236,53 @@
               (expect-bq-write-denied! user-client
                                        (format "INSERT INTO %s (id, v) VALUES (3, 'c')" (qual in-dataset src-name))
                                        :insert-after-regrant))
+            (testing "workspace SA cannot create a new dataset outside its own workspace"
+              ;; The workspace SA holds `roles/bigquery.jobUser` at project level
+              ;; plus `dataEditor` on its own output dataset. Creating a *new*
+              ;; dataset needs project-level `bigquery.datasets.create`, which
+              ;; only project-IAM admins / BigQuery admins have. If this
+              ;; succeeds, the workspace SA can grow its footprint indefinitely
+              ;; — an escalation hole. We clean up only if the assertion
+              ;; spuriously fails so a real bug doesn't leave a stray dataset.
+              (let [hacker-ds (str "ws_iso_hacker_" run-id)
+                    succeeded (atom false)]
+                (try
+                  (bigquery/create-dataset! user-client project-id hacker-ds)
+                  (reset! succeeded true)
+                  (is false (format "workspace SA unexpectedly created dataset %s" hacker-ds))
+                  (catch Throwable t
+                    (is (some? t)
+                        (format "workspace SA correctly denied dataset creation: %s" (ex-message t)))))
+                (when @succeeded
+                  (try (bigquery/drop-dataset! admin-client project-id hacker-ds)
+                       (catch Throwable _ nil)))))
             (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
               ;; Explicit destroy here (instead of relying on the `finally`) lets us
               ;; assert the cleanup actually happened. destroy is idempotent so
               ;; finally re-calling it is a no-op.
               (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
-              (testing "workspace SA is deleted from IAM"
-                ;; Asking IAM directly is more reliable than querying through the
-                ;; impersonated client, because `ImpersonatedCredentials` caches
-                ;; the access token for up to an hour and may keep working past
-                ;; SA deletion until the cached token expires.
-                (let [sa-name (format "projects/%s/serviceAccounts/%s" project-id ws-sa-email)]
+              (testing "workspace SA can no longer issue access tokens"
+                ;; GCP IAM holds deleted service accounts in a *soft-deleted* state
+                ;; for ~30 days — `getServiceAccount` may still return the SA (with
+                ;; a tombstone email) right after `deleteServiceAccount` returns,
+                ;; making "look the SA up" a flaky deletion signal. The reliable
+                ;; signal is that fresh token issuance fails: deleted SAs cannot
+                ;; mint new access tokens. We bypass the per-test ImpersonatedCreds
+                ;; instance (which caches a token for up to an hour) by building a
+                ;; new one and forcing a refresh.
+                (let [fresh-imp-creds (ImpersonatedCredentials/create
+                                       admin-creds
+                                       ws-sa-email
+                                       nil
+                                       (doto (java.util.ArrayList.)
+                                         (.add "https://www.googleapis.com/auth/bigquery"))
+                                       3600)]
                   (try
-                    (.getServiceAccount iam-client sa-name)
-                    (is false (format "workspace SA %s should be deleted after destroy" ws-sa-email))
+                    (.refresh fresh-imp-creds)
+                    (is false (format "fresh impersonation of %s unexpectedly succeeded after destroy" ws-sa-email))
                     (catch Throwable t
                       (is (some? t)
-                          (format "workspace SA correctly absent after destroy: %s" (ex-message t)))))))
+                          (format "fresh impersonation correctly denied after destroy: %s" (ex-message t)))))))
               (testing "workspace output dataset is dropped"
                 (let [ds-id (DatasetId/of project-id out-dataset)
                       ds   (.getDataset admin-client ds-id (u/varargs BigQuery$DatasetOption []))]

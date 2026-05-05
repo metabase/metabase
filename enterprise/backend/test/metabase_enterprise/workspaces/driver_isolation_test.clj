@@ -157,6 +157,32 @@
           (is (some? sqle)
               (format "expected SQLException for %s; got %s" label (class t))))))))
 
+(defn- escalation-attempt-sqls
+  "Per-driver list of `[label sql]` pairs that probe the privilege-escalation
+   surface — account-/server-/role-level operations the workspace user should
+   never be allowed to execute. Each SQL is shaped so denial surfaces as a
+   permission error (the user lacks CREATEROLE / CREATE USER / IMPERSONATE /
+   ACCOUNTADMIN / etc.) rather than a parse error, so a successful execution
+   would indicate a real privilege-escalation bug rather than slip past as a
+   benign syntax denial. Names embed `hacker-name` (the test's run-id-derived
+   suffix) so the operation name is fresh per run."
+  [driver hacker-name]
+  (case driver
+    :postgres   [[:create-role  (str "CREATE ROLE \"" hacker-name "\"")]
+                 [:create-user  (str "CREATE USER \"" hacker-name "_u\" PASSWORD 'Pass1234X'")]]
+    :redshift   [[:create-user  (str "CREATE USER \"" hacker-name "\" PASSWORD 'Pass1234X'")]
+                 [:create-group (str "CREATE GROUP \"" hacker-name "_grp\"")]]
+    :mysql      [[:create-user  (str "CREATE USER '" hacker-name "'@'%' IDENTIFIED BY 'Pass1234X'")]
+                 [:create-role  (str "CREATE ROLE '" hacker-name "_r'")]]
+    :sqlserver  [[:create-user  (str "CREATE USER [" hacker-name "] WITHOUT LOGIN")]
+                 [:create-role  (str "CREATE ROLE [" hacker-name "_r]")]
+                 [:execute-as   "EXECUTE AS USER = 'dbo'"]]
+    :snowflake  [[:use-role     "USE ROLE ACCOUNTADMIN"]
+                 [:create-user  (str "CREATE USER \"" hacker-name "\" PASSWORD = 'Pass1234X'")]
+                 [:create-role  (str "CREATE ROLE \"" hacker-name "_r\"")]]
+    :clickhouse [[:create-user  (str "CREATE USER `" hacker-name "` IDENTIFIED WITH plaintext_password BY 'Pass1234X'")]
+                 [:create-role  (str "CREATE ROLE `" hacker-name "_r`")]]))
+
 (defn- random-suffix
   "Eight hex chars from a random UUID. Per-run unique enough to avoid collisions
    from leftover state in the shared test DB."
@@ -269,6 +295,16 @@
               (expect-sql-denied! user-spec
                                   (str "INSERT INTO " src " VALUES (3, 'c')")
                                   :insert-after-regrant))
+            (testing "workspace user cannot escalate privileges via account-level operations"
+              ;; Probes the privilege-escalation surface that a workspace user could
+              ;; otherwise use to break out of its sandbox: CREATE USER/ROLE,
+              ;; impersonation primitives (`USE ROLE ACCOUNTADMIN`, `EXECUTE AS`),
+              ;; and account-/server-level grants. If any of these unexpectedly
+              ;; succeeds, the workspace user has more than the read-only-input +
+              ;; full-output contract intends.
+              (let [hacker-name (str "ws_iso_hacker_" run-id)]
+                (doseq [[label sql] (escalation-attempt-sqls driver hacker-name)]
+                  (expect-sql-denied! user-spec sql label))))
             (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
               ;; Explicit destroy here (instead of relying on the `finally`) lets us
               ;; assert that the cleanup actually happened. Drivers' destroy impls are
