@@ -37,8 +37,7 @@
       (not (.exists f))       (throw (ex-info (str "--representation-dir does not exist: " path)
                                               {:cli-validation true :path path}))
       (not (.isDirectory f))  (throw (ex-info (str "--representation-dir must be a directory: " path)
-                                              {:cli-validation true :path path}))
-      :else                   nil)))
+                                              {:cli-validation true :path path})))))
 
 (def ^:private cli-options
   [["-r" "--representation-dir PATH" "Directory of representation JSON files (required)."]
