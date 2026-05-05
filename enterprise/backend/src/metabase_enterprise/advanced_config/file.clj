@@ -124,7 +124,7 @@
   ;; for `api-keys:` section code
   metabase-enterprise.advanced-config.file.api-keys/keep-me
   ;; for `workspace:` section code
-  metabase-enterprise.advanced-config.file.workspace/keep-me)
+  advanced-config.file.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
 
