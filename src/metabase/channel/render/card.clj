@@ -103,6 +103,7 @@
                           tyype (pr-str card-name) (apply format reason args))
               tyype)]
       (cond
+
         (or (empty? rows)
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
             (= [[nil]] (-> data :rows)))
