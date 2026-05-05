@@ -92,6 +92,29 @@ describe("Auth Flow - JWT", () => {
     ).toBeInTheDocument();
   });
 
+  it("should send the JWT in the JSON body via POST to /auth/sso, not in the URL via GET (EMB-1645)", async () => {
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+    });
+
+    const { getLastUserApiCall } = setup({ authConfig });
+
+    await waitForRequest(() => getLastUserApiCall());
+
+    const ssoExchange = fetchMock.callHistory
+      .calls(`${MOCK_INSTANCE_URL}/auth/sso`)
+      .find((call) => (call.options?.method ?? "GET").toUpperCase() === "POST");
+
+    expect(ssoExchange).toBeDefined();
+    expect(ssoExchange!.url).not.toContain("jwt=");
+    expect(ssoExchange!.options.headers).toMatchObject({
+      "content-type": "application/json",
+    });
+    expect(JSON.parse(ssoExchange!.options.body as string)).toEqual({
+      jwt: MOCK_VALID_JWT_RESPONSE,
+    });
+  });
+
   it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
