@@ -20,39 +20,44 @@ export type MetabaseFontFamily =
   | "Lora"
   | "Custom";
 
-type FontGenericFamily = "serif" | "sans-serif" | "monospace";
-
 type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
 
-export const PREDEFINED_FONT_FAMILIES: Record<
+// For cases when selected font doesn't support certain glyph (e.g. Lato doesn't support some parts of extended
+// Latin alphabet, Poppins doesn't support cyrillic), browser will use fallback font to render it.
+// So we set a per-font fallback which matches original font's style as much as possible, so glyphs
+// rendered with fallback don't look too out of place on a page.
+export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   PredefinedFontName,
-  FontGenericFamily
+  string
 > = {
-  Roboto: "sans-serif",
-  Merriweather: "serif",
-  "Open Sans": "sans-serif",
+  Roboto: '"Noto Sans", sans-serif',
+  Merriweather: '"Lora", serif',
+  "Open Sans": '"Lato", sans-serif',
   Lato: "sans-serif",
   "Noto Sans": "sans-serif",
   "Roboto Slab": "serif",
-  "Source Sans Pro": "sans-serif",
-  Raleway: "sans-serif",
-  "Slabo 27px": "serif",
-  "PT Sans": "sans-serif",
-  Poppins: "sans-serif",
-  "PT Serif": "serif",
+  "Source Sans Pro": '"Lato", sans-serif',
+  Raleway: '"Montserrat", sans-serif',
+  "Slabo 27px": '"Roboto Slab", serif',
+  "PT Sans": '"Lato", sans-serif',
+  Poppins: '"Montserrat", sans-serif',
+  "PT Serif": '"Lora", serif',
   "Roboto Mono": "monospace",
   "Roboto Condensed": "sans-serif",
   "Playfair Display": "serif",
-  Oswald: "sans-serif",
-  Ubuntu: "sans-serif",
+  Oswald: '"Roboto Condensed", sans-serif',
+  Ubuntu: '"Lato", sans-serif',
   Montserrat: "sans-serif",
   Lora: "serif",
 };
 
 export function getFontFamilyValue(font: string): string {
-  const generic =
-    (PREDEFINED_FONT_FAMILIES as Record<string, FontGenericFamily | undefined>)[
-      font
-    ] ?? "sans-serif";
-  return `"${font}", ${generic}`;
+  const fallback =
+    (
+      PREDEFINED_FONT_FAMILIES_FALLBACK_MAP as Record<
+        string,
+        string | undefined
+      >
+    )[font] ?? "sans-serif";
+  return `"${font}", ${fallback}`;
 }
