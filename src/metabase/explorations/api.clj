@@ -198,12 +198,20 @@
    `:query_ids` references queries that exist on the same thread. `:parent_group_id`
    references another group's `:id` within the same `:groups` list (nil = top
    level); the shape is nestable but currently we only generate flat groups. Type is
-  just `auto` for now but will allow for user-defined groups at some point down the road."
+   just `auto` for now but will allow for user-defined groups at some point down the road.
+   `:display_type` tells the FE how to render the group:
+     - `\"singleton\"` — exactly one query; sidebar shows it as a single row
+     - `\"page\"`      — multiple queries to render together on one page when opened
+     - `\"sidebar\"`   — group expands/collapses inline as a dropdown in the sidebar
+   The (card, dim) heuristic emits `\"singleton\"`/`\"page\"` only; the `Uninteresting
+   Charts` bin (queries the LLM scored 0 for contextual interestingness) is emitted as
+   `\"sidebar\"`."
   [:map
    [:id              :string]
    [:parent_group_id [:maybe :string]]
    [:position        ms/IntGreaterThanOrEqualToZero]
    [:type            [:enum "auto"]]
+   [:display_type    [:enum "page" "singleton" "sidebar"]]
    [:name            [:maybe :string]]
    [:query_ids       [:sequential ms/PositiveInt]]])
 

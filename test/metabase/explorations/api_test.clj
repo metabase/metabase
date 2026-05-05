@@ -734,7 +734,23 @@
         (is (= [0 1 2] (mapv :position groups)))
         (is (= 0 (:position (get by-id "auto:20:d1"))) "highest score => position 0")
         (is (= 1 (:position (get by-id "auto:10:d1"))))
-        (is (= 2 (:position (get by-id "auto:10:d2"))))))))
+        (is (= 2 (:position (get by-id "auto:10:d2")))))
+      (testing ":display_type is 'page' for multi-query groups, 'singleton' for solo"
+        (is (= "page"      (:display_type (get by-id "auto:10:d1"))) "3 queries (base + 2 segments)")
+        (is (= "singleton" (:display_type (get by-id "auto:10:d2"))) "1 query")
+        (is (= "singleton" (:display_type (get by-id "auto:20:d1"))) "1 query")))))
+
+(deftest auto-groups-display-type-test
+  (testing ":display_type reflects how the group should render"
+    (testing "single query → singleton"
+      (let [[g] (explorations.groups/auto-groups
+                 [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "solo"}])]
+        (is (= "singleton" (:display_type g)))))
+    (testing "multiple queries sharing (card, dim) → page"
+      (let [[g] (explorations.groups/auto-groups
+                 [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "base"}
+                  {:id 2 :card_id 10 :dimension_id "d1" :segment_id 100 :name "seg"}])]
+        (is (= "page" (:display_type g)))))))
 
 (deftest auto-groups-name-from-unsegmented-base-test
   (testing "Group :name is taken from the unsegmented (segment_id=nil) base query"
@@ -764,6 +780,64 @@
 (deftest auto-groups-empty-input-test
   (testing "An empty input returns an empty vector (no nil)"
     (is (= [] (explorations.groups/auto-groups [])))))
+
+(deftest auto-groups-uninteresting-bin-test
+  (testing "Queries with contextual_interestingness_score=0 land in a single sidebar bin"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"
+                    :interestingness_score 0.5 :contextual_interestingness_score 0.8}
+                   {:id 2 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)"
+                    :interestingness_score 0.7 :contextual_interestingness_score 0.0}
+                   {:id 3 :card_id 11 :dimension_id "d2" :segment_id nil :name "Cnt by D2"
+                    :interestingness_score 0.4 :contextual_interestingness_score 0.0}
+                   {:id 4 :card_id 12 :dimension_id "d3" :segment_id nil :name "Spend by D3"
+                    :interestingness_score 0.9 :contextual_interestingness_score nil}])
+          by-id  (into {} (map (juxt :id identity)) groups)
+          bin    (get by-id "auto:uninteresting")]
+      (testing "two leaf groups (interesting query + nil-scored query) plus the bin"
+        (is (= 3 (count groups)))
+        (is (some? bin)))
+      (testing "the bin is a sidebar group named 'Uninteresting Charts'"
+        (is (= "sidebar" (:display_type bin)))
+        (is (= "Uninteresting Charts" (:name bin)))
+        (is (= "auto" (:type bin)))
+        (is (nil? (:parent_group_id bin))))
+      (testing "every zero-scored query is in the bin, in input order"
+        (is (= [2 3] (:query_ids bin))))
+      (testing "uninteresting queries are pulled out of their (card, dim) bundles"
+        (is (= [1] (:query_ids (get by-id "auto:10:d1")))
+            "id 2 was scored 0 — moved to the bin, leaving id 1 alone")
+        (is (nil? (get by-id "auto:11:d2"))
+            "the only query for (11, d2) was scored 0; that leaf group disappears entirely")
+        (is (= [4] (:query_ids (get by-id "auto:12:d3")))
+            "nil contextual score is NOT uninteresting — stays in its leaf group"))
+      (testing "the bin always sorts last; leaf groups follow normal score order"
+        (is (= ["Spend by D3" "Rev by D1" "Uninteresting Charts"] (mapv :name groups)))
+        (is (= [0 1 2] (mapv :position groups)))
+        (is (= 2 (:position bin)))))))
+
+(deftest auto-groups-no-uninteresting-bin-when-empty-test
+  (testing "The 'Uninteresting Charts' bin only appears when at least one query is uninteresting"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "x"
+                    :interestingness_score 0.5 :contextual_interestingness_score 0.8}
+                   {:id 2 :card_id 10 :dimension_id "d2" :segment_id nil :name "y"
+                    :interestingness_score 0.4 :contextual_interestingness_score nil}])]
+      (is (every? #(not= "auto:uninteresting" (:id %)) groups))
+      (is (every? #(not= "sidebar" (:display_type %)) groups)))))
+
+(deftest auto-groups-all-uninteresting-test
+  (testing "If every query is uninteresting, the bin is the only group"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "a"
+                    :contextual_interestingness_score 0.0}
+                   {:id 2 :card_id 11 :dimension_id "d2" :segment_id nil :name "b"
+                    :contextual_interestingness_score 0.0}])]
+      (is (= 1 (count groups)))
+      (is (= "auto:uninteresting" (:id (first groups))))
+      (is (= "sidebar" (:display_type (first groups))))
+      (is (= [1 2] (:query_ids (first groups))))
+      (is (= 0 (:position (first groups)))))))
 
 (deftest exploration-get-includes-groups-test
   (testing "GET /:id attaches :groups to each thread, partitioning queries by (card_id, dimension_id)"
@@ -796,6 +870,13 @@
               "current heuristic emits one level only — every group is top-level")
           (is (= (vec (range (count groups))) (mapv :position groups))
               "positions are 0..N-1 in sort order — if a future heuristic emits nesting this fails on purpose"))
+        (testing ":display_type matches the size of :query_ids"
+          (is (every? #(contains? #{"singleton" "page"} (:display_type %)) groups)
+              "no uninteresting queries here, so the 'sidebar' bin isn't produced")
+          (doseq [g groups]
+            (let [expected (if (= 1 (count (:query_ids g))) "singleton" "page")]
+              (is (= expected (:display_type g))
+                  (str "group " (:id g) " has " (count (:query_ids g)) " queries → " expected)))))
         (testing "every query appears in exactly one group's :query_ids"
           (let [all-member-ids (mapcat :query_ids groups)
                 query-ids      (map :id queries)]
