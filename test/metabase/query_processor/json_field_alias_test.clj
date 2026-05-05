@@ -9,7 +9,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.test.data.env :as tx.env]))
 
 (defn- drivers-with-nested-field-support
@@ -54,7 +54,7 @@
                :database-id   1
                :dataset-query (lib/query base (lib.metadata/table base 1))}]})))
 
-(deftest ^:parallel json-breakout-from-joined-slashed-model-test
+(deftest json-breakout-from-joined-slashed-model-test
   (testing "Breakout on a JSON-unfolded field from a joined model whose name contains `/` (#70445)"
     ;; Iterate drivers directly instead of `mt/test-drivers`: that macro loads each driver's
     ;; test-data extensions namespace, which isn't needed for a pure compile test and may not be
@@ -82,7 +82,8 @@
                 query      (-> joined
                                (lib/aggregate (lib/count))
                                (lib/breakout json-ref))
-                sql        (binding [qp.i/*skip-middleware-because-app-db-access* true]
+                sql        (with-redefs [qp.middleware.enterprise/attach-destination-db-middleware identity
+                                         qp.middleware.enterprise/apply-impersonation identity]
                              (:query (qp.compile/compile query)))]
             (testing (str "generated SQL must not split the slash in the join alias:\n" sql)
               (is (not (re-find #"test[\"`]\.[\"`]Model" sql))))))))))
