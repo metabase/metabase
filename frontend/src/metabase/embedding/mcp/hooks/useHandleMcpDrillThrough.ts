@@ -73,7 +73,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      // Uses the same term as the tool description ("show a drill-through result")
+      // Uses the same term as the tool description ("show the result")
       // so the LLM always calls render_drill_through, and includes the handle
       // it must pass through.
       await app.sendMessage({
@@ -81,7 +81,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         content: [
           {
             type: "text",
-            text: `Show me the drill-through result. Use handle ${handle}.`,
+            text: `Show me the result. Use handle ${handle}.`,
           },
         ],
       });

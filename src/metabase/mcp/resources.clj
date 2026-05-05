@@ -180,7 +180,8 @@
  :visualize-query
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
-                    "Call this immediately when asked to show a drill-through result. "
+                    "Call this immediately when asked to show the result, especially for the exact phrase "
+                    "`Show me the result`. "
                     "The user's message includes a `handle` UUID — pass it as the `handle` argument.")
   :inputSchema {:type       "object"
                 :properties {:handle {:type "string" :format "uuid"
