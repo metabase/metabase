@@ -18,8 +18,8 @@ export function getAiAnalyticsRoutes() {
 export function getAiAnalyticsUpsellRoutes() {
   return (
     <Route
-      key="usage-auditing/conversations"
-      path="usage-auditing/conversations"
+      key="usage-auditing"
+      path="usage-auditing"
       component={MetabotAnalyticsUpsellPage}
     />
   );

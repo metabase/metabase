@@ -268,6 +268,10 @@ export const getRoutes = (
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          <Route key="index-layout" component={MetabotAdminLayout}>
+            <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="metabot" path=":metabotId" component={AISettingsPage} />
+          </Route>
           <Route
             key="layout"
             component={(props) => (
@@ -281,8 +285,6 @@ export const getRoutes = (
               />
             )}
           >
-            <IndexRoute key="index" component={AISettingsPage} />
-            <Route key="metabot" path=":metabotId" component={AISettingsPage} />
             {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
           </Route>
         </Route>
