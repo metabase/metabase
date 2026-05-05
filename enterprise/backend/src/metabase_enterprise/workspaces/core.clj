@@ -164,7 +164,11 @@
                                            :input_schemas    input_schemas
                                            :database_details {}
                                            :output_schema    ""})]
-      (provisioning/provision-single! wsd-id)
+      (try
+        (provisioning/provision-single! wsd-id)
+        (catch Throwable t
+          (t2/delete! :model/WorkspaceDatabase :id wsd-id)
+          (throw t)))
       (workspace/get-workspace workspace-id))))
 
 (defn update-database!

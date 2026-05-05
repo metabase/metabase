@@ -78,7 +78,20 @@
           (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Database already in workspace"
-             (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])))))))
+             (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))))
+
+  (testing "provisioning failure rolls the row back so the caller can retry cleanly"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (ws/create-workspace! {:name "Roll Back" :creator_id (mt/user->id :crowberto)})
+            failing-provisioner (reify provisioning/Provisioner
+                                  (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                                  (grant!   [_ _ _ _ _] nil)
+                                  (destroy! [_ _ _ _]   nil))]
+        (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                                (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))
+        (is (empty? (:databases (ws/get-workspace (:id ws))))
+            "the failed add must not leave a workspace_database row behind")))))
 
 (deftest remove-database-test
   (testing "remove deprovisions and deletes"
