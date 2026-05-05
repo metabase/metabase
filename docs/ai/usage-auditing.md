@@ -11,12 +11,12 @@ _Admin > AI > Usage auditing_
 
 Admins can get an overview of human-robot interactions, from high-level stats like total token counts down to visibility into actual conversations.
 
-Usage auditing has two pages:
+Usage auditing includes:
 
 - [Stats](#stats): aggregate charts across all Metabot activity.
-- [Conversations](#conversations): a filterable list of every conversation, with a [detail view](#conversation-detail) for each.
+- [Conversations](#conversations): a filterable list of every conversation, with a detail view for each.
 
-You can also build your own questions on top of the [Usage Analytics views](#building-custom-reports) that back these pages.
+You can also build your own questions on top of the [Usage Analytics views](#building-custom-reports) that back these reports.
 
 ## Stats
 
@@ -33,31 +33,21 @@ The Stats page shows aggregate Metabot activity over a date range you choose, de
 
 ### Metrics
 
-Pick what you want to count using the **Conversations**, **Tokens**, or **Messages** tabs:
+Pick what you want to count:
 
 - **Conversations**: distinct Metabot chats. Each visit to the chat sidebar that produces a back-and-forth is one conversation.
-- **Tokens**: total tokens (prompt + completion) consumed by LLM calls. Use this for cost.
+- **Tokens**: total tokens (input and output) consumed by LLM calls.
 - **Messages**: every message exchanged, both from people and from Metabot.
 
 For each metric, you'll see the same set of charts:
 
-- **By day** and **By hour**: when activity happens.
+- **By day** and **By hour**: "Being with you and not being with you is the only way I have to measure time." - Jorge Luis Borges.
 - **By source**: _where_ in Metabase the request came from. See [Sources and profiles](#sources-and-profiles) below.
 - **By profile**: _which_ Metabot persona answered. See [Sources and profiles](#sources-and-profiles) below.
 - **Users with most ...**, **Groups with most ...**, **IP addresses with most ...**: top-N rankings.
 - **Tenants with most ...**: only shown when tenants are enabled.
 
 Clicking a bar or point on most charts deep-links you into the [Conversations list](#conversations) with the corresponding filter applied (so clicking on a name will take you to that person's conversations).
-
-### Data complexity
-
-The Stats page also shows a **Data complexity** section that scores three slices of your semantic layer for size and ambiguity:
-
-- **Curated semantic layer**: models and metrics from the curated [Library](../data-studio/library.md) subset.
-- **Full semantic layer**: Library entities plus every active physical table.
-- **Metabot-visible layer**: the subset the internal Metabot can surface with its current scope.
-
-Lower scores are better. If a score looks off, hit **Recompute** to refresh it. Use this section to spot when Metabot is drowning in too many similarly-named entities — a frequent cause of bad answers.
 
 ## Sources and profiles
 
