@@ -18,18 +18,16 @@
               ws/*workspace-instance-config* (atom default-workspace-instance-config)]
       (thunk))))
 
-(def ^:private fixture-path
-  "Postgres-shaped fixture used by `fixture-parses-test` and the loader
-   round-trip tests. Sibling fixtures for other drivers live in the same
-   resources dir (see `per-driver-fixtures-test` below)."
-  "metabase_enterprise/workspaces/resources/workspace_config_postgres.yml")
-
-(defn- load-fixture []
-  (-> fixture-path io/resource slurp yaml/parse-string))
-
 (defn- load-fixture-by-driver [driver]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
       io/resource slurp yaml/parse-string))
+
+(defn- load-fixture
+  "Postgres-shaped fixture used by `fixture-parses-test` and the loader
+   round-trip tests. Sibling fixtures for other drivers live in the same
+   resources dir (see `per-driver-fixtures-test` below)."
+  []
+  (load-fixture-by-driver :postgres))
 
 (defn- workspace-section
   "Pull just the `:workspace` section out of the fixture, with the database name

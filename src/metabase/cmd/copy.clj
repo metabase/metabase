@@ -143,6 +143,8 @@
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
+      :model/Workspace
+      :model/WorkspaceDatabase
       :model/TableRemapping])))
 
 (defn- objects->columns+values
