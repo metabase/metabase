@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.metadata-file-import.schemas
-  "Malli schemas describing the element shapes streamed in `MB_TABLE_METADATA_PATH`
-  and `MB_FIELD_VALUES_PATH`. The shapes mirror the rows produced by
-  `GET /api/database/metadata` and `GET /api/database/field-values`, so the import
+  "Malli schemas describing the element shapes streamed in `MB_TABLE_METADATA_PATH`.
+  The shapes mirror the rows produced by `GET /api/database/metadata`, so the import
   side validates the same structure the export side emits.
 
   Shared between the file loader (`metabase-enterprise.serialization.metadata-file-import`)
@@ -15,7 +14,6 @@
   parser output) — Malli's `:tuple` rejects ArrayList, so the list shapes use
   `[:fn ...]` predicates over `java.util.List`."
   (:require
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]))
 
 (defn- nilable-string? [x] (or (nil? x) (string? x)))
@@ -75,22 +73,3 @@
    [:effective_type {:optional true} :string]
    [:semantic_type {:optional true} :string]
    [:coercion_strategy {:optional true} :string]])
-
-(mr/def ::field-values-info
-  ;; NOTE: still in pre-pivot integer-id shape. Sub-project B's item 23B will
-  ;; rewrite `:field_id` to `::portable-field-id` once `GET /api/database/field-values`
-  ;; emits portable ids.
-  [:map
-   [:field_id ::lib.schema.id/field]
-   ;; Declared as `java.util.List` rather than `[:sequential [:sequential :any]]` so the same
-   ;; schema accepts both Clojure vectors and `java.util.ArrayList` values produced by the
-   ;; streaming JSON / YAML parsers.
-   [:values [:fn {:error/message "must be an array"}
-             #(instance? java.util.List %)]]
-   [:has_more_values :boolean]
-   ;; java.util.List rather than [:sequential [:maybe :string]] for the same reason as :values
-   ;; — Jackson hands us ArrayLists, which `:sequential` rejects.
-   [:human_readable_values {:optional true}
-    [:fn {:error/message "must be a list of (optional) strings"}
-     #(and (instance? java.util.List %)
-           (every? (fn [x] (or (nil? x) (string? x))) %))]]])

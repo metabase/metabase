@@ -536,7 +536,7 @@
                    (with-heap-sampling
                      (fn []
                        (with-instrumented-phases
-                         (fn [] (mfi/import-metadata-file! (File. ^String file-path) nil)))))
+                         (fn [] (mfi/import-metadata-file! (File. ^String file-path))))))
                    total-ms (- (now-ms) start)
                    {:keys [phase-ms]} result
                    stub-count (count-stub-fields db-id)]

@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.metadata-file-import
-  "Boot-time loader that streams a metadata file (and, eventually, a field-values
-  file) into the appdb, populating `:model/Database` (matched, never created),
-  `:model/Table`, and `:model/Field`.
+  "Boot-time loader that streams a metadata file into the appdb, populating
+  `:model/Database` (matched, never created), `:model/Table`, and `:model/Field`.
 
   The loader is a thin orchestrator over three building blocks:
 
@@ -34,10 +33,6 @@
     4. Fields-finalize — walk the file once more. `process-fields-fk-resolve!`
        self-resolves both the row's own portable id and its
        `:fk_target_field_id` portable id, batched UPDATE.
-    5. Field-values — sub-project B's territory. **Currently a logged no-op.**
-       Wired up in item 26B once the export-side `/field-values` rework
-       (item 27) and the importer-side processor rewrite (items 23B, 25B)
-       land.
 
   After phases 1–4 complete: a `warn-on-unfilled-stubs!` self-check scans the
   matched databases for stubs that never got filled (per §A10 of
@@ -68,7 +63,6 @@
   env/env)
 
 (def ^:private table-metadata-path-key :mb-table-metadata-path)
-(def ^:private field-values-path-key   :mb-field-values-path)
 
 (defn- env-path
   "Read `*env*` at `k`, treating blank strings as absent."
@@ -203,19 +197,6 @@
                          {:id id :name name :table_id table_id :nfc_path nfc_path})
                        stubs)))))))
 
-;;; ============================== Phase 5: field values (sub-project B) ==============================
-
-(defn- run-phase-5-noop!
-  "Sub-project A treats phase 5 as a logged no-op. The integer-id phase-5 path
-  is dead under portable ids; the new portable-id phase-5 implementation is
-  sub-project B's items 23B / 25B / 26B. Until B lands, a present
-  `MB_FIELD_VALUES_PATH` is acknowledged with a WARN and the file is left
-  unread."
-  [fv-path]
-  (log/warnf
-   "metadata-file-import: MB_FIELD_VALUES_PATH=%s — phase 5 is not yet implemented under the portable-id design (sub-project B). Skipping."
-   (pr-str fv-path)))
-
 ;;; ============================== Top-level orchestration ==============================
 
 (defn- mark-databases-sync-complete!
@@ -232,12 +213,9 @@
 
   `metadata-file` — `java.io.File` or path-string for the metadata file
                     (databases / tables / fields).
-  `fv-path`       — path-string or `nil` for the field-values file. Currently
-                    a logged no-op (sub-project B's territory). Pass `nil`
-                    until item 26B lands.
 
   Returns `:ok` on success; throws on any of the hard-fail conditions in §10."
-  [metadata-file fv-path]
+  [metadata-file]
   (let [^File m-file (if (instance? File metadata-file)
                        metadata-file
                        (File. ^String metadata-file))]
@@ -246,42 +224,29 @@
       (run-phase-3! m-file)
       (run-phase-4! m-file)
       (warn-on-unfilled-stubs! matched-target-db-ids)
-      (when fv-path
-        (run-phase-5-noop! fv-path))
       (mark-databases-sync-complete! matched-target-db-ids)
       (log/infof "metadata-file-import: complete (matched-databases=%d)"
                  (count matched-target-db-ids))
       :ok)))
 
 (defn initialize-from-env!
-  "If `MB_TABLE_METADATA_PATH` (and optionally `MB_FIELD_VALUES_PATH`) is set
+  "If `MB_TABLE_METADATA_PATH` is set
   in the environment, run the import pipeline against the referenced files.
   Returns `:ok` on success, including the no-env-vars case (silent no-op).
 
-  Hard-fails if `MB_FIELD_VALUES_PATH` is set without `MB_TABLE_METADATA_PATH`
-  (a UX guard — the warehouse-bootstrap workflow always pairs them). Hard-
-  fails if either referenced file doesn't exist or isn't readable.
+  Hard-fails if the referenced file doesn't exist or isn't readable.
 
   Invoked once during boot from
   `metabase.core.config-from-file/init-from-file-if-code-available!`
   (integration tracked as item 13 in the implementation checklist)."
   []
-  (let [metadata-path (env-path table-metadata-path-key)
-        fv-path       (env-path field-values-path-key)]
+  (let [metadata-path (env-path table-metadata-path-key)]
     (cond
-      (and (nil? metadata-path) (nil? fv-path))
+      (nil? metadata-path)
       :ok
-
-      (and (some? fv-path) (nil? metadata-path))
-      (throw (ex-info "MB_FIELD_VALUES_PATH set without MB_TABLE_METADATA_PATH — pair them"
-                      {:kind :missing_metadata_path}))
 
       :else
       (let [metadata-file (assert-file-readable! metadata-path)]
-        (when fv-path (assert-file-readable! fv-path))
         (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
-        (when fv-path
-          (log/infof "metadata-file-import: field-values file at %s (deferred to sub-project B)"
-                     fv-path))
-        (import-metadata-file! metadata-file fv-path)
+        (import-metadata-file! metadata-file)
         :ok))))

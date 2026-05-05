@@ -10,7 +10,7 @@
 
   After the EE config-from-file hook (if any), also runs
   [[metabase-enterprise.serialization.metadata-file-import/initialize-from-env!]] (also EE-only) to
-  stream `MB_TABLE_METADATA_PATH` (and, once sub-project B lands, `MB_FIELD_VALUES_PATH`) into
+  stream `MB_TABLE_METADATA_PATH` into
   the appdb."
   []
   (when (try

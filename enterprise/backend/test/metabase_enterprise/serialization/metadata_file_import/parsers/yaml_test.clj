@@ -97,26 +97,6 @@
       (is (= "42"      (:string_quoted row)) "quoted '42' stays String")
       (is (= "foo"     (:string_plain row))))))
 
-(deftest preserves-nested-array-values-test
-  (testing "field-values rows have nested sequences for `:values`"
-    (let [yaml    (str "field_values:\n"
-                       "- field_id: 9001\n"
-                       "  values:\n"
-                       "  - - '94110'\n"
-                       "  - - '94111'\n"
-                       "  has_more_values: false\n"
-                       "  human_readable_values:\n"
-                       "  - Mission\n"
-                       "  - Castro\n")
-          batches (collect-batches yaml :field_values 10)
-          [[_ row]] (first batches)]
-      (is (= 9001 (:field_id row)))
-      (is (= false (:has_more_values row)))
-      (is (= [["94110"] ["94111"]] (:values row)))
-      (is (= ["Mission" "Castro"] (:human_readable_values row)))
-      (is (instance? java.util.List (:values row)))
-      (is (instance? java.util.List (:human_readable_values row))))))
-
 (deftest aliases-rejected-test
   (testing "YAML aliases (anchors via *name) are not supported by our walker — they
             would let one file element refer to another and complicate the streaming

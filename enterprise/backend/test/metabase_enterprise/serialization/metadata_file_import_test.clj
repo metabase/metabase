@@ -55,7 +55,7 @@
                                      :nfc_path ["address"]
                                      :name "zip"
                                      :base_type "type/Text" :database_type "text"}]})]
-        (loader/import-metadata-file! meta-file nil)
+        (loader/import-metadata-file! meta-file)
         (testing "the matched Database's initial_sync_status was flipped to complete"
           (is (= "complete" (:initial_sync_status (t2/select-one :model/Database :id tgt-db)))))
         (testing "the table was inserted, attached to the target DB"
@@ -85,7 +85,7 @@
                                      :table_id ["happy-path-yaml-db" "public" "orders"]
                                      :name "id"
                                      :base_type "type/Integer" :database_type "integer"}]})]
-        (loader/import-metadata-file! meta-file nil)
+        (loader/import-metadata-file! meta-file)
         (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "orders"))]
           (is (some? (t2/select-one :model/Field :table_id tbl-id :name "id"))))))))
 
@@ -116,7 +116,7 @@
                                      :nfc_path ["root"]
                                      :name "mid"
                                      :base_type "type/Structured" :database_type "json"}]})]
-        (loader/import-metadata-file! meta-file nil)
+        (loader/import-metadata-file! meta-file)
         (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "events"))
               root   (t2/select-one :model/Field :table_id tbl-id :name "root")
               mid    (t2/select-one :model/Field :table_id tbl-id :name "mid")
@@ -146,7 +146,7 @@
                                      :name "child"
                                      :base_type "type/Text" :database_type "text"}]})]
         ;; Should NOT throw — unfilled stubs are warned, not failed
-        (is (= :ok (loader/import-metadata-file! meta-file nil)))
+        (is (= :ok (loader/import-metadata-file! meta-file)))
         (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "t"))
               stub   (t2/select-one :model/Field :table_id tbl-id :name "missing-parent")
               child  (t2/select-one :model/Field :table_id tbl-id :name "child")]
@@ -176,7 +176,7 @@
                                      :table_id ["unmatched-db-x" "public" "skipped"]
                                      :name "skipped-fld"
                                      :base_type "type/Text" :database_type "text"}]})]
-        (loader/import-metadata-file! meta-file nil)
+        (loader/import-metadata-file! meta-file)
         (let [kept-tbl    (t2/select-one :model/Table :db_id tgt-db :name "kept")
               skipped-tbl (t2/select-one :model/Table :name "skipped")]
           (is (some? kept-tbl) "the matched-db's table is inserted")
@@ -202,36 +202,12 @@
                                      :table_id ["fk-db" "public" "users"] :name "user_id"
                                      :fk_target_field_id ["fk-db" "public" "users" "id"]
                                      :base_type "type/Integer" :database_type "integer"}]})]
-        (loader/import-metadata-file! meta-file nil)
+        (loader/import-metadata-file! meta-file)
         (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "users"))
               id-fld (t2/select-one :model/Field :table_id tbl-id :name "id")
               ref    (t2/select-one :model/Field :table_id tbl-id :name "user_id")]
           (is (= (:id id-fld) (:fk_target_field_id ref))
               "the referencing field's fk_target_field_id resolves to the id field's target id"))))))
-
-;;; ============================== Phase 5 (sub-project B) — currently no-op ==============================
-
-(deftest field-values-path-is-logged-noop-until-sub-project-b-test
-  (testing "passing a field-values path is acknowledged with a WARN log line but no
-            field-values are imported. Phase 5 is sub-project B's territory (items
-            23B / 25B / 26B); until those land, the loader's phase-5 entry point
-            does nothing."
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "fv-noop-db" :engine :postgres}]
-      (let [meta-file (json-file
-                       {:databases [{:name "fv-noop-db" :engine "postgres"}]
-                        :tables    [{:db_id "fv-noop-db" :schema "public" :name "users"}]
-                        :fields    [{:id ["fv-noop-db" "public" "users" "zip"]
-                                     :table_id ["fv-noop-db" "public" "users"] :name "zip"
-                                     :base_type "type/Text" :database_type "text"}]})
-            ;; The fv file content is irrelevant — phase 5 doesn't read it
-            fv-file (json-file
-                     {:field_values [{:field_id 9001 :values [["94110"]] :has_more_values false}]})]
-        (is (= :ok (loader/import-metadata-file! meta-file (.getPath fv-file)))
-            "the import returns :ok despite the fv path being supplied")
-        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "users"))
-              fld-id (:id (t2/select-one :model/Field :table_id tbl-id :name "zip"))]
-          (is (nil? (t2/select-one :model/FieldValues :field_id fld-id))
-              "no FieldValues row was inserted for the metadata field"))))))
 
 ;;; ============================== Idempotence ==============================
 
@@ -245,12 +221,12 @@
                         :fields    [{:id ["idem-db" "public" "users" "id"]
                                      :table_id ["idem-db" "public" "users"] :name "id"
                                      :base_type "type/Integer" :database_type "integer"}]})]
-        (loader/import-metadata-file! meta-file nil)
+        (loader/import-metadata-file! meta-file)
         (let [tables-after-1 (t2/count :model/Table :db_id tgt-db)
               fields-after-1 (count (t2/select :model/Field
                                                :table_id [:in (map :id (t2/select :model/Table
                                                                                   :db_id tgt-db))]))]
-          (loader/import-metadata-file! meta-file nil)
+          (loader/import-metadata-file! meta-file)
           (is (= tables-after-1 (t2/count :model/Table :db_id tgt-db))
               "no duplicate tables")
           (is (= fields-after-1
@@ -262,20 +238,10 @@
 ;;; ============================== initialize-from-env! ==============================
 
 (deftest initialize-from-env-no-vars-set-is-noop-test
-  (testing "with neither MB_TABLE_METADATA_PATH nor MB_FIELD_VALUES_PATH set, the loader
+  (testing "with MB_TABLE_METADATA_PATH not set, the loader
             returns :ok without doing any work"
     (binding [loader/*env* {}]
       (is (= :ok (loader/initialize-from-env!))))))
-
-(deftest initialize-from-env-fv-without-metadata-throws-test
-  (testing "field-values-only is rejected as a UX guard — the warehouse-bootstrap
-            workflow always pairs the two paths"
-    (binding [loader/*env* {:mb-field-values-path "/some/path.json"}]
-      (try
-        (loader/initialize-from-env!)
-        (is false "should have thrown")
-        (catch clojure.lang.ExceptionInfo e
-          (is (= :missing_metadata_path (:kind (ex-data e)))))))))
 
 (deftest initialize-from-env-missing-file-hard-fails-test
   (testing "if MB_TABLE_METADATA_PATH points at a file that doesn't exist, the loader

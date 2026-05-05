@@ -89,23 +89,6 @@
           batches (collect-batches json :databases 10)]
       (is (= [[[1 {:id 99}]]] batches)))))
 
-(deftest preserves-nested-array-values-test
-  (testing "field-values rows have nested arrays for `:values` — these come through as a
-            sequence-of-sequences, satisfying the schema's java.util.List contract"
-    (let [json    (str "{\"field_values\":["
-                       "{\"field_id\":9001,"
-                       " \"values\":[[\"94110\"],[\"94111\"]],"
-                       " \"has_more_values\":false}]}")
-          batches (collect-batches json :field_values 10)
-          [[_ row]] (first batches)]
-      (is (= 9001 (:field_id row)))
-      (is (= false (:has_more_values row)))
-      (is (= [["94110"] ["94111"]]
-             (mapv vec (:values row)))
-          "values is a sequence-of-sequences (Jackson returns ArrayLists; equal to vectors)")
-      (is (instance? java.util.List (:values row))
-          "matches schema's java.util.List validation"))))
-
 (deftest exact-batch-size-emits-single-batch-test
   (testing "boundary: when item count exactly equals batch size, callback fires once"
     (let [json    "{\"xs\":[{\"v\":1},{\"v\":2}]}"
