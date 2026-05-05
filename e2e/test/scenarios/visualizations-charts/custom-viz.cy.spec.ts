@@ -1794,6 +1794,33 @@ describe("sandbox", () => {
         cy.get("@canary.all").should("have.length", 0);
       },
     },
+    {
+      name: "document.adoptedStyleSheets setter",
+      payload: "document.adoptedStyleSheets = [];",
+      errorPattern: blockedPattern(
+        /API call: Document\.set adoptedStyleSheets/,
+      ),
+    },
+    {
+      name: "document.adoptedStyleSheets getter",
+      payload: "var x = document.adoptedStyleSheets;",
+      errorPattern: blockedPattern(
+        /API call: Document\.get adoptedStyleSheets/,
+      ),
+    },
+    {
+      name: "ShadowRoot.adoptedStyleSheets setter",
+      payload:
+        'document.createElement("div").attachShadow({ mode: "open" }).adoptedStyleSheets = [];',
+      errorPattern: blockedPattern(
+        /API call: ShadowRoot\.set adoptedStyleSheets/,
+      ),
+    },
+    {
+      name: "CSSStyleSheet.replaceSync",
+      payload: 'new CSSStyleSheet().replaceSync("");',
+      errorPattern: blockedPattern(/API call: CSSStyleSheet\.replaceSync/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {
