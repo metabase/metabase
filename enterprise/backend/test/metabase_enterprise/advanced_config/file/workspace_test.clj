@@ -10,12 +10,13 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(use-fixtures :each (fn [thunk]
-                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-                        (try
-                          (thunk)
-                          (finally
-                            (ws/clear-instance-workspace!))))))
+(def default-workspace-instance-config nil)
+
+(use-fixtures :each
+  (fn [thunk]
+    (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
+              ws/*workspace-instance-config* (atom default-workspace-instance-config)]
+      (thunk))))
 
 (def ^:private fixture-path
   "Postgres-shaped fixture used by `fixture-parses-test` and the loader

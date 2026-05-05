@@ -35,7 +35,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 
-(defonce ^{:doc "The single workspace loaded into this instance from `config.yml`, or nil
+(defonce ^{:dynamic true
+           :doc "The single workspace loaded into this instance from `config.yml`, or nil
   when no workspace was loaded.
 
   Shape:
@@ -49,24 +50,24 @@
   the driver populates it and absent (or `nil`) otherwise. Empty string
   `\"\"` is reserved for storage rows; the atom carries `nil`/missing for
   absent slots. See `ai-reports/2026-05-04-table-namespace-mapping-spec.md`."}
-  workspace-instance-config
+  *workspace-instance-config*
   (atom nil))
 
 (defn set-instance-workspace!
   "Set the in-process workspace config for this instance. Called by the `:workspace`
   section loader at boot. Replaces any prior value."
   [config]
-  (reset! workspace-instance-config config))
+  (reset! *workspace-instance-config* config))
 
 (defn clear-instance-workspace!
   "Clear the in-process workspace config. Mostly for tests."
   []
-  (reset! workspace-instance-config nil))
+  (reset! *workspace-instance-config* nil))
 
 (defn instance-workspace
   "Return the workspace loaded on this instance, or nil if none."
   []
-  @workspace-instance-config)
+  @*workspace-instance-config*)
 
 (defenterprise workspace-mode?
   "EE impl: true iff this instance is running in workspace mode (a `:workspace`
@@ -80,7 +81,7 @@
    loaded, we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (some? @workspace-instance-config))
+  (some? @*workspace-instance-config*))
 
 (defn db-workspace-namespace
   "Return the workspace-isolated output namespace map for `db-id` on this
@@ -91,7 +92,7 @@
    populated by `config.yml`. See
    `ai-reports/2026-05-04-table-namespace-mapping-spec.md` for the contract."
   [db-id]
-  (get-in @workspace-instance-config [:databases db-id :output]))
+  (get-in @*workspace-instance-config* [:databases db-id :output]))
 
 (defn db-workspace-schema
   "Return the workspace-isolated output `:schema` slot for `db-id`, or `nil`
