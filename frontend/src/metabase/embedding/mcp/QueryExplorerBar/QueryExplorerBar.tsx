@@ -24,6 +24,7 @@ export function QueryExplorerBar({
   onExplore,
 }: QueryExplorerBarProps) {
   const hasCenterControls = timeRange || timeGranularity;
+  const hasChartTypes = chartTypes.length > 0;
 
   return (
     <Flex
@@ -34,13 +35,15 @@ export function QueryExplorerBar({
       gap={{ base: "sm", xs: "xs" }}
       data-testid="query-explorer-bar"
     >
-      <Flex align="center" gap="xs">
-        <ChartTypePicker
-          chartTypes={chartTypes}
-          value={currentChartType}
-          onChange={onChartTypeChange}
-        />
-      </Flex>
+      {hasChartTypes && (
+        <Flex align="center" gap="xs">
+          <ChartTypePicker
+            chartTypes={chartTypes}
+            value={currentChartType}
+            onChange={onChartTypeChange}
+          />
+        </Flex>
+      )}
 
       {hasCenterControls && (
         <Flex
