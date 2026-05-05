@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -437,7 +438,20 @@
                 (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
                   (let [response (mt/user-http-request :crowberto :post 402
                                                        (format "transform/%d/run" transform-id))]
-                    (is (= "metabase_transforms_locked" (:error-code response)))))))))))))
+                    (is (= "metabase_transforms_locked" (:error-code response)))))))
+            (testing "non-metered transform (transform-metered-as → nil) → no 402 even with locks set"
+              ;; Realistic scenario: self-hosted EE with only :transforms-basic (no :writable-connection,
+              ;; no :transforms-python). check-feature-enabled! passes (the customer has :transforms-basic),
+              ;; but transform-metered-as returns nil for native/mbql because is-hosted? is false. The
+              ;; fail-open contract requires that lock state is irrelevant for non-metered transforms — even
+              ;; if harbormaster somehow sends lock state for such a customer, or the setting gets tampered.
+              ;; (Note: pure OSS doesn't reach this branch because check-feature-enabled! 402s earlier on
+              ;; missing premium features.)
+              (with-redefs [premium-features/transform-metered-as (constantly nil)]
+                (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
+                                                                  :transform-advanced-runs true}]
+                  (mt/user-http-request :crowberto :post 202
+                                        (format "transform/%d/run" transform-id)))))))))))
 
 (deftest get-transform-settings-test
   (testing "GET /api/transform/settings — integration coverage for the endpoint.
