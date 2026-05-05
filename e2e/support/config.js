@@ -34,11 +34,13 @@ const assetsResolverPlugin = {
   setup(build) {
     // Redirect all paths starting with "assets/" to "resources/"
     build.onResolve({ filter: /^assets\// }, (args) => {
+      const [assetPath] = args.path.split("?");
+
       return {
         path: path.join(
           __dirname,
           "../../resources/frontend_client/app",
-          args.path,
+          assetPath,
         ),
       };
     });
