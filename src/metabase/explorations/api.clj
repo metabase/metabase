@@ -34,7 +34,7 @@
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator
-                  [:threads :metrics :dimensions :timelines :queries])
+                  [:threads :metrics :dimensions :timelines :queries :documents])
       (update :threads #(some->> % (mapv attach-thread-groups)))))
 
 (defn- find-dimension-target
@@ -219,7 +219,8 @@
    [:dimensions            {:optional true} [:maybe [:sequential :map]]]
    [:timelines             {:optional true} [:maybe [:sequential :map]]]
    [:queries               {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
-   [:groups                {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]])
+   [:groups                {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]
+   [:documents             {:optional true} [:maybe [:sequential ::ExplorationDocument]]]])
 
 (mr/def ::ExplorationQueryStreamResponse
   "Schema for `GET /query/:id`. On success the body is a streamed dataset (api/csv/json/xlsx),
