@@ -139,8 +139,6 @@
       (^Path parsePath [_ ^String s]
         (.getPath nio-fs s (into-array String [])))
       (^void checkAccess [_ ^Path p ^Set modes ^"[Ljava.nio.file.LinkOption;" _opts]
-        ;; FileSystemProvider.checkAccess with an empty mode array does an existence-only check while
-        ;; preserving permission errors as IOException — unlike Files/exists, which collapses them to false.
         (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes)))
       (^void createDirectory [_ ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
         (Files/createDirectory p attrs))
