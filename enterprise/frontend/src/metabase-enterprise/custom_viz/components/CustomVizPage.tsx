@@ -44,7 +44,6 @@ import {
   MAX_BUNDLE_BYTES,
   hasAllowedExtension,
 } from "./BundleDropzone";
-import { CustomVizPluginSummary } from "./CustomVizPluginSummary";
 
 type Props = {
   params?: {
@@ -177,20 +176,21 @@ export function CustomVizPage({ params }: Props) {
                 <Stack gap="40px">
                   <Stack gap="md">
                     <Title order={2}>
-                      {isEdit ? t`Replace bundle` : t`Add a new visualization`}
+                      {isEdit && plugin
+                        ? t`Replace bundle for ${plugin.display_name}`
+                        : t`Add a new visualization`}
                     </Title>
-                    <Text c="text-secondary">
-                      {jt`Create a custom visualization bundle by running ${(
-                        <Code key="cmd">{t`npm run build`}</Code>
-                      )} in your custom visualization project. ${(
-                        <ExternalLink
-                          key="docs"
-                          href={docsUrl}
-                        >{t`Read the docs`}</ExternalLink>
-                      )}.`}
-                    </Text>
-                    {isEdit && plugin && (
-                      <CustomVizPluginSummary plugin={plugin} />
+                    {!isEdit && (
+                      <Text c="text-secondary">
+                        {jt`Create a custom visualization bundle by running ${(
+                          <Code key="cmd">{t`npm run build`}</Code>
+                        )} in your custom visualization project. ${(
+                          <ExternalLink
+                            key="docs"
+                            href={docsUrl}
+                          >{t`Read the docs`}</ExternalLink>
+                        )}.`}
+                      </Text>
                     )}
                   </Stack>
                   <BundleDropzone />
