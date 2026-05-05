@@ -2525,7 +2525,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -3201,6 +3200,7 @@
            lib
            logger
            models
+           permissions
            plugins
            premium-features
            search
