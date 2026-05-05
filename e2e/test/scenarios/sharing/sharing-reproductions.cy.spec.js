@@ -669,7 +669,11 @@ describe("issue 26988", () => {
 
     cy.wait("@previewDashboard");
     H.getIframeBody().findByTestId("embed-frame").should("exist");
-    H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+    H.getIframeBody().should(
+      "have.css",
+      "font-family",
+      "Lato, Arial, sans-serif",
+    );
 
     cy.findByLabelText("Customizing look and feel")
       .findByLabelText("Font")

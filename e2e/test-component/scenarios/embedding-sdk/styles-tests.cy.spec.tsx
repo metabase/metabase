@@ -211,7 +211,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         cy.findByText("Product ID").should(
           "have.css",
           "font-family",
-          "Lato, sans-serif",
+          "Lato, Arial, sans-serif",
         );
       });
     });
@@ -259,7 +259,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         cy.findByText(/Failed to fetch the user/).should(
           "have.css",
           "font-family",
-          "Lato, sans-serif",
+          "Lato, Arial, sans-serif",
         );
       });
     });
@@ -382,7 +382,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       H.modal()
         .findByText("New dashboard")
         .should("exist")
-        .and("have.css", "font-family", "Lato, sans-serif");
+        .and("have.css", "font-family", "Lato, Arial, sans-serif");
 
       // TODO: good place for a visual regression test
     });
@@ -400,7 +400,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       getSdkRoot()
         .findByText("Save")
         .should("exist")
-        .and("have.css", "font-family", "Lato, sans-serif")
+        .and("have.css", "font-family", "Lato, Arial, sans-serif")
         .click();
 
       // TODO: good place for a visual regression test
@@ -411,7 +411,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       getSdkRoot()
         .findByText("Select a collection or dashboard")
         .should("exist")
-        .and("have.css", "font-family", "Lato, sans-serif");
+        .and("have.css", "font-family", "Lato, Arial, sans-serif");
 
       // TODO: good place for a visual regression test
     });

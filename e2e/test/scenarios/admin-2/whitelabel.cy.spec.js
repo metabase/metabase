@@ -575,7 +575,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         ["Lora", "serif"],
         ["Merriweather", "Lora, serif"],
         ["Montserrat", "sans-serif"],
-        ["Lato", "sans-serif"],
+        ["Lato", "Arial, sans-serif"],
       ];
       cy.visit("/admin/settings/whitelabel/branding");
 

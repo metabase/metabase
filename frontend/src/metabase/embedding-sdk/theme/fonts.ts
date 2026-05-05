@@ -33,7 +33,7 @@ export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   Roboto: '"Noto Sans", sans-serif',
   Merriweather: '"Lora", serif',
   "Open Sans": '"Lato", sans-serif',
-  Lato: "sans-serif",
+  Lato: "Arial, sans-serif",
   "Noto Sans": "sans-serif",
   "Roboto Slab": "serif",
   "Source Sans Pro": '"Lato", sans-serif',

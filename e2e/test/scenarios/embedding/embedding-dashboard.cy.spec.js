@@ -897,7 +897,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert font");
-      H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        "Lato, Arial, sans-serif",
+      );
       cy.findByLabelText("Font").click();
     });
 
@@ -1027,7 +1031,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert font");
-      H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        "Lato, Arial, sans-serif",
+      );
       cy.findByLabelText("Font").click();
     });
 
