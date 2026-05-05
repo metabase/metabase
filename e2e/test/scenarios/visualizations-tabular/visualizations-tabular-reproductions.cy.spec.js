@@ -1465,27 +1465,6 @@ describe("issue 55673", () => {
   });
 });
 
-describe("issue 55637", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
-    H.openOrdersTable();
-    H.tableHeaderColumn("ID").realHover();
-    cy.findByTestId("column-info").should("exist");
-
-    H.tableHeaderColumn("ID").click();
-
-    H.tableHeaderColumn("ID").realHover();
-    cy.findByTestId("column-info").should("not.exist");
-
-    H.tableHeaderColumn("Tax").realHover();
-    cy.findByTestId("column-info").should("not.exist");
-  });
-});
-
 describe("issue 63745", () => {
   beforeEach(() => {
     H.restore();

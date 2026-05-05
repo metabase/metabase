@@ -117,6 +117,18 @@
         (log/info "File system at" uri "already exists")
         (FileSystems/getFileSystem uri)))))
 
+(defn nio-fs
+  "Open a fresh NIO zip filesystem for the file at `path`."
+  ^FileSystem [^String path]
+  ;; Use the Path-based FileSystems/newFileSystem overload, NOT the URI-based one (see jar-file-system-from-url above
+  ;; for the URI-based pattern). NIO maintains a global cache of zip filesystems keyed by URI; the URI-based overload
+  ;; registers in that cache, so other code (e.g. with-open-path-to-resource, find-in-current-jar) can obtain the
+  ;; cached instance via FileSystems/getFileSystem and close it inside a with-open block, killing the original
+  ;; filesystem and breaking any long-lived consumer (e.g. GraalPy contexts pinned to that filesystem). The Path-based
+  ;; overload bypasses the cache, giving an independent instance whose lifecycle the caller fully controls.
+  (-> (Path/of path (u/varargs String))
+      (FileSystems/newFileSystem Collections/EMPTY_MAP)))
+
 (defn do-with-open-path-to-resource
   "Impl for `with-open-path-to-resource`."
   [resource f]
