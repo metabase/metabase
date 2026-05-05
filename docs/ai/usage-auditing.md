@@ -64,13 +64,13 @@ The Conversations admin page only shows **Profile**. Source is visible in the **
 
 The **By source** chart and the [AI Usage Log](#building-custom-reports) model report a human-readable `source_name`. The AI Usage Log also exposes a raw `source` column with the underlying ID (such as `metabot_agent`, `oss-sql-gen`, or `document_generate_content`); both columns are available when you build custom reports. Conversations with no source land in an `(empty)` bucket on the chart.
 
-| Source name         | Where it comes from                                                         |
-| ------------------- | --------------------------------------------------------------------------- |
-| `Metabot`           | The Metabot chat sidebar inside Metabase.                                   |
-| `Documents`         | Content generation inside [Documents](../documents/start.md).               |
-| `Suggested Prompts` | Background generation of suggested prompts.                                 |
-| `Slackbot`          | Conversations that started in [Slack](./metabot-slack.md).                  |
-| `SQL`               | [Inline SQL editing](./metabot.md#inline-sql-editing) in the native editor. |
+| Source name         | Where it comes from                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `Metabot`           | The Metabot chat sidebar inside Metabase.                                                                               |
+| `Documents`         | Content generation inside [Documents](../documents/start.md).                                                           |
+| `Suggested Prompts` | Background generation of suggested prompts.                                                                             |
+| `Slackbot`          | Conversations that started in [Slack](./metabot-slack.md).                                                              |
+| `SQL`               | [Inline SQL editing](./metabot.md#inline-sql-editing) in the native editor.                                             |
 | `Unknown`           | A conversation Metabase couldn't classify (distinct from no-source conversations, which appear as `(empty)` on charts). |
 
 ### Profiles
@@ -99,8 +99,6 @@ The Conversations page lists every Metabot conversation Metabase has on file, ne
 
 - **Date range**, **User**, **Group**, **Tenant**: same as the [Stats filters](#filters).
 
-To filter by source or profile, drill in from a [Stats](#stats) chart.
-
 ### Columns
 
 Each row shows:
@@ -112,7 +110,7 @@ Each row shows:
 - **Tokens**: total LLM tokens spent.
 - **Queries**: how many queries (SQL or query-builder) Metabot generated during the conversation.
 - **Searches**: how many search-tool calls Metabot made.
-- **IP**: the IP address the request came from. Useful for spotting traffic from unexpected places.
+- **IP**: the IP address the request came from.
 
 You can sort by Date, Messages, or Tokens. Click any row to open the [conversation detail](#conversation-detail).
 
@@ -120,12 +118,11 @@ You can sort by Date, Messages, or Tokens. Click any row to open the [conversati
 
 The detail view is a full audit of a single conversation. It includes:
 
-- **Header**: start date, the person who chatted with Metabot, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the user's name you can jump to all of that user's conversations or to their account details.
+- **Header**: start date, the person who chatted with Metabot, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the person's name you can jump to all of their conversations, or to their account details.
 - **Stat tiles**: Messages, Total tokens, Queries run, Searches.
-- **Feedback**: any thumbs-up or thumbs-down a user submitted, with the issue category they picked and any free-form text. The agent response that triggered the feedback is shown alongside.
-- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood. This is useful when a query came out a certain way because of [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
-- **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Run** on a query to open it in a new tab and execute it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
-- **Open in Slack**: for Slack-sourced conversations, a link back to the original Slack thread.
+- **Feedback** (if any): thumbs-up or thumbs-down and comments. The agent response that triggered the feedback is shown alongside.
+- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are inlined. You can click "View" to open a modal with the info.
+- **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Visit** on a query to open the item in a new tab and run it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
 
 ### The `/inspect` shortcut
 
