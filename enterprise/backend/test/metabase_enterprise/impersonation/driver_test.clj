@@ -944,7 +944,7 @@
                                                             :query
                                                             (lib/native-query mp)
                                                             (qp/process-query)
-                                                            (mt/rows)))]
+                                                            (mt/formatted-rows [int])))]
                       (is (= [[100]] (run-native-query :venues)))))
                   (testing "Invalid queries are rejected for admin too"
                     (are [sql] (thrown?
