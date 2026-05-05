@@ -364,7 +364,7 @@ describe("AI controls > AI usage limits", () => {
       });
 
       // Type an instance limit value
-      cy.findByLabelText(/Total weekly instance limit/).type("500");
+      cy.findByLabelText("Total weekly instance message limit").type("500");
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: 500 });
       });
@@ -390,7 +390,7 @@ describe("AI controls > AI usage limits", () => {
       cy.wait("@getInstanceLimit");
 
       cy.findByRole("textbox", {
-        name: /Total monthly instance limit/,
+        name: "Total monthly instance token limit",
       }).clear();
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: null });
@@ -663,9 +663,7 @@ describe("AI Controls > Tenant usage limits", () => {
     cy.findByTestId("tenant-limits-tab")
       .findByText("Test Corp")
       .should("be.visible");
-    cy.findByLabelText(
-      "Max total monthly tokens for Test Corp (millions)",
-    ).type("10");
+    cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
     cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
   });
 
