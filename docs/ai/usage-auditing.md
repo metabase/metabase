@@ -84,7 +84,7 @@ A profile is the configuration Metabot uses for a conversation: which prompt, wh
 | `SQL`                | SQL writing only. Used by [inline SQL editing](./metabot.md#inline-sql-editing) and similar surfaces.                     |
 | `Slackbot`           | The persona behind [Metabot in Slack](./metabot-slack.md).                                                                |
 | `Embedding`          | The Metabot persona used inside [embedded Metabase](../embedding/start.md).                                               |
-| `Transforms codegen` | Generates [transform](../data-studio/transforms/transforms-overview.md), SQL or Python.                                    |
+| `Transforms codegen` | Generates [transform](../data-studio/transforms/transforms-overview.md) SQL or Python.                                    |
 | `Documents`          | Generates content inside [Documents](../documents/start.md).                                                              |
 
 Conversations without a profile show up in an `(empty)` bucket on the **By profile** chart.

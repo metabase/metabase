@@ -535,3 +535,164 @@ Columns:
 - Sanitized User Agent
 - IP Address
 - Context
+
+## Categorical column values
+
+Some columns in the models above hold one of a fixed set of values.
+
+### Activity log topics
+
+The Topic column on the [Activity log](#activity-log) model takes one of:
+
+- action-v2-execute
+- alert-create
+- alert-delete
+- alert-send
+- alert-unsubscribe
+- alert-update
+- api-key-create
+- api-key-delete
+- api-key-regenerate
+- api-key-update
+- cache-config-update
+- card-create
+- card-delete
+- card-public-link-created
+- card-public-link-deleted
+- card-update
+- channel-create
+- channel-update
+- cloud-add-on-purchase
+- comment-create
+- comment-delete
+- comment-update
+- create-permission-failure
+- dashboard-add-cards
+- dashboard-create
+- dashboard-delete
+- dashboard-public-link-created
+- dashboard-public-link-deleted
+- dashboard-remove-cards
+- database-create
+- database-delete
+- database-discard-field-values
+- database-manual-scan
+- database-manual-sync
+- database-update
+- document-create
+- document-delete
+- document-update
+- glossary-create
+- glossary-delete
+- glossary-update
+- group-create
+- group-delete
+- group-membership-create
+- group-membership-delete
+- group-membership-update
+- group-update
+- install
+- measure-create
+- measure-delete
+- measure-update
+- notification-create
+- notification-unsubscribe
+- notification-unsubscribe-ex
+- notification-unsubscribe-undo-ex
+- notification-update
+- password-reset-initiated
+- password-reset-successful
+- remote-sync-create-branch
+- remote-sync-export
+- remote-sync-import
+- remote-sync-settings-update
+- remote-sync-stash
+- security-advisory-acknowledge
+- security-advisory-match
+- segment-create
+- segment-delete
+- segment-update
+- setting-update
+- subscription-create
+- subscription-delete
+- subscription-send
+- subscription-unsubscribe
+- subscription-unsubscribe-undo
+- subscription-update
+- table-manual-scan
+- table-manual-sync
+- table-publish
+- table-unpublish
+- tenant-create
+- tenant-update
+- transform-create
+- transform-delete
+- transform-inspect-discover
+- transform-inspect-lens
+- transform-run-start
+- update-permission-failure
+- update-transform
+- upload-append
+- upload-create
+- upload-replace
+- user-deactivated
+- user-invited
+- user-joined
+- user-reactivated
+- user-update
+- write-permission-failure
+
+### Query log query sources
+
+The Query Source column on the [Query log](#query-log) model takes one of:
+
+- action
+- ad-hoc
+- agent
+- cache-refresh
+- collection
+- csv-download
+- dashboard
+- dashboard-subscription
+- embedded-csv-download
+- embedded-dashboard
+- embedded-json-download
+- embedded-question
+- embedded-xlsx-download
+- json-download
+- map-tiles
+- public-csv-download
+- public-dashboard
+- public-json-download
+- public-question
+- public-xlsx-download
+- pulse
+- question
+- slackbot
+- table-grid
+- table-rows-sample
+- transform-inspector
+- xlsx-download
+
+### Content entity types
+
+The Entity Type column on the [Content](#content) model takes one of:
+
+- action
+- collection
+- dashboard
+- document
+- event
+- glossary
+- model
+- question
+- transform
+
+### View log entity types
+
+The Entity Type column on the [View log](#view-log) model takes one of:
+
+- card
+- collection
+- dashboard
+- table
