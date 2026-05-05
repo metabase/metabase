@@ -51,6 +51,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   withEditorButton: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
+  onDrillThrough: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 
