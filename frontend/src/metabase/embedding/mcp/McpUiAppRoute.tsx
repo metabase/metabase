@@ -6,11 +6,10 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion"
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
-import { b64_to_utf8 } from "metabase/utils/encoding";
-import type { Card } from "metabase-types/api";
 
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
+import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
@@ -53,15 +52,7 @@ export function McpUiAppRoute() {
       return null;
     }
 
-    try {
-      return {
-        display: "table",
-        dataset_query: JSON.parse(b64_to_utf8(query)),
-        visualization_settings: {},
-      } as Card;
-    } catch {
-      return null;
-    }
+    return getMcpDeserializedCard(query);
   }, [query]);
 
   const theme = useMemo(
