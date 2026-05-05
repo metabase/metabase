@@ -219,7 +219,7 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest extract-locks-test
+(deftest ^:parallel extract-locks-test
   (testing "empty :meters map yields empty result"
     (is (= {} (#'token-check/extract-locks {}))))
   (testing "meters without :is-locked are filtered out"

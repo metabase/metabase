@@ -28,7 +28,7 @@
   (or (query-transforms-enabled?) (python-transforms-enabled?)))
 
 (def ^:private metered-as->meter-key
-  "Map the bucket strings returned by `premium-features/transform-metered-as` to their
+  "Map the bucket strings returned by [[premium-features/transform-metered-as]] to their
    corresponding `:meters` keys in the harbormaster token-check response."
   {"transform-basic"    :transform-basic-runs
    "transform-advanced" :transform-advanced-runs})
@@ -38,7 +38,7 @@
    Prefers the `:source_type` column (set by the model's before-insert/before-update).
    Falls back to a minimal derivation from `:source` for un-normalized test fixtures —
    we only need to distinguish python from query here, since native and mbql route to
-   the same meter bucket via `transform-metered-as`."
+   the same meter bucket via [[premium-features/transform-metered-as]]."
   [transform]
   (or (some-> (:source_type transform) keyword)
       (case (some-> (get-in transform [:source :type]) keyword)
