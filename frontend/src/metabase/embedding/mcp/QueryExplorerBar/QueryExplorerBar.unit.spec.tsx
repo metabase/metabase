@@ -161,4 +161,40 @@ describe("QueryExplorerBar", () => {
       screen.queryByRole("button", { name: /explore/i }),
     ).not.toBeInTheDocument();
   });
+
+  it("renders remaining controls when chart type controls are empty", () => {
+    renderWithProviders(
+      <QueryExplorerBar
+        chartTypes={[]}
+        currentChartType=""
+        onChartTypeChange={jest.fn()}
+        timeRange={{
+          label: "2024 only",
+          value: undefined,
+          availableUnits: [],
+          hasActiveFilter: true,
+          onChange: jest.fn(),
+          onClear: jest.fn(),
+        }}
+        onExplore={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("query-explorer-bar")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "2024 only" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /explore/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "line" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "bar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "area" }),
+    ).not.toBeInTheDocument();
+  });
 });
