@@ -24,7 +24,7 @@ import type { DatasetColumn, TableId } from "metabase-types/api";
  * used by functions that only need type-checking properties.
  */
 export interface FieldTypeInfo {
-  base_type?: string;
+  base_type?: string | null;
   effective_type?: string | null;
   semantic_type?: string | null;
 }

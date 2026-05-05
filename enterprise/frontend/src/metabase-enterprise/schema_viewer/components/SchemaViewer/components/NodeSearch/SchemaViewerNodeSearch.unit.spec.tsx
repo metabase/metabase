@@ -5,7 +5,7 @@ import type { ConcreteTableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
-import { type FlowNodeFieldSpec, makeFlowNode } from "../../utils/shared";
+import { type FlowNodeFieldSpec, makeFlowNode } from "../../utils/test-utils";
 
 import { SchemaViewerNodeSearch } from "./SchemaViewerNodeSearch";
 

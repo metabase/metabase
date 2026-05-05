@@ -285,10 +285,6 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
-(define-premium-feature ^{:added "0.57.2"} enable-schema-viewer?
-  "Should we allow users to view database schemas as ER diagrams?"
-  :schema-viewer)
-
 (define-premium-feature ^{:added "0.57.1"} enable-support-users?
   "Should users be allowed to enable support users in-app?"
   :support-users)
@@ -336,6 +332,12 @@
 (define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
+
+(define-premium-feature ^{:added "0.62.0"} enable-schema-viewer?
+  "Should we allow users to view database schemas as ER diagrams?"
+  :schema-viewer)
+
+
 
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)

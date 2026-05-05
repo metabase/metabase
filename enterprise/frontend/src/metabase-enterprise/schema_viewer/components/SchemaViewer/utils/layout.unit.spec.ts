@@ -1,7 +1,7 @@
 import type { SchemaViewerFlowNode } from "../types";
 
 import { applyLayout } from "./layout";
-import { makeFlowNode } from "./shared";
+import { makeFlowNode } from "./test-utils";
 
 type NodeOverrides = {
   fieldCount?: number;

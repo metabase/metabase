@@ -64,8 +64,7 @@ export function useCanvasLayout({
       setEdges((currentEdges) =>
         currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
       );
-      // Zoom in on the focal node itself — zoomToNode clamps to ≥0.5 so
-      // the table stays legible, and keeps the node's header in view.
+      // Zoom in on the focal node itself.
       zoomToNode(nodeId);
     },
     [edges, setNodes, setEdges, zoomToNode],

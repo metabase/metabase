@@ -6,14 +6,40 @@ import type {
   ErdField,
   ErdNode,
   ErdResponse,
+  FieldId,
   TableId,
 } from "metabase-types/api";
 
 import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 
-export function getNodeId(node: { table_id: TableId }): string {
-  return `table-${node.table_id}`;
+// --- Stable id helpers ----------------------------------------------------
+//
+// Schema Viewer derives React Flow node, edge, and handle ids from backend
+// table / field ids. These helpers are the single source of truth for that
+// mapping — every call site (flow-graph builder, FieldRow handles, FK click
+// edge selection) goes through them so the format only lives in one place.
+
+export function getNodeId(node: { table_id: TableId } | TableId): string {
+  const tableId = typeof node === "object" ? node.table_id : node;
+  return `table-${tableId}`;
+}
+
+export function getEdgeId(
+  sourceFieldId: FieldId,
+  targetFieldId: FieldId,
+): string {
+  return `edge-${sourceFieldId}-${targetFieldId}`;
+}
+
+/**
+ * Build the handle id for a field. `side` distinguishes the right-side
+ * handle used to anchor self-referential edges (a separate handle is needed
+ * because React Flow can't draw a self-loop using a single left-side
+ * target).
+ */
+export function getFieldHandleId(fieldId: FieldId, side?: "right"): string {
+  return side ? `field-${fieldId}-${side}` : `field-${fieldId}`;
 }
 
 /** Pixel height of a table card given its field count. */
@@ -93,13 +119,14 @@ function toFlowNode(
 function toFlowEdge(edge: ErdEdge): SchemaViewerFlowEdge {
   const isSelfRef = edge.source_table_id === edge.target_table_id;
   return {
-    id: `edge-${edge.source_field_id}-${edge.target_field_id}`,
-    source: `table-${edge.source_table_id}`,
-    target: `table-${edge.target_table_id}`,
-    sourceHandle: `field-${edge.source_field_id}`,
-    targetHandle: isSelfRef
-      ? `field-${edge.target_field_id}-right`
-      : `field-${edge.target_field_id}`,
+    id: getEdgeId(edge.source_field_id, edge.target_field_id),
+    source: getNodeId(edge.source_table_id),
+    target: getNodeId(edge.target_table_id),
+    sourceHandle: getFieldHandleId(edge.source_field_id),
+    targetHandle: getFieldHandleId(
+      edge.target_field_id,
+      isSelfRef ? "right" : undefined,
+    ),
     type: "schemaViewerEdge",
     zIndex: EDGE_Z_INDEX_DEFAULT,
     data: {

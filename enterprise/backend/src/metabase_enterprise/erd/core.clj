@@ -19,6 +19,11 @@
    [:name :string]
    [:display_name :string]
    [:database_type :string]
+   ;; `base_type` / `effective_type` are emitted so the frontend can use the
+   ;; shared `getColumnIcon` helper (which keys off Lib type predicates) instead
+   ;; of redoing icon mapping from `database_type` strings.
+   [:base_type {:optional true} [:maybe :string]]
+   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
    [:fk_target_field_id {:optional true} [:maybe :int]]
    [:fk_target_table_id {:optional true} [:maybe :int]]])
@@ -201,6 +206,8 @@
      :name               (:name field)
      :display_name       (:display_name field)
      :database_type      (:database_type field)
+     :base_type          (some-> (:base_type field) u/qualified-name)
+     :effective_type     (some-> (:effective_type field) u/qualified-name)
      :semantic_type      (some-> (:semantic_type field) u/qualified-name)
      :fk_target_field_id (when target-table-id (:fk_target_field_id field))
      :fk_target_table_id target-table-id}))

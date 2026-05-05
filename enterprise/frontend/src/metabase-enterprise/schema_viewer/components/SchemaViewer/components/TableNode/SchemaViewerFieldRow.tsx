@@ -1,38 +1,27 @@
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import cx from "classnames";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, FixedSizeIcon, Group, type IconName, Loader } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { ConcreteTableId, ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import { ROW_HEIGHT } from "../../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../../types";
-import { getNodeId } from "../../utils";
+import { getEdgeId, getFieldHandleId, getNodeId } from "../../utils";
 
 import S from "./SchemaViewerFieldRow.module.css";
 
-// Map a Postgres / warehouse database_type to a Metabase icon name. The
-// icons mirror `getColumnIcon`'s output but don't rely on base/effective_type
-// because `ErdField` only carries `database_type`.
-function getIconForDbType(dbType: string): IconName {
-  const t = dbType.toLowerCase();
-  if (/^bool/.test(t)) {
-    return "io";
-  }
-  if (/(timestamp|date|time)/.test(t)) {
-    return "calendar";
-  }
-  if (
-    /(int|numeric|decimal|double|float|real|serial|bigint|smallint|money)/.test(
-      t,
-    )
-  ) {
-    return "int";
-  }
-  if (/(uuid|text|varchar|char|string|json|xml|bytea)/.test(t)) {
-    return "string";
-  }
-  return "unknown";
+function getFieldIcon(field: ErdField): IconName {
+  return getColumnIcon(
+    Lib.legacyColumnTypeInfo({
+      base_type: field.base_type ?? undefined,
+      effective_type: field.effective_type ?? undefined,
+      semantic_type: field.semantic_type,
+    }),
+  );
 }
 
 type SchemaViewerFieldRowProps = {
@@ -60,32 +49,26 @@ export function SchemaViewerFieldRow({
     SchemaViewerFlowEdge
   >();
 
-  const isPK =
-    field.semantic_type === "type/PK" || field.semantic_type === "PK";
-  const isFK =
-    field.semantic_type === "type/FK" || field.semantic_type === "FK";
+  const isPkField = isPK(field);
+  const isFkField = isFK(field);
 
-  const icon: IconName = isPK
-    ? "label"
-    : isFK
-      ? "connections"
-      : getIconForDbType(field.database_type);
+  const icon: IconName = getFieldIcon(field);
 
   // FK field that has a target table not yet on the canvas
   const canExpand =
-    isFK &&
+    isFkField &&
     field.fk_target_table_id != null &&
     !visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
   // FK field that has a target table already on the canvas
   const canZoomTo =
-    isFK &&
+    isFkField &&
     field.fk_target_table_id != null &&
     visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
   // True while an FK-click fetch is in flight for this field's target table.
   const isExpanding =
-    isFK &&
+    isFkField &&
     field.fk_target_table_id != null &&
     expandingTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
@@ -103,8 +86,8 @@ export function SchemaViewerFieldRow({
       const candidateEdgeIds =
         field.fk_target_field_id != null
           ? [
-              `edge-${field.id}-${field.fk_target_field_id}`,
-              `edge-${field.fk_target_field_id}-${field.id}`,
+              getEdgeId(field.id, field.fk_target_field_id),
+              getEdgeId(field.fk_target_field_id, field.id),
             ]
           : undefined;
       onExpandToTable(
@@ -123,14 +106,12 @@ export function SchemaViewerFieldRow({
       // for edge IDs isn't fixed) and select whichever exists.
       if (field.fk_target_field_id != null) {
         const candidateEdgeIds = new Set([
-          `edge-${field.id}-${field.fk_target_field_id}`,
-          `edge-${field.fk_target_field_id}-${field.id}`,
+          getEdgeId(field.id, field.fk_target_field_id),
+          getEdgeId(field.fk_target_field_id, field.id),
         ]);
         setEdges((edges) =>
           edges.map((edge) => {
             const shouldSelect = candidateEdgeIds.has(edge.id);
-            // Only allocate a new object if the selection state actually
-            // changes for this edge — avoids unnecessary re-renders.
             if (shouldSelect && !edge.selected) {
               return { ...edge, selected: true };
             }
@@ -167,9 +148,8 @@ export function SchemaViewerFieldRow({
       <Box
         className={cx(S.name, { [S.clickableName]: isClickable })}
         fz="sm"
-        fw={isPK || isSelectedInEdge ? "bold" : "normal"}
+        fw={isPkField || isSelectedInEdge ? "bold" : "normal"}
         c={isSelectedInEdge ? "brand" : undefined}
-        style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}
       >
         {field.name}
       </Box>
@@ -189,7 +169,7 @@ export function SchemaViewerFieldRow({
         <Handle
           type="source"
           position={Position.Right}
-          id={`field-${field.id}`}
+          id={getFieldHandleId(field.id)}
           className={S.handle}
         />
       )}
@@ -197,7 +177,7 @@ export function SchemaViewerFieldRow({
         <Handle
           type="target"
           position={Position.Left}
-          id={`field-${field.id}`}
+          id={getFieldHandleId(field.id)}
           className={S.handle}
         />
       )}
@@ -205,7 +185,7 @@ export function SchemaViewerFieldRow({
         <Handle
           type="target"
           position={Position.Right}
-          id={`field-${field.id}-right`}
+          id={getFieldHandleId(field.id, "right")}
           className={S.handle}
         />
       )}

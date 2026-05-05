@@ -53,13 +53,11 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       }
       return ids;
     },
-    (a, b) => a.size === b.size && [...a].every((x) => b.has(x)),
+    (a, b) => a.size === b.size && a.intersection(b).size === a.size,
   );
   const isUserSelected = selectedNodeId === id;
 
   const handleDoubleClick = useCallback(() => {
-    // Focus on this node using the shared zoom rules (≥0.5 zoom, header
-    // kept in the viewport).
     zoomToNode(id);
   }, [id, zoomToNode]);
 
@@ -83,9 +81,9 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     >
       <Group
         className={S.header}
-        gap={8}
-        px={16}
-        py={16}
+        gap="sm"
+        px="md"
+        py="md"
         wrap="nowrap"
         onClick={handleHeaderClick}
         style={{ cursor: "pointer" }}
@@ -93,7 +91,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         <FixedSizeIcon name="table2" c="text-secondary" />
         <Box
           fz={17}
-          lh="24px"
+          lh="1.5rem"
           fw={700}
           c="text-primary"
           style={{

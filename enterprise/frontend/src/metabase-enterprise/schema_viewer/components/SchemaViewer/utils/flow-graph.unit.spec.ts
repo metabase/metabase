@@ -20,6 +20,8 @@ function field(overrides: Partial<ErdField> = {}): ErdField {
     name: "f",
     display_name: "f",
     database_type: "text",
+    base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: null,
     fk_target_field_id: null,
     fk_target_table_id: null,

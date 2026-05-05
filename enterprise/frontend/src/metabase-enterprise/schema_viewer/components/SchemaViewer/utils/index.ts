@@ -1,2 +1,7 @@
-export { getNodeId, toFlowGraph } from "./flow-graph";
+export {
+  getEdgeId,
+  getFieldHandleId,
+  getNodeId,
+  toFlowGraph,
+} from "./flow-graph";
 export { applyLayout } from "./layout";

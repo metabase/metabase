@@ -41,6 +41,8 @@ function setup({
     name: "user_id",
     display_name: "User ID",
     database_type: "integer",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: null,
     fk_target_field_id: null,
     fk_target_table_id: null,
@@ -88,26 +90,28 @@ describe("SchemaViewerFieldRow", () => {
     });
 
     it.each<[string, string]>([
-      ["bool", "io"],
-      ["boolean", "io"],
-      ["timestamp", "calendar"],
-      ["date", "calendar"],
-      ["time", "calendar"],
-      ["integer", "int"],
-      ["bigint", "int"],
-      ["smallint", "int"],
-      ["numeric", "int"],
-      ["decimal", "int"],
-      ["money", "int"],
-      ["text", "string"],
-      ["varchar", "string"],
-      ["uuid", "string"],
-      ["json", "string"],
-      ["bytea", "string"],
-      ["geometry", "unknown"],
-    ])("maps database_type=%s to the `%s` icon", (dbType, icon) => {
-      setup({ field: { database_type: dbType } });
+      ["type/Boolean", "io"],
+      ["type/DateTime", "calendar"],
+      ["type/Date", "calendar"],
+      ["type/Time", "calendar"],
+      ["type/Integer", "int"],
+      ["type/BigInteger", "int"],
+      ["type/Float", "int"],
+      ["type/Decimal", "int"],
+      ["type/Text", "string"],
+    ])("maps base_type=%s to the `%s` icon", (baseType, icon) => {
+      setup({ field: { base_type: baseType, effective_type: baseType } });
       expect(getIcon(icon)).toBeInTheDocument();
+    });
+
+    it("falls back to the `list` icon for unrecognized types", () => {
+      setup({
+        field: {
+          base_type: "type/Structured",
+          effective_type: "type/Structured",
+        },
+      });
+      expect(getIcon("list")).toBeInTheDocument();
     });
   });
 

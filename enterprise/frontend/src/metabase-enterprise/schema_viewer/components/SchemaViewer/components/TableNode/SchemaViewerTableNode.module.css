@@ -1,14 +1,17 @@
 .card {
+  /* Using CSS variable for border color to allow color propagation to expand handle in FieldRow. */
+  --node-border-color: var(--mb-color-border);
+
   position: relative;
   width: 20rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--node-border-color);
   border-radius: 0.5rem;
   background: var(--mb-color-white);
   box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
 }
 
 .card.selected {
-  border-color: var(--mb-color-brand);
+  --node-border-color: var(--mb-color-brand);
 }
 
 .header {

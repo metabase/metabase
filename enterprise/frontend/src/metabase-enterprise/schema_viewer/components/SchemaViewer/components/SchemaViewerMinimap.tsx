@@ -35,15 +35,10 @@ export function SchemaViewerMinimap() {
     return counts;
   }, [edges]);
 
-  const maxConnectionCount = useMemo(() => {
-    let max = 0;
-    for (const count of connectionCounts.values()) {
-      if (count > max) {
-        max = count;
-      }
-    }
-    return max;
-  }, [connectionCounts]);
+  const maxConnectionCount = useMemo(
+    () => Math.max(0, ...connectionCounts.values()),
+    [connectionCounts],
+  );
 
   const nodeColor = useCallback(
     (node: { id: string }) => {

@@ -24,11 +24,6 @@ import S from "./SchemaPickerInput.module.css";
 type SchemaPickerInputProps = {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  /**
-   * Fires immediately before the picker pushes a new (database, schema)
-   * URL. The parent uses this to reset any state that should not survive a
-   * context switch (e.g. the selection-intent in the canvas).
-   */
   onSchemaChange: () => void;
 };
 
@@ -46,9 +41,6 @@ export function SchemaPickerInput({
   // the DB list instead. Cleared when the popover fully closes.
   const [hasNavigatedBackToDbs, setHasNavigatedBackToDbs] = useState(false);
 
-  // Fetch the full DB list with schemas inline so the picker can populate
-  // both levels of the drill-down without a second round-trip per DB. See
-  // the `include=schemas` branch in /api/database.
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include: "schemas" });
 
@@ -88,8 +80,6 @@ export function SchemaPickerInput({
     : candidateSchemaListDbId;
 
   // Schemas for the database currently being previewed in the popover.
-  // Pulled straight out of the list response (`include=schemas`), filtered
-  // to drop blank schema names some drivers emit as "".
   const schemas = useMemo<SchemaName[] | undefined>(() => {
     if (popoverSchemaListDbId == null) {
       return undefined;
@@ -104,10 +94,7 @@ export function SchemaPickerInput({
   }, [databases, popoverSchemaListDbId]);
 
   // Click on a DB row: if the DB has 0 or 1 schemas there's no choice to
-  // offer — navigate directly. Otherwise drill into the schema list. Safe
-  // to inline because the DB list only renders once `databases` is loaded
-  // (it's gated on `!isLoadingDatabases`), so `db.schemas` is available at
-  // click time.
+  // offer — navigate directly. Otherwise drill into the schema list.
   const handleDatabaseClick = useCallback(
     (dbId: DatabaseId) => {
       const db = databases?.find((d) => d.id === dbId);
@@ -176,9 +163,7 @@ export function SchemaPickerInput({
       ? databases?.find((db) => db.id === databaseId)
       : undefined;
   // Only show the URL's `schema` as the trigger label when it actually exists
-  // in the DB's schema list. Otherwise (schema was renamed / dropped / the URL
-  // points at a stale value) fall back to the DB name so the label can't
-  // mislead.
+  // in the DB's schema list. Otherwise fall back to the DB name.
   const schemaExistsOnCurrentDb =
     schema != null &&
     schema.length > 0 &&
@@ -327,11 +312,6 @@ function DatabaseListItem({ database, onSelect }: DatabaseListItemProps) {
 type SchemaListProps = {
   schemas: SchemaName[];
   databaseName?: string;
-  /**
-   * Name of the schema currently displayed on the canvas. When set, the
-   * matching row in the dropdown is marked as the current selection so the
-   * user can see which schema they're on without mental lookup.
-   */
   currentSchema?: string;
   onSelect: (schema: SchemaName) => void;
   onBack: () => void;

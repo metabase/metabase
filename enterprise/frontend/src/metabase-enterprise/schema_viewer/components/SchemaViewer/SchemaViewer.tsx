@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Group,
+  Icon,
   Loader,
   Stack,
   Text,
@@ -28,7 +29,6 @@ import type {
 
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
-import { AutoLayoutButton } from "./components/AutoLayoutButton";
 import { SchemaViewerEdge } from "./components/Edge";
 import { SchemaViewerNodeSearch } from "./components/NodeSearch";
 import { SchemaPickerInput } from "./components/SchemaPickerInput";
@@ -325,7 +325,14 @@ export function SchemaViewer({
         {nodes.length > 0 && (
           <Panel position="bottom-left">
             <Group gap="sm">
-              <AutoLayoutButton onClick={resetLayout} />
+              <Button
+                bg="background-primary"
+                variant="default"
+                leftSection={<Icon name="sparkles" />}
+                onClick={resetLayout}
+              >
+                {t`Auto-layout`}
+              </Button>
               {selectedNodeId != null && (
                 <Button
                   bg="background-primary"

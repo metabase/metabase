@@ -12,20 +12,17 @@ import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 import { applyLayout, getNodeId } from "../utils";
 
 type UseGraphSyncArgs = {
-  /** True once a databaseId has been picked — without it we render nothing. */
   hasDbSelected: boolean;
-  /** RTK-Query error from useGetErdQuery. */
   error: unknown;
-  /** RTK-Query isFetching from useGetErdQuery. */
   isFetching: boolean;
-  /** Adapted graph (nodes + edges) for the current ERD response, or null. */
+  // Normalized /erd response.
   graph: {
     nodes: SchemaViewerFlowNode[];
     edges: SchemaViewerFlowEdge[];
   } | null;
-  /** Current nodes from useNodesState — needed for incremental position merge. */
+  // Nodes from useNodesState (already positioned on the canvas) — needed for incremental position merge.
   nodes: SchemaViewerFlowNode[];
-  /** Stable key for the current (databaseId, schema). Drives the canvas reset. */
+  // Stable key for the current (databaseId, schema). Drives the canvas reset.
   contextKey: string | null;
   setNodes: (nodes: SchemaViewerFlowNode[]) => void;
   setEdges: (edges: SchemaViewerFlowEdge[]) => void;
@@ -35,9 +32,9 @@ type UseGraphSyncArgs = {
 };
 
 type PendingExpansion = {
-  /** Node ID of the table the user expanded into — zoom target. */
+  // Node ID of the table the user expanded into — zoom target.
   targetNodeId: string;
-  /** Candidate edge IDs to auto-select (both possible orderings). */
+  // Candidate edge IDs to auto-select (both possible orderings).
   candidateEdgeIds: readonly string[];
 };
 

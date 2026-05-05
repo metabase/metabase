@@ -1,7 +1,7 @@
 .row {
   position: relative;
   white-space: nowrap;
-  border-bottom: 1px solid rgba(7, 23, 34, 0.14);
+  border-bottom: 1px solid var(--mb-color-border);
 
   &:last-child {
     border-bottom: none;
@@ -22,6 +22,7 @@
 }
 
 .name {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -36,18 +37,17 @@
 
 /* Indicator on expandable FK fields — signals the target table can be fetched.
    Positioned so the circle's center sits on the table node's right border,
-   with half inside and half outside the card. Requires .card (in
-   SchemaViewerTableNode.module.css) to use the default overflow: visible. */
+   with half inside and half outside the card. */
 .expandIndicator {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translate(50%, -50%);
-  width: 10px;
-  height: 10px;
+  width: 0.675rem;
+  height: 0.675rem;
   border-radius: 50%;
   background: var(--mb-color-white);
-  border: 1.5px solid var(--node-border-color, var(--mb-color-text-secondary));
+  border: 1px solid var(--node-border-color, var(--mb-color-border));
   pointer-events: none;
   z-index: 1;
 }
