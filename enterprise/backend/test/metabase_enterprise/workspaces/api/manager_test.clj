@@ -4,6 +4,7 @@
    request/response shape through the HTTP layer."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -34,6 +35,7 @@
                  ["POST /"        :post   403 "ee/workspace-manager/"                                  {:name "X"}]
                  ["PUT /:id"      :put    403 (str "ee/workspace-manager/" (:id ws))                   {:name "Y"}]
                  ["DELETE /:id"   :delete 403 (str "ee/workspace-manager/" (:id ws))                   nil]
+                 ["GET database"  :get    403 "ee/workspace-manager/database"                          nil]
                  ["POST database" :post   403 (str "ee/workspace-manager/" (:id ws) "/database")       {:database_id (mt/id) :input_schemas ["PUBLIC"]}]]]
           (testing label
             (is (= "You don't have permissions to do that."
@@ -86,3 +88,14 @@
             (let [ws' (mt/user-http-request :crowberto :delete 200
                                             (str "ee/workspace-manager/" (:id ws) "/database/" (mt/id)))]
               (is (empty? (:databases ws'))))))))))
+
+(deftest available-databases-test
+  (testing "GET /database returns each eligible database with its discovered schemas"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
+                   :model/Table _ {:db_id db-id :schema "public"    :name "t1" :active true}
+                   :model/Table _ {:db_id db-id :schema "analytics" :name "t2" :active true}]
+      (let [body  (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/database")
+            entry (m/find-first (comp #{db-id} :database_id) body)]
+        (is (=? {:database_id   db-id
+                 :input_schemas ["analytics" "public"]}
+                entry))))))

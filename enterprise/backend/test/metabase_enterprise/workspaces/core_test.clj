@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -136,6 +137,46 @@
       (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
         (ws/delete-workspace! (:id ws))
         (is (nil? (ws/get-workspace (:id ws))))))))
+
+;;; -------------------------------------- Available Databases ------------------------------------------------
+
+(deftest available-databases-test
+  ;; H2 doesn't ship with the `:workspace` driver feature, so force it on for these tests.
+  ;; That isolates this test from the driver-feature wiring; the workspace-feature
+  ;; filter is exercised separately below.
+  (testing "returns a database supporting :workspace, paired with its distinct table schemas"
+    (with-redefs [driver/database-supports? (fn [_engine _feature _db] true)]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}
+                     :model/Table _ {:db_id db-id :schema "public"    :name "t1" :active true}
+                     :model/Table _ {:db_id db-id :schema "public"    :name "t2" :active true}
+                     :model/Table _ {:db_id db-id :schema "analytics" :name "t3" :active true}
+                     :model/Table _ {:db_id db-id :schema ""          :name "t4" :active true}
+                     :model/Table _ {:db_id db-id :schema "ignored"   :name "t5" :active false}]
+        (let [entry (some #(when (= db-id (:database_id %)) %) (ws/available-databases))]
+          (is (some? entry) "the eligible database should appear")
+          (testing "schemas are distinct, sorted, and exclude empty-string + inactive-table schemas"
+            (is (= ["analytics" "public"] (:input_schemas entry))))))))
+
+  (testing "the sample, audit, and router databases are excluded"
+    ;; The `:database-routing` feature flag toggles `db-routing-enabled?` between its
+    ;; OSS stub (always false) and the EE impl that consults `:model/DatabaseRouter`.
+    (mt/with-premium-features #{:workspaces :database-routing}
+      (with-redefs [driver/database-supports? (fn [_engine _feature _db] true)]
+        (mt/with-temp [:model/Database       {sample-id :id}        {:engine :h2 :is_sample true}
+                       :model/Database       {audit-id :id}         {:engine :h2 :is_audit true}
+                       :model/Database       {router-parent-id :id} {:engine :h2}
+                       :model/DatabaseRouter _                      {:database_id    router-parent-id
+                                                                     :user_attribute "tenant"}
+                       :model/Database       {router-child-id :id}  {:engine :h2 :router_database_id router-parent-id}]
+          (let [ids (set (map :database_id (ws/available-databases)))]
+            (is (not (contains? ids sample-id)))
+            (is (not (contains? ids audit-id)))
+            (is (not (contains? ids router-parent-id)))
+            (is (not (contains? ids router-child-id))))))))
+
+  (testing "drivers that don't support :workspace are excluded"
+    (with-redefs [driver/database-supports? (fn [_engine feature _db] (not= feature :workspace))]
+      (is (empty? (filter #(= (mt/id) (:database_id %)) (ws/available-databases)))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 
