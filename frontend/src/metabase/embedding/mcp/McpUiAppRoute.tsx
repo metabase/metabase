@@ -1,10 +1,9 @@
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo } from "react";
 
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
@@ -14,6 +13,7 @@ import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { useMcpApp } from "./hooks/useMcpApp";
+import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
 const store = getSdkStore();
@@ -30,11 +30,13 @@ const SimpleLoader = () => (
 export function McpUiAppRoute() {
   const { query, hostContext, app } = useMcpApp();
 
-  const [isSettingsReady, setIsSettingsReady] = useState(false);
-
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
-  const { instanceUrl } = window.metabaseConfig ?? { instanceUrl: "" };
+  const { instanceUrl = "", sessionToken = "" } =
+    (window.metabaseConfig as {
+      instanceUrl: string;
+      sessionToken: string;
+    }) ?? {};
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -67,15 +69,12 @@ export function McpUiAppRoute() {
     [hostCssVariables, scheme],
   );
 
-  // The OSS no-op initAuth never loads user or settings. Do it ourselves so
-  // selectors like getTokenFeature has populated settings.
-  // We also no-op the EE auth flow (auth.ts) when in MCP Apps route.
-  useEffect(() => {
-    Promise.all([
-      store.dispatch(refreshCurrentUser()),
-      store.dispatch(refreshSiteSettings()),
-    ]).then(() => setIsSettingsReady(true));
-  }, []);
+  const { isSettingsReady, userAndSettingsFetchError } =
+    useMcpUserAndSettingsFetch({
+      instanceUrl,
+      sessionToken,
+      store,
+    });
 
   const isReady = !!(
     instanceUrl &&
@@ -85,11 +84,12 @@ export function McpUiAppRoute() {
   );
 
   useEffect(() => {
-    // Remove the loading indicator on the HTML page once the app is ready
-    if (isReady) {
+    // Remove the loading indicator on the HTML page once the app is ready or
+    // when initialization fails and the route can render its own error.
+    if (isReady || userAndSettingsFetchError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady]);
+  }, [isReady, userAndSettingsFetchError]);
 
   const height = "500px";
   const visualizationHeight = `calc(${height} - 8.5rem)`;
@@ -101,9 +101,46 @@ export function McpUiAppRoute() {
     background: theme.colors?.background,
   };
 
-  if (!isReady) {
-    return null;
-  }
+  const renderContent = () => {
+    if (userAndSettingsFetchError) {
+      return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    if (!isReady) {
+      return null;
+    }
+
+    return (
+      <SdkQuestion
+        deserializedCard={deserializedCard}
+        isSaveEnabled={false}
+        // we should never show query builder in chat interfaces
+        withEditorButton={false}
+        withChartTypeSelector={false}
+        onDrillThrough={handleDrillThrough}
+      >
+        <Flex
+          direction="column"
+          justify="space-between"
+          h="100%"
+          py="lg"
+          gap="sm"
+        >
+          <Box px="lg" style={{ flexShrink: 0 }}>
+            <McpQuestionTitle />
+          </Box>
+
+          <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
+            <SdkQuestion.QuestionVisualization height={visualizationHeight} />
+          </Flex>
+
+          <Flex px="lg">
+            <McpQueryBar app={app} instanceUrl={instanceUrl} />
+          </Flex>
+        </Flex>
+      </SdkQuestion>
+    );
+  };
 
   return (
     <ComponentProvider
@@ -112,36 +149,7 @@ export function McpUiAppRoute() {
       reduxStore={store}
       loaderComponent={SimpleLoader}
     >
-      <div style={containerStyle}>
-        <SdkQuestion
-          deserializedCard={deserializedCard}
-          isSaveEnabled={false}
-          // we should never show query builder in chat interfaces
-          withEditorButton={false}
-          withChartTypeSelector={false}
-          onDrillThrough={handleDrillThrough}
-        >
-          <Flex
-            direction="column"
-            justify="space-between"
-            h="100%"
-            py="lg"
-            gap="sm"
-          >
-            <Box px="lg" style={{ flexShrink: 0 }}>
-              <McpQuestionTitle />
-            </Box>
-
-            <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
-              <SdkQuestion.QuestionVisualization height={visualizationHeight} />
-            </Flex>
-
-            <Flex px="lg">
-              <McpQueryBar app={app} instanceUrl={instanceUrl} />
-            </Flex>
-          </Flex>
-        </SdkQuestion>
-      </div>
+      <div style={containerStyle}>{renderContent()}</div>
     </ComponentProvider>
   );
 }
