@@ -5,6 +5,7 @@ import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
 
 import { trackMetabotRequestSent } from "../analytics";
+import type { MetabotProfileId } from "../constants";
 import {
   type MetabotAgentId,
   type MetabotPromptSubmissionResult,
@@ -53,7 +54,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   );
 
   const setProfileOverride = useCallback(
-    (profile: string) => {
+    (profile: MetabotProfileId | undefined) => {
       dispatch(setProfileOverrideAction({ agentId, profile }));
     },
     [dispatch, agentId],
@@ -63,7 +64,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     async (
       prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
       options?: {
-        profile?: string | undefined;
+        profile?: MetabotProfileId | undefined;
         preventOpenSidebar?: boolean;
         focusInput?: boolean;
       },

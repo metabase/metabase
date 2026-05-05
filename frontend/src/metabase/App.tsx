@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -33,6 +32,7 @@ import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { Metabot } from "./metabot/components/Metabot";
@@ -112,7 +112,7 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <KBarProvider>
+        <AppKBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
@@ -133,7 +133,7 @@ function App({
             </AppContentContainer>
           </AppContainer>
           <Palette />
-        </KBarProvider>
+        </AppKBarProvider>
       </ScrollToTop>
     </ErrorBoundary>
   );

@@ -8,6 +8,7 @@
    ;; `scoring-task-registered-test` verifies init.clj's actual wiring path.
    [metabase-enterprise.data-complexity-score.init]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
@@ -98,6 +99,24 @@
     (let [es [(entity :name "customers") (entity :name "clients")]]
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0}}}
               (#'complexity/score-catalog es nil))))))
+
+(deftest ^:parallel score-from-entities-metabot-fallback-test
+  (testing "score-from-entities marks :metabot as a universe fallback when no metabot-entities are passed"
+    (let [library  []
+          universe [(entity :name "orders") (entity :name "widgets")]]
+      (testing "nil metabot-entities → :metabot reuses the :universe score and :meta flags the fallback"
+        (let [result (complexity/score-from-entities library universe nil {})]
+          (is (= :universe-fallback (get-in result [:meta :metabot-source]))
+              "benchmark consumers need this marker to tell an approximated :metabot apart from a real one")
+          (is (= (:universe result) (:metabot result))
+              "fallback path must copy :universe verbatim — no second scoring pass")))
+      (testing "non-nil metabot-entities → :metabot is scored separately and the marker is absent"
+        (let [result (complexity/score-from-entities library universe nil
+                                                     {:metabot-entities [(entity :name "orders")]})]
+          (is (nil? (get-in result [:meta :metabot-source]))
+              "real metabot score must not be stamped with the fallback marker")
+          (is (not= (:universe result) (:metabot result))
+              "pre-check: the metabot vector is smaller than universe so the scores should differ"))))))
 
 (deftest ^:parallel synonym-scoring-test
   (testing "cosine similarity above threshold flags a synonym pair"
@@ -927,6 +946,38 @@
     :metabot {:total 0 :components {}} :meta {}}
    {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
 
+(deftest ^:sequential latest-score-filters-by-fingerprint-test
+  (testing "the overview cache only returns scores matching the current scoring fingerprint"
+    (mt/initialize-if-needed! :db)
+    (let [other-fingerprint "latest-score-test/other"
+          fingerprint       "latest-score-test/current"]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
+        (data-complexity-score/record-score! other-fingerprint {:meta {:label "other"}})
+        (data-complexity-score/record-score! fingerprint {:meta {:label "older"}})
+        (data-complexity-score/record-score! fingerprint {:meta {:label "newer"}})
+        (let [score (data-complexity-score/latest-score fingerprint)]
+          (is (= "newer" (get-in score [:meta :label])))
+          (is (some? (get-in score [:meta :calculated-at]))))
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
+
+(deftest ^:sequential run-scoring-persists-latest-score-snapshot-test
+  (testing "every successful computation persists a fresh snapshot for the overview endpoint"
+    (mt/initialize-if-needed! :db)
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (let [before-id (some-> (data-complexity-score/latest-entry "persist-test-fp") :id)
+            result    (stub-result false)]
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] result)]
+            (#'task.complexity-score/run-scoring! "persist-test-fp")
+            (let [{:keys [id fingerprint score_data]} (data-complexity-score/latest-entry "persist-test-fp")]
+              (is (= result score_data))
+              (is (= "persist-test-fp" fingerprint))
+              (when before-id
+                (is (> id before-id)
+                    "a new append-only snapshot should be written for each run")))))))))
+
 (deftest ^:sequential run-scoring-persists-fingerprint-only-on-successful-publish-test
   (testing "fingerprint advances only when Snowplow accepted the event — failed publish must leave
            the stale fingerprint in place so the next boot / cron retries"
@@ -945,6 +996,18 @@
             (#'task.complexity-score/run-scoring! "fresh-fp")
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
+
+(deftest ^:sequential run-scoring-keeps-fingerprint-stale-when-persistence-fails-test
+  (testing "persistence is part of a successful run now — if the cache write fails we must retry"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                         data-complexity-scoring-last-fingerprint "stale"]
+        (mt/with-dynamic-fn-redefs [complexity/complexity-scores      (fn [& _] (stub-result true))
+                                    data-complexity-score/record-score! (fn [& _]
+                                                                          (throw (RuntimeException. "db boom")))]
+          (#'task.complexity-score/run-scoring! "fresh-fp")
+          (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
+              "fingerprint preserved so the next boot / cron retries the failed cache write"))))))
 
 (deftest ^:sequential maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
   (testing "boot-time emission never advances the last-successful fingerprint on failure — the

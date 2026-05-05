@@ -387,11 +387,16 @@ if (isDevMode) {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
 
+  if (!process.env.DISABLE_BUILD_NOTIFICATIONS) {
+    config.plugins.push(
+      new WebpackNotifierPlugin({
+        excludeWarnings: true,
+        skipFirstNotification: true,
+      }),
+    );
+  }
+
   config.plugins.push(
-    new WebpackNotifierPlugin({
-      excludeWarnings: true,
-      skipFirstNotification: true,
-    }),
     new CssVarsDeclarationPlugin({
       frontendSrcPath: __dirname + "/frontend/src",
       rootPath: __dirname,

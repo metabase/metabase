@@ -54,7 +54,7 @@
 (defn send-channel-response
   "Send a visible threaded reply for non-DM Slack conversations.
    Accumulates AI text during streaming and posts the final response as a single message."
-  [client event extra-history {:keys [channel-id message-ctx channel thread-ts thread bot-user-id prompt conversation-id]}
+  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}
    {:keys [tool-name->friendly
            make-streaming-ai-request collect-viz-blocks feedback-blocks post-viz-error!
            make-viz-prefetch-callback cancel-prefetched-viz!]}]
@@ -67,42 +67,44 @@
         stored-msg-id  (atom nil)]
     (set-status! "Thinking...")
     (try
-      (make-streaming-ai-request
-       conversation-id
-       prompt
-       thread
-       bot-user-id
-       channel-id
-       extra-history
-       {:on-text              on-text
-        :on-tool-start        on-tool-start
-        :on-tool-end          nil
-        :on-data              on-data
-        :req-slack-msg-id     (:ts event)
-        :get-res-slack-msg-id nil
-        :request-prompt       (channel-request-prompt prompt)
-        :stored-msg-id        stored-msg-id})
-      (when (seq @prefetched-viz)
-        (set-status! "Rendering results..."))
-      (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
-            answer-text             (str/trim @current-text)
-            final-text              (if (or (seq answer-text) (seq blocks))
-                                      answer-text
-                                      "I wasn't able to generate a response. Please try again.")
-            final-blocks            (into (into (final-text-blocks final-text) blocks)
-                                          (feedback-blocks conversation-id))
-            res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
-                                                                       final-text :blocks final-blocks)]
-        (when-let [res-ts (:ts res)]
-          (metabot.persistence/set-response-slack-msg-id! @stored-msg-id res-ts))
-        (when-not (:ok res)
-          (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
-                      (:error res)
-                      (count (or final-blocks []))
-                      (pr-str (when final-blocks (mapv :type final-blocks)))
-                      (pr-str (get-in res [:response_metadata :messages]))))
-        (doseq [e errors]
-          (post-viz-error! client channel thread-ts e)))
+      (let [message-external-id (make-streaming-ai-request
+                                 conversation-id
+                                 prompt
+                                 thread
+                                 bot-user-id
+                                 channel-id
+                                 extra-history
+                                 {:on-text              on-text
+                                  :on-tool-start        on-tool-start
+                                  :on-tool-end          nil
+                                  :on-data              on-data
+                                  :team-id              (:team_id auth-info)
+                                  :thread-ts            thread-ts
+                                  :req-slack-msg-id     (:ts event)
+                                  :get-res-slack-msg-id nil
+                                  :request-prompt       (channel-request-prompt prompt)
+                                  :stored-msg-id        stored-msg-id})]
+        (when (seq @prefetched-viz)
+          (set-status! "Rendering results..."))
+        (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
+              answer-text             (str/trim @current-text)
+              final-text              (if (or (seq answer-text) (seq blocks))
+                                        answer-text
+                                        "I wasn't able to generate a response. Please try again.")
+              final-blocks            (into (into (final-text-blocks final-text) blocks)
+                                            (feedback-blocks conversation-id message-external-id))
+              res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
+                                                                         final-text :blocks final-blocks)]
+          (when-let [res-ts (:ts res)]
+            (metabot.persistence/set-response-slack-msg-id! @stored-msg-id res-ts))
+          (when-not (:ok res)
+            (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
+                        (:error res)
+                        (count (or final-blocks []))
+                        (pr-str (when final-blocks (mapv :type final-blocks)))
+                        (pr-str (get-in res [:response_metadata :messages]))))
+          (doseq [e errors]
+            (post-viz-error! client channel thread-ts e))))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
         (log/error e "[slackbot] Error in channel response")

@@ -107,7 +107,9 @@ describe("metabot > history", () => {
       type: "text",
       message: "Who is your favorite?",
     });
-    expect(_.omit(beforeResetState.messages[1], ["id"])).toStrictEqual({
+    expect(
+      _.omit(beforeResetState.messages[1], ["id", "externalId"]),
+    ).toStrictEqual({
       role: "agent",
       type: "text",
       message: "You, but don't tell anyone.",

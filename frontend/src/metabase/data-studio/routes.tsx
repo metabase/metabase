@@ -10,7 +10,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";

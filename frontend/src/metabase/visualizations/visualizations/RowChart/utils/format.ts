@@ -1,9 +1,9 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatValue } from "metabase/utils/formatting";
 import { isEmpty } from "metabase/utils/validate";
 import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {

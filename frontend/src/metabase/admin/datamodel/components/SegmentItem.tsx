@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentActionSelect } from "./SegmentActionSelect";
