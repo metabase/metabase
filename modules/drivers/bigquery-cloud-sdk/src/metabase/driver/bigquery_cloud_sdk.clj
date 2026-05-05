@@ -1276,20 +1276,33 @@
 
 (defn- ws-wait-for-impersonation-ready!
   "Poll until impersonation is working. GCP IAM changes can take up to 60 seconds to propagate.
-   Tests by actually creating impersonated credentials and making a simple API call."
+   Tests by actually creating impersonated credentials and making a simple API call.
+
+   Each iteration builds a fresh `ServiceAccountCredentials` source (and the
+   derived `ImpersonatedCredentials` + `BigQuery` client). Reusing one across
+   iterations would let GCP's auth-library token-cache and retry/backoff state
+   from an early failure persist for the duration of the loop, so even after
+   the underlying IAM grant propagates, every subsequent check inherits the
+   negative-cached state and the loop times out. Per-iteration creation
+   isolates each attempt.
+
+   The `BigQueryOptions` builder *must* set `.setProjectId` explicitly: without
+   it, `listDatasets` calls fail in a way the SDK keeps reporting as denied
+   even after the underlying impersonation grant becomes valid."
   [details ^String target-sa-email & {:keys [max-attempts interval-ms]
                                       :or   {max-attempts 120
                                              interval-ms  1000}}]
   (log/info "Waiting for IAM impersonation to be ready...")
-  (let [base-creds  (.createScoped (ws-service-account-credentials details)
-                                   (doto (java.util.ArrayList.)
-                                     (.add "https://www.googleapis.com/auth/bigquery")))
-        project-id  (get-project-id details)]
+  (let [project-id (get-project-id details)]
     (loop [attempt 1]
       (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
       (let [result (try
-                     ;; Try to create impersonated credentials and use them
-                     (let [impersonated (ImpersonatedCredentials/create
+                     ;; Build fresh credentials each iteration to avoid cached
+                     ;; negative results from earlier attempts.
+                     (let [base-creds   (.createScoped (ws-service-account-credentials details)
+                                                       (doto (java.util.ArrayList.)
+                                                         (.add "https://www.googleapis.com/auth/bigquery")))
+                           impersonated (ImpersonatedCredentials/create
                                          base-creds
                                          target-sa-email
                                          nil  ;; delegates
@@ -1298,6 +1311,7 @@
                                          3600)
                            client       (-> (BigQueryOptions/newBuilder)
                                             ^BigQueryOptions$Builder (.setCredentials impersonated)
+                                            ^BigQueryOptions$Builder (.setProjectId project-id)
                                             ^BigQueryOptions (.build)
                                             ^BigQuery (.getService))]
                        ;; Try a simple operation - list datasets (limited to 1)
