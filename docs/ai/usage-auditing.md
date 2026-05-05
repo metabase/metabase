@@ -22,44 +22,40 @@ You can also build your own questions on top of the [Usage Analytics views](#bui
 
 _Admin > AI > Usage auditing > Stats_
 
-![AI usage stats](./images/ai-usage-stats.png)
-
-The Stats page shows aggregate Metabot activity over a date range you choose (default: the previous 30 days).
+The Stats page shows aggregate Metabot activity over a date range you choose, defaulting to the previous 30 days.
 
 ### Filters
 
-At the top of the page:
-
-- **Date range** — the time window the charts cover.
-- **User** — limit to a single person (or **All users**).
-- **Group** — limit to a single [group](../people-and-groups/managing.md) (or **All groups**).
-- **Tenant** — limit to a single [tenant](../embedding/tenants.md). Only shows up if [tenants](../embedding/tenants.md) are enabled.
+- **Date range**: the time window the charts cover.
+- **User**: limit to a single person (or **All users**).
+- **Group**: limit to a single [group](../people-and-groups/managing.md) (or **All groups**).
+- **Tenant**: limit to a single [tenant](../embedding/tenants.md). Only shows up if [tenants](../embedding/tenants.md) are enabled.
 
 ### Metrics
 
 Pick what you want to count using the **Conversations**, **Tokens**, or **Messages** tabs:
 
-- **Conversations** — distinct Metabot chats. Each visit to the chat sidebar that produces a back-and-forth is one conversation.
-- **Tokens** — total tokens (prompt + completion) consumed by LLM calls. Use this for cost.
-- **Messages** — every message exchanged, both from people and from Metabot.
+- **Conversations**: distinct Metabot chats. Each visit to the chat sidebar that produces a back-and-forth is one conversation.
+- **Tokens**: total tokens (prompt + completion) consumed by LLM calls. Use this for cost.
+- **Messages**: every message exchanged, both from people and from Metabot.
 
 For each metric, you'll see the same set of charts:
 
-- **By day** and **By hour** — when activity happens.
-- **By source** — _where_ in Metabase the request came from. See [Sources and profiles](#sources-and-profiles) below.
-- **By profile** — _which_ Metabot persona answered. See [Sources and profiles](#sources-and-profiles) below.
-- **Users with most ...**, **Groups with most ...**, **IP addresses with most ...** — top-N rankings.
-- **Tenants with most ...** — only shown when tenants are enabled.
+- **By day** and **By hour**: when activity happens.
+- **By source**: _where_ in Metabase the request came from. See [Sources and profiles](#sources-and-profiles) below.
+- **By profile**: _which_ Metabot persona answered. See [Sources and profiles](#sources-and-profiles) below.
+- **Users with most ...**, **Groups with most ...**, **IP addresses with most ...**: top-N rankings.
+- **Tenants with most ...**: only shown when tenants are enabled.
 
-Clicking a bar or point on most charts deep-links you into the [Conversations list](#conversations) with the corresponding filter applied (so clicking a user's bar takes you to that user's conversations).
+Clicking a bar or point on most charts deep-links you into the [Conversations list](#conversations) with the corresponding filter applied (so clicking on a name will take you to that person's conversations).
 
 ### Data complexity
 
 The Stats page also shows a **Data complexity** section that scores three slices of your semantic layer for size and ambiguity:
 
-- **Curated semantic layer** — models and metrics from the curated [Library](../data-studio/library.md) subset.
-- **Full semantic layer** — Library entities plus every active physical table.
-- **Metabot-visible layer** — the subset the internal Metabot can surface with its current scope.
+- **Curated semantic layer**: models and metrics from the curated [Library](../data-studio/library.md) subset.
+- **Full semantic layer**: Library entities plus every active physical table.
+- **Metabot-visible layer**: the subset the internal Metabot can surface with its current scope.
 
 Lower scores are better. If a score looks off, hit **Recompute** to refresh it. Use this section to spot when Metabot is drowning in too many similarly-named entities — a frequent cause of bad answers.
 
@@ -105,7 +101,7 @@ The Conversations page lists every Metabot conversation Metabase has on file, ne
 
 ### Filters
 
-- **Date range**, **User**, **Group**, **Tenant** — same as the [Stats filters](#filters).
+- **Date range**, **User**, **Group**, **Tenant**: same as the [Stats filters](#filters).
 
 To filter by source or profile, drill in from a [Stats](#stats) chart — clicking a source or profile bar deep-links here with that filter applied.
 
@@ -113,14 +109,14 @@ To filter by source or profile, drill in from a [Stats](#stats) chart — clicki
 
 Each row shows:
 
-- **User** — who started the conversation.
-- **Profile** — which Metabot persona answered.
-- **Date** — when the conversation started.
-- **Messages** — total messages, including both sides.
-- **Tokens** — total LLM tokens spent.
-- **Queries** — how many queries (SQL or query-builder) Metabot generated during the conversation.
-- **Searches** — how many search-tool calls Metabot made.
-- **IP** — the IP address the request came from. Useful for spotting traffic from unexpected places.
+- **User**: who started the conversation.
+- **Profile**: which Metabot persona answered.
+- **Date**: when the conversation started.
+- **Messages**: total messages, including both sides.
+- **Tokens**: total LLM tokens spent.
+- **Queries**: how many queries (SQL or query-builder) Metabot generated during the conversation.
+- **Searches**: how many search-tool calls Metabot made.
+- **IP**: the IP address the request came from. Useful for spotting traffic from unexpected places.
 
 You can sort by Date, Messages, or Tokens. Click any row to open the [conversation detail](#conversation-detail).
 
@@ -128,12 +124,12 @@ You can sort by Date, Messages, or Tokens. Click any row to open the [conversati
 
 The detail view is a full audit of a single conversation. It includes:
 
-- **Header** — start date, the user the conversation is with, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the user's name you can jump to all of that user's conversations or to their account details.
-- **Stat tiles** — Messages, Total tokens, Queries run, Searches.
-- **Feedback** — any thumbs-up or thumbs-down a user submitted, with the issue category they picked and any free-form text. The agent response that triggered the feedback is shown alongside.
-- **Conversation transcript** — the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood, including the user context it had — useful for understanding why a query came out a certain way for a user with [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). The transcript is read-only.
-- **Queries generated** — every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Run** on a query to open it in a new tab and execute it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
-- **Open in Slack** — for Slack-sourced conversations, a link back to the original Slack thread.
+- **Header**: start date, the user the conversation is with, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the user's name you can jump to all of that user's conversations or to their account details.
+- **Stat tiles**: Messages, Total tokens, Queries run, Searches.
+- **Feedback**: any thumbs-up or thumbs-down a user submitted, with the issue category they picked and any free-form text. The agent response that triggered the feedback is shown alongside.
+- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood, including the user context it had — useful for understanding why a query came out a certain way for a user with [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). The transcript is read-only.
+- **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Run** on a query to open it in a new tab and execute it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
+- **Open in Slack**: for Slack-sourced conversations, a link back to the original Slack thread.
 
 ### The `/inspect` shortcut
 
@@ -143,9 +139,9 @@ If you're an admin chatting with Metabot, type `/inspect` in the chat to jump st
 
 Three [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) models back the Usage auditing pages. See the [Usage analytics reference](../usage-and-performance-tools/usage-analytics-reference.md) for the full column list of each:
 
-- [AI Usage Log](../usage-and-performance-tools/usage-analytics-reference.md#ai-usage-log) — one row per LLM call.
-- [Metabot Conversations](../usage-and-performance-tools/usage-analytics-reference.md#metabot-conversations) — one row per conversation.
-- [Metabot Messages](../usage-and-performance-tools/usage-analytics-reference.md#metabot-messages) — one row per message.
+- [AI Usage Log](../usage-and-performance-tools/usage-analytics-reference.md#ai-usage-log): one row per LLM call.
+- [Metabot Conversations](../usage-and-performance-tools/usage-analytics-reference.md#metabot-conversations): one row per conversation.
+- [Metabot Messages](../usage-and-performance-tools/usage-analytics-reference.md#metabot-messages): one row per message.
 
 Save your custom questions in the [Custom reports](../usage-and-performance-tools/usage-analytics.md#custom-reports-collection) sub-collection so they inherit the right permissions.
 
