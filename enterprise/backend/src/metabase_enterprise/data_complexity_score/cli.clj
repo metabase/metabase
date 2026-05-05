@@ -40,7 +40,7 @@
                                               {:cli-validation true :path path})))))
 
 (def ^:private cli-options
-  [["-r" "--representation-dir PATH" "Directory of representation JSON files (required)."]
+  [["-r" "--representation-dir PATH" "Directory of a serdes YAML export, optionally with an embeddings.json sidecar (required)."]
    ["-e" "--embeddings PATH"         "Explicit embeddings JSON file. Overrides embeddings.json in the directory."]
    ["-o" "--output PATH"             "Write EDN result to this file instead of stdout."]
    ["-h" "--help"                    "Show this message."]])
@@ -57,8 +57,10 @@
 (defn- write-result! [result output-path]
   (if output-path
     (spit output-path (pretty result))
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (print (pretty result))))
+    (do
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (print (pretty result))
+      (flush))))
 
 (defn- run-cli
   "Pure core of the CLI: validates options, loads representation, computes the score.
