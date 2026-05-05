@@ -59,6 +59,7 @@ block(method(Window.prototype, "alert"), "window.alert");
 block(method(Window.prototype, "confirm"), "window.confirm");
 block(method(Window.prototype, "prompt"), "window.prompt");
 block(method(Window.prototype, "print"), "window.print");
+block(window.Notification, "window.Notification");
 
 // Navigator getters — credential / device leaks
 const NAVIGATOR_BLOCKED_GETTERS = [
@@ -121,3 +122,12 @@ block(
   setter(HTMLAnchorElement.prototype, "target"),
   "HTMLAnchorElement.set target",
 );
+
+/**
+ * Intentionally left out:
+ *
+ * `OffscreenCanvas`. The main "escape hatch" is `transferControlToOffscreen()`
+ * + sending it to a Worker so rendering happens off-thread but Worker/SharedWorker
+ * are blocked above, so `OffscreenCanvas` is effectively just an off-DOM canvas you
+ * can render into on the main thread, roughly comparable to `document.createElement("canvas")`.
+ */

@@ -1761,6 +1761,11 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: window\.print/),
     },
     {
+      name: "Notification constructor",
+      payload: 'new Notification("phish");',
+      errorPattern: blockedPattern(/API call: window\.Notification/),
+    },
+    {
       name: "HTMLElement.click()",
       payload: 'document.createElement("a").click();',
       errorPattern: blockedPattern(/API call: HTMLElement\.click/),
