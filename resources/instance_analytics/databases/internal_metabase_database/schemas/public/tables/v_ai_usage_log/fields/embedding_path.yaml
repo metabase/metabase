@@ -7,7 +7,6 @@ table_id: [Internal Metabase Database, public, v_ai_usage_log]
 database_type: varchar
 base_type: type/Text
 effective_type: type/Text
-semantic_type: type/Category
 dimensions: []
 position: 18
 custom_position: 0

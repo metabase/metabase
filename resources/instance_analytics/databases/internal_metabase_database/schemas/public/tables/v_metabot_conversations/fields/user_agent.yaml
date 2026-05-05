@@ -7,7 +7,6 @@ table_id: [Internal Metabase Database, public, v_metabot_conversations]
 database_type: varchar
 base_type: type/Text
 effective_type: type/Text
-semantic_type: type/Category
 dimensions: []
 position: 23
 custom_position: 0

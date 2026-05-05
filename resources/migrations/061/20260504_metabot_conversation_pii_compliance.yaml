@@ -3,22 +3,24 @@
 ## Bring metabot_conversation PII collection under analytics-pii-retention-enabled,
 ## matching the gating already in place for view_log and query_execution.
 ##
-## Order matters: addColumn → backfill → dropColumn → re-create analytics views.
-## All four steps must live in this single file (and run in this order) because
-## Liquibase processes change-log files alphabetically; splitting across files
-## would re-order the steps.
+## Order matters: addColumn → discard pre-flag PII → backfill → dropColumn →
+## re-create analytics views. All steps must live in this single file (and run
+## in this order) because Liquibase processes change-log files alphabetically;
+## splitting across files would re-order the steps.
 ##
-## The path portion of the existing embed_url is intentionally NOT migrated to
-## embedding_path: it is the PII fraction of the URL, was collected before the
-## flag mechanism existed, and there is no reliable basis for claiming consent
-## for those legacy values. Backfilling it would launder unconsented PII into a
-## post-flag schema.
+## Pre-flag PII is discarded rather than carried forward:
+## - The path portion of the existing embed_url is intentionally NOT migrated
+##   to embedding_path. It is the PII fraction of the URL and was collected
+##   before the flag existed; there is no consent basis for those legacy values.
+##   Only the hostname survives, into embedding_hostname.
+## - Existing ip_address values are NULLed for the same reason: they predate
+##   analytics-pii-retention-enabled gating, so there is no consent basis to
+##   keep them.
+## Carrying either forward would launder unconsented PII into a post-flag schema.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/061_update_migrations.yaml
-
   - changeSet:
-      id: v61.2026-05-04T09:00:00
+      id: v61.2wozp4
       author: tyler
       comment: Add embedding_hostname to metabot_conversation
       changes:
@@ -37,7 +39,7 @@ databaseChangeLog:
             columnName: embedding_hostname
 
   - changeSet:
-      id: v61.2026-05-04T09:00:01
+      id: v61.ljr45i
       author: tyler
       comment: Add embedding_path to metabot_conversation, PII
       changes:
@@ -56,7 +58,7 @@ databaseChangeLog:
             columnName: embedding_path
 
   - changeSet:
-      id: v61.2026-05-04T09:00:02
+      id: v61.g2jc0k
       author: tyler
       comment: Add user_agent to metabot_conversation, PII
       changes:
@@ -75,7 +77,7 @@ databaseChangeLog:
             columnName: user_agent
 
   - changeSet:
-      id: v61.2026-05-04T09:00:03
+      id: v61.gc7wz4
       author: tyler
       comment: Add sanitized_user_agent to metabot_conversation, PII
       changes:
@@ -85,7 +87,7 @@ databaseChangeLog:
               - column:
                   name: sanitized_user_agent
                   type: varchar(512)
-                  remarks: Sanitized User-Agent string for analytics display, PII.
+                  remarks: Sanitized User-Agent string (browser + OS family) at the originating conversation, for analytics display.
                   constraints:
                     nullable: true
       rollback:
@@ -94,7 +96,21 @@ databaseChangeLog:
             columnName: sanitized_user_agent
 
   - changeSet:
-      id: v61.2026-05-04T09:00:04
+      id: v61.uabwhr
+      author: tyler
+      comment: Discard pre-flag ip_address values on metabot_conversation (collected without analytics-pii-retention-enabled gating, no consent basis going forward)
+      changes:
+        - update:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: ip_address
+                  value: null
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v61.9q8n1e
       author: tyler
       comment: Backfill embedding_hostname on metabot_conversation from existing embed_url values (path portion intentionally not migrated)
       changes:
@@ -102,7 +118,7 @@ databaseChangeLog:
             class: metabase.app_db.custom_migrations.BackfillMetabotConversationEmbeddingHostname
 
   - changeSet:
-      id: v61.2026-05-04T09:00:05
+      id: v61.vcwds2
       author: tyler
       comment: Drop metabot_conversation.embed_url. The non-PII hostname portion has been migrated to embedding_hostname; the PII path portion is intentionally discarded.
       changes:
@@ -121,7 +137,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v61.2026-05-04T10:00:00
+      id: v61.pc3opb
       author: tyler
       runOnChange: true
       comment: Update v_metabot_conversations to project embedding_hostname, embedding_path, user_agent, sanitized_user_agent
@@ -153,7 +169,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v61.2026-05-04T10:00:01
+      id: v61.4j9n7o
       author: tyler
       runOnChange: true
       comment: Update v_ai_usage_log to project embedding_hostname, embedding_path, user_agent, sanitized_user_agent
