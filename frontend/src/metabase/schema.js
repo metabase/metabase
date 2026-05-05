@@ -74,7 +74,6 @@ export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
 export const TimelineSchema = new schema.Entity("timelines");
-export const TimelineEventSchema = new schema.Entity("timelineEvents");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -120,7 +119,6 @@ MeasureSchema.define({
 
 TimelineSchema.define({
   collection: CollectionSchema,
-  events: [TimelineEventSchema],
 });
 
 CacheConfigSchema.define({});

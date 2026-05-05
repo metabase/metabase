@@ -54,7 +54,6 @@ export type EntityType =
   | "snippetCollections"
   | "snippets"
   | "tables"
-  | "timelineEvents"
   | "timelines"
   | "users";
 
