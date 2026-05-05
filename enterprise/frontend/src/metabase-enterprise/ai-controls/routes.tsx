@@ -58,7 +58,7 @@ export function getAiControlsUpsellRoutes() {
     <>
       <Route
         key="ai-feature-access"
-        path=":metabotId/usage-controls"
+        path=":metabotId/usage-controls/ai-feature-access"
         component={MetabotFeatureAccessUpsellPage}
       />
       <Route
@@ -68,7 +68,7 @@ export function getAiControlsUpsellRoutes() {
       />
       <Route
         key="system-prompts"
-        path=":metabotId/system-prompts"
+        path=":metabotId/system-prompts/metabot-chat"
         component={MetabotSystemPromptsUpsellPage}
       />
     </>

@@ -46,7 +46,7 @@ function MetabotAnalyticsUpsellNavItems() {
     <AdminNavItem
       icon="audit"
       label={t`Usage auditing`}
-      path="/admin/metabot/usage-auditing"
+      path="/admin/metabot/usage-auditing/conversations"
       rightSection={<UpsellGem.New size={14} />}
     />
   );

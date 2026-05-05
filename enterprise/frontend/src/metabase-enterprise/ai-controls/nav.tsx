@@ -77,7 +77,7 @@ function AiControlsUpsellNavItems() {
       <AdminNavItem
         icon="lock"
         label={t`Usage controls`}
-        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls`}
+        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
         rightSection={<UpsellGem.New size={14} />}
       />
       <AdminNavItem
@@ -89,7 +89,7 @@ function AiControlsUpsellNavItems() {
       <AdminNavItem
         icon="document"
         label={t`System prompts`}
-        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts`}
+        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
         rightSection={<UpsellGem.New size={14} />}
       />
     </>

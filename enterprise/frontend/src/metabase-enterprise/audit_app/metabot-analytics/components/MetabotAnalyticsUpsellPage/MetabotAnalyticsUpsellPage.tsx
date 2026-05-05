@@ -19,7 +19,10 @@ export function MetabotAnalyticsUpsellPage() {
   });
 
   return (
-    <MetabotAdminLayout fullWidth fullHeight>
+    <MetabotAdminLayout
+      fullWidth
+      innerContentProps={{ fullWidth: true, fullHeight: true }}
+    >
       <DottedBackground p="4rem">
         <Stack align="center" p={40}>
           <LineDecorator>
