@@ -12,6 +12,7 @@ interface McpAppState {
   query: string | null;
   hostContext: McpUiHostContext | null;
   app: App | null;
+  isClaude: boolean;
 }
 
 type ToolArgument = { query?: string } | undefined;
@@ -33,6 +34,7 @@ function applyHostContext(ctx: McpUiHostContext) {
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
+  const [isClaude, setIsClaude] = useState(false);
 
   const { app } = useApp({
     appInfo: { name: "metabase-visualize-query", version: "1.0.0" },
@@ -69,6 +71,10 @@ export function useMcpApp(): McpAppState {
   useEffect(() => {
     if (app) {
       const context = app.getHostContext();
+      const hostVersion = app.getHostVersion();
+
+      const isClaudeHost = hostVersion?.name.toLowerCase().includes("claude");
+      setIsClaude(isClaudeHost ?? false);
 
       if (context) {
         applyHostContext(context);
@@ -77,5 +83,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, hostContext, app };
+  return { query, hostContext, app, isClaude };
 }

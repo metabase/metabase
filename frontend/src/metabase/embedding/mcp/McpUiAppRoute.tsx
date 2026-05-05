@@ -1,11 +1,12 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
+import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
@@ -27,11 +28,11 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, hostContext, app } = useMcpApp();
+  const { query, hostContext, app, isClaude } = useMcpApp();
 
   const [isSettingsReady, setIsSettingsReady] = useState(false);
 
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
+  const handleDrillThrough = useHandleMcpDrillThrough(app, { isClaude });
 
   const { instanceUrl } = window.metabaseConfig ?? { instanceUrl: "" };
 
@@ -128,7 +129,10 @@ export function McpUiAppRoute() {
             gap="sm"
           >
             <Box px="lg" style={{ flexShrink: 0 }}>
-              <McpQuestionTitle />
+              <Stack align="flex-start" gap="xs">
+                <SdkInternalNavigationBackButton />
+                <McpQuestionTitle />
+              </Stack>
             </Box>
 
             <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>

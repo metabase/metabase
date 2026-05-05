@@ -38,10 +38,17 @@ type DrillThroughHandler = (
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
+interface UseHandleMcpDrillThroughOptions {
+  isClaude: boolean;
+}
+
+export function useHandleMcpDrillThrough(
+  app: App | null,
+  { isClaude }: UseHandleMcpDrillThroughOptions,
+): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
-      if (isStayDrill(drillName) || !app) {
+      if (!app) {
         await defaultNavigate();
         return;
       }
@@ -55,6 +62,46 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       }
 
       const encodedQuery = utf8_to_b64(JSON.stringify(nextCard.dataset_query));
+
+      if (isClaude) {
+        await defaultNavigate();
+
+        try {
+          const { handle } = await storeDrillQuery({
+            instanceUrl,
+            sessionToken,
+            mcpSessionId,
+            encodedQuery,
+          });
+
+          await app.updateModelContext({
+            content: [
+              {
+                type: "text",
+                text: [
+                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Model context for the MCP host, not rendered UI.
+                  "The user is viewing a Metabase drill-through result in the current MCP UI.",
+                  `The active query handle is ${handle}.`,
+                  "Use this handle as the current query context for follow-up requests that modify, regroup, filter, or summarize the visible chart.",
+                ].join("\n"),
+              },
+            ],
+            structuredContent: {
+              currentMetabaseView: "drill-through",
+              activeQueryHandle: handle,
+            },
+          });
+        } catch {
+          // Context updates are best-effort; the in-app drill should still work.
+        }
+
+        return;
+      }
+
+      if (isStayDrill(drillName)) {
+        await defaultNavigate();
+        return;
+      }
 
       let handle: string;
       try {
@@ -86,6 +133,6 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         ],
       });
     },
-    [app],
+    [app, isClaude],
   );
 }
