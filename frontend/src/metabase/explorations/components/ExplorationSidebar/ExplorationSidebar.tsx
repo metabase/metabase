@@ -1,5 +1,12 @@
 import cx from "classnames";
-import { type Ref, useEffect, useMemo, useRef } from "react";
+import {
+  type Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import {
@@ -14,10 +21,18 @@ import {
 import type {
   Exploration,
   ExplorationDocument,
+  ExplorationQueryGroup,
+  ExplorationQueryGroupId,
+  ExplorationQueryGroupStatus,
+  ExplorationQueryId,
   ExplorationQueryStatus,
   ExplorationQueryWithName,
   ExplorationThread,
   ThreadsWithSortedQueries,
+} from "metabase-types/api";
+import {
+  getExplorationQueryGroupInterestingness,
+  getExplorationQueryGroupStatus,
 } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
@@ -44,6 +59,16 @@ export function ExplorationSidebar({
   threadsWithSortedQueries,
 }: ExplorationSidebarProps) {
   const selectedQueryRef = useRef<HTMLButtonElement | null>(null);
+
+  const selectedQueryId =
+    selectedEntityId?.type === "query" ? selectedEntityId.id : null;
+
+  const setSelectedQueryId = useCallback(
+    (queryId: ExplorationQueryId) => {
+      return setSelectedEntityId({ id: queryId, type: "query" });
+    },
+    [setSelectedEntityId],
+  );
 
   useEffect(() => {
     if (selectedEntityId?.type !== "query") {
@@ -79,57 +104,238 @@ export function ExplorationSidebar({
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>
-      {threadsWithSortedItems.map((thread, i) => (
-        <Stack mih={0} key={thread.id} gap="md">
-          <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
-          {thread.items.length > 0 ? (
-            <Stack
-              mih={0}
-              gap="xs"
-              py="xs"
-              pb="md"
-              pl="xs"
-              pr="md"
-              className={S.threadList}
-            >
-              {thread.items.map((item) => {
-                if (item.type === "document") {
-                  const isSelected =
-                    selectedEntityId?.type === "document" &&
-                    selectedEntityId.id === item.id;
-                  return (
-                    <ExplorationDocumentRow
-                      key={`document-${item.id}`}
-                      document={item}
-                      isSelected={isSelected}
-                      onSelect={() =>
-                        setSelectedEntityId({ type: "document", id: item.id })
-                      }
-                    />
-                  );
+      {threadsWithSortedItems.map((thread, i) => {
+        const documentItem = thread.items.find(
+          ({ type }) => type === "document",
+        );
+        return (
+          <Stack
+            key={thread.id}
+            gap="xs"
+            py="xs"
+            pb="md"
+            pl="xs"
+            pr="md"
+            className={S.threadList}
+          >
+            <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
+            <ExplorationThreadQueries
+              thread={thread}
+              selectedQueryId={selectedQueryId}
+              setSelectedQueryId={setSelectedQueryId}
+              selectedQueryRef={selectedQueryRef}
+            />
+            {documentItem && thread.queries.length > 0 && (
+              <ExplorationDocumentRow
+                key={`document-${documentItem.id}`}
+                document={documentItem}
+                isSelected={
+                  selectedEntityId?.type === "document" &&
+                  selectedEntityId.id === documentItem.id
                 }
+                onSelect={() =>
+                  setSelectedEntityId({ type: "document", id: documentItem.id })
+                }
+              />
+            )}
+          </Stack>
+        );
+      })}
+    </Stack>
+  );
+}
 
-                const isSelected =
-                  selectedEntityId?.type === "query" &&
-                  selectedEntityId.id === item.id;
-                return (
-                  <ExplorationQueryRow
-                    key={`query-${item.id}`}
-                    query={item}
-                    isSelected={isSelected}
-                    buttonRef={isSelected ? selectedQueryRef : undefined}
-                    onSelect={() =>
-                      setSelectedEntityId({ type: "query", id: item.id })
-                    }
-                  />
-                );
-              })}
-            </Stack>
-          ) : (
-            <Text c="text-secondary">{t`No charts were generated.`}</Text>
-          )}
-        </Stack>
+interface ExplorationThreadQueriesProps {
+  thread: ThreadsWithSortedQueries;
+  selectedQueryId: ExplorationQueryId | null;
+  setSelectedQueryId: (queryId: ExplorationQueryId) => void;
+  selectedQueryRef: Ref<HTMLButtonElement>;
+}
+
+function ExplorationThreadQueries({
+  thread,
+  selectedQueryId,
+  setSelectedQueryId,
+  selectedQueryRef,
+}: ExplorationThreadQueriesProps) {
+  const queriesById = useMemo(
+    () => new Map(thread.queries.map((q) => [q.id, q])),
+    [thread.queries],
+  );
+
+  const groups = useMemo(
+    () => (thread.groups ?? []).slice().sort((a, b) => a.position - b.position),
+    [thread.groups],
+  );
+
+  const groupedQueryIds = useMemo(() => {
+    const ids = new Set<ExplorationQueryId>();
+    for (const group of groups) {
+      for (const id of group.query_ids) {
+        ids.add(id);
+      }
+    }
+    return ids;
+  }, [groups]);
+
+  const ungroupedQueries = useMemo(
+    () => thread.queries.filter((q) => !groupedQueryIds.has(q.id)),
+    [thread.queries, groupedQueryIds],
+  );
+
+  // Multi-item groups start collapsed so the sidebar stays compact. The group
+  // that contains the currently-selected query is always force-opened (see
+  // effect below), and clicking a collapsed header both expands the group and
+  // selects its first query — see `handleToggleGroup`.
+  const [openGroupIds, setOpenGroupIds] = useState<
+    ReadonlySet<ExplorationQueryGroupId>
+  >(() => new Set());
+
+  const groupOfSelectedQuery = useMemo(() => {
+    if (selectedQueryId == null) {
+      return null;
+    }
+    return groups.find((group) => group.query_ids.includes(selectedQueryId));
+  }, [groups, selectedQueryId]);
+
+  useEffect(() => {
+    if (!groupOfSelectedQuery) {
+      return;
+    }
+    setOpenGroupIds((prev) => {
+      if (prev.has(groupOfSelectedQuery.id)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(groupOfSelectedQuery.id);
+      return next;
+    });
+  }, [groupOfSelectedQuery]);
+
+  const handleToggleGroup = (group: ExplorationQueryGroup) => {
+    setOpenGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(group.id)) {
+        next.delete(group.id);
+      } else {
+        next.add(group.id);
+        const firstId = group.query_ids[0];
+        if (firstId != null) {
+          setSelectedQueryId(firstId);
+        }
+      }
+      return next;
+    });
+  };
+
+  if (thread.queries.length === 0) {
+    return <Text c="text-secondary">{t`No charts were generated.`}</Text>;
+  }
+
+  return (
+    <Stack gap="xs" className={S.threadGroupList}>
+      {groups.map((group) => {
+        const groupQueries = group.query_ids
+          .map((id) => queriesById.get(id))
+          .filter((q): q is ExplorationQueryWithName => q != null);
+
+        if (groupQueries.length === 0) {
+          return null;
+        }
+
+        // Single-query groups skip the wrapper entirely — the lone query is
+        // rendered as a normal row.
+        if (groupQueries.length === 1) {
+          const query = groupQueries[0];
+          const isSelected = selectedQueryId === query.id;
+
+          return (
+            <ExplorationQueryRow
+              key={query.id}
+              query={query}
+              isSelected={isSelected}
+              buttonRef={isSelected ? selectedQueryRef : undefined}
+              onSelect={() => setSelectedQueryId(query.id)}
+            />
+          );
+        }
+
+        const isOpen = openGroupIds.has(group.id);
+        return (
+          <ExplorationQueryGroupBlock
+            key={group.id}
+            group={group}
+            queries={groupQueries}
+            isOpen={isOpen}
+            onToggle={() => handleToggleGroup(group)}
+            selectedQueryId={selectedQueryId}
+            setSelectedQueryId={setSelectedQueryId}
+            selectedQueryRef={selectedQueryRef}
+          />
+        );
+      })}
+      {ungroupedQueries.map((query) => (
+        <ExplorationQueryRow
+          key={query.id}
+          query={query}
+          isSelected={selectedQueryId === query.id}
+          buttonRef={
+            selectedQueryId === query.id ? selectedQueryRef : undefined
+          }
+          onSelect={() => setSelectedQueryId(query.id)}
+        />
       ))}
+    </Stack>
+  );
+}
+
+interface ExplorationQueryGroupBlockProps {
+  group: ExplorationQueryGroup;
+  queries: ExplorationQueryWithName[];
+  isOpen: boolean;
+  onToggle: () => void;
+  selectedQueryId: ExplorationQueryId | null;
+  setSelectedQueryId: (queryId: ExplorationQueryId) => void;
+  selectedQueryRef: Ref<HTMLButtonElement>;
+}
+
+function ExplorationQueryGroupBlock({
+  group,
+  queries,
+  isOpen,
+  onToggle,
+  selectedQueryId,
+  setSelectedQueryId,
+  selectedQueryRef,
+}: ExplorationQueryGroupBlockProps) {
+  const groupStatus = getExplorationQueryGroupStatus(queries);
+  const groupInterestingness = getExplorationQueryGroupInterestingness(queries);
+  const headerName = group.name ?? queries[0]?.name ?? t`Group`;
+
+  return (
+    <Stack gap="xs">
+      <ExplorationQueryGroupRow
+        name={headerName}
+        status={groupStatus}
+        interestingness={groupInterestingness}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen && (
+        <Stack gap="xs" className={S.groupQueries}>
+          {queries.map((query) => (
+            <ExplorationQueryRow
+              key={query.id}
+              query={query}
+              isSelected={selectedQueryId === query.id}
+              buttonRef={
+                selectedQueryId === query.id ? selectedQueryRef : undefined
+              }
+              onSelect={() => setSelectedQueryId(query.id)}
+            />
+          ))}
+        </Stack>
+      )}
     </Stack>
   );
 }
@@ -158,6 +364,52 @@ function ExplorationDocumentRow({
       <Text flex={1} component="span" lineClamp={1}>
         {document.name}
       </Text>
+    </UnstyledButton>
+  );
+}
+
+interface ExplorationQueryGroupRowProps {
+  name: string;
+  status: ExplorationQueryGroupStatus;
+  interestingness: number | null;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+function ExplorationQueryGroupRow({
+  name,
+  status,
+  interestingness,
+  isOpen,
+  onToggle,
+}: ExplorationQueryGroupRowProps) {
+  return (
+    <UnstyledButton
+      aria-expanded={isOpen}
+      className={S.queryRow}
+      onClick={onToggle}
+    >
+      <Icon
+        name={isOpen ? "chevrondown" : "chevronright"}
+        c="text-secondary"
+        aria-hidden
+      />
+      <Text flex={1} component="span" lineClamp={1}>
+        {name}
+      </Text>
+      <ExplorationQueryStatusIcon status={status} />
+      {(interestingness ?? 0) >
+        window.Metabase.INTERESTINGNESS_SCORE_THRESHOLD && (
+        <Tooltip label={t`Potentially interesting`}>
+          <Box
+            aria-hidden
+            w={6}
+            h={6}
+            bg="interesting"
+            className={S.interestingnessIndicator}
+          />
+        </Tooltip>
+      )}
     </UnstyledButton>
   );
 }
@@ -225,7 +477,10 @@ function ExplorationQueryRow({
   return row;
 }
 
-const STATUS_ARIA_LABELS: Record<ExplorationQueryStatus, () => string> = {
+const STATUS_ARIA_LABELS: Record<
+  ExplorationQueryStatus | ExplorationQueryGroupStatus,
+  () => string
+> = {
   pending: () => t`Generating chart…`,
   running: () => t`Generating chart…`,
   done: () => t`Chart ready`,
@@ -235,7 +490,7 @@ const STATUS_ARIA_LABELS: Record<ExplorationQueryStatus, () => string> = {
 function ExplorationQueryStatusIcon({
   status,
 }: {
-  status: ExplorationQueryStatus;
+  status: ExplorationQueryStatus | ExplorationQueryGroupStatus;
 }) {
   const label = STATUS_ARIA_LABELS[status]();
 
