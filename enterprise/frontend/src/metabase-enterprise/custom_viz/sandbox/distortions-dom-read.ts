@@ -4,6 +4,25 @@ import type { CustomVizPluginId } from "metabase-types/api";
 // inside the plugin's mount subtree (marked with data-plugin-sandbox=<id>)
 // pass through real; elements outside are replaced with a detached decoy of
 // the same nodeName so the plugin can't read or mutate host UI.
+//
+// Why this filters on Element rather than Node:
+//
+// TreeWalker, NodeIterator, MutationObserver, and Range all require an
+// Element entry point (the walker root, observe target, range start/end
+// container) to do anything useful. Any Element the plugin can reach
+// outside its subtree is already decoyed here, so descending from a decoy
+// yields no real host content — the non-Element nodes those APIs surface
+// (Text, Comment, DocumentFragment) are confined to the decoy subtree and
+// carry no host data.
+//
+// The two paths that DO hand the plugin a non-Element Node directly,
+// without going through an Element ref first, are:
+//   - `Document.caretRangeFromPoint` / `caretPositionFromPoint` —
+//     coordinate-based; would let the plugin probe the host page
+//     systematically. Blocked outright in distortions-blocked-apis.ts.
+//   - `window.getSelection().anchorNode` / `focusNode` — gated on the user
+//     having actively selected host text. Narrow, opportunistic window;
+//     accepted as a residual risk.
 
 const PLUGIN_SANDBOX_ATTR = "data-plugin-sandbox";
 export const ACTIVE_ELEMENT_GETTER = Object.getOwnPropertyDescriptor(

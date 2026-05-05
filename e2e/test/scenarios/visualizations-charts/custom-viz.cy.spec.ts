@@ -1917,6 +1917,14 @@ describe("sandbox", () => {
         'document.createElement("div").attachShadow({ mode: "open" }).setHTMLUnsafe("<x>");',
       errorPattern: blockedPattern(/API call: ShadowRoot\.setHTMLUnsafe/),
     },
+    {
+      // caret*FromPoint is the only non-interaction-gated way to get a raw
+      // host Text node; blocked because the Element-level DOM decoy doesn't
+      // cover this entry point.
+      name: "Document.caretRangeFromPoint",
+      payload: "document.caretRangeFromPoint(0, 0);",
+      errorPattern: blockedPattern(/API call: Document\.caretRangeFromPoint/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {

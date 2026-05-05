@@ -168,6 +168,21 @@ block(
 );
 block(window.PerformanceObserver, "PerformanceObserver");
 
+// Coordinate-based caret APIs return a raw host Text/Element Node at the
+// given (x, y) position, which bypasses the Element-level DOM decoy in
+// distortions-dom-read.ts (those decoys gate on Element entry points;
+// caret-from-point hands the plugin a Node directly). The plugin could
+// systematically probe host coordinates to read text content. No legit
+// viz needs caret-from-point queries.
+block(
+  method(Document.prototype, "caretRangeFromPoint"),
+  "Document.caretRangeFromPoint",
+);
+block(
+  method(Document.prototype, "caretPositionFromPoint"),
+  "Document.caretPositionFromPoint",
+);
+
 // HTML parsing — these construct DOM from string input without going through
 // the innerHTML/outerHTML/insertAdjacentHTML setters that DOMPurify
 // sanitizes, so they'd otherwise be a clean bypass of that mitigation.
