@@ -481,3 +481,76 @@
             (doseq [sql (concat (drop-input-namespace-sqls driver in-schema-a src-a-name)
                                 (drop-input-namespace-sqls driver in-schema-b src-b-name))]
               (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+
+(deftest ^:synchronized init-handles-pre-existing-namespace-test
+  ;; The output-namespace name init creates is *deterministic* from `workspace.id`
+  ;; (see `driver.u/workspace-isolation-namespace-name`), not random — so init can
+  ;; land on an already-existing namespace (e.g., from a partial prior init that
+  ;; was never cleaned up, or from another process). All current driver impls use
+  ;; `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently succeeds when
+  ;; the namespace exists. This test pins that behavior: init must not crash on
+  ;; collision and the standard read-only-input + full-output contract must still
+  ;; hold afterward.
+  ;;
+  ;; KNOWN LIMITATION: pre-existing data in the colliding namespace is *not*
+  ;; cleared by init. If an attacker who can predict the namespace name (the
+  ;; transformation in `workspace-isolation-namespace-name` is public) seeds it
+  ;; with data before init runs, the workspace user inherits read access to that
+  ;; data. Whether to refuse-on-collision or clear-on-collision is a design
+  ;; decision tracked separately; this test does not assert one way or the other.
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+    (testing "init-workspace-isolation! is robust when its target output namespace already exists"
+      (let [driver       driver/*driver*
+            database     (mt/db)
+            details      (:details database)
+            admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
+            run-id       (random-suffix)
+            in-schema    (str "mb_iso_in_" run-id)
+            src-name     (str "ws_iso_src_" run-id)
+            out-name     (str "ws_iso_out_" run-id)
+            src          (qualify driver in-schema src-name)
+            workspace    {:id   (Long/parseLong run-id 16)
+                          :name (str "wsd-collision-" run-id)}
+            out-schema   (driver.u/workspace-isolation-namespace-name workspace)
+            ws-state     (atom (merge workspace
+                                      {:schema           out-schema
+                                       :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
+        (try
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
+          ;; Pre-create the output namespace at exactly the name init will target,
+          ;; before init runs.
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver out-schema)])
+          (let [init-result     (driver/init-workspace-isolation! driver database workspace)
+                ws-with-details (merge workspace init-result)
+                _               (reset! ws-state ws-with-details)
+                user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))
+                out             (qualify driver out-schema out-name)]
+            (driver/grant-workspace-read-access! driver database ws-with-details
+                                                 [{:schema in-schema :name src-name}])
+            (testing "init succeeded against the pre-existing namespace"
+              (is (some? init-result)))
+            (testing "workspace user has full read+write access to its output namespace post-collision"
+              (jdbc/execute! user-spec [(str "CREATE TABLE " out " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+              (jdbc/execute! user-spec [(str "INSERT INTO " out " VALUES (1, 'a')")])
+              (is (= [{:id 1 :v "a"}]
+                     (jdbc/query user-spec [(str "SELECT id, v FROM " out)])))
+              (jdbc/execute! user-spec [(str "DROP TABLE " out)]))
+            (testing "workspace user retains read-only access to input namespace post-collision"
+              (is (= [{:id 1 :v "a"}]
+                     (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")])))
+              (expect-sql-denied! user-spec
+                                  (str "INSERT INTO " src " VALUES (2, 'b')")
+                                  :insert-input-after-collision)))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database @ws-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during collision test cleanup"
+                              driver)))
+            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))
+            ;; Belt-and-suspenders: if destroy didn't clean up the (originally pre-
+            ;; created, then taken-over) output namespace, drop it directly.
+            (doseq [sql (drop-input-namespace-sqls driver out-schema [])]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
