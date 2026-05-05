@@ -28,6 +28,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -59,13 +60,63 @@
   "DDL to drop the per-run input namespace and any tables left in it. Schema'd
    drivers with CASCADE (postgres/redshift/snowflake) and database-as-namespace
    drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
-   SCHEMA CASCADE so the source table has to be dropped explicitly first."
-  [driver namespace-name table-name]
+   SCHEMA CASCADE so each source table has to be dropped explicitly first.
+   `table-names` may be a single name or a sequence — the cross-workspace test
+   creates more than one source table in the same input namespace."
+  [driver namespace-name table-names]
+  (let [tables (if (sequential? table-names) table-names [table-names])]
+    (case driver
+      (:postgres :redshift :snowflake) [(str "DROP SCHEMA \"" namespace-name "\" CASCADE")]
+      :sqlserver                       (concat
+                                        (for [t tables]
+                                          (str "DROP TABLE [" namespace-name "].[" t "]"))
+                                        [(str "DROP SCHEMA [" namespace-name "]")])
+      (:mysql :clickhouse)             [(str "DROP DATABASE `" namespace-name "`")])))
+
+(defn- list-namespaces-sql
+  "SQL that enumerates the namespaces visible to the connecting user. JDBC
+   `information_schema.schemata` and ClickHouse's `system.databases` both
+   row-level-filter their output by the caller's privileges, so a workspace
+   user with no grants on another workspace's namespace should not see it
+   appear. Used by the cross-workspace test to check catalog-level isolation
+   in addition to data-level isolation."
+  [driver]
   (case driver
-    (:postgres :redshift :snowflake) [(str "DROP SCHEMA \"" namespace-name "\" CASCADE")]
-    :sqlserver                       [(str "DROP TABLE [" namespace-name "].[" table-name "]")
-                                      (str "DROP SCHEMA [" namespace-name "]")]
-    (:mysql :clickhouse)             [(str "DROP DATABASE `" namespace-name "`")]))
+    (:postgres :redshift :snowflake :sqlserver :mysql)
+    "SELECT schema_name AS ns FROM information_schema.schemata"
+
+    :clickhouse
+    "SELECT name AS ns FROM system.databases"))
+
+(defn- list-tables-sql
+  "SQL that enumerates `(namespace, table)` pairs visible to the connecting
+   user. Stronger than [[list-namespaces-sql]] — even if the namespace itself
+   is hidden, an over-broad grant on the tables table would let a workspace
+   discover other workspaces' table names."
+  [driver]
+  (case driver
+    (:postgres :redshift :snowflake :sqlserver :mysql)
+    "SELECT table_schema AS ns, table_name AS tbl FROM information_schema.tables"
+
+    :clickhouse
+    "SELECT database AS ns, name AS tbl FROM system.tables"))
+
+(defn- visible-namespaces
+  "Lowercased set of namespace names visible to `user-spec` through the
+   driver's catalog views."
+  [driver user-spec]
+  (->> (jdbc/query user-spec [(list-namespaces-sql driver)])
+       (map (comp u/lower-case-en str :ns))
+       set))
+
+(defn- visible-tables
+  "Lowercased set of `[namespace table]` pairs visible to `user-spec` through
+   the driver's catalog views."
+  [driver user-spec]
+  (->> (jdbc/query user-spec [(list-tables-sql driver)])
+       (map (juxt (comp u/lower-case-en str :ns)
+                  (comp u/lower-case-en str :tbl)))
+       set))
 
 (defn- qualify
   "Per-driver identifier-quoted `schema.table` (or `database.table` for schema-less
@@ -209,4 +260,119 @@
                               driver)))
             ;; Then drop the input namespace.
             (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+
+(deftest ^:synchronized cross-workspace-isolation-perms-test
+  ;; Exercises *mutual* isolation between two workspaces on the same database — the
+  ;; single-workspace happy path lives in `workspace-isolation-perms-test` above. We
+  ;; provision A and B together, give each a grant on a different source table, then
+  ;; assert that A cannot reach B's data, B's grants, or B's namespace via either
+  ;; direct SQL or catalog enumeration.
+  ;;
+  ;; BigQuery isolation works through GCP IAM rather than SQL grants — see
+  ;; `cross-workspace-isolation-perms-bigquery-test` for its sibling.
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+    (testing "two workspaces on the same database are mutually isolated"
+      (let [driver       driver/*driver*
+            database     (mt/db)
+            details      (:details database)
+            admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
+            ;; Three independent random ids: one for the shared input namespace and
+            ;; one per workspace, so reruns from leftover state can't collide.
+            test-id      (random-suffix)
+            ws-a-id      (random-suffix)
+            ws-b-id      (random-suffix)
+            in-schema    (str "mb_iso_in_" test-id)
+            src-a-name   (str "ws_iso_src_a_" test-id)
+            src-b-name   (str "ws_iso_src_b_" test-id)
+            sneaky-name  (str "ws_iso_sneaky_" test-id)
+            b-secret     (str "ws_iso_secret_" ws-b-id)
+            ws-a         {:id   (Long/parseLong ws-a-id 16)
+                          :name (str "wsd-A-" ws-a-id)}
+            ws-b         {:id   (Long/parseLong ws-b-id 16)
+                          :name (str "wsd-B-" ws-b-id)}
+            ;; Pre-init synthetic ws-details for cleanup — same idempotent-destroy
+            ;; rationale as in the single-workspace test.
+            ws-a-state   (atom (merge ws-a
+                                      {:schema           (driver.u/workspace-isolation-namespace-name ws-a)
+                                       :database_details {:user (driver.u/workspace-isolation-user-name ws-a)}}))
+            ws-b-state   (atom (merge ws-b
+                                      {:schema           (driver.u/workspace-isolation-namespace-name ws-b)
+                                       :database_details {:user (driver.u/workspace-isolation-user-name ws-b)}}))]
+        (try
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema src-a-name)
+                                          " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema src-a-name)
+                                          " VALUES (1, 'a')")])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema src-b-name)
+                                          " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema src-b-name)
+                                          " VALUES (1, 'b')")])
+          (let [init-a       (driver/init-workspace-isolation! driver database ws-a)
+                init-b       (driver/init-workspace-isolation! driver database ws-b)
+                ws-a-full    (merge ws-a init-a)
+                ws-b-full    (merge ws-b init-b)
+                _            (reset! ws-a-state ws-a-full)
+                _            (reset! ws-b-state ws-b-full)
+                user-a-spec  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-a-full)))
+                user-b-spec  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-b-full)))
+                out-a-schema (:schema ws-a-full)
+                out-b-schema (:schema ws-b-full)
+                b-secret-fq  (qualify driver out-b-schema b-secret)
+                sneaky-fq    (qualify driver out-b-schema sneaky-name)]
+            ;; Each workspace is granted access only to its own input table — A's grant
+            ;; must not let A read src-b, and vice-versa.
+            (driver/grant-workspace-read-access! driver database ws-a-full
+                                                 [{:schema in-schema :name src-a-name}])
+            (driver/grant-workspace-read-access! driver database ws-b-full
+                                                 [{:schema in-schema :name src-b-name}])
+            ;; B populates its own output schema with a table A should never reach.
+            (jdbc/execute! user-b-spec [(str "CREATE TABLE " b-secret-fq
+                                             " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+            (jdbc/execute! user-b-spec [(str "INSERT INTO " b-secret-fq " VALUES (1, 'b-only')")])
+            (testing "workspace A cannot SELECT from workspace B's output table"
+              (expect-sql-denied! user-a-spec
+                                  (str "SELECT id, v FROM " b-secret-fq)
+                                  :select-other-output))
+            (testing "workspace A cannot write to or DDL against workspace B's output schema"
+              (let [base-ops [[:insert       (str "INSERT INTO " b-secret-fq " VALUES (2, 'x')")]
+                              [:create-table (str "CREATE TABLE " sneaky-fq
+                                                  " (id INT)" (create-table-tail driver))]
+                              [:drop-table   (str "DROP TABLE " b-secret-fq)]]
+                    ops      (cond-> base-ops
+                               (supports-update-delete-as-perm-test? driver)
+                               (into [[:update (str "UPDATE " b-secret-fq " SET v = 'x'")]
+                                      [:delete (str "DELETE FROM " b-secret-fq)]]))]
+                (doseq [[label sql] ops]
+                  (expect-sql-denied! user-a-spec sql label))))
+            (testing "workspace A cannot SELECT a source table that was only granted to workspace B"
+              (expect-sql-denied! user-a-spec
+                                  (str "SELECT id, v FROM " (qualify driver in-schema src-b-name))
+                                  :select-other-grant))
+            (testing "workspace A's namespace catalog enumerates A's own namespace but not B's"
+              (let [visible (visible-namespaces driver user-a-spec)]
+                (is (contains? visible (u/lower-case-en out-a-schema))
+                    (format "sanity: A should see its own output namespace %s in catalog. visible=%s"
+                            out-a-schema visible))
+                (is (not (contains? visible (u/lower-case-en out-b-schema)))
+                    (format "A unexpectedly enumerates B's output namespace %s in catalog. visible=%s"
+                            out-b-schema visible))))
+            (testing "workspace A's table catalog does not enumerate workspace B's output table"
+              (let [visible (visible-tables driver user-a-spec)
+                    pair    [(u/lower-case-en out-b-schema)
+                             (u/lower-case-en b-secret)]]
+                (is (not (contains? visible pair))
+                    (format "A unexpectedly enumerates B's table %s.%s in catalog. visible=%s"
+                            out-b-schema b-secret visible)))))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database @ws-a-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for ws-A on %s during cross-workspace test cleanup"
+                              driver)))
+            (try (driver/destroy-workspace-isolation! driver database @ws-b-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for ws-B on %s during cross-workspace test cleanup"
+                              driver)))
+            (doseq [sql (drop-input-namespace-sqls driver in-schema [src-a-name src-b-name])]
               (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))

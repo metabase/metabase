@@ -40,10 +40,12 @@
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
+    BigQuery$DatasetListOption
     BigQuery$DatasetOption
     BigQuery$JobOption
     BigQueryException
     BigQueryOptions
+    Dataset
     DatasetId
     DatasetInfo
     FieldValueList
@@ -223,3 +225,124 @@
             (try (bq-drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
             (try (bq-delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close iam-client))))))))
+
+(defn- expect-bq-denied!
+  "Like [[expect-bq-write-denied!]] but accepts any 4xx response. Cross-workspace
+   reads can surface as 404 (resource not found, when the caller has no visibility
+   on the target dataset at all) instead of 403 (forbidden) — both indicate the
+   operation was correctly denied; the choice is BigQuery's IAM bookkeeping."
+  [^BigQuery client sql label]
+  (testing (format "%s is denied" label)
+    (try
+      (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
+      (is false (format "%s unexpectedly succeeded" label))
+      (catch Throwable t
+        (let [bq-ex (find-bq-exception t)]
+          (is (some? bq-ex)
+              (format "expected BigQueryException for %s; got %s" label (class t)))
+          (when bq-ex
+            (let [code (.getCode ^BigQueryException bq-ex)]
+              (is (and (>= code 400) (< code 500))
+                  (format "expected 4xx for %s; got %d: %s"
+                          label code (.getMessage ^BigQueryException bq-ex))))))))))
+
+(deftest ^:synchronized cross-workspace-isolation-perms-bigquery-test
+  ;; BigQuery sibling of `cross-workspace-isolation-perms-test`. Provisions two
+  ;; workspaces, each with its own service account and dataset, and asserts that
+  ;; A's impersonated SA cannot reach B's dataset, B's grants, or B's dataset
+  ;; through `listDatasets` enumeration.
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "two workspaces on the same project are mutually isolated"
+      (let [database     (mt/db)
+            details      (:details database)
+            admin-creds  (#'bigquery/ws-service-account-credentials details)
+            project-id   (or (:project-id details)
+                             (.getProjectId ^ServiceAccountCredentials admin-creds))
+            admin-client (#'bigquery/ws-database-details->client details)
+            iam-client   (#'bigquery/ws-database-details->iam-client details)
+            test-id      (random-suffix)
+            ws-a-id      (random-suffix)
+            ws-b-id      (random-suffix)
+            in-dataset   (str "mb_iso_in_" test-id)
+            src-a-name   (str "ws_iso_src_a_" test-id)
+            src-b-name   (str "ws_iso_src_b_" test-id)
+            sneaky-name  (str "ws_iso_sneaky_" test-id)
+            b-secret     (str "ws_iso_secret_" ws-b-id)
+            ws-a         {:id   (Long/parseLong ws-a-id 16)
+                          :name (str "wsd-A-" ws-a-id)}
+            ws-b         {:id   (Long/parseLong ws-b-id 16)
+                          :name (str "wsd-B-" ws-b-id)}
+            ws-a-state   (atom (merge ws-a
+                                      {:schema (driver.u/workspace-isolation-namespace-name ws-a)}))
+            ws-b-state   (atom (merge ws-b
+                                      {:schema (driver.u/workspace-isolation-namespace-name ws-b)}))
+            qual         (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
+            run-sql      (fn [^BigQuery c sql]
+                           (.query c (QueryJobConfiguration/of sql)
+                                   (into-array BigQuery$JobOption [])))]
+        (try
+          (bigquery/create-dataset! admin-client project-id in-dataset)
+          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-a-name)))
+          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset src-a-name)))
+          (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-b-name)))
+          (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-dataset src-b-name)))
+          (let [init-a       (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-a)
+                init-b       (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-b)
+                ws-a-full    (merge ws-a init-a)
+                ws-b-full    (merge ws-b init-b)
+                _            (reset! ws-a-state ws-a-full)
+                _            (reset! ws-b-state ws-b-full)
+                a-sa-email   (-> ws-a-full :database_details :impersonate-service-account)
+                b-sa-email   (-> ws-b-full :database_details :impersonate-service-account)
+                a-client     (bq-impersonated-client admin-creds a-sa-email project-id)
+                b-client     (bq-impersonated-client admin-creds b-sa-email project-id)
+                out-b-ds     (:schema ws-b-full)]
+            (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-a-full
+                                                 [{:schema in-dataset :name src-a-name}])
+            (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-b-full
+                                                 [{:schema in-dataset :name src-b-name}])
+            ;; B populates its own output dataset with a table A should never reach.
+            (run-sql b-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-b-ds b-secret)))
+            (run-sql b-client (format "INSERT INTO %s (id, v) VALUES (1, 'b-only')" (qual out-b-ds b-secret)))
+            (testing "workspace A's SA cannot SELECT from workspace B's output table"
+              (expect-bq-denied! a-client
+                                 (format "SELECT id, v FROM %s" (qual out-b-ds b-secret))
+                                 :select-other-output))
+            (testing "workspace A's SA cannot write to or DDL against workspace B's output dataset"
+              (doseq [[label sql] [[:insert       (format "INSERT INTO %s (id, v) VALUES (2, 'x')" (qual out-b-ds b-secret))]
+                                   [:update       (format "UPDATE %s SET v = 'x' WHERE id = 1" (qual out-b-ds b-secret))]
+                                   [:delete       (format "DELETE FROM %s WHERE id = 1" (qual out-b-ds b-secret))]
+                                   [:create-table (format "CREATE TABLE %s (id INT64)" (qual out-b-ds sneaky-name))]
+                                   [:drop-table   (format "DROP TABLE %s" (qual out-b-ds b-secret))]]]
+                (expect-bq-denied! a-client sql label)))
+            (testing "workspace A's SA cannot SELECT a source table that was only granted to workspace B"
+              (expect-bq-denied! a-client
+                                 (format "SELECT id, v FROM %s" (qual in-dataset src-b-name))
+                                 :select-other-grant))
+            (testing "workspace A's listDatasets does not enumerate workspace B's output dataset"
+              ;; A's SA has only `roles/bigquery.jobUser` at the project plus `dataEditor`
+              ;; on its own dataset, so listDatasets either returns A's own dataset
+              ;; (filtered by visibility) or throws permission-denied. Either is fine —
+              ;; what matters is that B's dataset never appears.
+              (let [^com.google.api.gax.paging.Page
+                    page  (try (.listDatasets a-client (into-array BigQuery$DatasetListOption []))
+                               (catch Throwable t
+                                 (log/infof "listDatasets denied for ws-A SA (acceptable): %s" (ex-message t))
+                                 nil))
+                    names (when page
+                            (->> (.iterateAll page)
+                                 (map (fn [^Dataset d] (.getDataset (.getDatasetId d))))
+                                 set))]
+                (is (not (contains? (or names #{}) out-b-ds))
+                    (format "A unexpectedly enumerates B's dataset %s. visible=%s"
+                            out-b-ds (or names #{}))))))
+          (finally
+            (doseq [w [@ws-a-state @ws-b-state]]
+              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database w)
+                   (catch Throwable t
+                     (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during cross-workspace test cleanup"))))
+            ;; Belt-and-suspenders: drop input dataset + delete each workspace SA directly.
+            (try (bigquery/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
+            (doseq [w [ws-a ws-b]]
+              (try (bq-delete-sa-direct! iam-client project-id w) (catch Throwable _ nil)))
+            (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
