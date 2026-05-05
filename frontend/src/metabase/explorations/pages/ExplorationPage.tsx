@@ -28,7 +28,6 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import { ExplorationDocument as ExplorationDocumentComponent } from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import { ExplorationVisualization } from "../components/ExplorationVisualization";
-import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../utils";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -223,38 +222,6 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
     },
     [selectedThread, setSelectedTimelineIdByThreadId],
   );
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (selectedEntityId?.type !== "query") {
-        return;
-      }
-      // up and down arrows are handled by TimelineDropdown, because they should only run when it's mounted
-      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
-        return;
-      }
-      if (shouldIgnoreKeyboardEvent(event)) {
-        return;
-      }
-      const sortedQueries = threadsWithSortedQueries.flatMap(
-        (thread) => thread.queries,
-      );
-      const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextQuery = getAdjacentById(
-        sortedQueries,
-        selectedEntityId.id,
-        direction,
-      );
-      if (nextQuery != null && nextQuery.id !== selectedEntityId.id) {
-        setSelectedEntityId({ type: "query", id: nextQuery.id });
-        event.preventDefault();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [threadsWithSortedQueries, selectedEntityId, setSelectedEntityId]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

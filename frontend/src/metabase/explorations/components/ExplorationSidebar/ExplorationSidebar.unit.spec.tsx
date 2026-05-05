@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type {
   Exploration,
   ExplorationQuery,
@@ -95,7 +95,7 @@ interface SetupOpts {
 }
 
 function setup({ queries, groups, selectedQueryId = null }: SetupOpts) {
-  const setSelectedQueryId = jest.fn();
+  const setSelectedEntityId = jest.fn();
 
   const { exploration, threadsWithSortedQueries } = createExploration({
     queries,
@@ -105,12 +105,14 @@ function setup({ queries, groups, selectedQueryId = null }: SetupOpts) {
   renderWithProviders(
     <ExplorationSidebar
       exploration={exploration}
-      selectedQueryId={selectedQueryId}
-      setSelectedQueryId={setSelectedQueryId}
+      selectedEntityId={
+        selectedQueryId == null ? null : { type: "query", id: selectedQueryId }
+      }
+      setSelectedEntityId={setSelectedEntityId}
       threadsWithSortedQueries={threadsWithSortedQueries}
     />,
   );
-  return { setSelectedQueryId };
+  return { setSelectedEntityId };
 }
 
 const pendingQuery = createQuery({
@@ -167,14 +169,17 @@ describe("ExplorationSidebar", () => {
     );
   });
 
-  it("calls setSelectedQueryId when a row is clicked", async () => {
-    const { setSelectedQueryId } = setup({
+  it("calls setSelectedEntityId when a row is clicked", async () => {
+    const { setSelectedEntityId } = setup({
       queries: [pendingQuery, doneQuery],
     });
 
     await userEvent.click(getRow("Revenue by region"));
 
-    expect(setSelectedQueryId).toHaveBeenCalledWith(doneQuery.id);
+    expect(setSelectedEntityId).toHaveBeenCalledWith({
+      type: "query",
+      id: doneQuery.id,
+    });
   });
 
   it("marks the selected query row as pressed", () => {
@@ -224,7 +229,7 @@ describe("ExplorationSidebar", () => {
     ];
 
     it("renders one collapsible header per multi-query group; expanded panel shows the queries", async () => {
-      const { setSelectedQueryId } = setup({
+      const { setSelectedEntityId } = setup({
         queries: [...planQueries, ...regionQueries],
         groups,
       });
@@ -252,7 +257,10 @@ describe("ExplorationSidebar", () => {
       await userEvent.click(planHeader);
       expect(planHeader).toHaveAttribute("aria-expanded", "true");
       expect(screen.getByText("Revenue by plan (all)")).toBeInTheDocument();
-      expect(setSelectedQueryId).toHaveBeenLastCalledWith(planQueries[0].id);
+      expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+        type: "query",
+        id: planQueries[0].id,
+      });
       expect(
         screen.queryByText("Revenue by region (all)"),
       ).not.toBeInTheDocument();
@@ -387,6 +395,77 @@ describe("ExplorationSidebar", () => {
       expect(
         screen.queryByText("Revenue by plan (all)"),
       ).not.toBeInTheDocument();
+    });
+
+    describe("arrow-key navigation", () => {
+      it("Right advances to the next query within the same group", () => {
+        const { setSelectedEntityId } = setup({
+          queries: [...planQueries, ...regionQueries],
+          groups,
+          selectedQueryId: planQueries[0].id,
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+        // Selection moves to the second query of the same group.
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "query",
+          id: planQueries[1].id,
+        });
+        // The plan group stays open; the region group remains collapsed.
+        const regionHeader = screen.getByRole("button", {
+          name: /Revenue by region/,
+        });
+        expect(regionHeader).toHaveAttribute("aria-expanded", "false");
+      });
+
+      it("Right at the last query in a group collapses it, expands the next, and selects its first query", () => {
+        const { setSelectedEntityId } = setup({
+          queries: [...planQueries, ...regionQueries],
+          groups,
+          selectedQueryId: planQueries[planQueries.length - 1].id,
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "query",
+          id: regionQueries[0].id,
+        });
+
+        const planHeader = screen.getByRole("button", {
+          name: /Revenue by plan/,
+        });
+        const regionHeader = screen.getByRole("button", {
+          name: /Revenue by region/,
+        });
+        expect(planHeader).toHaveAttribute("aria-expanded", "false");
+        expect(regionHeader).toHaveAttribute("aria-expanded", "true");
+      });
+
+      it("Left at the first query in a group collapses it, expands the previous, and selects its last query", () => {
+        const { setSelectedEntityId } = setup({
+          queries: [...planQueries, ...regionQueries],
+          groups,
+          selectedQueryId: regionQueries[0].id,
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "query",
+          id: planQueries[planQueries.length - 1].id,
+        });
+
+        const planHeader = screen.getByRole("button", {
+          name: /Revenue by plan/,
+        });
+        const regionHeader = screen.getByRole("button", {
+          name: /Revenue by region/,
+        });
+        expect(planHeader).toHaveAttribute("aria-expanded", "true");
+        expect(regionHeader).toHaveAttribute("aria-expanded", "false");
+      });
     });
   });
 });
