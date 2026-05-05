@@ -1593,7 +1593,6 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: Document\.get cookie/),
     },
     {
-      // Async equivalent of document.cookie — same threat, different API.
       name: "window.cookieStore getter",
       payload: "var x = window.cookieStore;",
       errorPattern: blockedPattern(/API call: Window\.get cookieStore/),
