@@ -7,13 +7,12 @@ import {
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
 } from "metabase/api";
+import S from "metabase/common/components/Glossary/Glossary.module.css";
+import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import { Card, Group, Stack, Text } from "metabase/ui";
-
-import S from "./Glossary.module.css";
-import { GlossaryTable } from "./GlossaryTable";
 
 export function GlossaryContainer() {
   const { data: glossary = [] } = useListGlossaryQuery();

@@ -4,11 +4,11 @@ import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
