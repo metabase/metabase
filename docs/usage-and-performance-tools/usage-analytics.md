@@ -44,9 +44,9 @@ Metabase will take you to the relevant usage dashboard and plug in the item's ID
 
 ## How long Metabase keeps usage data
 
-By default, Metabase will keep the data about [activity](#activity-log-model), [views](#view-log-model), and [query execution](#query-log-model) for **720 days**. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
+By default, Metabase will keep the data about [activity](./usage-analytics-reference.md#activity-log), [views](./usage-analytics-reference.md#view-log), and [query execution](./usage-analytics-reference.md#query-log) for **720 days**. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
 
-If you're on the Metabase Open Source Edition, or on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing/), Metabase doesn't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade to a Pro or Enterprise plan, either self-hosted or Cloud, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
+If you're on the Metabase Open Source Edition, or on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing/), Metabase doesn't collect [Activity](./usage-analytics-reference.md#activity-log) and [View](./usage-analytics-reference.md#view-log) data. If you upgrade to a Pro or Enterprise plan, either self-hosted or Cloud, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
 
 ## Creating custom reports
 
@@ -58,115 +58,23 @@ While you _can_ save custom questions, models, and dashboards wherever you like 
 
 There is one thing to know about the Custom reports collection: its metadata resets whenever Metabase restarts. While you are able to temporarily rename the Custom reports collection, or give it a description or an Official badge, Metabase will drop this collection's metadata when it restarts. But rest assured that Metabase will preserve any questions, models, events, or dashboards that you add to the Custom reports collection.
 
-## Dashboards
+## Dashboards and models
 
-The Usage analytics collection includes a set of read-only dashboards.
+The Usage analytics collection ships a set of read-only dashboards and models that you can browse from the **collections** sidebar.
 
-### Metabase metrics dashboard
+For an exhaustive, up-to-date list of every dashboard (with the cards it contains) and every model (with its columns), see the [Usage analytics reference](./usage-analytics-reference.md). That page is regenerated from the shipped YAML by `bin/generate-usage-analytics-docs.bb`, so it always matches what's in the product.
 
-General information about people viewing and creating dashboards, questions, subscriptions, and alerts. Cards include:
+### Performance overview on MySQL or MariaDB
 
-- Active users last week
-- Question views last week
-- Questions created last week
-- Dashboards created last week
-- Alerts and subscriptions created last week
-- Weekly active users
-- Question views per week
-- Most active users
-- Most active creators
-- Most viewed dashboards
-- Most viewed cards
+> If you're using MySQL or MariaDB as your application database, the Performance overview dashboard won't display results for the cards showing 50th and 90th percentile query running times, because MySQL and MariaDB don't support the [Percentile aggregation](../questions/query-builder/expressions-list.md#percentile). We recommend using PostgreSQL as your application database.
 
-### Most viewed content dashboard
+### Notes on selected models
 
-View the most relevant content in your Metabase. Cards include:
+The auto-generated reference lists each model's columns, but a few columns hold categorical values that are worth spelling out here.
 
-- Most viewed dashboards
-- Most viewed questions
-- Most viewed tables
+#### Activity log topics
 
-### Person overview dashboard
-
-See what someone's been up to in your Metabase. Cards include:
-
-- Member of
-- Active alerts
-- Questions created per month
-- Question views per month
-- Most viewed dashboards
-- Most viewed questions
-- Last viewed dashboards
-- Last viewed questions
-- Last viewed tables
-- Recent activity
-- Last queries
-
-### Dashboard overview dashboard
-
-Information about dashboards, questions, models, and tables. Cards include:
-
-- Dashboard metadata
-- Dashboard views per month
-- Question performance
-- Most active people on this dashboard
-- Questions in this dashboard
-- Most active people on this dashboard
-- Questions in this dashboard
-- Recent activity on dashboard
-- Subscriptions on this dashboard
-
-### Question overview dashboard
-
-Views, performance, activity, and other data for a particular question. Cards include:
-
-- Question metadata
-- Question views per month
-- Question performance
-- Most active people on this question
-- Dashboards with this question
-- Last activity on this question
-- Alerts on this question
-
-### Performance overview dashboard
-
-Question, dashboard and database performance. Cards include:
-
-- Slowest dashboards
-- Dashboards consuming most resources
-- Slowest questions
-- Questions consuming the most resources
-- Dashboards with more questions in the same tab
-- Users consuming the most resources
-
-> If you're using MySQL or MariaDB as your application database, the Performance overview dashboard won't display results for the cards displaying the 50th and 90th percentile query running times, because MySQL and MariaDB don't support the [Percentile aggregation](../questions/query-builder/expressions-list.md#percentile). We recommend using PostgreSQL as your application database.
-
-### Content with cobwebs dashboard
-
-Dashboards and questions that you could consider archiving. Cards include:
-
-- Dashboards without recent reviews
-- Questions without recent reviews
-- Questions that don't belong to a dashboard
-
-## Models
-
-The Usage analytics collection includes a bunch of useful models based on Metabase's application database.
-
-## Activity log model
-
-Each row of this model describes one event of a particular topic. Fields include:
-
-- ID
-- Topic
-- Timestamp
-- End Timestamp
-- User ID
-- Model
-- Model ID
-- Details
-
-The topics include:
+The **Topic** column on the [Activity log model](./usage-analytics-reference.md#activity-log) takes one of:
 
 - alert-create
 - alert-delete
@@ -189,40 +97,9 @@ The topics include:
 - subscription-delete
 - user-joined
 
-## View log model
+#### Query log query sources
 
-Tracks views cards (which includes models), dashboards, and tables. Fields include:
-
-- ID
-- Timestamp
-- User ID
-- Entity Type (card, dashboard, or table)
-- Entity ID
-- Entity Qualified ID
-
-## Query log model
-
-Information about all queries Metabase ran across all dashboards. Fields include:
-
-- Entity ID
-- Started At
-- Running Time Seconds
-- Result Rows
-- Is Native
-- Query Source
-- Error
-- User ID
-- Card ID
-- Card Qualified ID
-- Dashboard ID
-- Dashboard Qualified ID
-- Pulse ID
-- Database ID
-- Database Qualified ID
-- Cache Hit
-- Action ID
-
-Query sources include:
+The **Query Source** column on the [Query log model](./usage-analytics-reference.md#query-log) takes one of:
 
 - action
 - ad-hoc
@@ -243,52 +120,9 @@ Query sources include:
 - question
 - xlsx-download
 
-## Alerts model
+#### Content entity types
 
-All alerts, both active and archived.
-
-- Entity ID
-- Entity Qualified ID
-- Created At
-- Updated At
-- Creator ID
-- Card ID
-- Card Qualified ID
-- Alert Condition
-- Schedule Type
-- Schedule Day
-- Schedule Hour
-- Archived
-- Recipient Type
-- Recipients
-- Recipient External
-
-### Content model
-
-Questions, dashboards, models, events, and collections.
-
-- Entity ID
-- Entity Qualified ID
-- Entity Type
-- Created At
-- Updated At
-- Creator ID
-- Name
-- Description
-- Collection ID
-- Made Public By User
-- Is Embedding Enabled
-- Archived
-- Action Type
-- Action Model ID
-- Collection Is Official
-- Collection Is Personal
-- Question Viz Type
-- Question Database ID
-- Question Is Native
-- Event Timestamp
-
-Entity types include:
+The **Entity Type** column on the [Content model](./usage-analytics-reference.md#content) takes one of:
 
 - action
 - collection
@@ -297,119 +131,6 @@ Entity types include:
 - model
 - question
 
-## People model
+#### View log entity type
 
-Everyone in your Metabase, including deactivated accounts. Fields include:
-
-- User ID
-- Email
-- First Name
-- Last Name
-- Full Name
-- Date Joined
-- Last Login
-- Updated At
-- Is Admin
-- Is Active
-- SSO Source
-- Locale
-
-## Dashboard subscriptions model
-
-Which subscriptions are active, who created them, who's subscribed to them, when they're sent, and more.
-
-- Entity ID
-- Entity Qualified ID
-- Created At
-- Updated At
-- Creator ID
-- Archived
-- Dashboard Qualified ID
-- Schedule Type
-- Schedule Day
-- Schedule Hour
-- Recipient Type
-- Recipients
-- Recipient External
-- Parameters
-
-## Dashboard cards model
-
-Each row is a dashboard card: either a question card or a text card. Fields include:
-
-- ID
-- Dashboard ID
-- Dashboardtab ID
-- Question ID
-- Created At
-- Updated At
-- Size X
-- Size Y
-- Visualization Settings
-- Parameter Mappings
-
-## Databases model
-
-Information about your connected data sources. Fields include:
-
-- Entity ID
-- Entity Qualified ID
-- Created At
-- Updated At
-- Name
-- Description
-- Database Type
-- Metadata Sync Schedule
-- Cache Field Values Schedule
-- Timezone
-- Is On Demand
-- Auto Run Queries
-- Cache Ttl
-- Creator ID
-- Db Version
-
-## Tables model
-
-List of all tables across all connected data sources. Fields include:
-
-- Entity ID
-- Entity Qualified ID
-- Created At
-- Updated At
-- Name
-- Display Name
-- Description
-- Active
-- Database ID
-- Schema
-- Is Upload
-
-## Fields model
-
-All fields from all connected data sources. Fields include:
-
-- Entity ID
-- Entity Qualified ID
-- Created At
-- Updated At
-- Name
-- Display Name
-- Description
-- Base Type
-- Visibility Type
-- Fk Target Field ID
-- Has Field Values
-- Active
-- Table ID
-
-## System tasks model
-
-Describes the last 14 days of Metabase internal processes tasks.
-
-- ID
-- Task
-- Database Qualified ID
-- Started At
-- Ended At
-- Duration Seconds
-- Details
+The **Entity Type** column on the [View log model](./usage-analytics-reference.md#view-log) is one of `card`, `dashboard`, or `table`.
