@@ -19,8 +19,8 @@ export function MetabotAnalyticsUpsellPage() {
   });
 
   return (
-    <MetabotAdminLayout>
-      <DottedBackground px="3.5rem" pb="2rem">
+    <MetabotAdminLayout fullWidth fullHeight>
+      <DottedBackground p="4rem">
         <Stack align="center" p={40}>
           <LineDecorator>
             <UpsellCardContent

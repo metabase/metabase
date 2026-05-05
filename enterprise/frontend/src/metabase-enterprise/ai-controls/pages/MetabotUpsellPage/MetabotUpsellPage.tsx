@@ -25,7 +25,7 @@ export function MetabotUpsellPage({
   });
 
   return (
-    <DottedBackground px="3.5rem" pb="2rem">
+    <DottedBackground p="4rem">
       <Stack align="center" p={40}>
         <LineDecorator>
           <UpsellCardContent
