@@ -94,6 +94,11 @@ const BLOCKED_TAGS = new Set([
   "frame",
   "form",
   "a",
+  // CSS-based exfiltration (`@font-face { src: url(...) }`,
+  // `background-image: url(...)`) until CSP font-src/img-src is tightened
+  // (GDGT-2373). DOMPurify already strips `<style>` from sanitized HTML, but
+  // the createElement path skips DOMPurify entirely.
+  "style",
   // SVG external-resource / mutation-XSS vectors
   "use",
   "image",

@@ -1614,6 +1614,11 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/createElement: a/),
     },
     {
+      name: 'createElement("style")',
+      payload: 'document.createElement("style");',
+      errorPattern: blockedPattern(/createElement: style/),
+    },
+    {
       name: 'createElementNS(SVG, "use")',
       payload: 'document.createElementNS("http://www.w3.org/2000/svg", "use");',
       errorPattern: blockedPattern(/createElementNS: use/),
