@@ -3474,7 +3474,6 @@
            app-db
            cache
            driver
-           enterprise/serialization
            lib
            models
            permissions
@@ -3482,7 +3481,8 @@
            query-processor
            server
            sql-tools
-           util}
+           util
+           enterprise/serialization}
    :model-imports #{:model/Database
                     :model/Table
                     :model/User}}
