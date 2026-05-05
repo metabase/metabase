@@ -4,6 +4,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -44,7 +45,11 @@
   [& body]
   `(do-with-fallback-template (fn [] ~@body)))
 
-(defn- render-embed-mcp [vars]
+(defn render-embed-mcp-template
+  "Render the embed-mcp.html Mustache template with the given vars map.
+   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
+   :mcpSessionId (JSON-encoded or nil)."
+  [vars]
   (cond
     (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
@@ -57,10 +62,16 @@
                          ". Run the frontend build to produce it.")
                     {:path embed-mcp-template-path}))))
 
+;; The registry holds two indexes:
+;;   `:uri->resource` — URI is unique, one resource (iframe) per URI
+;;   `:tools`         — keyed by tool name, which is also unique. Multiple tools may
+;;                      target the same resource via :_meta.ui.resourceUri (the iframe
+;;                      doesn't care which tool delivered the payload).
+;; Both maps overwrite on re-registration so REPL reload is idempotent.
 (defonce ^:private registry
   (atom {:key->uri      {}
          :uri->resource (sorted-map)
-         :uri->tool     (sorted-map)}))
+         :tools         (sorted-map)}))
 
 (mu/defn- register-ui-resource!
   [key      :- :keyword
@@ -86,7 +97,7 @@
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
           tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
-      (swap! registry assoc-in [:uri->tool uri] tool))
+      (swap! registry assoc-in [:tools (:name tool)] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
 (defn resource-scopes
@@ -95,9 +106,9 @@
   (into (sorted-set) (keep :scope) (vals (:uri->resource @registry))))
 
 (defn list-ui-tools
-  "Return the list of MCP tools corresponding to UI components"
+  "Return the list of MCP tools corresponding to UI components."
   []
-  (vals (:uri->tool @registry)))
+  (vals (:tools @registry)))
 
 (defn list-resources
   "Return the list of available MCP resources.
@@ -143,19 +154,47 @@
   :description "Interactive Metabase SDK visualization for a query"
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
-                       session-key (:session-key opts)]
-                   (render-embed-mcp
+                       session-key (:session-key opts)
+                       session-id  (:session-id opts)]
+                   (render-embed-mcp-template
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
-                     :sessionToken   (when session-key (json/encode session-key))})))})
+                     :sessionToken   (when session-key (json/encode session-key))
+                     :mcpSessionId   (when session-id (json/encode session-id))})))})
 
 (register-ui-tool!
  :visualize-query
  {:name        "visualize_query"
-  :description "Visualize a previously constructed query as an interactive chart or table."
+  :description (str "Visualize a previously constructed query as an interactive chart or table. "
+                    "This renders the final answer in the UI. Do not call execute_query after "
+                    "visualize_query; showing the visualization is enough.")
   :inputSchema {:type       "object"
                 :properties {:query {:type "string" :minLength 1}}
                 :required   ["query"]}
-  :response-fn (fn [arguments]
-                 {:content          [{:type "text" :text "Visualizing query..."}]
-                  :structuredContent {:query (:query arguments)}})})
+  :response-fn (fn [arguments _opts]
+                 (if-let [encoded (:query arguments)]
+                   {:content          [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                "Do not call execute_query after this; "
+                                                                "the visualization is the final result.")}]
+                    :structuredContent {:query encoded}}
+                   {:content [{:type "text" :text "Missing query argument."}]
+                    :isError true}))})
+
+(register-ui-tool!
+ :visualize-query
+ {:name        "render_drill_through"
+  :description (str "Render the drill-through visualization the user just navigated into. "
+                    "Use this tool, not execute_query, when the user asks to show the result and "
+                    "their message includes a `handle` UUID. This is the exact follow-up for the "
+                    "phrase `Show me the result`. Do not execute the query yourself; pass the "
+                    "`handle` UUID as the `handle` argument.")
+  :inputSchema {:type       "object"
+                :properties {:handle {:type "string" :format "uuid"
+                                      :description "Handle UUID from the user's drill-through message."}}
+                :required   ["handle"]}
+  :response-fn (fn [arguments _opts]
+                 (if-let [encoded (some-> (:handle arguments) mcp.session/read-handle)]
+                   {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
+                    :structuredContent {:query encoded}}
+                   {:content [{:type "text" :text "No drill-through found for that handle."}]
+                    :isError true}))})
