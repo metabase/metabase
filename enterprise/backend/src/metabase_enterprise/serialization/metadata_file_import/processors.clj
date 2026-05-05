@@ -11,13 +11,8 @@
   SELECT, INSERT, UPDATE, DELETE) runs at call time so re-iteration is safe and
   validation errors surface immediately rather than at consumption time.
 
-  No HTTP coupling; no NDJSON; no `ArrayList` buffer. Errors propagate as
-  `ex-info` with `:kind`, `:line`, and `:source-id` attribution so the loader
-  can produce useful boot-time error messages.
-
-  All SQL is generated through toucan2 / HoneySQL plus a single hand-rolled
-  `VALUES`-table UPDATE in [[finalize-batch-sql+params]]. The latter pattern
-  is portable across Postgres, H2, and MySQL 8+ — see [[process-fields-fk-finalize!]]."
+  Errors propagate as `ex-info` with `:kind`, `:line`, and `:source-id`
+  attribution so the loader can produce useful boot-time error messages."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -34,10 +29,7 @@
 (set! *warn-on-reflection* true)
 
 (def import-batch-size
-  "Row batch size shared by all processors. An 8-column field row at 2000 rows/batch is 16k
-  prepared-statement parameters — safely under Postgres' 65535 cap and MySQL's default
-  `max_allowed_packet`. (Dropped `:const` to allow REPL experimentation across batch sizes
-  during 20A perf work — restore `:const` once a value is settled.)"
+  "Row batch size shared by all processors."
   500)
 
 ;;; ============================== Error utilities ==============================
@@ -129,9 +121,7 @@
     `{:source-id <db-name> :target-id M :status :matched}`
     `{:source-id <db-name> :status :no-match :line L :detail S}`
 
-  `:source-id` carries the row's **portable database id** — its `:name`. Under the
-  portable-id wire format the database-info row no longer carries an integer `:id`;
-  the natural-key identity is the database name.
+  `:source-id` is the row's `:name` (its portable database id).
 
   Phase 1 is **non-fatal**: unmatched databases produce `:no-match` results that the loader
   logs as WARN and uses to skip dependent tables/fields. Validation failures throw."
@@ -197,8 +187,7 @@
   This is **safe on a fresh appdb** whose Database row carries default DB-level
   permissions, but **not safe** against an appdb where any group has gone
   table-granular on the target Database — those tables would silently lack their
-  per-table permission rows. The batched-grant fix is tracked as item 6 in
-  METADATA_FILE_IMPORT_PLAN.md.
+  per-table permission rows. TODO: batched-grant fix.
 
   Replicates the non-permission defaults `:model/Table`'s `define-before-insert`
   applies (`display_name`, `data_layer`). `field_order` falls back to the column
@@ -217,9 +206,7 @@
       (some? description) (assoc :description description))))
 
 (defn- patch-matched-tables!
-  "Patch-on-match policy (§10c): when a matched target table exists and the source
-  carries a non-nil `:description`, update the target's description. Remove the
-  body of this fn to flip to no-patch."
+  "When source carries a non-nil `:description`, write it to the matched target."
   [target-lines match-idx]
   (doseq [{:keys [db_id schema name description]} target-lines
           :when (and (contains? match-idx [db_id schema name])
@@ -241,8 +228,7 @@
     (zipmap (map (juxt :db_id :schema :name) unmatched) new-ids)))
 
 (defn- portable-table-id
-  "The portable id for a row in `process-tables!` — `[db-name schema-or-nil name]`.
-  Used as `:source-id` in result maps and as the natural-key identity for attribution."
+  "The portable id for a row in `process-tables!` — `[db-name schema-or-nil name]`."
   [{:keys [db_id schema name]}]
   [db_id schema name])
 
@@ -257,11 +243,10 @@
     `{:source-id [db-name schema name] :target-id M :status :inserted}`
     `{:source-id [db-name schema name] :status :no-target-db :line L :detail S}`
 
-  `:source-id` carries the row's **portable table id** — its `[db_id schema name]`
-  triple. The integer source-instance id is gone under the portable-id wire format.
+  `:source-id` is the row's `[db_id schema name]` triple (its portable table id).
 
-  Patch-on-match policy: see [[patch-matched-tables!]] (§10c). Removing that call
-  flips this processor to no-patch."
+  Matched rows: source `:description` overwrites target. No other writes on
+  matched rows."
   [batch]
   (doseq [[ln line] batch]
     (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
@@ -287,24 +272,20 @@
                                      (pr-str src-db))}))))
        batch))))
 
-;;; ==================== fields (batch) — phase-3 single-pass with stubs ====================
+;;; ==================== fields (batch) ====================
 
 (def ^:private stub-base-type
-  "Sentinel `:base_type` for stub field rows (§11c). Distinguishes import-inserted
+  "Sentinel `:base_type` for stub field rows. Distinguishes import-inserted
   placeholders from real rows when scanning for unfilled stubs at end-of-import."
   "type/*")
 
 (def ^:private stub-database-type
-  "Sentinel `:database_type` for stub field rows (§11c)."
+  "Sentinel `:database_type` for stub field rows."
   "__stub__")
 
 (defn stub-row?
-  "True if `row` is one of the importer's placeholder stub rows (§11c) — identified
-  by the `:database_type` sentinel `\"__stub__\"`. (We also write `base_type=\"type/*\"`
-  on stubs as extra confidence, but `:database_type` alone is sufficient to
-  identify a stub: it's reserved, sync-emitted database_types are real warehouse
-  type names. `:base_type` further suffers from the model's keyword transform on
-  read.) The loader's post-phase-3 scan calls this to find never-filled stubs."
+  "True if `row` is a placeholder stub. Checks `:database_type` (not `:base_type`,
+  which goes through the model's keyword transform on read)."
   [{:keys [database_type]}]
   (= stub-database-type database_type))
 
@@ -318,10 +299,8 @@
 
 (defn- resolve-table-ids-batch
   "Resolve each distinct portable `:table_id` triple in `lines` to a target
-  integer table id. One batched SELECT joining `metabase_database` and
-  `metabase_table`. Returns `{[db-name schema-or-nil table-name] → target-id}`
-  with vector keys (Clojure vectors, not ArrayList — required by downstream
-  cache lookups)."
+  integer table id. Returns `{[db-name schema-or-nil table-name] → target-id}`
+  with vector keys."
   [lines]
   (let [triples   (into #{} (keep (fn [{:keys [table_id]}] (some-> table_id vec))) lines)
         db-names  (into #{} (map #(get % 0)) triples)
@@ -358,36 +337,22 @@
     (json/encode anc-path)))
 
 (defn- resolve-parent-ids-batch
-  "Resolve each portable field id in `parent-vecs` to a target integer field id
-  via one batched SELECT joining `metabase_field` / `metabase_table` /
-  `metabase_database`. Returns `{parent-vec → target-int-id}` (vector keys),
-  omitting parents not found on the target.
+  "Resolve each portable field id in `parent-vecs` to a target integer field id.
+  Returns `{parent-vec → target-int-id}` (vector keys), omitting parents not
+  found on the target.
 
-  Used for both phase-3 parent resolution (where input vecs always point at
-  Convention A storage rows) and phase-4 FK resolution (where input vecs may
-  be ANY storage shape, including Convention B leaves and flat roots).
-  Reconstruction therefore branches per the storage shape, mirroring
-  [[metabase-enterprise.serialization.metadata/external-field-id]]:
+  Input vecs may be any storage shape; reconstruction branches per the shape,
+  mirroring [[metabase-enterprise.serialization.metadata/external-field-id]]:
 
-    - storage `parent_id` non-NULL (Convention A child):
-      `[db schema table & nfc-path & leaf-name]`
-    - storage `parent_id` NULL but `nfc_path` non-empty (Convention B leaf):
-      `[db schema table & nfc-path]` (no leaf appended — `nfc_path` already
-      terminates at the leaf's structural location)
-    - both NULL (flat root or top-level Convention A parent):
-      `[db schema table leaf-name]`
+    - storage `parent_id` non-NULL: `[db schema table & nfc-path & leaf-name]`
+    - storage `parent_id` NULL, `nfc_path` non-empty: `[db schema table & nfc-path]`
+    - both NULL: `[db schema table leaf-name]`
 
-  Match scope drops `[:= :active true]` (so this also resolves stubs left over
-  from a prior batch — see §7 audit reminder) but keeps
-  `[:= :is_defective_duplicate false]`. The SELECT is scoped by db + table
-  only — narrowing on `:f.name` would miss Conv B leaves, whose storage `name`
-  is the synthesized arrow-joined display label and doesn't appear in the wire
-  id."
+  Resolves stubs from prior batches (matched on natural key, not on `active`)."
   [parent-vecs]
   (let [parents   (into #{} (map vec) parent-vecs)
-        ;; Probe by `(db, table)` only — `:f.name` would be too narrow to catch
-        ;; Convention B leaves (stored `name` differs from anything in the wire
-        ;; id). Intersecting against the full portable id set happens in Clojure.
+        ;; Probe by `(db, table)` only — `:f.name` would miss JSON-unfolded
+        ;; leaves whose storage `name` differs from anything in the wire id.
         db-names  (into #{} (map #(get % 0)) parents)
         tbl-names (into #{} (map #(get % 2)) parents)]
     (if (empty? parents)
@@ -408,16 +373,16 @@
               (keep (fn [{:keys [id db-name schema tbl-name leaf-name nfc-path parent-id]}]
                       (let [anc (decode-nfc-path nfc-path)
                             pv  (cond
-                                  ;; Convention A child: storage parent_id non-NULL
+                                  ;; storage parent_id non-NULL
                                   (some? parent-id)
                                   (-> [db-name schema tbl-name]
                                       (into (or anc []))
                                       (conj leaf-name))
-                                  ;; Convention B leaf: storage parent_id NULL, nfc_path
-                                  ;; non-empty — full path including the leaf
+                                  ;; storage parent_id NULL, nfc_path non-empty —
+                                  ;; full path including the leaf
                                   (seq anc)
                                   (into [db-name schema tbl-name] anc)
-                                  ;; Flat root or top-level Conv A parent: both NULL
+                                  ;; both NULL
                                   :else
                                   [db-name schema tbl-name leaf-name])]
                         (when (contains? parents pv)
@@ -425,15 +390,9 @@
               rows)))))
 
 (defn- new-stub-field-row
-  "Row map for inserting a placeholder stub field (§11c). Stubs are always for
-  Convention A parents — `:parent_id` references in the wire only point at real
-  parent storage rows, never at Convention B leaves. So the parent's storage
-  shape is recoverable from its portable id `[db schema table & nfc-path & leaf]`:
-  `name=leaf`, `nfc_path=nfc-path` (or NULL when empty), `parent_id=resolved`.
-
-  Marker fields `database_type=\"__stub__\"`+`base_type=\"type/*\"` plus
-  `active=false`. When the real row arrives the match-and-clobber path UPDATEs
-  the stub in place."
+  "Row map for inserting a placeholder stub field. Marker fields
+  `database_type=\"__stub__\"` + `base_type=\"type/*\"` + `active=false`. When
+  the real row arrives, the match-and-clobber path UPDATEs the stub in place."
   [target-table-id parent-vec resolved-parent-id]
   (let [pv         (vec parent-vec)
         leaf-name  (peek pv)
@@ -461,11 +420,7 @@
   down. Returns the int id of the immediate parent (real or just-inserted stub).
   `cache!` is a `volatile!` `{portable-vec → int}` updated in place.
 
-  Implements §11c's recursive ancestor-stub algorithm. Stubs are inserted one at
-  a time (depth-first sequencing — child needs parent's returned int id). For
-  realistic schemas (depth ≤ 4) this is small per call. **Future optimization**
-  (item 20A): collect all needed stubs from the batch up front and bulk-insert
-  per depth level — see plan §11c."
+  Future optimization: bulk-insert per depth level."
   [parent-vec target-table-id cache!]
   (letfn [(reduce-down [parent-int-id missing]
             ;; missing was built leaf-side-first; reverse for root-first inserts
@@ -492,21 +447,10 @@
               ;; recurse on the parent of pid
               (recur (vec (butlast pid)) (conj missing pid)))))))))
 
+;; TODO: use or delete
 (defn- match-fields-batch-loose-in
-  "PARKED — original implementation kept for A/B comparison during 20A perf work.
-
-  Uses the loose-IN-plus-Clojure-intersect pattern: SELECT all rows where
-  `(table_id IN tbl-ids AND name IN names)` (the Cartesian over-include), then
-  filter client-side by exact `(table_id, name, parent_id)` triple. Portable
-  across Postgres / H2 / MySQL because no composite-key SQL is required.
-
-  Pathology at scale: when names overlap heavily across tables (every table
-  has `id`, `col_0`, `col_1`, …), the SELECT returns the full
-  `|tbl-ids| × |names|` cross-product intersected with whatever's already in
-  `metabase_field`. Client-side filter then drops the over-includes. Phase-3
-  per-batch cost grows super-linearly in batch size — observed 424ms/batch at
-  size 2000, 145ms at 1000, 53ms at 500. See `match-fields-batch` for the
-  replacement using a `VALUES`-table inner join."
+  "Reference implementation: loose IN + Clojure intersect. Replaced by
+  [[match-fields-batch]] — loose IN over-includes by `|tbl-ids| × |names|`."
   [lines]
   (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
         tbl-ids (into #{} (keep :table_id) lines)
@@ -524,25 +468,11 @@
                     (filter (fn [[triple _]] (contains? triples triple))))
               rows)))))
 
+;; TODO: use or delete
 (defn- match-fields-batch-values-join
-  "PARKED — VALUES-JOIN implementation kept for A/B comparison during 20A
-  perf work. Replaced by [[match-fields-batch]] which probes
-  `unique_field_helper` directly to take advantage of `idx_unique_field`.
-
-  Builds an `INNER JOIN` against an inline `VALUES` table containing the
-  requested triples explicitly. Same pattern phase-4 uses for the FK update
-  SQL (see [[finalize-batch-sql+params]]). Eliminates the cross-product
-  over-include of [[match-fields-batch-loose-in]] — the planner sees exact
-  triples and result rows are matches with no client-side filter.
-
-  Pathology this implementation has: the `parent_id` NULL-equality predicate
-  `(f.parent_id = v.parent_id) OR (f.parent_id IS NULL AND v.parent_id IS NULL)`
-  is semantically equivalent to `COALESCE(f.parent_id, 0) = COALESCE(v.parent_id, 0)`,
-  but the Postgres planner doesn't rewrite OR-of-IS-NULL into a helper-column
-  equality. So this implementation can't probe `idx_unique_field` (which is
-  keyed on `unique_field_helper = COALESCE(parent_id, 0)`) cleanly — the
-  planner falls back to a less-selective access pattern for the `parent_id`
-  third column."
+  "Reference implementation: INNER JOIN against an inline VALUES table. Replaced
+  by [[match-fields-batch]] — can't cleanly probe `idx_unique_field` because the
+  Postgres planner doesn't rewrite OR-of-IS-NULL into a helper-column equality."
   [lines]
   (let [triples (vec (into #{} (map (juxt :table_id :name :parent_id)) lines))]
     (if (empty? triples)
@@ -572,44 +502,15 @@
 
 (defn- match-fields-batch
   "Look up every existing target Field matching any (target-table-id, name,
-  target-parent-id) triple in `lines`. Scoped to `is_defective_duplicate=false`
-  but **not** `active=true` — stubs (active=false) must match a later real-row
-  arrival so phase 3 can fill them via UPDATE (§7 audit reminder, §11c). Returns
+  target-parent-id) triple in `lines`. Returns
   `{[table-id name parent-id] → existing-id}`.
 
-  Probes `idx_unique_field` directly. The unique index is over
-  `(name, table_id, unique_field_helper)` where `unique_field_helper` is a
-  STORED GENERATED column equal to `COALESCE(parent_id, 0)` for non-defective
-  rows (NULL for defective rows). We compute `helper = (or parent_id 0)`
-  client-side and JOIN against the index's three columns directly:
-
-    - `f.name = v.name`
-    - `f.table_id = v.table_id`
-    - `f.unique_field_helper = v.helper`
-
-  All three predicates are non-NULL integer/text equalities aligned with the
-  index's column order, so the planner does a single index probe per batch
-  row with no heap recheck. No `IS NOT DISTINCT FROM`, no
-  `OR (both NULL)` — sidesteps the planner's blind spot in
-  [[match-fields-batch-values-join]] and the over-include in
-  [[match-fields-batch-loose-in]].
-
-  Defective rows (`is_defective_duplicate=true`) have `helper = NULL`, which
-  never equals any probe value, so they're naturally excluded — no explicit
-  WHERE clause needed.
-
-  Portability: `VALUES (...)` is standard SQL across Postgres / H2 / MySQL
-  8+. `unique_field_helper` is defined in the migration with separate DDL
-  for each DBMS (`STORED` for Postgres/MySQL, plain GENERATED ALWAYS for
-  H2). The column is queryable identically from all three.
-
-  See `MATCH_FIELDS_BATCH_OPTIMIZATION_ANALYSIS.md` §2-§4 for the derivation."
+  Scoped to `is_defective_duplicate=false` but **not** `active=true` — stubs
+  must match a later real-row arrival so phase 3 can fill them via UPDATE."
   [lines]
-  (let [;; B' is the deduplicated set of probe quads:
-        ;;   [table_id name parent_id helper]
-        ;; helper = (or parent_id 0); we keep parent_id to reconstruct the
-        ;; result-map key in the original triple shape.
-        quads (into #{}
+  ;; helper = COALESCE(parent_id, 0); matches the GENERATED column on
+  ;; idx_unique_field. Defective rows store helper=NULL and never match.
+  (let [quads (into #{}
                     (map (fn [{:keys [table_id name parent_id]}]
                            [table_id name parent_id (or parent_id 0)]))
                     lines)]
@@ -622,10 +523,12 @@
                            "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
                            "(?, ?, ?)"))
             values-sql (str/join ", " (map tuple-sql (range n)))
-            ;; Send (table_id, name, helper) per row. parent_id is local-only.
             params     (into []
                              (mapcat (fn [[t nm _p h]] [t nm h]))
                              quads-v)
+            ;; Plain equalities on (name, table_id, helper) let the planner
+            ;; use idx_unique_field with one probe per row, no heap recheck.
+            ;; OR-of-IS-NULL would defeat the index.
             sql        (str "SELECT f.id AS id, "
                             "       f.table_id AS table_id, "
                             "       f.name AS name, "
@@ -643,12 +546,10 @@
               rows)))))
 
 (defn- field-clobber
-  "Clobber-on-match payload for fields (§11b). Writes everything sync would
-  compute from the warehouse: `base_type`, `database_type`, `description`,
-  `semantic_type`, `effective_type`, `coercion_strategy`. Always sets `active=true`
-  (flips a stub's false to true; no-op for already-active rows). Excludes
-  `parent_id` (natural-key match already proves the matched row has the right
-  parent) and `fk_target_field_id` (phase 4 owns it)."
+  "Payload that overwrites a matched field row. Excludes `parent_id` (already
+  correct on the matched row — it's part of the match key) and
+  `fk_target_field_id` (set by [[process-fields-fk-resolve!]]). Sets
+  `active=true` to flip stubs to live."
   [{:keys [base_type database_type description semantic_type effective_type coercion_strategy]}]
   (cond-> {:active true}
     (some? base_type)         (assoc :base_type base_type)
