@@ -230,5 +230,6 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     advanced_permissions: true,
     library: true,
     dependencies: true,
+    "schema-viewer": true,
   },
 };

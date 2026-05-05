@@ -51,7 +51,7 @@
 ;;   reviews → products (via product_id)
 
 (deftest erd-graph-single-focal-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "single focal table expands to FK neighbors"
       (is (= {:orders   [:people :products]
               :people   []
@@ -63,7 +63,7 @@
              (graph-shape (erd-request! {:table-ids [(mt/id :products)]})))))))
 
 (deftest erd-graph-multi-focal-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "two focals sharing an FK target — target discovered once, both have edges"
       (is (= {:orders   [:people :products]
               :people   []
@@ -79,7 +79,7 @@
              (graph-shape (erd-request! {:table-ids [(mt/id :orders) (mt/id :products) (mt/id :reviews)]})))))))
 
 (deftest erd-graph-field-shape-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "FK fields on nodes carry resolved target IDs, PK fields have nil FK refs"
       (let [response (erd-request! {:table-ids [(mt/id :orders)]})
             orders   (first (filter #(= (mt/id :orders) (:table_id %)) (:nodes response)))
@@ -92,7 +92,7 @@
         (is (nil? (:fk_target_table_id pk-field)))))))
 
 (deftest erd-external-fk-target-resolution-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "FK field pointing to a readable table beyond the hop budget still carries the target IDs"
       ;; Chain A → B → C. Focal = A, one-layer expansion loads A + B. C is
       ;; outside the loaded node set but readable — B's FK field must still surface
@@ -134,7 +134,7 @@
               "c_id FK field should carry the external target field ID"))))))
 
 (deftest erd-schema-boundary-stops-bfs-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "one-layer FK expansion does not cross the schema boundary; cross-schema FK targets surface as IDs only"
       ;; public.a has FK to erd.b. When the user views schema=public, b must
       ;; not be loaded as a node, but a.b_id must still carry b's table/field IDs
@@ -196,7 +196,7 @@
               "explicitly-focal cross-schema table should be loaded as a node"))))))
 
 (deftest erd-graph-self-referential-fk-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "self-referential FK produces edge from table to itself"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table    {tid :id}   {:db_id db-id :name "categories" :schema "PUBLIC"}
@@ -216,7 +216,7 @@
 ;;; ---------------------------------------- Integration tests ----------------------------------------
 
 (deftest erd-endpoint-schema-filter-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "schema param loads every readable table in that schema as focal"
       (let [response     (erd-request! {:schema "PUBLIC"})
             node-names   (set (map :name (:nodes response)))
@@ -243,7 +243,7 @@
           (is (= #{"p1" "p2" "x"} node-names)))))))
 
 (deftest erd-endpoint-database-only-and-blank-schema-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "database-only request loads every readable table in the database"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
@@ -266,7 +266,7 @@
           (is (= #{"nil_schema" "empty_schema"} node-names)))))))
 
 (deftest erd-endpoint-table-ids-are-scoped-to-database-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "table-ids from another database are ignored"
       (mt/with-temp [:model/Database {db-a-id :id} {}
                      :model/Table _ {:db_id db-a-id :name "local" :schema "PUBLIC"}
@@ -279,7 +279,7 @@
           (is (empty? (:edges response))))))))
 
 (deftest erd-endpoint-excludes-hidden-and-sensitive-metadata-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "hidden tables and hidden/sensitive fields are omitted"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {visible-table-id :id} {:db_id db-id :name "visible" :schema "PUBLIC"}
@@ -302,7 +302,7 @@
           (is (= #{"visible_id"} field-names)))))))
 
 (deftest erd-endpoint-does-not-leak-hidden-fk-targets-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "FK targets hidden by table or field visibility are nulled and do not produce edges"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {hidden-target-table-id :id} {:db_id db-id :name "hidden_target" :schema "PUBLIC"
@@ -338,7 +338,7 @@
             (is (nil? (:fk_target_field_id (get fields-by-id fk-field-id))))))))))
 
 (deftest erd-endpoint-published-external-fk-target-test
-  (mt/with-premium-features #{:dependencies :library}
+  (mt/with-premium-features #{:schema-viewer :library}
     (testing "published cross-schema FK targets keep target IDs when only readable via collection"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -370,12 +370,12 @@
             (is (= target-pk-id (:fk_target_field_id fk-field)))))))))
 
 (deftest erd-endpoint-guard-rails-test
-  (testing "without :dependencies feature returns 402"
+  (testing "without :schema-viewer feature returns 402"
     (mt/with-premium-features #{}
       (mt/user-http-request :rasta :get 402 "ee/erd"
                             :database-id (mt/id))))
 
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "non-existent database returns 404"
       (mt/user-http-request :rasta :get 404 "ee/erd"
                             :database-id Integer/MAX_VALUE))))
@@ -387,7 +387,7 @@
 ;; to revoke everything, then selectively grant table-level access.
 
 (deftest erd-permissions-unreadable-table-excluded-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "unreadable table is excluded from graph, edges, and FK fields"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/PermissionsGroup {gid :id} {}]
@@ -408,7 +408,7 @@
                                (:fk_target_table_id field)))))))))))
 
 (deftest erd-permissions-intermediate-table-blocks-expansion-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "unreadable intermediate table blocks FK expansion — downstream tables are not discovered"
       ;; Graph: orders → products, reviews → products
       ;; Grant: orders + reviews + people, deny: products
@@ -430,7 +430,7 @@
                      (graph-shape response))))))))))
 
 (deftest erd-permissions-manage-table-metadata-allows-erd-test
-  (mt/with-premium-features #{:dependencies}
+  (mt/with-premium-features #{:schema-viewer}
     (testing "manage-table-metadata is enough because ERD is a metadata view"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/PermissionsGroup {gid :id} {}

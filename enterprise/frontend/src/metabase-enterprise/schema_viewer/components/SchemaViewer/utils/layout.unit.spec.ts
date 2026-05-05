@@ -1,7 +1,7 @@
-import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "../constants";
 import type { SchemaViewerFlowNode } from "../types";
 
 import { applyLayout } from "./layout";
+import { makeFlowNode } from "./shared";
 
 type NodeOverrides = {
   fieldCount?: number;
@@ -10,38 +10,13 @@ type NodeOverrides = {
   height?: number;
 };
 
+// Layout tests assume non-empty tables by default — without rows, the table
+// height collapses and overlap checks lose their signal.
 function makeNode(
   id: string,
   overrides: NodeOverrides = {},
 ): SchemaViewerFlowNode {
-  const fieldCount = overrides.fieldCount ?? 2;
-  const width = overrides.width ?? NODE_WIDTH;
-  const height = overrides.height ?? HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
-  return {
-    id,
-    type: "schemaViewerTable",
-    position: overrides.position ?? { x: 0, y: 0 },
-    data: {
-      table_id: Number(id.replace(/\D/g, "")) || 1,
-      name: id,
-      display_name: id,
-      schema: "public",
-      db_id: 1,
-      fields: Array.from({ length: fieldCount }, (_, i) => ({
-        id: i + 1,
-        name: `f${i + 1}`,
-        display_name: `f${i + 1}`,
-        database_type: "text",
-        semantic_type: null,
-        fk_target_field_id: null,
-        fk_target_table_id: null,
-      })),
-      sourceFieldIds: new Set<number>(),
-      targetFieldIds: new Set<number>(),
-      selfRefTargetFieldIds: new Set<number>(),
-    },
-    style: { width, height, opacity: 0 },
-  };
+  return makeFlowNode({ id, fieldCount: 2, ...overrides });
 }
 
 function placedNode(

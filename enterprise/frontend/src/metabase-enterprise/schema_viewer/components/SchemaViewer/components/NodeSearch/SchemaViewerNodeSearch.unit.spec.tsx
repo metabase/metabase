@@ -5,39 +5,25 @@ import type { ConcreteTableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
+import { type FlowNodeFieldSpec, makeFlowNode } from "../../utils/shared";
 
 import { SchemaViewerNodeSearch } from "./SchemaViewerNodeSearch";
 
+// NodeSearch only reads a node's id, name, and field list — the size/opacity
+// values just need to look like a rendered node, hence the fixed style.
 function makeNode(
   id: number,
   name: string,
-  fields: Array<{ name: string; isFK?: boolean }> = [],
+  fields: FlowNodeFieldSpec[] = [],
 ): SchemaViewerFlowNode {
-  return {
-    id: `table-${id}`,
-    type: "schemaViewerTable",
-    position: { x: 0, y: 0 },
-    data: {
-      table_id: id,
-      name,
-      display_name: name,
-      schema: "public",
-      db_id: 1,
-      fields: fields.map((f, i) => ({
-        id: i + 1,
-        name: f.name,
-        display_name: f.name,
-        database_type: "text",
-        semantic_type: f.isFK ? "type/FK" : null,
-        fk_target_field_id: null,
-        fk_target_table_id: null,
-      })),
-      sourceFieldIds: new Set<number>(),
-      targetFieldIds: new Set<number>(),
-      selfRefTargetFieldIds: new Set<number>(),
-    },
-    style: { width: 320, height: 200, opacity: 1 },
-  };
+  return makeFlowNode({
+    id,
+    name,
+    fields,
+    width: 320,
+    height: 200,
+    opacity: 1,
+  });
 }
 
 type SetupOpts = {
@@ -136,5 +122,19 @@ describe("SchemaViewerNodeSearch", () => {
     expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
     await userEvent.type(input, "{Escape}");
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  it("Cmd/Ctrl+F focuses the input and opens the dropdown", async () => {
+    setup();
+    const input = screen.getByPlaceholderText(/Jump to table/i);
+    expect(input).not.toHaveFocus();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+
+    // useHotkeys listens at the document level — dispatch the event there
+    // rather than on a specific element so the handler picks it up.
+    await userEvent.keyboard("{Meta>}f{/Meta}");
+
+    expect(input).toHaveFocus();
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
   });
 });

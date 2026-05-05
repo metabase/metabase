@@ -285,6 +285,10 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.57.2"} enable-schema-viewer?
+  "Should we allow users to view database schemas as ER diagrams?"
+  :schema-viewer)
+
 (define-premium-feature ^{:added "0.57.1"} enable-support-users?
   "Should users be allowed to enable support users in-app?"
   :support-users)
@@ -351,6 +355,7 @@
    :database_routing               (enable-database-routing?)
    :library                        (enable-library?)
    :dependencies                   (enable-dependencies?)
+   :schema-viewer                  (enable-schema-viewer?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
    :email_allow_list               (enable-email-allow-list?)

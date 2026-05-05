@@ -9,10 +9,43 @@ import { usePalette } from "metabase/common/hooks/use-palette";
 
 import type { SchemaViewerEdgeData, SchemaViewerFlowEdge } from "../../types";
 
-// Crow's foot geometry constants
+// Crow's foot (many-to-one symbol) geometry constants
 const GAP = 4;
 const W = 8;
 const H = 6;
+
+/**
+ * Build an SVG path that loops from a source handle on the right side of a
+ * table around to a target handle on the same table. The two endpoints share
+ * an x coordinate (the right edge of the table); the path bows out to the
+ * right by `SELF_REF_OFFSET` pixels.
+ */
+const SELF_REF_OFFSET = 50;
+const SELF_REF_RADIUS = 8;
+export function getSelfRefEdgePath({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+}: {
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+}): string {
+  const midX = Math.max(sourceX, targetX) + SELF_REF_OFFSET;
+  const r = SELF_REF_RADIUS;
+  const sourceTurn = sourceY < targetY ? r : -r;
+  const targetTurn = sourceY < targetY ? -r : r;
+  return [
+    `M ${sourceX} ${sourceY}`,
+    `L ${midX - r} ${sourceY}`,
+    `Q ${midX} ${sourceY} ${midX} ${sourceY + sourceTurn}`,
+    `L ${midX} ${targetY + targetTurn}`,
+    `Q ${midX} ${targetY} ${midX - r} ${targetY}`,
+    `L ${targetX} ${targetY}`,
+  ].join(" ");
+}
 
 type SymbolType = "one" | "many";
 
@@ -157,23 +190,15 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
     [stroke, strokeWidth, isHidden],
   );
 
-  // Compute edge path for both branches so hooks stay unconditional
   let edgePath: string;
 
   if (isSelfRef) {
-    const { sourceX, sourceY, targetX, targetY } = props;
-    const offset = 50;
-    const r = 8;
-    const midX = Math.max(sourceX, targetX) + offset;
-
-    edgePath = [
-      `M ${sourceX} ${sourceY}`,
-      `L ${midX - r} ${sourceY}`,
-      `Q ${midX} ${sourceY} ${midX} ${sourceY + (sourceY < targetY ? r : -r)}`,
-      `L ${midX} ${targetY + (sourceY < targetY ? -r : r)}`,
-      `Q ${midX} ${targetY} ${midX - r} ${targetY}`,
-      `L ${targetX} ${targetY}`,
-    ].join(" ");
+    edgePath = getSelfRefEdgePath({
+      sourceX: props.sourceX,
+      sourceY: props.sourceY,
+      targetX: props.targetX,
+      targetY: props.targetY,
+    });
   } else {
     [edgePath] = getSmoothStepPath({
       sourceX: props.sourceX,
@@ -194,14 +219,12 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
         stroke="transparent"
         strokeWidth={20}
         style={isHidden ? { visibility: "hidden" as const } : undefined}
-        className="react-flow__edge-interaction"
       />
       <path
         data-testid="schema-viewer-edge-path"
         d={edgePath}
         fill="none"
         style={style}
-        className="react-flow__edge-path"
       />
       {!isHidden && (
         <g data-testid="schema-viewer-edge-symbols">

@@ -97,6 +97,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
@@ -146,7 +147,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             to={Urls.dataStudioErdBase()}
             isSelected={currentTab === "schema-viewer"}
             showLabel={isNavbarOpened}
-            isGated={!hasDependenciesFeature}
+            isGated={!hasSchemaViewerFeature}
           />
           <DataStudioTab
             label={t`Glossary`}
