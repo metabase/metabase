@@ -458,9 +458,9 @@
                                                                       :with-databases true
                                                                       :with-tables    true
                                                                       :with-fields    true)
-              test-db    (m/find-first (comp #{"md-export-db"} :name) databases)
-              test-table (m/find-first (comp #{"people"}       :name) tables)
-              test-field (m/find-first (comp #{"id"}           :name) fields)]
+              test-db    (m/find-first (comp #{"md-export-db"}                          :id) databases)
+              test-table (m/find-first (comp #{["md-export-db" "PUBLIC" "people"]}      :id) tables)
+              test-field (m/find-first (comp #{["md-export-db" "PUBLIC" "people" "id"]} :id) fields)]
           (is (=? {:id "md-export-db" :name "md-export-db" :engine "h2"}
                   test-db))
           (is (=? {:id          ["md-export-db" "PUBLIC" "people"]
