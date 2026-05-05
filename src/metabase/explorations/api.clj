@@ -5,10 +5,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.documents.core :as documents]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -306,6 +308,12 @@
                                                               :prompt         prompt
                                                               :position       0}))
           tid         (:id thread)
+          _           (t2/insert! :model/Document
+                                  {:name                  "Findings"
+                                   :document              {:type "doc" :content []}
+                                   :content_type          documents/prose-mirror-content-type
+                                   :creator_id            api/*current-user-id*
+                                   :exploration_thread_id tid})
           metric-rows (when (seq metrics)
                         (t2/insert-returning-instances!
                          :model/ExplorationThreadMetric
@@ -367,6 +375,112 @@
                  {:left-join [:exploration_query_result
                               [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
                   :where     [:= :exploration_query.id query-id]}))
+
+(mr/def ::ExplorationDocument
+  "Schema for a document attached to an exploration thread."
+  [:map
+   [:id                    ms/PositiveInt]
+   [:name                  :string]
+   [:exploration_thread_id [:maybe ms/PositiveInt]]
+   [:creator_id            ms/PositiveInt]
+   [:content_type          :string]
+   [:created_at            {:optional true} [:maybe :any]]
+   [:updated_at            {:optional true} [:maybe :any]]])
+
+(def ^:private CreateExplorationDocument
+  [:map
+   [:name     ms/NonBlankString]
+   [:document {:optional true} :any]])
+
+(def ^:private document-summary-columns
+  [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
+
+(defn- get-thread-or-404
+  "Fetch the thread and its parent exploration, or 404."
+  [thread-id]
+  (api/check-404 (t2/select-one :model/ExplorationThread :id thread-id)))
+
+(defn- read-check-thread [thread-id]
+  (let [thread (get-thread-or-404 thread-id)]
+    (api/read-check (get-exploration-or-404 (:exploration_id thread)))
+    thread))
+
+(defn- write-check-thread [thread-id]
+  (let [thread (get-thread-or-404 thread-id)]
+    (api/write-check (get-exploration-or-404 (:exploration_id thread)))
+    thread))
+
+(api.macros/defendpoint :get "/thread/:thread-id/documents" :- [:sequential ::ExplorationDocument]
+  "List all documents owned by an exploration thread, ordered by creation time."
+  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  (read-check-thread thread-id)
+  (t2/select (into [:model/Document] document-summary-columns)
+             :exploration_thread_id thread-id
+             :archived false
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(api.macros/defendpoint :post "/thread/:thread-id/documents" :- ::ExplorationDocument
+  "Create an additional document on an exploration thread."
+  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]
+   _query-params
+   {:keys [name document]} :- CreateExplorationDocument]
+  (write-check-thread thread-id)
+  (let [doc-id (t2/insert-returning-pk! :model/Document
+                                        {:name                  name
+                                         :document              (or document {:type "doc" :content []})
+                                         :content_type          documents/prose-mirror-content-type
+                                         :creator_id            api/*current-user-id*
+                                         :exploration_thread_id thread-id})]
+    (t2/select-one (into [:model/Document] document-summary-columns) :id doc-id)))
+
+(defn- get-thread-document-or-404
+  "Fetch a document that belongs to the given thread, or 404."
+  [thread-id document-id]
+  (api/check-404 (t2/select-one :model/Document
+                                :id document-id
+                                :exploration_thread_id thread-id
+                                :archived false)))
+
+(defn- append-card-embed
+  "Append a `resizeNode` wrapping a `cardEmbed` to the end of a prose-mirror document body,
+  returning a structurally valid prose-mirror doc. The FE schema requires every `cardEmbed`
+  to live inside a `resizeNode`. Tolerates a missing/non-doc root by replacing it with an
+  empty doc."
+  [doc card-id]
+  (let [base  (if (and (map? doc) (= "doc" (:type doc)))
+                doc
+                {:type "doc" :content []})
+        embed {:type "resizeNode"
+               :content [{:type "cardEmbed" :attrs {:id card-id :name nil}}]}]
+    (update base :content (fnil conj []) embed)))
+
+(api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
+  "Append a chart from an `exploration_query` to a document owned by the thread. Materializes
+  a Card from the query's snapshot `dataset_query` (associated with the document via `document_id`)
+  and appends a `cardEmbed` node referencing the new card to the end of the document body."
+  [{:keys [thread-id document-id]} :- [:map
+                                       [:thread-id   ms/PositiveInt]
+                                       [:document-id ms/PositiveInt]]
+   _query-params
+   {:keys [exploration_query_id]} :- [:map [:exploration_query_id ms/PositiveInt]]]
+  (write-check-thread thread-id)
+  (let [doc        (get-thread-document-or-404 thread-id document-id)
+        eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
+        _          (api/check-404 (= thread-id (:exploration_thread_id eq)))
+        src-card   (api/check-404 (t2/select-one [:model/Card :name :database_id :display :visualization_settings]
+                                                 :id (:card_id eq)))
+        new-card   (queries/create-card!
+                    {:name                   (or (:name eq) (:name src-card))
+                     :type                   :question
+                     :dataset_query          (:dataset_query eq)
+                     :display                (or (some-> (:display eq) keyword) (:display src-card) :table)
+                     :visualization_settings (or (:visualization_settings eq) (:visualization_settings src-card) {})
+                     :collection_id          (:collection_id doc)
+                     :document_id            (:id doc)}
+                    @api/*current-user*)
+        new-body   (append-card-embed (:document doc) (:id new-card))]
+    (t2/update! :model/Document (:id doc) {:document new-body})
+    (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 
 (api.macros/defendpoint :get "/:id/queries" :- [:sequential ::ExplorationQuerySummary]
   "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —

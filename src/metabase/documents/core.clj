@@ -1,6 +1,7 @@
 (ns metabase.documents.core
   (:require
    [metabase.documents.api.document]
+   [metabase.documents.prose-mirror]
    [metabase.documents.recent-views]
    [potemkin :as p]))
 
@@ -10,4 +11,6 @@
 
 (p/import-vars
  [metabase.documents.api.document
-  get-document])
+  get-document]
+ [metabase.documents.prose-mirror
+  prose-mirror-content-type])

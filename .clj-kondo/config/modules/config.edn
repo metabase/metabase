@@ -976,6 +976,7 @@
    :uses #{api
            app-db
            contextual-interestingness
+           documents
            interestingness
            lib
            lib-be

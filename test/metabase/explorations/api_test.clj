@@ -629,6 +629,41 @@
                             {:user_interestingness 1})
       (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
 
+(deftest exploration-create-auto-creates-findings-document-test
+  (testing "POST / auto-creates a 'Findings' document owned by the new exploration's thread"
+    (mt/with-temp [:model/User u {:email "findings-auto@example.com"}]
+      (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
+            tid  (-> resp :threads first :id)
+            docs (t2/select :model/Document :exploration_thread_id tid)]
+        (is (= 1 (count docs)))
+        (is (= "Findings" (:name (first docs))))
+        (is (= (:id u) (:creator_id (first docs))))))))
+
+(deftest exploration-documents-list-and-create-test
+  (testing "GET/POST /thread/:thread-id/documents list and create additional documents"
+    (mt/with-temp [:model/User u {:email "docs-api@example.com"}]
+      (let [exp     (mt/user-http-request u :post 200 "exploration" {:name "doc host"})
+            tid     (-> exp :threads first :id)
+            url     (str "exploration/thread/" tid "/documents")
+            initial (mt/user-http-request u :get 200 url)]
+        (is (= ["Findings"] (mapv :name initial))
+            "Listing returns the auto-created Findings doc")
+        (let [created (mt/user-http-request u :post 200 url {:name "Notes"})]
+          (is (= "Notes" (:name created)))
+          (is (= tid (:exploration_thread_id created))))
+        (let [after (mt/user-http-request u :get 200 url)]
+          (is (= #{"Findings" "Notes"} (set (map :name after)))))))))
+
+(deftest exploration-documents-permissions-test
+  (testing "Other users can't list or add documents on someone else's exploration thread"
+    (mt/with-temp [:model/User owner {:email "doc-owner@example.com"}
+                   :model/User other {:email "doc-other@example.com"}]
+      (let [exp (mt/user-http-request owner :post 200 "exploration" {:name "private"})
+            tid (-> exp :threads first :id)
+            url (str "exploration/thread/" tid "/documents")]
+        (mt/user-http-request other :get 403 url)
+        (mt/user-http-request other :post 403 url {:name "sneaky"})))))
+
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"
     (mt/with-temp [:model/User u {:email "cd@example.com"}
