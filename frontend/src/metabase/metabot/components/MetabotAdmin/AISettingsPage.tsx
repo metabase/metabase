@@ -5,21 +5,19 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { useListMetabotsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase/metabot/constants";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { useRouter } from "metabase/router/useRouter";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
-import type { MetabotInfo } from "metabase-types/api";
 
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
@@ -35,18 +33,6 @@ const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
 
 const DEFAULT_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`;
 const EMBEDDED_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`;
-
-const INTERNAL_METABOT = {
-  id: FIXED_METABOT_IDS.DEFAULT,
-  entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
-  name: "Metabot",
-} as MetabotInfo;
-
-const EMBEDDED_METABOT = {
-  id: FIXED_METABOT_IDS.EMBEDDED,
-  entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
-  name: "Embedded Metabot",
-} as MetabotInfo;
 
 export function AISettingsPage() {
   const {
@@ -151,8 +137,12 @@ function MetabotSettingsSection({
   id: string;
   selectedTab: MetabotTabValue;
 }) {
-  const activeMetabot =
-    selectedTab === "embedded" ? EMBEDDED_METABOT : INTERNAL_METABOT;
+  const { data, isLoading, error } = useListMetabotsQuery();
+  const activeMetabotId =
+    selectedTab === "embedded"
+      ? FIXED_METABOT_IDS.EMBEDDED
+      : FIXED_METABOT_IDS.DEFAULT;
+  const activeMetabot = data?.items.find((m) => m.id === activeMetabotId);
   const showTabs = hasEmbedding;
 
   return (
@@ -180,7 +170,14 @@ function MetabotSettingsSection({
         </Tabs>
       )}
 
-      <MetabotSettingsPanel metabot={activeMetabot} />
+      {activeMetabot ? (
+        <MetabotSettingsPanel metabot={activeMetabot} />
+      ) : (
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error ? t`Error loading Metabot configuration` : null}
+        />
+      )}
     </SettingsSection>
   );
 }
