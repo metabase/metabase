@@ -22,7 +22,7 @@ async function openMenu() {
 
 describe("JobMoreMenu", () => {
   it("shows 'Disable' when the job is enabled", async () => {
-    setup({ job: createMockTransformJob({ disabled: false }) });
+    setup({ job: createMockTransformJob({ active: true }) });
     await openMenu();
     expect(
       await screen.findByRole("menuitem", { name: /Disable/ }),
@@ -33,7 +33,7 @@ describe("JobMoreMenu", () => {
   });
 
   it("shows 'Re-enable' when the job is disabled", async () => {
-    setup({ job: createMockTransformJob({ disabled: true }) });
+    setup({ job: createMockTransformJob({ active: false }) });
     await openMenu();
     expect(
       await screen.findByRole("menuitem", { name: /Re-enable/ }),
@@ -43,8 +43,8 @@ describe("JobMoreMenu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls the update mutation with disabled: true when disabling", async () => {
-    const { job } = setup({ job: createMockTransformJob({ disabled: false }) });
+  it("calls the update mutation with active: false when disabling", async () => {
+    const { job } = setup({ job: createMockTransformJob({ active: true }) });
     await openMenu();
     await userEvent.click(
       await screen.findByRole("menuitem", { name: /Disable/ }),
@@ -61,11 +61,11 @@ describe("JobMoreMenu", () => {
       `path:/api/transform-job/${job.id}`,
       { method: "PUT" },
     );
-    expect(await call?.request?.json()).toEqual({ disabled: true });
+    expect(await call?.request?.json()).toEqual({ active: false });
   });
 
-  it("calls the update mutation with disabled: false when enabling", async () => {
-    const { job } = setup({ job: createMockTransformJob({ disabled: true }) });
+  it("calls the update mutation with active: true when enabling", async () => {
+    const { job } = setup({ job: createMockTransformJob({ active: false }) });
     await openMenu();
     await userEvent.click(
       await screen.findByRole("menuitem", { name: /Re-enable/ }),
@@ -82,6 +82,6 @@ describe("JobMoreMenu", () => {
       `path:/api/transform-job/${job.id}`,
       { method: "PUT" },
     );
-    expect(await call?.request?.json()).toEqual({ disabled: false });
+    expect(await call?.request?.json()).toEqual({ active: true });
   });
 });

@@ -95,8 +95,8 @@ describe("JobListPage", () => {
   it("renders a Disabled badge only on disabled rows", async () => {
     await setup({
       jobs: [
-        createMockTransformJob({ id: 1, name: "Enabled job", disabled: false }),
-        createMockTransformJob({ id: 2, name: "Disabled job", disabled: true }),
+        createMockTransformJob({ id: 1, name: "Enabled job", active: true }),
+        createMockTransformJob({ id: 2, name: "Disabled job", active: false }),
       ],
     });
 
@@ -108,7 +108,7 @@ describe("JobListPage", () => {
 
   it("opens the row action menu without navigating to the detail page", async () => {
     const { history } = await setup({
-      jobs: [createMockTransformJob({ id: 1, name: "Job", disabled: false })],
+      jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
     });
 
     const row = await findRow(1);
@@ -122,7 +122,7 @@ describe("JobListPage", () => {
 
   it("disables a job from the row action menu without navigating", async () => {
     const { history } = await setup({
-      jobs: [createMockTransformJob({ id: 1, name: "Job", disabled: false })],
+      jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
     });
 
     const row = await findRow(1);
@@ -141,13 +141,13 @@ describe("JobListPage", () => {
     const call = fetchMock.callHistory.lastCall("path:/api/transform-job/1", {
       method: "PUT",
     });
-    expect(await call?.request?.json()).toEqual({ disabled: true });
+    expect(await call?.request?.json()).toEqual({ active: false });
     expect(history?.getCurrentLocation().pathname).toBe("/transforms/jobs");
   });
 
   it("deletes a job from the row action menu without visiting the detail page", async () => {
     const { history } = await setup({
-      jobs: [createMockTransformJob({ id: 1, name: "Job", disabled: false })],
+      jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
     });
     const visited: string[] = [];
     history?.listen((location) => visited.push(location.pathname));

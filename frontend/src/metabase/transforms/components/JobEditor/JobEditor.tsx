@@ -53,7 +53,7 @@ export function JobEditor({
               onChange={onNameChange}
               readOnly={readOnly}
             />
-            {job.disabled && <JobDisabledBadge />}
+            {!job.active && <JobDisabledBadge />}
           </Group>
         }
         py={0}

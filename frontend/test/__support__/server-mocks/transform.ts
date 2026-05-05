@@ -62,8 +62,8 @@ export function setupUpdateTransformJobEndpoint(job: TransformJob) {
   fetchMock.put(`path:/api/transform-job/${job.id}`, job);
 }
 
-export function setupBulkUpdateTransformJobsDisabledEndpoint(updated: number) {
-  fetchMock.put("path:/api/transform-job/disabled", { updated });
+export function setupBulkUpdateTransformJobsActiveEndpoint(updated: number) {
+  fetchMock.put("path:/api/transform-job/active", { updated });
 }
 
 export function setupRunTransformJobEndpoint(jobId: TransformJobId) {

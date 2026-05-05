@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useBulkUpdateTransformJobsDisabledMutation } from "metabase/api";
+import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -33,10 +33,10 @@ export function DisableAllJobsModal({
 }
 
 function DisableAllJobsForm({ onConfirm, onClose }: DisableAllJobsModalProps) {
-  const [bulkUpdate] = useBulkUpdateTransformJobsDisabledMutation();
+  const [bulkUpdate] = useBulkUpdateTransformJobsActiveMutation();
 
   const handleSubmit = async () => {
-    await bulkUpdate({ disabled: true }).unwrap();
+    await bulkUpdate({ active: false }).unwrap();
     onConfirm();
   };
 

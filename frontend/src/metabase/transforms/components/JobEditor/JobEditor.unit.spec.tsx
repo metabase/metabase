@@ -33,12 +33,12 @@ function setup({
 
 describe("JobEditor", () => {
   it("does not render a Disabled badge when the job is enabled", () => {
-    setup({ job: createMockTransformJob({ disabled: false }) });
+    setup({ job: createMockTransformJob({ active: true }) });
     expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
   });
 
   it("renders a Disabled badge when the job is disabled", () => {
-    setup({ job: createMockTransformJob({ disabled: true }) });
+    setup({ job: createMockTransformJob({ active: false }) });
     expect(screen.getByText("Disabled")).toBeInTheDocument();
   });
 });

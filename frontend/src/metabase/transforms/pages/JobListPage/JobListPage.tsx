@@ -69,11 +69,10 @@ export const JobListPage = () => {
           ) : null,
       },
       {
-        id: "disabled",
+        id: "active",
         header: "",
         width: 100,
-        cell: ({ row }) =>
-          row.original.disabled ? <JobDisabledBadge /> : null,
+        cell: ({ row }) => (!row.original.active ? <JobDisabledBadge /> : null),
       },
       {
         id: "actions",

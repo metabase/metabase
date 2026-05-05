@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useBulkUpdateTransformJobsDisabledMutation } from "metabase/api";
+import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Icon, Menu } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
@@ -15,14 +15,14 @@ type JobListMoreMenuProps = {
 
 export function JobListMoreMenu({ jobs }: JobListMoreMenuProps) {
   const [modalType, setModalType] = useState<JobListMoreMenuModalType>();
-  const [bulkUpdate] = useBulkUpdateTransformJobsDisabledMutation();
+  const [bulkUpdate] = useBulkUpdateTransformJobsActiveMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const hasEnabledJobs = jobs.some((job) => !job.disabled);
-  const hasDisabledJobs = jobs.some((job) => job.disabled);
+  const hasEnabledJobs = jobs.some((job) => job.active);
+  const hasDisabledJobs = jobs.some((job) => !job.active);
 
   const handleReEnableAll = async () => {
-    const { error } = await bulkUpdate({ disabled: false });
+    const { error } = await bulkUpdate({ active: true });
     if (error) {
       sendErrorToast(t`Failed to re-enable all jobs`);
     } else {

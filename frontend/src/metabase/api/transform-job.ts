@@ -135,13 +135,13 @@ export const transformJobApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform-job")]),
     }),
-    bulkUpdateTransformJobsDisabled: builder.mutation<
+    bulkUpdateTransformJobsActive: builder.mutation<
       { updated: number },
-      { disabled: boolean }
+      { active: boolean }
     >({
       query: (body) => ({
         method: "PUT",
-        url: "/api/transform-job/disabled",
+        url: "/api/transform-job/active",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -159,5 +159,5 @@ export const {
   useCreateTransformJobMutation,
   useUpdateTransformJobMutation,
   useDeleteTransformJobMutation,
-  useBulkUpdateTransformJobsDisabledMutation,
+  useBulkUpdateTransformJobsActiveMutation,
 } = transformJobApi;

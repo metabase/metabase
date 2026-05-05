@@ -22,21 +22,21 @@ export function JobMoreMenu({ job }: JobMoreMenuProps) {
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleToggleDisabled = async () => {
-    const nextDisabled = !job.disabled;
-    const { error } = await updateJob({ id: job.id, disabled: nextDisabled });
+    const nextActive = !job.active;
+    const { error } = await updateJob({ id: job.id, active: nextActive });
     if (error) {
       sendErrorToast(
-        nextDisabled ? t`Failed to disable job` : t`Failed to enable job`,
+        nextActive ? t`Failed to enable job` : t`Failed to disable job`,
       );
     } else {
-      sendSuccessToast(nextDisabled ? t`Job disabled` : t`Job enabled`);
+      sendSuccessToast(nextActive ? t`Job enabled` : t`Job disabled`);
     }
   };
 
   return (
     <>
       <JobMenu
-        isDisabled={job.disabled}
+        isDisabled={!job.active}
         onOpenModal={setModalType}
         onToggleDisabled={handleToggleDisabled}
       />
