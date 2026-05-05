@@ -383,10 +383,9 @@
 
 (defn- import-metadata-stream!
   "Reads `{ \"databases\": [...], \"tables\": [...], \"fields\": [...] }` from `is`
-  token-by-token and applies the contained metadata to the live schema. The
-  `databases` section is consumed and discarded (we never create or update
-  databases on import); `tables` and `fields` are staged and merged with
-  [[metadata/merge-tables!]] / [[metadata/merge-fields!]]."
+  token-by-token and applies the contained `tables` metadata to the live schema.
+  The `databases` and `fields` sections are consumed and discarded — only table
+  rows are staged and merged into `metabase_table` via [[metadata/merge-tables!]]."
   [^InputStream is]
   (with-open [^JsonParser parser (.createParser json-factory is)]
     (when-not (= JsonToken/START_OBJECT (.nextToken parser))
@@ -398,14 +397,10 @@
             (let [section (.getCurrentName parser)]
               (.nextToken parser) ; advance into the value
               (case section
-                "databases" (.skipChildren parser)
-                "tables"    (metadata/ingest-tables! (json-array-reducible parser))
-                "fields"    (metadata/ingest-fields! (json-array-reducible parser))
+                "tables" (metadata/ingest-tables! (json-array-reducible parser))
                 (.skipChildren parser))
               (recur))))
-        ;; Resolve and merge in dependency order. Databases are not touched.
-        (metadata/merge-tables!)
-        (metadata/merge-fields!)))))
+        (metadata/merge-tables!)))))
 
 (api.macros/defendpoint :post "/metadata/import"
   "Import warehouse metadata previously emitted by `GET /metadata/export`. The
@@ -414,8 +409,8 @@
   regardless of payload size.
 
   Notes:
-  - The `databases` section is ignored — we never create or update database
-    rows on import.
+  - Only the `tables` section is applied; `databases` and `fields` are
+    consumed and discarded.
   - To bypass the JSON-parsing request middleware (which would materialize the
     whole document up-front), send the request with a non-JSON `Content-Type`
     such as `application/octet-stream`.
