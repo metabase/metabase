@@ -213,7 +213,9 @@ export const SdkQuestionProvider = ({
             drillName: params.drillName,
             nextCard: params.nextCard,
           },
-          () => navigateToNewCard?.(params) ?? Promise.resolve(),
+          async () => {
+            await navigateToNewCard?.(params);
+          },
         );
       } else {
         await navigateToNewCard?.(params);
