@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.public-settings :as public-settings]
