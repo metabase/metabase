@@ -1,8 +1,7 @@
 (ns metabase-enterprise.data-complexity-score.cli
   "CLI entrypoint for computing the data complexity score against on-disk representations.
 
-  Intended for offline scoring in benchmarks, CI, or exploratory analysis where a live Metabase instance isn't
-  available.
+  Useful for offline scoring of benchmarks, CI, and explatory analysis.
 
   Invoke via:
 
