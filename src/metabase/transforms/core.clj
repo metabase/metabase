@@ -57,6 +57,7 @@
   initialize-job!
   update-job!
   delete-job!
+  delete-trigger!
   existing-trigger]
  [metabase.transforms.models.transform
   update-transform-tags!]
@@ -67,6 +68,8 @@
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job
+  activate-job!
+  deactivate-job!
   update-job-tags!]
  [metabase.transforms.models.transform-tag
   tag-name-exists?

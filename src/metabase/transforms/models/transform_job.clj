@@ -7,6 +7,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.schedule :as transforms.schedule]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
@@ -78,6 +79,22 @@
           last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
       (for [job jobs]
         (assoc job :last_run (get last-executions (:id job)))))))
+
+(defn activate-job!
+  "Activate a transform job: set `:active` to true and (re)create its Quartz trigger from the
+  job's stored schedule so cron firings begin again. Idempotent — calling on an already-active
+  job is a no-op."
+  [job-id]
+  (when (pos? (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
+    (transforms.schedule/initialize-job! (t2/select-one :model/TransformJob :id job-id))))
+
+(defn deactivate-job!
+  "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
+  firings stop. Manual runs via the API still work. Idempotent — calling on an already-inactive
+  job is a no-op."
+  [job-id]
+  (when (pos? (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
+    (transforms.schedule/delete-trigger! job-id)))
 
 (defn update-job-tags!
   "Update the tags associated with a job using smart diff logic.
@@ -184,7 +201,7 @@
 
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
-  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
+  {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
    :skip []
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
