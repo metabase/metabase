@@ -56,7 +56,7 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           port: ${{ secrets.PRODUCTION_SSH_PORT || 22 }}
           source: "deploy/docker-compose.yml,deploy/Caddyfile"
-          target: "/opt/collegiate-metabase"
+          target: "collegiate-metabase"
           strip_components: 1
 
       - name: Deploy on server
@@ -68,7 +68,7 @@ jobs:
           port: ${{ secrets.PRODUCTION_SSH_PORT || 22 }}
           script: |
             set -eu
-            cd /opt/collegiate-metabase
+            cd ~/collegiate-metabase
             umask 077
             cat > .env <<'ENV'
             IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}

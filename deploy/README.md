@@ -8,13 +8,12 @@ This deploy setup builds the custom Metabase image in GitHub Actions, pushes it 
 - DNS `A` record pointing your Metabase domain at the server.
 - Docker Engine with the `docker compose` plugin installed.
 - A deploy user that can run Docker commands.
-- Directory `/opt/collegiate-metabase` owned by the deploy user.
+- Directory `~/collegiate-metabase` available for the deploy user.
 
 Example server setup:
 
 ```bash
-sudo mkdir -p /opt/collegiate-metabase
-sudo chown "$USER:$USER" /opt/collegiate-metabase
+mkdir -p ~/collegiate-metabase
 ```
 
 ## GitHub Secrets
