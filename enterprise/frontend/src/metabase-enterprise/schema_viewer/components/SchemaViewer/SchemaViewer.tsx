@@ -347,13 +347,18 @@ export function SchemaViewer({
         />
 
         {isFetching && (
-          <Box className={S.centerLoader}>
+          <Box className={S.centerLoader} data-testid="schema-viewer-loader">
             <Loader />
           </Box>
         )}
         {error != null && (
           <Panel position="bottom-center">
-            <Stack align="center" justify="center" mb="xl">
+            <Stack
+              align="center"
+              justify="center"
+              mb="xl"
+              data-testid="schema-viewer-error"
+            >
               <Text c="text-secondary">
                 {getErrorMessage(error, t`Failed to load schema.`)}
               </Text>
@@ -362,7 +367,12 @@ export function SchemaViewer({
         )}
         {!hasDbSelected && !isFetching && error == null && (
           <Panel position="top-center">
-            <Stack align="center" justify="center" pt="xl">
+            <Stack
+              align="center"
+              justify="center"
+              pt="xl"
+              data-testid="schema-viewer-empty-state"
+            >
               <Text c="text-tertiary">{t`Pick a database to view its schema`}</Text>
             </Stack>
           </Panel>

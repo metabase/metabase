@@ -129,7 +129,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           }}
         />
       </Combobox.Target>
-      <Combobox.Dropdown p={0}>
+      <Combobox.Dropdown p={0} data-testid="schema-viewer-node-search-dropdown">
         {filteredItems.length === 0 ? (
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (

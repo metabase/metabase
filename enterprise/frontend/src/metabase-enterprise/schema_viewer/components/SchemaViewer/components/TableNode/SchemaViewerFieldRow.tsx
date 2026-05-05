@@ -174,7 +174,7 @@ export function SchemaViewerFieldRow({
         {field.name}
       </Box>
       {isExpanding ? (
-        <Loader size="xs" />
+        <Loader size="xs" data-testid="schema-viewer-field-row-loader" />
       ) : (
         <Box fz="sm" c="text-secondary" style={{ flexShrink: 0 }}>
           {field.database_type.toLowerCase()}
