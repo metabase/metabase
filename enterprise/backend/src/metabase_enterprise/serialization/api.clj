@@ -27,9 +27,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
-   [ring.core.protocols :as ring.protocols])
+   [ring.core.protocols :as ring.protocols]
+   [toucan2.core :as t2])
   (:import
-   (java.io ByteArrayOutputStream File)))
+   (com.fasterxml.jackson.core JsonFactory JsonParser JsonToken)
+   (com.fasterxml.jackson.databind ObjectMapper)
+   (java.io ByteArrayOutputStream File InputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -347,6 +350,94 @@
             (write-json-array! writer objects))
           entries))
   (.write writer "}"))
+
+;;; ----------------------------------- POST /api/ee/serialization/metadata/import -----------------------------------
+
+(defonce ^:private ^JsonFactory  json-factory  (JsonFactory.))
+(defonce ^:private ^ObjectMapper object-mapper (ObjectMapper.))
+
+(defn- json-array-reducible
+  "Returns an `IReduceInit` over the JSON objects of an array. The given
+  `parser` must be positioned at the array's `START_ARRAY` token; on completion
+  the parser is left at `END_ARRAY`. Single-use — each invocation advances the
+  parser, so the reducible cannot be re-reduced.
+
+  Each value is materialized via `ObjectMapper.readValue(parser, Map.class)`
+  which decodes one object at a time, leaving total memory bounded by one row."
+  [^JsonParser parser]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (loop [acc init]
+        (let [tok (.nextToken parser)]
+          (cond
+            (or (nil? tok) (= tok JsonToken/END_ARRAY))
+            acc
+
+            (= tok JsonToken/START_OBJECT)
+            (let [row  (.readValue object-mapper parser ^Class java.util.Map)
+                  acc' (rf acc row)]
+              (if (reduced? acc') @acc' (recur acc')))
+
+            :else
+            (throw (ex-info "Unexpected JSON token in array" {:token (str tok)}))))))))
+
+(defn- import-metadata-stream!
+  "Reads `{ \"databases\": [...], \"tables\": [...], \"fields\": [...] }` from `is`
+  token-by-token and applies the contained metadata to the live schema. The
+  `databases` section is consumed and discarded (we never create or update
+  databases on import); `tables` and `fields` are staged and merged with
+  [[metadata/merge-tables!]] / [[metadata/merge-fields!]]."
+  [^InputStream is]
+  (with-open [^JsonParser parser (.createParser json-factory is)]
+    (when-not (= JsonToken/START_OBJECT (.nextToken parser))
+      (throw (ex-info "Expected JSON object at top level" {:status 400})))
+    (t2/with-transaction [_]
+      (metadata/with-staging-tables
+        (loop []
+          (when (= JsonToken/FIELD_NAME (.nextToken parser))
+            (let [section (.getCurrentName parser)]
+              (.nextToken parser) ; advance into the value
+              (case section
+                "databases" (.skipChildren parser)
+                "tables"    (metadata/ingest-tables! (json-array-reducible parser))
+                "fields"    (metadata/ingest-fields! (json-array-reducible parser))
+                (.skipChildren parser))
+              (recur))))
+        ;; Resolve and merge in dependency order. Databases are not touched.
+        (metadata/merge-tables!)
+        (metadata/merge-fields!)))))
+
+(api.macros/defendpoint :post "/metadata/import"
+  "Import warehouse metadata previously emitted by `GET /metadata/export`. The
+  request body must be the JSON object `{ \"databases\": [...], \"tables\": [...],
+  \"fields\": [...] }`; sections are read incrementally so memory stays bounded
+  regardless of payload size.
+
+  Notes:
+  - The `databases` section is ignored — we never create or update database
+    rows on import.
+  - To bypass the JSON-parsing request middleware (which would materialize the
+    whole document up-front), send the request with a non-JSON `Content-Type`
+    such as `application/octet-stream`.
+  - Restricted to superusers."
+  [_route-params
+   _query-params
+   _body
+   {:keys [body], :as _request}]
+  (api/check-superuser)
+  (cond
+    (nil? body)
+    (throw (ex-info "Empty request body" {:status 400}))
+
+    (instance? InputStream body)
+    (do (import-metadata-stream! body)
+        {:status 200 :body {:success true}})
+
+    :else
+    (throw (ex-info (str "Expected a raw stream body. Send the request with a non-JSON "
+                         "Content-Type (e.g. application/octet-stream) so the JSON "
+                         "middleware does not pre-parse the payload.")
+                    {:status 415}))))
 
 (defn- write-databases-metadata!
   "Streams the databases/tables/fields metadata to the given OutputStream. Sections are

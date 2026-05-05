@@ -14,6 +14,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -718,6 +719,195 @@
               test-field (m/find-first (comp #{[db-name "PUBLIC" accessible-name fk-name]} :id) fields)]
           (is (some? test-field))
           (is (not (contains? test-field :fk_target_field_id))))))))
+
+;;; --------------------------------------- /metadata/import ---------------------------------------
+
+(defn- import-metadata!
+  "Helper: POST `payload` (a Clojure map) to /metadata/import as a streamed JSON
+  body. The map is JSON-encoded and sent with `application/octet-stream` so the
+  request middleware doesn't pre-parse it. We attach the encoded bytes via
+  `:request-options {:body ...}` rather than the test client's `http-body`
+  argument because the latter rejects raw strings."
+  ([payload]
+   (import-metadata! :crowberto 200 payload))
+  ([user expected-status payload]
+   (mt/user-http-request
+    user :post expected-status "ee/serialization/metadata/import"
+    {:request-options
+     {:headers {"content-type" "application/octet-stream"}
+      :body    (java.io.ByteArrayInputStream.
+                (.getBytes ^String (json/encode payload) "UTF-8"))}})))
+
+(deftest metadata-import-tables-insert-test
+  (testing "POST /api/ee/serialization/metadata/import — new tables on an existing database are inserted"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}]
+        (let [t-name (mt/random-name)]
+          (import-metadata! {:tables [{:id          [db-name "PUBLIC" t-name]
+                                       :db_id       db-name
+                                       :name        t-name
+                                       :schema      "PUBLIC"
+                                       :description "imported from metadata"}]
+                             :fields []})
+          (let [imported (t2/select-one :model/Table :db_id db-id :schema "PUBLIC" :name t-name)]
+            (is (=? {:db_id       db-id
+                     :schema      "PUBLIC"
+                     :name        t-name
+                     :description "imported from metadata"
+                     :active      true}
+                    imported))))))))
+
+(deftest metadata-import-tables-update-test
+  (testing "POST /api/ee/serialization/metadata/import — existing tables are updated when the description changed"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
+                     :model/Table    {t-id :id  t-name :name}  {:db_id db-id :schema "PUBLIC"
+                                                                :description "old"}]
+        (import-metadata! {:tables [{:id          [db-name "PUBLIC" t-name]
+                                     :db_id       db-name
+                                     :name        t-name
+                                     :schema      "PUBLIC"
+                                     :description "new"}]
+                           :fields []})
+        (is (= "new"
+               (t2/select-one-fn :description :model/Table t-id)))))))
+
+(deftest metadata-import-databases-section-ignored-test
+  (testing "POST /api/ee/serialization/metadata/import — the `databases` section is consumed and discarded"
+    (mt/with-premium-features #{:serialization}
+      (let [orphan-db-name (mt/random-name)]
+        (import-metadata! {:databases [{:id orphan-db-name :name orphan-db-name :engine "h2"}]
+                           :tables    []
+                           :fields    []})
+        (is (nil? (t2/select-one :model/Database :name orphan-db-name))
+            "no metabase_database row should be created")))))
+
+(deftest metadata-import-fields-insert-test
+  (testing "POST /api/ee/serialization/metadata/import — new fields on an existing table are inserted"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id  t-name  :name} {:db_id db-id :schema "PUBLIC"}]
+        (let [f-name (mt/random-name)]
+          (import-metadata! {:tables []
+                             :fields [{:id            [db-name "PUBLIC" t-name f-name]
+                                       :table_id      [db-name "PUBLIC" t-name]
+                                       :name          f-name
+                                       :base_type     "type/Integer"
+                                       :database_type "BIGINT"
+                                       :semantic_type "type/PK"
+                                       :description   "the id"}]})
+          (let [f (t2/select-one :model/Field :table_id t-id :name f-name)]
+            (is (=? {:table_id      t-id
+                     :name          f-name
+                     :base_type     :type/Integer
+                     :database_type "BIGINT"
+                     :semantic_type :type/PK
+                     :description   "the id"
+                     :active        true}
+                    f))))))))
+
+(deftest metadata-import-fields-update-test
+  (testing "POST /api/ee/serialization/metadata/import — existing fields' tracked columns are updated"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id  t-name  :name} {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {f-id  :id  f-name  :name} {:table_id t-id
+                                                                 :base_type :type/Integer
+                                                                 :description "old"}]
+        (import-metadata! {:tables []
+                           :fields [{:id            [db-name "PUBLIC" t-name f-name]
+                                     :table_id      [db-name "PUBLIC" t-name]
+                                     :name          f-name
+                                     :base_type     "type/Integer"
+                                     :database_type "BIGINT"
+                                     :semantic_type "type/PK"
+                                     :description   "new"}]})
+        (let [f (t2/select-one :model/Field f-id)]
+          (is (= "new" (:description f)))
+          (is (= :type/PK (:semantic_type f))))))))
+
+(deftest metadata-import-fields-parent-id-test
+  (testing "POST /api/ee/serialization/metadata/import — parent_id is resolved by nfc_path lookup"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id  t-name  :name} {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {parent-id :id parent-name :name}
+                     {:table_id  t-id
+                      :base_type :type/Text
+                      :nfc_path  ["data"]}]
+        (let [child-name (str "data " (mt/random-name))]
+          (import-metadata! {:tables []
+                             :fields [{:id            [db-name "PUBLIC" t-name parent-name]
+                                       :table_id      [db-name "PUBLIC" t-name]
+                                       :name          parent-name
+                                       :base_type     "type/Text"
+                                       :database_type "TEXT"
+                                       :nfc_path      ["data"]}
+                                      {:id            [db-name "PUBLIC" t-name "data" "city"]
+                                       :table_id      [db-name "PUBLIC" t-name]
+                                       :name          child-name
+                                       :base_type     "type/Text"
+                                       :database_type "TEXT"
+                                       :nfc_path      ["data" "city"]
+                                       :parent_id     [db-name "PUBLIC" t-name "data"]}]})
+          (let [child (t2/select-one :model/Field :table_id t-id :name child-name)]
+            (is (= parent-id (:parent_id child)))))))))
+
+(deftest metadata-import-fields-fk-target-test
+  (testing "POST /api/ee/serialization/metadata/import — fk_target_field_id is resolved through the dbs/tables/fields"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id  t-name  :name} {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {pk-id :id  pk-name :name} {:table_id t-id
+                                                                 :base_type :type/Integer
+                                                                 :semantic_type :type/PK}]
+        (let [fk-name (mt/random-name)]
+          (import-metadata! {:tables []
+                             :fields [{:id                 [db-name "PUBLIC" t-name pk-name]
+                                       :table_id           [db-name "PUBLIC" t-name]
+                                       :name               pk-name
+                                       :base_type          "type/Integer"
+                                       :database_type      "BIGINT"
+                                       :semantic_type      "type/PK"}
+                                      {:id                 [db-name "PUBLIC" t-name fk-name]
+                                       :table_id           [db-name "PUBLIC" t-name]
+                                       :name               fk-name
+                                       :base_type          "type/Integer"
+                                       :database_type      "BIGINT"
+                                       :semantic_type      "type/FK"
+                                       :fk_target_field_id [db-name "PUBLIC" t-name pk-name]}]})
+          (let [fk-field (t2/select-one :model/Field :table_id t-id :name fk-name)]
+            (is (= pk-id (:fk_target_field_id fk-field)))))))))
+
+(deftest metadata-import-roundtrip-test
+  (testing "POST /api/ee/serialization/metadata/import is the inverse of GET /metadata/export"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id t-name  :name} {:db_id db-id :schema "PUBLIC"
+                                                                :description "round trip"}
+                     :model/Field    _                          {:table_id t-id
+                                                                 :base_type :type/Integer
+                                                                 :database_type "BIGINT"
+                                                                 :semantic_type :type/PK}]
+        (let [exported (mt/user-http-request :crowberto :get 202
+                                             "ee/serialization/metadata/export"
+                                             :with-databases true
+                                             :with-tables    true
+                                             :with-fields    true)
+              before-tables (t2/count :model/Table :db_id db-id)
+              before-fields (t2/count :model/Field :table_id t-id)]
+          (import-metadata! exported)
+          (testing "no rows are added by a re-import of the same payload"
+            (is (= before-tables (t2/count :model/Table :db_id db-id)))
+            (is (= before-fields (t2/count :model/Field :table_id t-id))))
+          (testing "the table description is preserved"
+            (is (= "round trip" (t2/select-one-fn :description :model/Table t-id)))))))))
+
+(deftest metadata-import-superuser-test
+  (testing "POST /api/ee/serialization/metadata/import — non-admins get a 403"
+    (mt/with-premium-features #{:serialization}
+      (is (= "You don't have permissions to do that."
+             (import-metadata! :rasta 403 {:tables [] :fields []}))))))
 
 (deftest metadata-export-token-feature-test
   (testing "GET /api/ee/serialization/metadata/export requires the :serialization premium feature"

@@ -1,0 +1,124 @@
+## Permanent staging tables for the /api/ee/serialization/metadata/import endpoint.
+##
+## The import endpoint streams the JSON payload row-by-row into these tables, then
+## resolves portable references via JOINs and applies a split insert/update merge into
+## `metabase_table` and `metabase_field`. Rows are scoped to a single import by being
+## deleted at the start (and end) of the surrounding transaction; no `import_session_id`
+## is needed because the entire import runs inside one transaction with at most one
+## active import per app DB connection.
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.2026-05-04T00:00:01
+      author: alexpolyankin
+      comment: Create metabase_table_import staging table for /metadata/import
+      changes:
+        - createTable:
+            tableName: metabase_table_import
+            remarks: |
+              Per-import staging area for table metadata received by
+              POST /api/ee/serialization/metadata/import. Rows are inserted in
+              bulk, joined against `metabase_database` to resolve `db_id`, and
+              merged into `metabase_table`. Cleared inside the import transaction.
+            columns:
+              - column:
+                  name: db_name
+                  type: varchar(254)
+                  remarks: Portable database identifier (the database's name).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_schema
+                  type: varchar(254)
+                  remarks: Schema of the table; nullable to mirror metabase_table.schema.
+              - column:
+                  name: table_name
+                  type: varchar(254)
+                  remarks: Name of the table.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional human-readable description.
+
+  - changeSet:
+      id: v62.2026-05-04T00:00:02
+      author: alexpolyankin
+      comment: Create metabase_field_import staging table for /metadata/import
+      changes:
+        - createTable:
+            tableName: metabase_field_import
+            remarks: |
+              Per-import staging area for field metadata received by
+              POST /api/ee/serialization/metadata/import. Holds the portable
+              decomposition of each field plus its `parent_id` (as parent_nfc_path)
+              and `fk_target_field_id` (split into fk_*-prefixed columns) so the
+              merge SQL can resolve everything with simple JOINs.
+            columns:
+              - column:
+                  name: db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_schema
+                  type: varchar(254)
+              - column:
+                  name: table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: nfc_path
+                  type: varchar(254)
+                  remarks: JSON-encoded path; matches metabase_field.nfc_path verbatim.
+              - column:
+                  name: parent_nfc_path
+                  type: varchar(254)
+                  remarks: |
+                    JSON-encoded `(butlast nfc_path)`; used to resolve `parent_id`
+                    by matching against `metabase_field.nfc_path` of the parent.
+              - column:
+                  name: description
+                  type: ${text.type}
+              - column:
+                  name: base_type
+                  type: varchar(254)
+              - column:
+                  name: database_type
+                  type: varchar(254)
+              - column:
+                  name: effective_type
+                  type: varchar(254)
+              - column:
+                  name: semantic_type
+                  type: varchar(254)
+              - column:
+                  name: coercion_strategy
+                  type: varchar(254)
+              - column:
+                  name: fk_db_name
+                  type: varchar(254)
+                  remarks: First element of the portable fk_target_field_id.
+              - column:
+                  name: fk_table_schema
+                  type: varchar(254)
+              - column:
+                  name: fk_table_name
+                  type: varchar(254)
+              - column:
+                  name: fk_field_name
+                  type: varchar(254)
+                  remarks: |
+                    Set when the FK target's portable id has length 4 (target has no nfc_path).
+              - column:
+                  name: fk_field_nfc_path
+                  type: varchar(254)
+                  remarks: |
+                    Set when the FK target's portable id has length > 4 (target is a nested field).
