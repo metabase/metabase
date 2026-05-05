@@ -128,11 +128,27 @@
                 [{:entity_id "any" :type nil}
                  {:entity_id "kid" :parent_id "any"}])))))
 
+(deftest ^:parallel ->table-entity-default-flag-handling-test
+  (testing "->table-entity treats missing/nil :active and :archived as the documented defaults"
+    ;; Field.active defaults to true → only explicit `false` drops the field.
+    ;; Measure.archived defaults to false → only explicit `true` drops the measure.
+    (let [entity (#'representation/->table-entity
+                  {:table    {:db_id "db" :schema "s" :name "t"}
+                   :fields   [{}                ; missing  → counted (active default true)
+                              {:active true}    ; true     → counted
+                              {:active false}   ; false    → dropped
+                              {:active nil}]    ; nil      → counted (treat as default)
+                   :measures [{:name "m-missing"}                ; missing  → kept
+                              {:name "m-true"   :archived true}  ; true     → dropped
+                              {:name "m-false"  :archived false} ; false    → kept
+                              {:name "m-nil"    :archived nil}]})] ; nil    → kept (treat as default)
+      (is (= 3 (:field-count entity)))
+      (is (= ["m-missing" "m-false" "m-nil"] (:measure-names entity))))))
+
 (deftest ^:parallel list-table-dirs-schema-less-branch-test
   (testing "list-table-dirs picks up tables under <db>/tables/ (schema-less, e.g. MongoDB exports)"
     (let [tmp-dir   (empty-tmp-dir "schema-less-")
           table-dir (io/file tmp-dir "tables/widgets")]
-      (io/make-parents (io/file table-dir "placeholder"))
       (.mkdirs table-dir)
       (let [dirs (#'representation/list-table-dirs tmp-dir)]
         (is (= [(.getCanonicalPath table-dir)] (mapv #(.getCanonicalPath ^java.io.File %) dirs))))))
