@@ -110,6 +110,57 @@ export interface ExplorationDocument {
   name: string;
 }
 
+export type ExplorationQueryGroupId = string;
+
+export interface ExplorationQueryGroup {
+  id: ExplorationQueryGroupId;
+  parent_group_id: ExplorationQueryGroupId | null;
+  position: number;
+  type: "auto";
+  name: string | null;
+  query_ids: ExplorationQueryId[];
+}
+
+/**
+ * Combined status for a group of queries:
+ * - `running` while any query is still pending or running
+ * - `error` once every query has settled and at least one errored
+ * - `done` once every query has settled and none errored
+ */
+export type ExplorationQueryGroupStatus = "running" | "error" | "done";
+
+export function getExplorationQueryGroupStatus(
+  queries: ExplorationQuery[],
+): ExplorationQueryGroupStatus {
+  if (
+    queries.length === 0 ||
+    queries.some((q) => !isSettledExplorationQueryStatus(q.status))
+  ) {
+    return "running";
+  }
+  if (queries.some((q) => q.status === "error")) {
+    return "error";
+  }
+  return "done";
+}
+
+/**
+ * Highest `interestingness_score` across the queries in a group, with `null`
+ * scores ignored. Returns `null` when no query has a score yet.
+ */
+export function getExplorationQueryGroupInterestingness(
+  queries: ExplorationQuery[],
+): number | null {
+  let max: number | null = null;
+  for (const q of queries) {
+    const score = q.interestingness_score;
+    if (score != null && (max == null || score > max)) {
+      max = score;
+    }
+  }
+  return max;
+}
+
 export interface ExplorationThread {
   id: ExplorationThreadId;
   exploration_id: ExplorationId;
@@ -125,6 +176,7 @@ export interface ExplorationThread {
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
   documents?: ExplorationDocument[];
+  groups?: ExplorationQueryGroup[] | null;
 }
 
 export interface ExplorationCreator {

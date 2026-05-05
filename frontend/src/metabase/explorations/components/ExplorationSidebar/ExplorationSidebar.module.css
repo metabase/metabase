@@ -2,6 +2,10 @@
   overflow-y: auto;
 }
 
+.threadGroupList {
+  overflow-y: auto;
+}
+
 .errorTooltip {
   overflow-wrap: break-word;
 }
@@ -29,4 +33,8 @@
 .interestingnessIndicator {
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.groupQueries {
+  padding-left: 1.25rem;
 }

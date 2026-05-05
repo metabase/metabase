@@ -4,6 +4,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   Exploration,
   ExplorationQuery,
+  ExplorationQueryGroup,
   ExplorationQueryStatus,
   ThreadsWithSortedQueries,
 } from "metabase-types/api";
@@ -33,11 +34,29 @@ function createQuery(
   };
 }
 
-function createExploration(queries: ExplorationQuery[]): {
+interface CreateExplorationOpts {
+  queries: ExplorationQuery[];
+  groups?: ExplorationQueryGroup[];
+}
+
+function createExploration({ queries, groups }: CreateExplorationOpts): {
   exploration: Exploration;
   threadsWithSortedQueries: ThreadsWithSortedQueries[];
 } {
-  // TODO: sort queries
+  // Default to one auto-group per query so each query renders as a flat row
+  // (single-query groups skip the collapsible wrapper). Tests that need
+  // multi-query groups pass `groups` explicitly.
+  const finalGroups: ExplorationQueryGroup[] =
+    groups ??
+    queries.map((q, i) => ({
+      id: `auto:1:dim-${q.id}`,
+      parent_group_id: null,
+      position: i,
+      type: "auto" as const,
+      name: q.name,
+      query_ids: [q.id],
+    }));
+
   const threads = [
     {
       id: 1,
@@ -50,6 +69,7 @@ function createExploration(queries: ExplorationQuery[]): {
       created_at: "2026-04-30T00:00:00Z",
       updated_at: "2026-04-30T00:00:00Z",
       queries,
+      groups: finalGroups,
     },
   ];
 
@@ -70,13 +90,17 @@ function createExploration(queries: ExplorationQuery[]): {
 
 interface SetupOpts {
   queries: ExplorationQuery[];
+  groups?: ExplorationQueryGroup[];
   selectedQueryId?: number | null;
 }
 
-function setup({ queries, selectedQueryId = null }: SetupOpts) {
+function setup({ queries, groups, selectedQueryId = null }: SetupOpts) {
   const setSelectedQueryId = jest.fn();
 
-  const { exploration, threadsWithSortedQueries } = createExploration(queries);
+  const { exploration, threadsWithSortedQueries } = createExploration({
+    queries,
+    groups,
+  });
 
   renderWithProviders(
     <ExplorationSidebar
@@ -161,5 +185,208 @@ describe("ExplorationSidebar", () => {
 
     expect(getRow("Revenue by region")).toHaveAttribute("aria-pressed", "true");
     expect(getRow("Revenue by plan")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  describe("query groups", () => {
+    const planQueries: ExplorationQuery[] = [
+      createQuery({ id: 11, name: "Revenue by plan (all)", status: "done" }),
+      createQuery({
+        id: 12,
+        name: "Revenue by plan (US)",
+        status: "done",
+      }),
+    ];
+    const regionQueries: ExplorationQuery[] = [
+      createQuery({ id: 21, name: "Revenue by region (all)", status: "done" }),
+      createQuery({
+        id: 22,
+        name: "Revenue by region (EU)",
+        status: "done",
+      }),
+    ];
+    const groups: ExplorationQueryGroup[] = [
+      {
+        id: "auto:1:plan",
+        parent_group_id: null,
+        position: 0,
+        type: "auto",
+        name: "Revenue by plan",
+        query_ids: planQueries.map((q) => q.id),
+      },
+      {
+        id: "auto:1:region",
+        parent_group_id: null,
+        position: 1,
+        type: "auto",
+        name: "Revenue by region",
+        query_ids: regionQueries.map((q) => q.id),
+      },
+    ];
+
+    it("renders one collapsible header per multi-query group; expanded panel shows the queries", async () => {
+      const { setSelectedQueryId } = setup({
+        queries: [...planQueries, ...regionQueries],
+        groups,
+      });
+
+      // Headers are visible and report collapsed by default.
+      const planHeader = screen.getByRole("button", {
+        name: /Revenue by plan/,
+      });
+      const regionHeader = screen.getByRole("button", {
+        name: /Revenue by region/,
+      });
+      expect(planHeader).toHaveAttribute("aria-expanded", "false");
+      expect(regionHeader).toHaveAttribute("aria-expanded", "false");
+
+      // Bodies are hidden by default.
+      expect(
+        screen.queryByText("Revenue by plan (all)"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Revenue by region (all)"),
+      ).not.toBeInTheDocument();
+
+      // Expand the plan group → its queries become visible AND the first
+      // query gets selected.
+      await userEvent.click(planHeader);
+      expect(planHeader).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByText("Revenue by plan (all)")).toBeInTheDocument();
+      expect(setSelectedQueryId).toHaveBeenLastCalledWith(planQueries[0].id);
+      expect(
+        screen.queryByText("Revenue by region (all)"),
+      ).not.toBeInTheDocument();
+
+      // Collapse the plan group → its queries hide.
+      await userEvent.click(planHeader);
+      expect(planHeader).toHaveAttribute("aria-expanded", "false");
+      expect(
+        screen.queryByText("Revenue by plan (all)"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("single-query groups render the lone query directly without a group header", () => {
+      const onlyQuery = createQuery({
+        id: 99,
+        name: "Solo dimension",
+        status: "done",
+      });
+      setup({
+        queries: [onlyQuery],
+        groups: [
+          {
+            id: "auto:1:solo",
+            parent_group_id: null,
+            position: 0,
+            type: "auto",
+            name: "Solo dimension",
+            query_ids: [onlyQuery.id],
+          },
+        ],
+      });
+
+      // The query row is visible directly — no expandable header for the group.
+      expect(getRow("Solo dimension")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { expanded: false }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("group header status reflects the worst case across its queries", () => {
+      const runningGroupQueries = [
+        createQuery({ id: 1001, name: "Q1", status: "pending" }),
+        createQuery({ id: 1002, name: "Q2", status: "done" }),
+      ];
+      const errorGroupQueries = [
+        createQuery({ id: 2001, name: "Q3", status: "done" }),
+        createQuery({
+          id: 2002,
+          name: "Q4",
+          status: "error",
+          error_message: "boom",
+        }),
+      ];
+      const doneGroupQueries = [
+        createQuery({ id: 3001, name: "Q5", status: "done" }),
+        createQuery({ id: 3002, name: "Q6", status: "done" }),
+      ];
+      const statusGroups: ExplorationQueryGroup[] = [
+        {
+          id: "g-running",
+          parent_group_id: null,
+          position: 0,
+          type: "auto",
+          name: "Still running",
+          query_ids: runningGroupQueries.map((q) => q.id),
+        },
+        {
+          id: "g-error",
+          parent_group_id: null,
+          position: 1,
+          type: "auto",
+          name: "Has an error",
+          query_ids: errorGroupQueries.map((q) => q.id),
+        },
+        {
+          id: "g-done",
+          parent_group_id: null,
+          position: 2,
+          type: "auto",
+          name: "All settled",
+          query_ids: doneGroupQueries.map((q) => q.id),
+        },
+      ];
+
+      setup({
+        queries: [
+          ...runningGroupQueries,
+          ...errorGroupQueries,
+          ...doneGroupQueries,
+        ],
+        groups: statusGroups,
+      });
+
+      const runningHeader = screen.getByRole("button", {
+        name: /Still running/,
+      });
+      const errorHeader = screen.getByRole("button", {
+        name: /Has an error/,
+      });
+      const doneHeader = screen.getByRole("button", { name: /All settled/ });
+
+      expect(
+        within(runningHeader).getByLabelText("Generating chart…"),
+      ).toBeInTheDocument();
+      expect(
+        within(errorHeader).getByLabelText("Failed to generate chart"),
+      ).toBeInTheDocument();
+      expect(
+        within(doneHeader).getByLabelText("Chart ready"),
+      ).toBeInTheDocument();
+    });
+
+    it("auto-expands the group containing the selected query", () => {
+      setup({
+        queries: [...planQueries, ...regionQueries],
+        groups,
+        selectedQueryId: regionQueries[0].id,
+      });
+
+      const planHeader = screen.getByRole("button", {
+        name: /Revenue by plan/,
+      });
+      const regionHeader = screen.getByRole("button", {
+        name: /Revenue by region/,
+      });
+
+      // The region group contains the selection so it auto-opens; the
+      // plan group stays collapsed.
+      expect(regionHeader).toHaveAttribute("aria-expanded", "true");
+      expect(planHeader).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByText("Revenue by region (all)")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Revenue by plan (all)"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
