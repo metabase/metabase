@@ -17,7 +17,9 @@
     Pool
     Pools)
    (java.io Closeable File)
-   (java.nio.file FileSystems)
+   (java.net URI)
+   (java.nio.file AccessMode DirectoryStream$Filter Files FileSystems LinkOption OpenOption Path)
+   (java.nio.file.attribute FileAttribute)
    (java.time Duration)
    (java.util.concurrent TimeUnit TimeoutException)
    (org.graalvm.polyglot Context HostAccess)
@@ -121,10 +123,40 @@
 
 ;;; -------------------------------------------------- Python path delay --------------------------------------------------
 
+(defn- nio-polyglot-fs
+  "Wrap a NIO `java.nio.file.FileSystem` as a polyglot `FileSystem`, routing reads to
+  `Files/newByteChannel` instead of the provider's `newFileChannel`.
+
+  The stock wrapper triggers ZipFileSystem to extract deflated entries to a temp file beside the jar,
+  which fails when the jar's parent directory isn't writable (e.g. non-root in a Kubernetes pod).
+  See https://github.com/metabase/metabase/issues/73541."
+  ^FileSystem [^java.nio.file.FileSystem nio-fs]
+  (let [provider (.provider nio-fs)]
+    (reify FileSystem
+      (^Path parsePath [_ ^URI uri]    (.getPath provider uri))
+      (^Path parsePath [_ ^String s]   (.getPath nio-fs s (into-array String [])))
+      (checkAccess [_ p modes opts]
+        (if (.isEmpty ^java.util.Set modes)
+          (when-not (Files/exists ^Path p ^"[Ljava.nio.file.LinkOption;" opts)
+            (throw (java.nio.file.NoSuchFileException. (str p))))
+          (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes))))
+      (createDirectory [_ p attrs]   (Files/createDirectory ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
+      (delete [_ p]                  (Files/delete ^Path p))
+      (newByteChannel [_ p opts attrs]
+        (Files/newByteChannel ^Path p
+                              ^java.util.Set opts
+                              ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
+      (newDirectoryStream [_ dir filter]
+        (Files/newDirectoryStream ^Path dir ^DirectoryStream$Filter filter))
+      (toAbsolutePath [_ p]          (.toAbsolutePath ^Path p))
+      (toRealPath [_ p opts]         (.toRealPath ^Path p ^"[Ljava.nio.file.LinkOption;" opts))
+      (readAttributes [_ p attrs opts]
+        (Files/readAttributes ^Path p ^String attrs ^"[Ljava.nio.file.LinkOption;" opts)))))
+
 (defn- read-only-polyglot-fs
   "Wrap an NIO `java.nio.file.FileSystem` as a read-only polyglot FileSystem suitable for GraalPy."
   ^FileSystem [^java.nio.file.FileSystem nio-fs]
-  (-> nio-fs FileSystem/newFileSystem FileSystem/newReadOnlyFileSystem))
+  (-> nio-fs nio-polyglot-fs FileSystem/newReadOnlyFileSystem))
 
 (defonce ^:private
   ^{:doc "A read-only polyglot FileSystem and the PythonPath within it.
