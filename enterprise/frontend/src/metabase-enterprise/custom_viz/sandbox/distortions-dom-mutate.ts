@@ -46,7 +46,9 @@ if (shadowInnerHTMLDescriptor?.set) {
 }
 
 const PURIFY_CONFIG = {
-  FORBID_TAGS: ["form", "a", "style", "frame"],
+  // `<area>` is a hidden anchor (href/target/download), and `<map>` only
+  // exists to host `<area>` — both same threat class as `<a>`.
+  FORBID_TAGS: ["form", "a", "style", "frame", "map", "area"],
   FORBID_ATTR: ["target", "formaction", "action"],
   ALLOWED_URI_REGEXP:
     /^(?:#|\/|https?:|data:image\/(?:png|jpeg|gif|svg\+xml|webp);)/i,
@@ -94,6 +96,10 @@ const BLOCKED_TAGS = new Set([
   "frame",
   "form",
   "a",
+  // `<area>` is a hidden anchor (href/target/download navigation) and
+  // `<map>` only exists as its container — same threat class as `<a>`.
+  "map",
+  "area",
   // CSS-based exfiltration (`@font-face { src: url(...) }`,
   // `background-image: url(...)`) until CSP font-src/img-src is tightened
   // (GDGT-2373). DOMPurify already strips `<style>` from sanitized HTML, but
