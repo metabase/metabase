@@ -165,8 +165,9 @@
                               {:name "m-true"   :archived true}  ; true     → dropped
                               {:name "m-false"  :archived false} ; false    → kept
                               {:name "m-nil"    :archived nil}]})] ; nil    → kept (treat as default)
-      (is (= 3 (:field-count entity)))
-      (is (= ["m-missing" "m-false" "m-nil"] (:measure-names entity))))))
+      (is (=? {:field-count   3
+               :measure-names ["m-missing" "m-false" "m-nil"]}
+              entity)))))
 
 (deftest ^:parallel list-table-dirs-schema-less-branch-test
   (testing "list-table-dirs picks up tables under <db>/tables/ (schema-less, e.g. MongoDB exports)"
