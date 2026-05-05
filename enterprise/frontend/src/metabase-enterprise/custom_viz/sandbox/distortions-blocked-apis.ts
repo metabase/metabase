@@ -123,10 +123,7 @@ for (const key of NAVIGATOR_BLOCKED_GETTERS) {
 }
 block(method(Navigator.prototype, "share"), "Navigator.share");
 
-// Location & History
-block(method(Location.prototype, "assign"), "Location.assign");
-block(method(Location.prototype, "reload"), "Location.reload");
-block(setter(Location.prototype, "href"), "Location.set href");
+// History
 block(method(History.prototype, "pushState"), "History.pushState");
 block(method(History.prototype, "replaceState"), "History.replaceState");
 block(method(History.prototype, "go"), "History.go");
@@ -177,6 +174,18 @@ block(
 
 /**
  * Intentionally left out:
+ *
+ * Location — `window.location` itself is `[LegacyUnforgeable]`,
+ * the Location attributes (`href`, `pathname`) are
+ * also `[LegacyUnforgeable]` so they live on every Location instance rather
+ * than on `Location.prototype`, AND `near-membrane-dom` runs the plugin in a
+ * sandbox iframe with its own `Location` instance — so neither
+ * `Location.prototype` distortions nor host instance descriptors match the
+ * references the plugin sees. We rely on the iframe sandbox to keep Location
+ * operations contained: the plugin can read/navigate its own iframe's
+ * Location, but the host page stays put. The
+ * `plugin location operations do not navigate the host` e2e test verifies
+ * that boundary.
  *
  * `OffscreenCanvas`. The main "escape hatch" is `transferControlToOffscreen()`
  * + sending it to a Worker so rendering happens off-thread but Worker/SharedWorker

