@@ -344,13 +344,10 @@
   "Honeysql predicate matching an `metabase_table_import` row aliased `:it` to a
   `metabase_table` row aliased `:t` (or unaliased) on (db_id, schema, name)."
   [t-alias]
-  (let [t-id     (keyword (str (name t-alias) ".db_id"))
-        t-schema (keyword (str (name t-alias) ".schema"))
-        t-name   (keyword (str (name t-alias) ".name"))]
-    [:and
-     [:= t-id     :d.id]
-     [:= (ce t-schema) (ce :it.table_schema)]
-     [:= t-name   :it.table_name]]))
+  [:and
+   [:= (u/qualified-key t-alias :db_id) :d.id]
+   [:= (ce (u/qualified-key t-alias :schema)) (ce :it.table_schema)]
+   [:= (u/qualified-key t-alias :name)  :it.table_name]])
 
 (defn- insert-new-tables! []
   (t2/query
@@ -414,11 +411,9 @@
   Match is on (table_id, name); the matching table_id is derived via JOIN
   through `metabase_database d` and `metabase_table t`."
   [f-alias]
-  (let [f-table (keyword (str (name f-alias) ".table_id"))
-        f-name  (keyword (str (name f-alias) ".name"))]
-    [:and
-     [:= f-table :t.id]
-     [:= f-name  :if_.field_name]]))
+  [:and
+   [:= (u/qualified-key f-alias :table_id) :t.id]
+   [:= (u/qualified-key f-alias :name)     :if_.field_name]])
 
 (defn- field-resolved-base
   "Honeysql FROM/JOIN snippet that resolves `metabase_field_import` rows to their live
