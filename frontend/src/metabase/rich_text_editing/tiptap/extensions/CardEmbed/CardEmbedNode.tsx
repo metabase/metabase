@@ -46,18 +46,17 @@ import {
   Ellipsified,
   Flex,
   Icon,
-  Loader,
   Menu,
   Text,
   TextInput,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import { getUrl } from "metabase-lib/v1/urls";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
@@ -70,6 +69,7 @@ import CS from "../extensions.module.css";
 import { NativeQueryModal } from "../shared/NativeQueryModal";
 import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 
+import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
@@ -366,7 +366,7 @@ export const CardEmbedComponent = memo(
             isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
-          const url = getUrl(question, { includeDisplayIsLocked: true });
+          const url = Urls.question(question);
           dispatch(navigateToCardFromDocument(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
@@ -431,17 +431,14 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-primary" fw={700}>
+                  <Text size="md" c="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
               </Flex>
             </Box>
-            <Box className={styles.questionResults}>
-              <Box className={styles.loadingContainer}>
-                <Loader />
-              </Box>
-            </Box>
+
+            <CardEmbedLoadingState />
           </Box>
         </NodeViewWrapper>
       );

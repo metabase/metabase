@@ -54,7 +54,7 @@
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "number-style (non-currency)"
-        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-style "decimal"})))
+        (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-style "decimal"})))
         (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
         (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"})))))))
 
@@ -92,23 +92,23 @@
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Thousands separator can be omitted"
-          (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."}))))))))
+          (is (= ["###0" "###0.##########"]   (format-string {::mb.viz/number-separators "."}))))))))
 
 (deftest format-settings->format-string-test-2b4
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Custom separators are not supported"
-          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
-          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
-          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))))))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ", "})))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ".,"})))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ".’"}))))))))
 
 (deftest format-settings->format-string-test-2c
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export
-        (is (= ["#,##0" "#,##0.##"]
+        (is (= ["#,##0" "#,##0.##########"]
                (format-string {::mb.viz/scale 2})))
         (is (= "#,##0.00"
                (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2})))))))
@@ -119,13 +119,13 @@
       (testing "Prefix and suffix"
         (testing "Prefix/suffix on general number format"
           (is (= ["\"prefix\"#,##0"
-                  "\"prefix\"#,##0.##"]
+                  "\"prefix\"#,##0.##########"]
                  (format-string {::mb.viz/prefix "prefix"})))
           (is (= ["#,##0\"suffix\""
-                  "#,##0.##\"suffix\""]
+                  "#,##0.##########\"suffix\""]
                  (format-string {::mb.viz/suffix "suffix"})))
           (is (= ["\"prefix\"#,##0\"suffix\""
-                  "\"prefix\"#,##0.##\"suffix\""]
+                  "\"prefix\"#,##0.##########\"suffix\""]
                  (format-string {::mb.viz/prefix "prefix",
                                  ::mb.viz/suffix "suffix"}))))))))
 
@@ -459,7 +459,7 @@
 (deftest export-format-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
-      (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
+      (is (= [["#,##0"] ["#,##0.##########"] ["#,##0"] ["#,##0.##########"] ["#,##0"] ["#,##0.##########"]]
              (rest (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]

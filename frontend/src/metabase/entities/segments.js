@@ -52,22 +52,12 @@ export const Segments = createEntity({
   },
 
   objectActions: {
-    setArchived: (
-      { id },
-      archived,
-      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
-    ) => Segments.actions.update({ id }, { archived, revision_message }),
-
     // NOTE: DELETE not currently implemented
     delete: null,
   },
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).segment(entityId),
-  },
-
-  objectSelectors: {
-    getName: (segment) => segment && segment.name,
   },
 });
 

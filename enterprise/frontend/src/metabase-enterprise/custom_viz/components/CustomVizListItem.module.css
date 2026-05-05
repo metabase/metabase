@@ -15,7 +15,3 @@
 .customVizListItem:hover .menuContainer {
   visibility: visible;
 }
-
-.customVizItemUrl:hover {
-  text-decoration: underline;
-}

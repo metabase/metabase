@@ -1,11 +1,9 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
-  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
@@ -16,24 +14,14 @@ import { useCreateDevCustomVizPluginMutation } from "metabase-enterprise/api";
 
 type FormState = {
   devBundleUrl: string;
-  acknowledgedRisk: boolean;
 };
 
-const initialValues: FormState = { devBundleUrl: "", acknowledgedRisk: false };
+const DEFAULT_DEV_BUNDLE_URL = "http://localhost:5174";
+
+const initialValues: FormState = { devBundleUrl: DEFAULT_DEV_BUNDLE_URL };
 
 export function AddDevCustomVizForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
-
-  const validationSchema = useMemo(
-    () =>
-      Yup.object({
-        acknowledgedRisk: Yup.boolean().oneOf(
-          [true],
-          t`You must acknowledge the security risk before proceeding.`,
-        ),
-      }),
-    [],
-  );
 
   const handleSubmit = useCallback(
     (values: FormState) =>
@@ -45,30 +33,22 @@ export function AddDevCustomVizForm() {
 
   return (
     <SettingsSection>
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={validationSchema}
-        onSubmit={handleSubmit}
-      >
-        {({ dirty }) => (
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+        {({ values }) => (
           <Form>
             <Stack gap="lg">
               <FormTextInput
                 name="devBundleUrl"
                 label={t`Dev server URL`}
                 description={t`URL of the local dev server serving the visualization bundle, manifest, and assets.`}
-                placeholder="http://localhost:5174"
+                placeholder={DEFAULT_DEV_BUNDLE_URL}
                 autoFocus
-              />
-              <FormCheckbox
-                name="acknowledgedRisk"
-                label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
               />
               <FormErrorMessage />
               <Group justify="flex-end">
                 <FormSubmitButton
-                  label={t`Add`}
-                  disabled={!dirty}
+                  label={t`Enable`}
+                  disabled={!values.devBundleUrl}
                   variant="filled"
                 />
               </Group>

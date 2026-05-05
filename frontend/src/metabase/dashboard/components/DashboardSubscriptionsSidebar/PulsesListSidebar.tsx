@@ -11,12 +11,9 @@ import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Button, Icon, Tooltip } from "metabase/ui";
-import {
-  conjunct,
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/utils/formatting";
+import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

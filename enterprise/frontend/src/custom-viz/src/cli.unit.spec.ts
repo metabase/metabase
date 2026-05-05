@@ -70,6 +70,7 @@ describe("cli init", () => {
       "package.json",
       "vite.config.ts",
       "tsconfig.json",
+      "pack.mjs",
       "src/index.tsx",
       "metabase-plugin.json",
       "public/assets/icon.svg",

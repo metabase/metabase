@@ -5,7 +5,7 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
-import { modelToUrl } from "metabase/utils/urls";
+import { modelToUrl } from "metabase/urls";
 
 import S from "../AIMarkdown.module.css";
 

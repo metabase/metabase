@@ -1,6 +1,8 @@
+import type { ComponentProps } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useSetArchive } from "metabase/common/hooks";
 import { TimelineEvents } from "metabase/entities/timeline-events";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -29,13 +31,17 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(TimelineEvents.actions.update(event));
     dispatch(addUndo({ message: t`Updated event` }));
   },
-  onArchive: async (event: TimelineEvent) => {
-    await dispatch(TimelineEvents.actions.setArchived(event, true));
-  },
 });
+
+function EditEventModalContainer(props: ComponentProps<typeof EditEventModal>) {
+  const archive = useSetArchive();
+  const onArchive = (event: TimelineEvent) =>
+    archive({ id: event.id, model: "timeline-event" }, true);
+  return <EditEventModal {...props} onArchive={onArchive} />;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   TimelineEvents.load(timelineEventProps),
   connect(mapStateToProps, mapDispatchToProps),
-)(EditEventModal);
+)(EditEventModalContainer);

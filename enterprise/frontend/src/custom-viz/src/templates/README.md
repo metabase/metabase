@@ -11,13 +11,16 @@ npm install
 npm run dev        # Watch mode — rebuilds and hot-reloads on changes
 ```
 
-### Build for production
+### Build and package for upload
 
 ```bash
-npm run build
+npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 ```
 
-The build output goes to `dist/`, ready to be loaded into Metabase. Those files need be committed into the repo to be later used by Metabase.
+`npm run build` writes `<name>-<version>.tgz` to the project root. Upload that file in
+**Admin → Custom visualizations → Add** to register the plugin.
+
+> The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and any whitelisted `dist/assets/*`). The `dist/` folder does not need to be committed.
 
 ### Project structure
 

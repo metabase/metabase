@@ -20,6 +20,7 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -28,7 +29,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   PULSE_PARAM_EMPTY,
   isParameterValueEmpty,
@@ -243,7 +243,6 @@ export const moveParameter =
 
       dispatch(
         addUndo({
-          undo: true,
           action: undoMove,
 
           // Workaround to make the text show up without being truncated
@@ -257,7 +256,7 @@ export const moveParameter =
 
           // Top nav filters are always visible, so we don't need a "Show" button
           extraAction: isMovedToTopNav
-            ? null
+            ? undefined
             : {
                 label: t`Show filter`,
                 action: () => {
@@ -1106,7 +1105,9 @@ export const SHOW_AUTO_APPLY_FILTERS_TOAST =
 export const showAutoApplyFiltersToast = createThunkAction(
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   () => (dispatch, getState) => {
-    const action = toggleAutoApplyFilters(false);
+    const action = () => {
+      dispatch(toggleAutoApplyFilters(false));
+    };
     const toastId = _.uniqueId();
     const dashboardId = getDashboardId(getState());
 

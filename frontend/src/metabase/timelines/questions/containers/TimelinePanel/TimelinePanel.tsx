@@ -1,8 +1,7 @@
-import _ from "underscore";
+import type { ComponentProps } from "react";
 
+import { useSetArchive } from "metabase/common/hooks";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { TimelineEvent } from "metabase-types/api";
 
@@ -18,14 +17,12 @@ const collectionProps = {
   },
 };
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onArchiveEvent: (event: TimelineEvent) => {
-    dispatch(TimelineEvents.actions.setArchived(event, true));
-  },
-});
+function TimelinePanelContainer(props: ComponentProps<typeof TimelinePanel>) {
+  const archive = useSetArchive();
+  const onArchiveEvent = (event: TimelineEvent) =>
+    archive({ id: event.id, model: "timeline-event" }, true);
+  return <TimelinePanel {...props} onArchiveEvent={onArchiveEvent} />;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
-)(TimelinePanel);
+export default Collections.load(collectionProps)(TimelinePanelContainer);
