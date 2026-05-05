@@ -95,6 +95,38 @@
       ;; Should not throw — just a no-op delete
       (mcp.session/delete! session-id (mt/user->id :crowberto)))))
 
+(deftest store-and-read-handle-test
+  (testing "store-handle! returns a UUID handle that read-handle resolves to the encoded query"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          h1         (mcp.session/store-handle! session-id user-id "first")
+          h2         (mcp.session/store-handle! session-id user-id "second")]
+      (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
+      (is (some? (parse-uuid h2)))
+      (is (not= h1 h2) "successive calls must produce distinct handles")
+      (is (= "first"  (mcp.session/read-handle h1)))
+      (is (= "second" (mcp.session/read-handle h2)))
+      (is (nil? (mcp.session/read-handle (str (random-uuid))))
+          "read-handle returns nil for unknown handles"))))
+
+(deftest store-handle-cascades-with-core-session-test
+  (testing "deleting the backing core_session cascades to its handles"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          handle     (mcp.session/store-handle! session-id user-id "payload")]
+      (is (= "payload" (mcp.session/read-handle handle)))
+      (t2/delete! :core_session :key_hashed (derived-hash session-id))
+      (is (nil? (mcp.session/read-handle handle))
+          "cascade should reap the handle when the core_session row goes"))))
+
+(deftest delete-removes-handles-test
+  (testing "delete! removes handles for the session"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          handle     (mcp.session/store-handle! session-id user-id "payload")
+          _          (mcp.session/delete! session-id user-id)]
+      (is (nil? (mcp.session/read-handle handle))))))
+
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
     (let [login-events (atom [])
