@@ -18,8 +18,7 @@
     Pools)
    (java.io Closeable File)
    (java.net URI)
-   (java.nio.file AccessMode DirectoryStream$Filter Files FileSystems LinkOption OpenOption Path)
-   (java.nio.file.attribute FileAttribute)
+   (java.nio.file AccessMode DirectoryStream$Filter Files FileSystems Path)
    (java.time Duration)
    (java.util.concurrent TimeUnit TimeoutException)
    (org.graalvm.polyglot Context HostAccess)
@@ -133,23 +132,29 @@
   ^FileSystem [^java.nio.file.FileSystem nio-fs]
   (let [provider (.provider nio-fs)]
     (reify FileSystem
-      (^Path parsePath [_ ^URI uri]    (.getPath provider uri))
-      (^Path parsePath [_ ^String s]   (.getPath nio-fs s (into-array String [])))
+      (^Path parsePath [_ ^URI uri]
+        (.getPath provider uri))
+      (^Path parsePath [_ ^String s]
+        (.getPath nio-fs s (into-array String [])))
       (checkAccess [_ p modes opts]
         (if (.isEmpty ^java.util.Set modes)
           (when-not (Files/exists ^Path p ^"[Ljava.nio.file.LinkOption;" opts)
             (throw (java.nio.file.NoSuchFileException. (str p))))
           (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes))))
-      (createDirectory [_ p attrs]   (Files/createDirectory ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
-      (delete [_ p]                  (Files/delete ^Path p))
+      (createDirectory [_ p attrs]
+        (Files/createDirectory ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
+      (delete [_ p]
+        (Files/delete ^Path p))
       (newByteChannel [_ p opts attrs]
         (Files/newByteChannel ^Path p
                               ^java.util.Set opts
                               ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))
       (newDirectoryStream [_ dir filter]
         (Files/newDirectoryStream ^Path dir ^DirectoryStream$Filter filter))
-      (toAbsolutePath [_ p]          (.toAbsolutePath ^Path p))
-      (toRealPath [_ p opts]         (.toRealPath ^Path p ^"[Ljava.nio.file.LinkOption;" opts))
+      (toAbsolutePath [_ p]
+        (.toAbsolutePath ^Path p))
+      (toRealPath [_ p opts]
+        (.toRealPath ^Path p ^"[Ljava.nio.file.LinkOption;" opts))
       (readAttributes [_ p attrs opts]
         (Files/readAttributes ^Path p ^String attrs ^"[Ljava.nio.file.LinkOption;" opts)))))
 

@@ -20,19 +20,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- write-deflated-zip!
-  "Writes a zip at `path` containing `entries` as DEFLATE-compressed entries (the case that triggered the
-  bug — STORED entries don't need temp extraction)."
-  [^String path entries]
-  (with-open [zos (ZipOutputStream. (FileOutputStream. path))]
-    (.setLevel zos java.util.zip.Deflater/DEFAULT_COMPRESSION)
-    (doseq [[entry-path content] entries]
-      (let [e (ZipEntry. (str entry-path))]
-        (.setMethod e ZipEntry/DEFLATED)
-        (.putNextEntry zos e)
-        (.write zos (.getBytes ^String content "UTF-8"))
-        (.closeEntry zos)))))
-
 (deftest ^:parallel newByteChannel-returns-in-memory-channel-test
   (testing "newByteChannel on a compressed zip entry returns an in-memory ByteArrayChannel rather than
             extracting to a temp file beside the jar.
@@ -40,7 +27,15 @@
             temp-file extraction) — that path fails when the jar's parent dir isn't writable."
     (let [zip-file (Files/createTempFile "metabase-fs-repro" ".zip" (make-array FileAttribute 0))]
       (try
-        (write-deflated-zip! (str zip-file) [["/python-sources/sql_tools.py" "print('hello')\n"]])
+        ;; Write a DEFLATE-compressed zip entry — the case that triggered the bug; STORED entries don't
+        ;; need temp extraction.
+        (with-open [zos (ZipOutputStream. (FileOutputStream. (str zip-file)))]
+          (.setLevel zos java.util.zip.Deflater/DEFAULT_COMPRESSION)
+          (let [entry (ZipEntry. "/python-sources/sql_tools.py")]
+            (.setMethod entry ZipEntry/DEFLATED)
+            (.putNextEntry zos entry)
+            (.write zos (.getBytes "print('hello')\n" "UTF-8"))
+            (.closeEntry zos)))
         (with-open [^java.nio.file.FileSystem nio-fs (u.files/nio-fs (str zip-file))]
           (let [^FileSystem polyfs (#'pool/read-only-polyglot-fs nio-fs)
                 path               (.parsePath polyfs "/python-sources/sql_tools.py")]
