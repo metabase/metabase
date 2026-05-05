@@ -32,15 +32,18 @@ interface ExplorationVisualizationProps {
 
 export function ExplorationVisualization(props: ExplorationVisualizationProps) {
   return (
-    <Stack
-      flex={1}
-      h="100%"
-      bg="background-primary"
-      bd="1px solid border"
-      bdrs="md"
-      p="lg"
-    >
-      <ExplorationVisualizationBody {...props} />
+    <Stack flex={1} h="100%" py="3rem" pr="3rem" align="center">
+      <Stack
+        flex={1}
+        w="100%"
+        maw="70rem"
+        bg="background-primary"
+        bd="1px solid border"
+        bdrs="md"
+        p="lg"
+      >
+        <ExplorationVisualizationBody {...props} />
+      </Stack>
     </Stack>
   );
 }

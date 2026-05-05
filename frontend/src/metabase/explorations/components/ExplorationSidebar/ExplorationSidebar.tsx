@@ -75,7 +75,7 @@ export function ExplorationSidebar({
   }, [threadsWithSortedQueries]);
 
   return (
-    <Stack h="100%" gap="lg">
+    <Stack h="100%" gap="lg" pt="3rem">
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>
@@ -83,7 +83,15 @@ export function ExplorationSidebar({
         <Stack mih={0} key={thread.id} gap="md">
           <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
           {thread.items.length > 0 ? (
-            <Stack mih={0} gap="xs" pr="md" className={S.threadList}>
+            <Stack
+              mih={0}
+              gap="xs"
+              py="xs"
+              pb="md"
+              pl="xs"
+              pr="md"
+              className={S.threadList}
+            >
               {thread.items.map((item) => {
                 if (item.type === "document") {
                   const isSelected =

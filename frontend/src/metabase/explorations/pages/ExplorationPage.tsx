@@ -6,7 +6,7 @@ import {
   useListTimelinesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Center, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 import type {
   DocumentId,
   Exploration,
@@ -268,37 +268,34 @@ export function ExplorationPage({ params }: ExplorationPageProps) {
   }
 
   return (
-    <Center
-      p="3rem"
+    <Group
+      pl="3rem"
       h="100%"
+      w="100%"
       bg="background-secondary"
+      align="flex-start"
+      wrap="nowrap"
+      gap="xl"
       data-test-id="exploration-page"
     >
-      <Group
-        h="100%"
-        w="100%"
-        maw="90rem"
-        align="flex-start"
-        wrap="nowrap"
-        gap="xl"
-      >
-        <ExplorationSidebar
-          exploration={exploration}
-          selectedEntityId={selectedEntityId}
-          setSelectedEntityId={setSelectedEntityId}
-          threadsWithSortedQueries={threadsWithSortedQueries}
+      <ExplorationSidebar
+        exploration={exploration}
+        selectedEntityId={selectedEntityId}
+        setSelectedEntityId={setSelectedEntityId}
+        threadsWithSortedQueries={threadsWithSortedQueries}
+      />
+      {selectedQuery && (
+        <ExplorationVisualization
+          explorationQuery={selectedQuery}
+          availableTimelines={availableTimelines}
+          selectedTimelineId={selectedTimelineId}
+          onSelectTimelineId={handleSelectTimelineId}
+          timelineEvents={timelineEvents}
         />
-        {selectedQuery && (
-          <ExplorationVisualization
-            explorationQuery={selectedQuery}
-            availableTimelines={availableTimelines}
-            selectedTimelineId={selectedTimelineId}
-            onSelectTimelineId={handleSelectTimelineId}
-            timelineEvents={timelineEvents}
-          />
-        )}
-        {selectedDocument && <ExplorationDocumentComponent />}
-      </Group>
-    </Center>
+      )}
+      {selectedDocument && (
+        <ExplorationDocumentComponent document={selectedDocument} />
+      )}
+    </Group>
   );
 }
