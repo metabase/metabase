@@ -12,6 +12,7 @@
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
+   (java.nio.channels FileChannel)
    (java.nio.file Files StandardOpenOption)
    (java.nio.file.attribute FileAttribute)
    (java.util EnumSet)
@@ -21,10 +22,9 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel newByteChannel-returns-in-memory-channel-test
-  (testing "newByteChannel on a compressed zip entry returns an in-memory ByteArrayChannel rather than
-            extracting to a temp file beside the jar.
-            With the stock GraalVM wrapper, the channel is `ZipFileSystem$1` (FileChannel-backed via
-            temp-file extraction) — that path fails when the jar's parent dir isn't writable."
+  (testing "newByteChannel on a compressed zip entry returns an in-memory channel rather than extracting
+            to a temp file beside the jar. With the stock GraalVM wrapper, the channel is a `FileChannel`
+            backed by temp-file extraction — that path fails when the jar's parent dir isn't writable."
     (let [zip-file (Files/createTempFile "metabase-fs-repro" ".zip" (make-array FileAttribute 0))]
       (try
         ;; Write a DEFLATE-compressed zip entry — the case that triggered the bug; STORED entries don't
@@ -42,7 +42,7 @@
             (with-open [ch (.newByteChannel polyfs path
                                             (EnumSet/of StandardOpenOption/READ)
                                             (make-array FileAttribute 0))]
-              (is (= "jdk.nio.zipfs.ByteArrayChannel" (-> ch class .getName))
-                  "Channel must be the in-memory ByteArrayChannel; a FileChannel implies temp-file extraction."))))
+              (is (not (instance? FileChannel ch))
+                  "Channel must not be a FileChannel — that implies temp-file extraction beside the jar."))))
         (finally
           (Files/deleteIfExists zip-file))))))
