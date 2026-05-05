@@ -30,6 +30,9 @@
       (throw (ex-info (str "Failed to parse YAML: " path)
                       {:path (str path) :cause (.getMessage e)} e)))))
 
+(defn- yaml-file? [p]
+  (boolean (re-find #"\.ya?ml$" (str p))))
+
 (defn- serdes-model
   "Read the entity kind from a YAML's serdes/meta block (last entry wins —
    nested entities such as DashboardCards put their parent first)."
@@ -49,35 +52,31 @@
    collection (excluding files inside dashboard subdirectories)."
   [yaml-dir]
   (->> (fs/list-dir yaml-dir)
-       (filter #(and (fs/regular-file? %)
-                     (str/ends-with? (str %) ".yaml")))
+       (filter #(and (fs/regular-file? %) (yaml-file? %)))
        (map (juxt identity load-yaml))
        (sort-by (comp str first))))
 
 (defn- dashboard-card-dir
-  "Sibling directory next to a dashboard YAML that holds its DashboardCard YAMLs."
+  "Sibling directory next to a dashboard YAML that holds the Card YAMLs
+   referenced by the dashboard's inline DashboardCards."
   [dashboard-path]
   (fs/path (fs/parent dashboard-path)
-           (str/replace (fs/file-name dashboard-path) #"\.yaml$" "")))
+           (str/replace (fs/file-name dashboard-path) #"\.ya?ml$" "")))
 
 (defn- load-cards-in [dir]
   (->> (fs/list-dir dir)
-       (filter #(str/ends-with? (str %) ".yaml"))
-       (map (fn [p] (assoc (load-yaml p) :_path (str p))))))
-
-(defn- card-position
-  "Sort key — DashboardCards order by row, then col, then filename."
-  [card]
-  [(or (:row card) 1000) (or (:col card) 1000) (:_path card)])
+       (filter yaml-file?)
+       (map (fn [p] (assoc (load-yaml p) ::path (str p))))))
 
 (defn- dashboard-card-names
-  "Return card display names from a dashboard's sibling subdir, in deterministic
-   grid order (row, then col, then filename)."
+  "Return card display names from a dashboard's sibling subdir, ordered by
+   filename. (Cards in the subdir are Card YAMLs, not DashboardCards — the
+   layout fields row/col live inline on the parent Dashboard, not here.)"
   [dashboard-path]
   (let [dir (dashboard-card-dir dashboard-path)]
     (when (fs/directory? dir)
       (->> (load-cards-in dir)
-           (sort-by card-position)
+           (sort-by ::path)
            (keep :name)))))
 
 (defn- model-columns
@@ -160,6 +159,10 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- generate [{:keys [yaml-dir output title]}]
+  (when-not (fs/directory? yaml-dir)
+    (throw (ex-info (str "YAML directory does not exist: " yaml-dir)
+                    {:yaml-dir yaml-dir
+                     :cwd      (str (fs/cwd))})))
   (let [yaml-pairs (top-level-yamls yaml-dir)
         dashboards (collect-dashboards yaml-pairs)
         models     (collect-models     yaml-pairs)

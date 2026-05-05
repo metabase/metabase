@@ -29,7 +29,7 @@ The Stats page shows aggregate Metabot activity over a date range you choose, de
 - **Date range**: the time window the charts cover.
 - **User**: limit to a single person (or **All users**).
 - **Group**: limit to a single [group](../people-and-groups/managing.md) (or **All groups**).
-- **Tenant**: limit to a single [tenant](../embedding/tenants.md). Only shows up if [tenants](../embedding/tenants.md) are enabled.
+- **Tenant**: limit to a single [tenant](../embedding/tenants.md). Only shows up if tenants are enabled.
 
 ### Metrics
 
@@ -42,12 +42,12 @@ Pick what you want to count:
 For each metric, you'll see the same set of charts:
 
 - **By time**: a time-series chart that buckets by hour or day depending on the date range you filter. Defaults to day.
-- **By source**: _where_ in Metabase the request came from. See [Sources and profiles](#sources-and-profiles) below.
-- **By profile**: _which_ Metabot persona answered. See [Sources and profiles](#sources-and-profiles) below.
+- **By source**: _where_ in Metabase the request came from. See [Sources and profiles](#sources-and-profiles).
+- **By profile**: _which_ Metabot persona answered. See [Sources and profiles](#sources-and-profiles).
 - **Users with most ...**, **Groups with most ...**, **IP addresses with most ...**: top-N rankings.
 - **Tenants with most ...**: only shown when tenants are enabled.
 
-Clicking a bar in the **By day**, **Groups with most ...**, **Users with most ...**, or **Tenants with most ...** charts deep-links into the [Conversations list](#conversations) with the corresponding filter applied. The **By source**, **By profile**, and **IP addresses** charts are display-only.
+Clicking a bar in the **By day**, **Groups with most ...**, **Users with most ...**, or **Tenants with most ...** charts deep-links into the [Conversations list](#conversations) with the corresponding filter applied. The **By source**, **By profile**, and **IP addresses with most ...** charts are display-only.
 
 ## Sources and profiles
 
@@ -71,7 +71,7 @@ The **By source** chart and the [AI Usage Log](#building-custom-reports) model r
 | `Suggested Prompts` | Background generation of suggested prompts.                                 |
 | `Slackbot`          | Conversations that started in [Slack](./metabot-slack.md).                  |
 | `SQL`               | [Inline SQL editing](./metabot.md#inline-sql-editing) in the native editor. |
-| `Unknown`           | A conversation Metabase couldn't classify.                                  |
+| `Unknown`           | A conversation Metabase couldn't classify (distinct from no-source conversations, which appear as `(empty)` on charts). |
 
 ### Profiles
 
@@ -120,10 +120,10 @@ You can sort by Date, Messages, or Tokens. Click any row to open the [conversati
 
 The detail view is a full audit of a single conversation. It includes:
 
-- **Header**: start date, the user the conversation is with, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the user's name you can jump to all of that user's conversations or to their account details.
+- **Header**: start date, the person who chatted with Metabot, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the user's name you can jump to all of that user's conversations or to their account details.
 - **Stat tiles**: Messages, Total tokens, Queries run, Searches.
 - **Feedback**: any thumbs-up or thumbs-down a user submitted, with the issue category they picked and any free-form text. The agent response that triggered the feedback is shown alongside.
-- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood. Useful for understanding why a query came out a certain way, if for example the person had [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute) affecting the results.
+- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood. This is useful when a query came out a certain way because of [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 - **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Run** on a query to open it in a new tab and execute it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
 - **Open in Slack**: for Slack-sourced conversations, a link back to the original Slack thread.
 
@@ -141,7 +141,7 @@ Three [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) model
 
 Save your custom questions in the [Custom reports](../usage-and-performance-tools/usage-analytics.md#custom-reports-collection) sub-collection so the reports inherit the right permissions.
 
-## What isn't tracked yet
+## What isn't tracked
 
 [MCP](./mcp.md) activity isn't included in Usage auditing. MCP requests don't go through Metabot's conversation pipeline, so they don't generate conversations or token rows.
 
