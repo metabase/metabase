@@ -136,19 +136,19 @@
 .QueryErrorImageQueryError {
   width: 120px;
   height: 120px;
-  background-image: url("~assets/img/no_understand.svg");
+  background-image: url("assets/img/no_understand.svg");
 }
 
 .QueryErrorImageServerError {
   width: 120px;
   height: 148px;
-  background-image: url("~assets/img/blown_up.svg");
+  background-image: url("assets/img/blown_up.svg");
 }
 
 .QueryErrorImageTimeout {
   width: 120px;
   height: 120px;
-  background-image: url("~assets/img/stopwatch.svg");
+  background-image: url("assets/img/stopwatch.svg");
 }
 
 .QueryErrorMessageText {
