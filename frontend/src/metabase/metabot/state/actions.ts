@@ -393,8 +393,6 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
-      let currentMessageExternalId: string | undefined = undefined;
-
       const response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -407,17 +405,11 @@ export const sendAgentRequest = createAsyncThunk<
         {
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
-              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
-            ) =>
-              dispatch(
-                addAgentMessage({
-                  ...message,
-                  ...(currentMessageExternalId
-                    ? { externalId: currentMessageExternalId }
-                    : {}),
-                  agentId,
-                }),
-              );
+              message: Omit<
+                MetabotAgentDataPartMessage,
+                "id" | "role" | "externalId"
+              >,
+            ) => dispatch(addAgentMessage({ ...message, agentId }));
 
             match(part)
               // only update the convo state if the request is successful
@@ -480,7 +472,6 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onStartMessagePart: function handleStartMessagePart(part) {
-            currentMessageExternalId ??= part.messageId;
             dispatch(
               setPendingMessageExternalId({
                 agentId,

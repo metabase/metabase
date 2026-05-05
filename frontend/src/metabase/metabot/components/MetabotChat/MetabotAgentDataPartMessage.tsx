@@ -51,13 +51,11 @@ export const AgentDataPartMessage = ({
         />
       );
 
-      return debug ? (
+      return (
         <Stack gap="md">
-          <NavigateToDataPart type={part.type} path={part.value} />
+          {debug && <NavigateToDataPart type={part.type} path={part.value} />}
           {sourcePills}
         </Stack>
-      ) : (
-        sourcePills
       );
     })
     .with({ part: { type: "code_edit" } }, ({ part, metadata }) => {
@@ -69,13 +67,11 @@ export const AgentDataPartMessage = ({
         />
       );
 
-      return debug ? (
+      return (
         <Stack gap="md">
-          <CodeEditDataPart type={part.type} value={part.value} />
+          {debug && <CodeEditDataPart type={part.type} value={part.value} />}
           {sourcePills}
         </Stack>
-      ) : (
-        sourcePills
       );
     })
     .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
