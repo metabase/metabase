@@ -63,7 +63,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
           />
           {hasAuditApp && (
             <ToolsNavItem
-              label={t`Notifications`}
+              label={t`Alerts management`}
               path={Urls.adminToolsNotifications()}
               icon="bell"
               location={location}

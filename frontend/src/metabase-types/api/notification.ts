@@ -1,3 +1,5 @@
+import type { SortDirection } from "metabase-types/api/sorting";
+
 import type { Card, CardId } from "./card";
 import type { Channel, SlackChannelId } from "./notification-channels";
 import type { PaginationRequest } from "./pagination";
@@ -182,9 +184,7 @@ export type AdminNotificationSortColumn =
   | "creator_name"
   | "updated_at";
 
-export type AdminNotificationSortDirection = "asc" | "desc";
-
-export type AdminNotificationListItem = Notification & {
+export type AdminNotification = Notification & {
   status: NotificationStatus;
   last_sent_at: string | null;
 };
@@ -200,11 +200,11 @@ export type AdminNotificationListParams = {
   channel?: NotificationChannelType;
   query?: string;
   sort_column?: AdminNotificationSortColumn;
-  sort_direction?: AdminNotificationSortDirection;
+  sort_direction?: SortDirection;
 };
 
 export type AdminNotificationListResponse = {
-  data: AdminNotificationListItem[];
+  data: AdminNotification[];
   total: number;
   limit: number | null;
   offset: number | null;
@@ -218,5 +218,5 @@ export type BulkNotificationPayload = {
   owner_id?: UserId;
 };
 
-export type AdminNotificationDetail = AdminNotificationListItem;
+export type AdminNotificationDetail = AdminNotification;
 //#endregion

@@ -12,14 +12,14 @@ import type {
 
 import { Api } from "./api";
 import {
+  adminNotificationListTag,
   idTag,
   invalidateTags,
   listTag,
+  provideAdminNotificationListTags,
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
-
-const ADMIN_LIST_TAG_ID = "LIST-ADMIN";
 
 export const notificationApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -104,13 +104,8 @@ export const notificationApi = Api.injectEndpoints({
       }),
       providesTags: (result) =>
         result
-          ? [
-              { type: "notification", id: ADMIN_LIST_TAG_ID },
-              ...result.data.map((notification) =>
-                idTag("notification", notification.id),
-              ),
-            ]
-          : [{ type: "notification", id: ADMIN_LIST_TAG_ID }],
+          ? provideAdminNotificationListTags(result.data)
+          : [adminNotificationListTag()],
     }),
     bulkNotificationAction: builder.mutation<
       { updated: number },
@@ -123,7 +118,7 @@ export const notificationApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_result, error, { notification_ids }) =>
         invalidateTags(error, [
-          { type: "notification", id: ADMIN_LIST_TAG_ID },
+          adminNotificationListTag(),
           ...notification_ids.map((id) => idTag("notification", id)),
         ]),
     }),
@@ -135,8 +130,7 @@ export const notificationApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/ee/notifications/${id}`,
       }),
-      providesTags: (result) =>
-        result ? [idTag("notification", result.id)] : [],
+      providesTags: (result) => (result ? provideNotificationTags(result) : []),
     }),
   }),
 });

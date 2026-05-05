@@ -43,10 +43,7 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import {
-  NotificationDetailPage,
-  NotificationsAdminPage,
-} from "metabase/admin/tools/components/NotificationsAdminPage";
+import { NotificationsAdminPage } from "metabase/admin/tools/components/NotificationsAdminPage";
 import {
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
@@ -300,11 +297,11 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
+            <Route path="notifications" component={NotificationsAdminPage} />
             <Route
               path="notifications/:notificationId"
-              component={NotificationDetailPage}
+              component={NotificationsAdminPage}
             />
-            <Route path="notifications" component={NotificationsAdminPage} />
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

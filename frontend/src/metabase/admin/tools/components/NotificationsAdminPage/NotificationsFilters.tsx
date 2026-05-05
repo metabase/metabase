@@ -1,23 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useListUsersQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Flex, Select, TextInput } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Indicator,
+  Input,
+  Popover,
+  Select,
+  Stack,
+  TextInput,
+} from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   CardId,
   NotificationChannelType,
-  NotificationStatus,
   UserId,
 } from "metabase-types/api";
 
-import {
-  type NotificationsUrlState,
-  getChannelLabel,
-  getStatusLabel,
-} from "./utils";
+import { type NotificationsUrlState, getChannelLabel } from "./utils";
 
 type Props = {
   state: NotificationsUrlState;
@@ -35,19 +41,17 @@ const getActiveOptions = (): {
   { value: "all", label: t`All` },
 ];
 
-const getStatusOptions = (): { value: NotificationStatus; label: string }[] => [
-  { value: "healthy", label: getStatusLabel("healthy") },
-  { value: "orphaned_card", label: getStatusLabel("orphaned_card") },
-  { value: "orphaned_creator", label: getStatusLabel("orphaned_creator") },
-  { value: "failing", label: getStatusLabel("failing") },
-  { value: "abandoned", label: getStatusLabel("abandoned") },
-];
-
 const activeUrlValue = (active: boolean | null): ActiveFilterValue =>
-  active === true ? "active" : active === false ? "archived" : "all";
+  match(active)
+    .with(true, () => "active" as const)
+    .with(false, () => "archived" as const)
+    .otherwise(() => "all" as const);
 
 const activeFromUrlValue = (value: ActiveFilterValue): boolean | null =>
-  value === "active" ? true : value === "archived" ? false : null;
+  match(value)
+    .with("active", () => true)
+    .with("archived", () => false)
+    .otherwise(() => null);
 
 const getChannelOptions = (): {
   value: NotificationChannelType;
@@ -58,70 +62,70 @@ const getChannelOptions = (): {
   { value: "channel/http", label: getChannelLabel("channel/http") },
 ];
 
+const hasActiveAdvancedFilters = (state: NotificationsUrlState): boolean =>
+  state.active !== true ||
+  state.channel !== null ||
+  state.creator_id !== null ||
+  state.card_id !== null;
+
 export const NotificationsFilters = ({ state, onChange }: Props) => {
   const activeOptions = getActiveOptions();
-  const statusOptions = getStatusOptions();
   const channelOptions = getChannelOptions();
+  const hasAdvanced = hasActiveAdvancedFilters(state);
+
   return (
-    <Flex gap="md" wrap="wrap">
-      <Select
-        data={activeOptions}
-        value={activeUrlValue(state.active)}
-        placeholder={t`Filter by active`}
-        onChange={(value) => {
-          if (value) {
-            onChange({
-              active: activeFromUrlValue(value as ActiveFilterValue),
-              page: 0,
-            });
-          }
-        }}
-        allowDeselect={false}
-        w={160}
-      />
-
-      <Select
-        data={statusOptions}
-        value={state.status}
-        placeholder={t`Filter by status`}
-        onChange={(value) =>
-          onChange({
-            status: (value as NotificationStatus | null) ?? null,
-            page: 0,
-          })
-        }
-        clearable
-        w={180}
-      />
-
-      <Select
-        data={channelOptions}
-        value={state.channel}
-        placeholder={t`Filter by channel`}
-        onChange={(value) =>
-          onChange({
-            channel: (value as NotificationChannelType | null) ?? null,
-            page: 0,
-          })
-        }
-        clearable
-        w={160}
-      />
-
-      <CreatorPicker
-        value={state.creator_id}
-        onChange={(creator_id) => onChange({ creator_id, page: 0 })}
-      />
-
-      <CardPicker
-        value={state.card_id}
-        onChange={(card_id) => onChange({ card_id, page: 0 })}
-      />
-
+    <Flex gap="md" align="center">
       <RecipientEmailInput
         value={state.recipient_email}
         onChange={(recipient_email) => onChange({ recipient_email, page: 0 })}
       />
+
+      <Popover position="bottom-end" shadow="md" withinPortal>
+        <Popover.Target>
+          <Indicator disabled={!hasAdvanced} size={8} offset={4}>
+            <Button
+              variant="default"
+              leftSection={<Icon name="filter" />}
+              aria-label={t`Show filters`}
+            >
+              {t`Filter`}
+            </Button>
+          </Indicator>
+        </Popover.Target>
+        <Popover.Dropdown p="md">
+          <Stack gap="md" w={260}>
+            <Select
+              data={activeOptions}
+              value={activeUrlValue(state.active)}
+              placeholder={t`Filter by active`}
+              label={t`Active`}
+              onChange={(value) =>
+                onChange({ active: activeFromUrlValue(value), page: 0 })
+              }
+              allowDeselect={false}
+            />
+
+            <Select
+              data={channelOptions}
+              value={state.channel}
+              placeholder={t`Filter by channel`}
+              label={t`Channel`}
+              onChange={(value) => onChange({ channel: value, page: 0 })}
+              clearable
+            />
+
+            <CreatorPicker
+              value={state.creator_id}
+              onChange={(creator_id) => onChange({ creator_id, page: 0 })}
+            />
+
+            <CardPicker
+              value={state.card_id}
+              onChange={(card_id) => onChange({ card_id, page: 0 })}
+            />
+          </Stack>
+        </Popover.Dropdown>
+      </Popover>
     </Flex>
   );
 };
@@ -153,10 +157,18 @@ const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
 
   return (
     <TextInput
-      placeholder={t`Filter by recipient email`}
+      flex={1}
+      placeholder={t`Search by question or owner…`}
       value={email}
+      styles={{ input: { borderRadius: 8 } }}
       onChange={(event) => setEmail(event.currentTarget.value)}
-      w={220}
+      leftSection={<Icon c="text-secondary" name="search" size={16} />}
+      rightSectionPointerEvents="all"
+      rightSection={
+        email === "" ? null : (
+          <Input.ClearButton c="text-secondary" onClick={() => setEmail("")} />
+        )
+      }
     />
   );
 };
@@ -183,13 +195,13 @@ const CreatorPicker = ({ value, onChange }: CreatorPickerProps) => {
   return (
     <Select
       placeholder={isLoading ? t`Loading…` : t`Filter by creator`}
+      label={t`Creator`}
       data={options}
       value={value == null ? null : String(value)}
       onChange={(next) => onChange(next ? Number(next) : null)}
       searchable
       clearable
       nothingFoundMessage={t`No users found`}
-      w={200}
     />
   );
 };
@@ -239,6 +251,7 @@ const CardPicker = ({ value, onChange }: CardPickerProps) => {
   return (
     <Select
       placeholder={t`Filter by card`}
+      label={t`Card`}
       data={options}
       value={value == null ? null : String(value)}
       onChange={(next) => onChange(next ? Number(next) : null)}
@@ -248,7 +261,6 @@ const CardPicker = ({ value, onChange }: CardPickerProps) => {
       nothingFoundMessage={
         isFetching ? t`Searching…` : t`Type to search for a card`
       }
-      w={220}
     />
   );
 };

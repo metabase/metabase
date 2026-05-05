@@ -462,6 +462,18 @@ export function provideNotificationTags(
   ];
 }
 
+export const adminNotificationListTag = (): TagDescription<TagType> =>
+  idTag("notification", "LIST-ADMIN");
+
+export const provideAdminNotificationListTags = (
+  notifications: Pick<Notification, "id">[],
+): TagDescription<TagType>[] => [
+  adminNotificationListTag(),
+  ...notifications.map((notification) =>
+    idTag("notification", notification.id),
+  ),
+];
+
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
 ): TagDescription<TagType>[] {

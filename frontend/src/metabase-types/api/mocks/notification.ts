@@ -1,5 +1,5 @@
 import type {
-  AdminNotificationListItem,
+  AdminNotification,
   Notification,
   NotificationCronSubscription,
   NotificationHandlerEmail,
@@ -107,8 +107,8 @@ export const createMockNotificationCronSubscription = (
 });
 
 export const createMockAdminNotificationListItem = (
-  opts?: Partial<AdminNotificationListItem>,
-): AdminNotificationListItem => ({
+  opts?: Partial<AdminNotification>,
+): AdminNotification => ({
   ...createMockNotification(opts),
   status: opts?.status ?? "healthy",
   last_sent_at: opts?.last_sent_at ?? null,

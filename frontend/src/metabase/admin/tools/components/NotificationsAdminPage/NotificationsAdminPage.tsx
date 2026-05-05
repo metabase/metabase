@@ -1,7 +1,8 @@
+import type { SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
   useAdminListNotificationsQuery,
@@ -17,41 +18,65 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
+import { Flex, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { NotificationId } from "metabase-types/api";
+import type { NotificationId, UserId } from "metabase-types/api";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "../../../components/SettingsSection";
+import { SettingsPageWrapper } from "../../../components/SettingsSection";
 
 import { ChangeOwnerModal } from "./ChangeOwnerModal";
+import { NotificationDetailSidebar } from "./NotificationDetailSidebar";
 import { NotificationsFilters } from "./NotificationsFilters";
 import { NotificationsTable } from "./NotificationsTable";
-import { buildListParams, urlStateConfig } from "./utils";
+import { NotificationsTabs } from "./NotificationsTabs";
+import {
+  DEFAULT_SORT_COLUMN,
+  DEFAULT_SORT_DIRECTION,
+  SORT_COLUMN_VALUES,
+  buildListParams,
+  urlStateConfig,
+} from "./utils";
 
 const PAGE_SIZE = 50;
 
-export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
+type RouteParams = {
+  notificationId?: string;
+};
+
+type ChangeOwnerTarget = {
+  ids: NotificationId[];
+  isBulk: boolean;
+};
+
+export const NotificationsAdminPage = ({
+  location,
+  params,
+}: WithRouterProps<RouteParams>) => {
   const dispatch = useDispatch();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [selectedIds, setSelectedIds] = useState<NotificationId[]>([]);
-  const [isChangeOwnerOpen, setIsChangeOwnerOpen] = useState(false);
+  const [changeOwnerTarget, setChangeOwnerTarget] =
+    useState<ChangeOwnerTarget | null>(null);
 
   const { modalContent: confirmContent, show: showConfirm } = useConfirmation();
 
-  const {
-    data: response,
-    isFetching,
-    error,
-  } = useAdminListNotificationsQuery(buildListParams(urlState, PAGE_SIZE));
+  const { data, isLoading, error } = useAdminListNotificationsQuery(
+    buildListParams(urlState, PAGE_SIZE),
+  );
+  const notifications = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const selectedCount = selectedIds.length;
+
+  const parsedDetailId = useMemo(() => {
+    if (params?.notificationId == null) {
+      return null;
+    }
+    const parsed = Number(params.notificationId);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [params?.notificationId]);
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
-
-  const notifications = useMemo(() => response?.data ?? [], [response?.data]);
-  const total = response?.total ?? 0;
 
   useEffect(() => {
     setSelectedIds([]);
@@ -63,105 +88,188 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
     urlState.card_id,
     urlState.recipient_email,
     urlState.channel,
+    urlState.sort_column,
+    urlState.sort_direction,
   ]);
 
-  const handleToggleRow = useCallback((id: NotificationId) => {
+  const sorting = useMemo<SortingState>(
+    () => [
+      {
+        id: urlState.sort_column,
+        desc: urlState.sort_direction === "desc",
+      },
+    ],
+    [urlState.sort_column, urlState.sort_direction],
+  );
+
+  const handleSortingChange = useCallback(
+    (next: SortingState) => {
+      if (next.length === 0) {
+        patchUrlState({
+          sort_column: DEFAULT_SORT_COLUMN,
+          sort_direction: DEFAULT_SORT_DIRECTION,
+          page: 0,
+        });
+        return;
+      }
+      const [first] = next;
+      const column = SORT_COLUMN_VALUES.find((col) => col === first.id);
+      if (column == null) {
+        return;
+      }
+      patchUrlState({
+        sort_column: column,
+        sort_direction: first.desc ? "desc" : "asc",
+        page: 0,
+      });
+    },
+    [patchUrlState],
+  );
+
+  const handleToggleRow = (id: NotificationId) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
-  }, []);
+  };
 
-  const handleToggleAll = useCallback(() => {
+  const handleToggleAll = () => {
     setSelectedIds((prev) => {
       const allIds = notifications.map((n) => n.id);
       const allSelected =
         allIds.length > 0 && allIds.every((id) => prev.includes(id));
       if (allSelected) {
-        return prev.filter((id) => !allIds.includes(id));
+        return [];
       }
       return Array.from(new Set([...prev, ...allIds]));
     });
-  }, [notifications]);
+  };
 
-  const handleRowClick = useCallback(
-    (id: NotificationId) => {
-      dispatch(push(Urls.adminToolsNotificationDetail(id)));
+  const handleRowClick = (id: NotificationId) => {
+    dispatch(push(Urls.adminToolsNotificationDetail(id)));
+  };
+
+  const handleSidebarNavigate = (id: NotificationId) => {
+    dispatch(push(Urls.adminToolsNotificationDetail(id)));
+  };
+
+  const handleSidebarClose = () => {
+    dispatch(push(Urls.adminToolsNotifications()));
+  };
+
+  const archiveIds = useCallback(
+    async (ids: NotificationId[], isBulk: boolean) => {
+      const count = ids.length;
+      try {
+        await bulkAction({ notification_ids: ids, action: "archive" }).unwrap();
+        dispatch(
+          addUndo({
+            message:
+              count === 1 ? t`Archived 1 alert` : t`Archived ${count} alerts`,
+          }),
+        );
+        if (isBulk) {
+          setSelectedIds([]);
+        }
+      } catch {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            message: t`Could not archive alerts.`,
+          }),
+        );
+      }
     },
-    [dispatch],
+    [bulkAction, dispatch],
   );
 
-  const handleArchive = useCallback(() => {
+  const unarchiveIds = useCallback(
+    async (ids: NotificationId[], isBulk: boolean) => {
+      const count = ids.length;
+      try {
+        await bulkAction({
+          notification_ids: ids,
+          action: "unarchive",
+        }).unwrap();
+        dispatch(
+          addUndo({
+            message:
+              count === 1
+                ? t`Unarchived 1 alert`
+                : t`Unarchived ${count} alerts`,
+          }),
+        );
+        if (isBulk) {
+          setSelectedIds([]);
+        }
+      } catch {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            message: t`Could not unarchive alerts.`,
+          }),
+        );
+      }
+    },
+    [bulkAction, dispatch],
+  );
+
+  const handleArchiveBulk = useCallback(() => {
     const count = selectedIds.length;
     showConfirm({
       title: count === 1 ? t`Archive 1 alert?` : t`Archive ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Archive`,
       confirmButtonProps: { color: "danger" },
-      onConfirm: async () => {
-        try {
-          await bulkAction({
-            notification_ids: selectedIds,
-            action: "archive",
-          }).unwrap();
-          dispatch(
-            addUndo({
-              message:
-                count === 1 ? t`Archived 1 alert` : t`Archived ${count} alerts`,
-            }),
-          );
-          setSelectedIds([]);
-        } catch {
-          dispatch(
-            addUndo({
-              icon: "warning",
-              message: t`Could not archive alerts.`,
-            }),
-          );
-        }
-      },
+      onConfirm: () => archiveIds(selectedIds, true),
     });
-  }, [bulkAction, dispatch, selectedIds, showConfirm]);
+  }, [archiveIds, selectedIds, showConfirm]);
 
-  const handleUnarchive = useCallback(() => {
+  const handleUnarchiveBulk = useCallback(() => {
     const count = selectedIds.length;
     showConfirm({
       title:
         count === 1 ? t`Unarchive 1 alert?` : t`Unarchive ${count} alerts?`,
       message: t`Recipients will begin receiving these alerts again on the next scheduled run.`,
       confirmButtonText: t`Unarchive`,
-      onConfirm: async () => {
-        try {
-          await bulkAction({
-            notification_ids: selectedIds,
-            action: "unarchive",
-          }).unwrap();
-          dispatch(
-            addUndo({
-              message:
-                count === 1
-                  ? t`Unarchived 1 alert`
-                  : t`Unarchived ${count} alerts`,
-            }),
-          );
-          setSelectedIds([]);
-        } catch {
-          dispatch(
-            addUndo({
-              icon: "warning",
-              message: t`Could not unarchive alerts.`,
-            }),
-          );
-        }
-      },
+      onConfirm: () => unarchiveIds(selectedIds, true),
     });
-  }, [bulkAction, dispatch, selectedIds, showConfirm]);
+  }, [unarchiveIds, selectedIds, showConfirm]);
+
+  const handleSidebarArchive = useCallback(
+    (id: NotificationId) => {
+      showConfirm({
+        title: t`Archive this alert?`,
+        message: t`Recipients will stop receiving this alert.`,
+        confirmButtonText: t`Archive`,
+        confirmButtonProps: { color: "danger" },
+        onConfirm: () => archiveIds([id], false),
+      });
+    },
+    [archiveIds, showConfirm],
+  );
+
+  const handleSidebarUnarchive = useCallback(
+    (id: NotificationId) => {
+      showConfirm({
+        title: t`Unarchive this alert?`,
+        message: t`Recipients will begin receiving this alert again on the next scheduled run.`,
+        confirmButtonText: t`Unarchive`,
+        onConfirm: () => unarchiveIds([id], false),
+      });
+    },
+    [unarchiveIds, showConfirm],
+  );
 
   const handleChangeOwnerConfirm = useCallback(
-    async (ownerId: number) => {
-      const count = selectedIds.length;
+    async (ownerId: UserId) => {
+      if (!changeOwnerTarget) {
+        return;
+      }
+      const { ids, isBulk } = changeOwnerTarget;
+      const count = ids.length;
       try {
         await bulkAction({
-          notification_ids: selectedIds,
+          notification_ids: ids,
           action: "change-owner",
           owner_id: ownerId,
         }).unwrap();
@@ -173,8 +281,10 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
                 : t`Changed owner for ${count} alerts`,
           }),
         );
-        setSelectedIds([]);
-        setIsChangeOwnerOpen(false);
+        if (isBulk) {
+          setSelectedIds([]);
+        }
+        setChangeOwnerTarget(null);
       } catch {
         dispatch(
           addUndo({
@@ -184,104 +294,114 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
         );
       }
     },
-    [bulkAction, dispatch, selectedIds],
+    [bulkAction, changeOwnerTarget, dispatch],
   );
-
-  const selectedCount = selectedIds.length;
 
   return (
     <SettingsPageWrapper>
-      <SettingsSection>
-        <Flex align="center" gap="sm">
-          <Title order={1}>{t`Notifications`}</Title>
-          <Tooltip
-            label={t`Every alert in this Metabase. Filter, re-assign ownership, or archive alerts across the instance.`}
-          >
-            <Icon name="info" />
-          </Tooltip>
-        </Flex>
+      <Flex align="center" gap="sm">
+        <Title order={1}>{t`Alerts management`}</Title>
+      </Flex>
 
-        <NotificationsFilters state={urlState} onChange={patchUrlState} />
+      <NotificationsTabs
+        selectedStatus={urlState.status}
+        onChange={(status) => patchUrlState({ status, page: 0 })}
+      />
 
-        <NotificationsTable
-          notifications={notifications}
-          error={error}
-          isLoading={isFetching}
-          selectedIds={selectedIds}
-          onToggleRow={handleToggleRow}
-          onToggleAll={handleToggleAll}
-          onRowClick={handleRowClick}
-        />
+      <NotificationsFilters state={urlState} onChange={patchUrlState} />
 
-        <Flex
-          align="center"
-          justify="space-between"
-          p="md"
-          data-testid="notifications-admin-footer"
-        >
-          <Box fw={700}>
-            {ngettext(
-              msgid`${total} alert found`,
-              `${total} alerts found`,
-              total,
-            )}
-          </Box>
-          <PaginationControls
-            page={urlState.page}
-            pageSize={PAGE_SIZE}
-            itemsLength={notifications.length}
-            total={total}
-            onPreviousPage={() =>
-              patchUrlState({ page: Math.max(0, urlState.page - 1) })
-            }
-            onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
-          />
-        </Flex>
+      <NotificationsTable
+        notifications={notifications}
+        error={error}
+        isLoading={isLoading}
+        selectedIds={selectedIds}
+        sorting={sorting}
+        onSortingChange={handleSortingChange}
+        onToggleRow={handleToggleRow}
+        onToggleAll={handleToggleAll}
+        onRowClick={handleRowClick}
+      />
 
-        <BulkActionBar
-          opened={selectedCount > 0}
-          message={
-            selectedCount === 1
-              ? t`1 alert selected`
-              : t`${selectedCount} alerts selected`
+      <Flex
+        align="center"
+        justify="space-between"
+        p="md"
+        data-testid="notifications-admin-footer"
+      >
+        <PaginationControls
+          page={urlState.page}
+          pageSize={PAGE_SIZE}
+          itemsLength={notifications.length}
+          total={total}
+          onPreviousPage={() =>
+            patchUrlState({ page: Math.max(0, urlState.page - 1) })
           }
-        >
-          {urlState.active === false ? (
-            <BulkActionButton
-              onClick={handleUnarchive}
-              disabled={isBulkLoading}
-            >
-              {t`Unarchive`}
-            </BulkActionButton>
-          ) : (
-            <BulkActionDangerButton
-              onClick={handleArchive}
-              disabled={isBulkLoading}
-            >
-              {t`Archive`}
-            </BulkActionDangerButton>
-          )}
+          onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
+        />
+      </Flex>
+
+      <BulkActionBar
+        opened={selectedCount > 0}
+        message={
+          selectedCount === 1
+            ? t`1 alert selected`
+            : t`${selectedCount} alerts selected`
+        }
+      >
+        {urlState.active === false ? (
           <BulkActionButton
-            onClick={() => setIsChangeOwnerOpen(true)}
+            onClick={handleUnarchiveBulk}
             disabled={isBulkLoading}
           >
-            {t`Change owner`}
+            {t`Unarchive`}
           </BulkActionButton>
-          <BulkActionButton onClick={() => setSelectedIds([])}>
-            {t`Clear`}
-          </BulkActionButton>
-        </BulkActionBar>
+        ) : (
+          <BulkActionDangerButton
+            onClick={handleArchiveBulk}
+            disabled={isBulkLoading}
+          >
+            {t`Archive`}
+          </BulkActionDangerButton>
+        )}
+        <BulkActionButton
+          onClick={() =>
+            setChangeOwnerTarget({ ids: selectedIds, isBulk: true })
+          }
+          disabled={isBulkLoading}
+        >
+          {t`Change owner`}
+        </BulkActionButton>
+        <BulkActionButton onClick={() => setSelectedIds([])}>
+          {t`Clear`}
+        </BulkActionButton>
+      </BulkActionBar>
 
-        <ChangeOwnerModal
-          opened={isChangeOwnerOpen}
-          count={selectedCount}
-          isSubmitting={isBulkLoading}
-          onClose={() => setIsChangeOwnerOpen(false)}
-          onConfirm={handleChangeOwnerConfirm}
+      {parsedDetailId != null && (
+        <NotificationDetailSidebar
+          notificationId={parsedDetailId}
+          notifications={notifications}
+          isBulkLoading={isBulkLoading}
+          onClose={handleSidebarClose}
+          onNavigate={handleSidebarNavigate}
+          onArchive={(notification) => handleSidebarArchive(notification.id)}
+          onUnarchive={(notification) =>
+            handleSidebarUnarchive(notification.id)
+          }
+          onChangeOwner={(notification) =>
+            setChangeOwnerTarget({ ids: [notification.id], isBulk: false })
+          }
         />
+      )}
 
-        {confirmContent}
-      </SettingsSection>
+      <ChangeOwnerModal
+        opened={changeOwnerTarget != null}
+        count={changeOwnerTarget?.ids.length ?? 0}
+        isSubmitting={isBulkLoading}
+        onClose={() => setChangeOwnerTarget(null)}
+        onConfirm={handleChangeOwnerConfirm}
+      />
+
+      {confirmContent}
     </SettingsPageWrapper>
   );
 };

@@ -1,50 +1,99 @@
-import cx from "classnames";
+import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import dayjs from "dayjs";
-import { memo, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
-import { formatNotificationSchedule } from "metabase/notifications/utils";
 import {
   Badge,
-  Box,
+  Card,
   Checkbox,
   Ellipsified,
   Flex,
-  Group,
   Icon,
+  Text,
   Tooltip,
+  TreeTable,
+  type TreeTableColumnDef,
+  useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type {
-  AdminNotificationListItem,
+  AdminNotification,
   NotificationChannelType,
-  NotificationHandler,
   NotificationId,
-  NotificationStatus,
 } from "metabase-types/api";
 
 import {
   getChannelIconName,
   getChannelLabel,
-  getStatusColor,
+  getStatusIcon,
   getStatusLabel,
 } from "./utils";
 
-const COLUMN_COUNT = 8;
-
 type Props = {
-  notifications: AdminNotificationListItem[];
+  notifications: AdminNotification[];
   error: unknown;
   isLoading: boolean;
   selectedIds: NotificationId[];
+  sorting: SortingState;
+  onSortingChange: (sorting: SortingState) => void;
   onToggleRow: (id: NotificationId) => void;
   onToggleAll: () => void;
   onRowClick?: (id: NotificationId) => void;
+};
+
+const getNodeId = (notification: AdminNotification) => String(notification.id);
+
+type ChannelSummary = {
+  channel: NotificationChannelType;
+  count: number;
+};
+
+const summarizeChannels = (
+  notification: AdminNotification,
+): ChannelSummary[] => {
+  const handlers = notification.handlers ?? [];
+  const map = new Map<NotificationChannelType, number>();
+  for (const handler of handlers) {
+    const prev = map.get(handler.channel_type) ?? 0;
+    map.set(handler.channel_type, prev + handler.recipients.length);
+  }
+  return Array.from(map.entries()).map(([channel, count]) => ({
+    channel,
+    count,
+  }));
+};
+
+type TimestampCellProps = {
+  value: string | null;
+  notification: AdminNotification;
+};
+
+const TimestampCell = ({ value, notification }: TimestampCellProps) => {
+  const icon = getStatusIcon(notification.status);
+  if (!value) {
+    return (
+      <Flex gap="sm" align="center">
+        <span>{t`Never`}</span>
+        <Icon name={icon.name} c={icon.color} size={14} />
+      </Flex>
+    );
+  }
+  const date = dayjs(value);
+  const isToday = date.isSame(dayjs(), "day");
+  return (
+    <Flex gap="sm" align="center">
+      <Tooltip label={date.fromNow()}>
+        {isToday ? (
+          <span>{t`Today, ${date.format("LT")}`}</span>
+        ) : (
+          <DateTime value={value} unit="minute" />
+        )}
+      </Tooltip>
+      <Icon name={icon.name} c={icon.color} size={14} />
+    </Flex>
+  );
 };
 
 export const NotificationsTable = ({
@@ -52,251 +101,219 @@ export const NotificationsTable = ({
   error,
   isLoading,
   selectedIds,
+  sorting,
+  onSortingChange,
   onToggleRow,
   onToggleAll,
   onRowClick,
 }: Props) => {
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const showLoadingAndErrorWrapper = isLoading || error != null;
-
   const allSelected =
     notifications.length > 0 &&
     notifications.every((n) => selectedSet.has(n.id));
   const someSelected =
     !allSelected && notifications.some((n) => selectedSet.has(n.id));
 
-  return (
-    <table
-      className={cx(AdminS.ContentTable, CS.mt2)}
-      data-testid="notifications-admin-table"
-    >
-      <thead>
-        <tr>
-          <Box component="th" w={40}>
-            <Checkbox
-              aria-label={t`Select all`}
-              checked={allSelected}
-              indeterminate={someSelected}
-              onChange={onToggleAll}
-              disabled={notifications.length === 0}
-            />
-          </Box>
-          <Box component="th" w={72}>{t`ID`}</Box>
-          <th>{t`Card`}</th>
-          <th>{t`Creator`}</th>
-          <th>{t`Schedule`}</th>
-          <Box component="th" miw={110}>{t`Recipients`}</Box>
-          <Box component="th" miw={180}>{t`Last sent`}</Box>
-          <Box component="th" miw={120}>{t`Status`}</Box>
-        </tr>
-      </thead>
-
-      <tbody>
-        {showLoadingAndErrorWrapper && (
-          <tr>
-            <td colSpan={COLUMN_COUNT}>
-              <LoadingAndErrorWrapper loading={isLoading} error={error} />
-            </td>
-          </tr>
-        )}
-
-        {!showLoadingAndErrorWrapper && notifications.length === 0 && (
-          <tr>
-            <td colSpan={COLUMN_COUNT}>
-              <Flex c="text-tertiary" justify="center">{t`No results`}</Flex>
-            </td>
-          </tr>
-        )}
-
-        {!showLoadingAndErrorWrapper &&
-          notifications.map((notification) => (
-            <NotificationRow
-              key={notification.id}
-              notification={notification}
-              selected={selectedSet.has(notification.id)}
-              onToggle={onToggleRow}
-              onRowClick={onRowClick}
-            />
-          ))}
-      </tbody>
-    </table>
-  );
-};
-
-type NotificationRowProps = {
-  notification: AdminNotificationListItem;
-  selected: boolean;
-  onToggle: (id: NotificationId) => void;
-  onRowClick?: (id: NotificationId) => void;
-};
-
-const NotificationRow = memo(function NotificationRow({
-  notification,
-  selected,
-  onToggle,
-  onRowClick,
-}: NotificationRowProps) {
-  const isOrphanedCard = notification.status === "orphaned_card";
-
-  const handlers = useMemo(
-    () => notification.handlers ?? [],
-    [notification.handlers],
-  );
-  const subscriptions = notification.subscriptions ?? [];
-
-  const recipientCount = handlers.reduce(
-    (total, handler) => total + (handler.recipients?.length ?? 0),
-    0,
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      onSortingChange(next);
+    },
+    [sorting, onSortingChange],
   );
 
-  const channels = useMemo(() => {
-    const types = new Set<NotificationChannelType>();
-    handlers.forEach((handler) => {
-      types.add(handler.channel_type);
-    });
-    return Array.from(types);
-  }, [handlers]);
-
-  const scheduleLabels = subscriptions
-    .map((subscription) => formatNotificationSchedule(subscription))
-    .filter((value): value is string => Boolean(value));
-  const scheduleText =
-    scheduleLabels.length > 0 ? scheduleLabels.join(", ") : "—";
-
-  return (
-    <tr
-      data-testid={`notification-row-${notification.id}`}
-      className={onRowClick ? CS.cursorPointer : undefined}
-      onClick={onRowClick ? () => onRowClick(notification.id) : undefined}
-    >
-      <td onClick={(event) => event.stopPropagation()}>
-        <Checkbox
-          aria-label={t`Select notification ${notification.id}`}
-          checked={selected}
-          onChange={() => onToggle(notification.id)}
-        />
-      </td>
-      <td>{notification.id}</td>
-      <td>
-        <CardCell notification={notification} isOrphaned={isOrphanedCard} />
-      </td>
-      <td>
-        <CreatorCell notification={notification} />
-      </td>
-      <td>
-        <Ellipsified maw={220} tooltip={scheduleText}>
-          {scheduleText}
-        </Ellipsified>
-      </td>
-      <td>
-        <RecipientsCell
-          channels={channels}
-          recipientCount={recipientCount}
-          handlers={handlers}
-        />
-      </td>
-      <td style={{ whiteSpace: "nowrap" }}>
-        {notification.last_sent_at ? (
-          <Tooltip label={dayjs(notification.last_sent_at).fromNow()}>
-            <DateTime value={notification.last_sent_at} unit="minute" />
-          </Tooltip>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td>
-        <StatusBadge status={notification.status} />
-      </td>
-    </tr>
+  const columns = useMemo<TreeTableColumnDef<AdminNotification>[]>(
+    () => [
+      {
+        id: "_select",
+        width: 48,
+        enableSorting: false,
+        header: () => (
+          <Checkbox
+            aria-label={t`Select all`}
+            checked={allSelected}
+            indeterminate={someSelected}
+            onChange={onToggleAll}
+            disabled={notifications.length === 0}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            aria-label={t`Select notification ${row.original.id}`}
+            checked={selectedSet.has(row.original.id)}
+            onChange={() => onToggleRow(row.original.id)}
+            onClick={(event) => event.stopPropagation()}
+          />
+        ),
+      },
+      {
+        id: "id",
+        header: t`ID`,
+        width: 80,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Flex justify="center">
+            <Badge
+              variant="default"
+              bg="background-secondary"
+              c="text-primary"
+              tt="none"
+              bd="1px solid var(--mb-color-border)"
+              h="auto"
+              px="sm"
+              py="xs"
+              fz="md"
+              lh="xs"
+              fw={400}
+              miw={29}
+            >
+              {row.original.id}
+            </Badge>
+          </Flex>
+        ),
+      },
+      {
+        id: "card_name",
+        header: t`Question`,
+        width: 280,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const card = row.original.payload?.card;
+          const cardId = row.original.payload.card_id;
+          const name = card?.name ?? `#${cardId}`;
+          return <Ellipsified tooltip={name}>{name}</Ellipsified>;
+        },
+      },
+      {
+        id: "creator_name",
+        header: t`Owner`,
+        width: 200,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const creator = row.original.creator;
+          const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
+          const isDeactivated = row.original.status === "orphaned_creator";
+          return (
+            <Flex gap="xs" align="center" miw={0}>
+              <Ellipsified tooltip={name}>{name}</Ellipsified>
+              {isDeactivated && (
+                <Tooltip label={getStatusLabel("orphaned_creator")}>
+                  <Icon name="ghost" size={16} c="text-secondary" />
+                </Tooltip>
+              )}
+            </Flex>
+          );
+        },
+      },
+      {
+        id: "channel",
+        header: t`Channel`,
+        width: 172,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const summaries = summarizeChannels(row.original);
+          if (summaries.length === 0) {
+            return "—";
+          }
+          return (
+            <Flex gap="sm" align="center" wrap="wrap">
+              {summaries.map(({ channel, count }) => (
+                <Tooltip key={channel} label={getChannelLabel(channel)}>
+                  <Flex gap="xs" align="center">
+                    <Icon
+                      name={getChannelIconName(channel)}
+                      c="text-secondary"
+                      size={16}
+                    />
+                    <Text size="md" c="text-primary">
+                      {count}
+                    </Text>
+                  </Flex>
+                </Tooltip>
+              ))}
+            </Flex>
+          );
+        },
+      },
+      {
+        id: "last_checked_at",
+        header: t`Last checked`,
+        width: 170,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <TimestampCell
+            value={row.original.last_sent_at}
+            notification={row.original}
+          />
+        ),
+      },
+      {
+        id: "last_sent_at",
+        header: t`Last send attempt`,
+        width: 170,
+        enableSorting: true,
+        sortDescFirst: true,
+        cell: ({ row }) => (
+          <TimestampCell
+            value={row.original.last_sent_at}
+            notification={row.original}
+          />
+        ),
+      },
+    ],
+    [
+      allSelected,
+      someSelected,
+      notifications.length,
+      selectedSet,
+      onToggleAll,
+      onToggleRow,
+    ],
   );
-});
 
-type CardCellProps = {
-  notification: AdminNotificationListItem;
-  isOrphaned: boolean;
-};
+  const instance = useTreeTableInstance<AdminNotification>({
+    data: notifications,
+    columns,
+    getNodeId,
+    sorting,
+    manualSorting: true,
+    onSortingChange: handleSortingChange,
+  });
 
-const CardCell = ({ notification, isOrphaned }: CardCellProps) => {
-  const card = notification.payload?.card;
-  const cardId = notification.payload?.card_id;
-  const name = card?.name ?? (cardId != null ? `#${cardId}` : t`Unknown card`);
+  const handleRowClick = useCallback(
+    (row: Row<AdminNotification>) => {
+      onRowClick?.(row.original.id);
+    },
+    [onRowClick],
+  );
 
-  if (cardId != null && !isOrphaned) {
+  const getRowProps = useCallback(
+    (row: Row<AdminNotification>) => ({
+      "data-testid": `notification-row-${row.original.id}`,
+    }),
+    [],
+  );
+
+  if (isLoading || !!error) {
     return (
-      <Ellipsified maw={260} tooltip={name}>
-        <Link
-          variant="brand"
-          to={Urls.card({ id: cardId, name })}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {name}
-        </Link>
-      </Ellipsified>
+      <Card withBorder p="lg" data-testid="notifications-admin-table">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Card>
     );
   }
-  return (
-    <Ellipsified maw={260} tooltip={name}>
-      <span>{name}</span>
-    </Ellipsified>
-  );
-};
-
-type CreatorCellProps = {
-  notification: AdminNotificationListItem;
-};
-
-const CreatorCell = ({ notification }: CreatorCellProps) => {
-  const creator = notification.creator;
-  const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
-  return (
-    <Ellipsified maw={180} tooltip={name}>
-      {name}
-    </Ellipsified>
-  );
-};
-
-type RecipientsCellProps = {
-  channels: NotificationChannelType[];
-  recipientCount: number;
-  handlers: NotificationHandler[];
-};
-
-const StatusBadge = ({ status }: { status: NotificationStatus }) => (
-  <Badge
-    color={getStatusColor(status)}
-    variant="light"
-    styles={{ label: { overflow: "visible" } }}
-  >
-    {getStatusLabel(status)}
-  </Badge>
-);
-
-const RecipientsCell = ({
-  channels,
-  recipientCount,
-  handlers,
-}: RecipientsCellProps) => {
-  const tooltipLabel =
-    handlers
-      .map((handler) => {
-        const label = getChannelLabel(handler.channel_type);
-        const count = handler.recipients?.length ?? 0;
-        return count > 0 ? `${label}: ${count}` : label;
-      })
-      .join(" · ") || undefined;
 
   return (
-    <Tooltip label={tooltipLabel} disabled={!tooltipLabel}>
-      <Group gap="xs" wrap="nowrap">
-        {channels.map((channel) => (
-          <Icon
-            key={channel}
-            name={getChannelIconName(channel)}
-            aria-label={getChannelLabel(channel)}
-          />
-        ))}
-        <span>{recipientCount}</span>
-      </Group>
-    </Tooltip>
+    <Card withBorder p={0} data-testid="notifications-admin-table">
+      <TreeTable
+        instance={instance}
+        hierarchical={false}
+        ariaLabel={t`Notifications`}
+        onRowClick={handleRowClick}
+        getRowProps={getRowProps}
+        emptyState={
+          <Flex c="text-tertiary" justify="center">{t`No results`}</Flex>
+        }
+      />
+    </Card>
   );
 };

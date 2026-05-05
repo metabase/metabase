@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  AdminNotification,
   AdminNotificationDetail,
-  AdminNotificationListItem,
   AdminNotificationListResponse,
   ListNotificationsRequest,
   Notification,
@@ -29,7 +29,7 @@ export const setupCreateNotificationEndpoint = () => {
 };
 
 export const setupAdminListNotificationsEndpoint = (
-  notifications: AdminNotificationListItem[] = [],
+  notifications: AdminNotification[] = [],
   overrides: Partial<AdminNotificationListResponse> = {},
 ) => {
   const response: AdminNotificationListResponse = {

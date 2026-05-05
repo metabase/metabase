@@ -1,0 +1,789 @@
+import { useMemo } from "react";
+import { Link } from "react-router";
+import { t } from "ttag";
+
+import {
+  useAdminNotificationDetailQuery,
+  useListTaskRunsQuery,
+} from "metabase/api";
+import { Link as MBLink } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  ActionIcon,
+  Anchor,
+  Badge,
+  Box,
+  Drawer,
+  Flex,
+  Group,
+  Icon,
+  Menu,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type {
+  AdminNotification,
+  AdminNotificationDetail,
+  NotificationHandler,
+  NotificationHandlerEmail,
+  NotificationHandlerHttp,
+  NotificationHandlerSlack,
+  NotificationId,
+  NotificationRecipient,
+  TaskRun,
+  TaskRunStatus,
+} from "metabase-types/api";
+
+import { formatRelativeDate, getChannelIconName } from "./utils";
+
+const SIDEBAR_WIDTH = 560;
+const RECENT_RUNS_LIMIT = 5;
+
+type Props = {
+  notificationId: NotificationId;
+  notifications: AdminNotification[];
+  isBulkLoading: boolean;
+  onClose: () => void;
+  onNavigate: (id: NotificationId) => void;
+  onArchive: (notification: AdminNotificationDetail) => void;
+  onUnarchive: (notification: AdminNotificationDetail) => void;
+  onChangeOwner: (notification: AdminNotificationDetail) => void;
+};
+
+export const NotificationDetailSidebar = ({
+  notificationId,
+  notifications,
+  isBulkLoading,
+  onClose,
+  onNavigate,
+  onArchive,
+  onUnarchive,
+  onChangeOwner,
+}: Props) => {
+  const {
+    data: notification,
+    error,
+    isLoading,
+  } = useAdminNotificationDetailQuery(notificationId);
+
+  const { previousId, nextId } = useMemo(() => {
+    const index = notifications.findIndex((n) => n.id === notificationId);
+    if (index < 0) {
+      return { previousId: null, nextId: null };
+    }
+    return {
+      previousId: index > 0 ? notifications[index - 1].id : null,
+      nextId:
+        index < notifications.length - 1 ? notifications[index + 1].id : null,
+    };
+  }, [notifications, notificationId]);
+
+  return (
+    <Drawer
+      opened
+      onClose={onClose}
+      position="right"
+      size={SIDEBAR_WIDTH}
+      withCloseButton={false}
+      padding={0}
+      withOverlay={false}
+      lockScroll={false}
+      shadow="lg"
+    >
+      <Stack gap={0} h="100%">
+        <SidebarHeader
+          previousId={previousId}
+          nextId={nextId}
+          isBulkLoading={isBulkLoading}
+          notification={notification}
+          onClose={onClose}
+          onNavigate={onNavigate}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
+          onChangeOwner={onChangeOwner}
+        />
+        <Box px="xl" pb="xl" style={{ overflowY: "auto" }} flex={1}>
+          {isLoading || error || !notification ? (
+            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          ) : (
+            <SidebarBody notification={notification} />
+          )}
+        </Box>
+      </Stack>
+    </Drawer>
+  );
+};
+
+type SidebarHeaderProps = {
+  previousId: NotificationId | null;
+  nextId: NotificationId | null;
+  isBulkLoading: boolean;
+  notification: AdminNotificationDetail | undefined;
+  onClose: () => void;
+  onNavigate: (id: NotificationId) => void;
+  onArchive: (notification: AdminNotificationDetail) => void;
+  onUnarchive: (notification: AdminNotificationDetail) => void;
+  onChangeOwner: (notification: AdminNotificationDetail) => void;
+};
+
+const SidebarHeader = ({
+  previousId,
+  nextId,
+  isBulkLoading,
+  notification,
+  onClose,
+  onNavigate,
+  onArchive,
+  onUnarchive,
+  onChangeOwner,
+}: SidebarHeaderProps) => {
+  const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
+  const primaryChannel = getPrimaryChannel(notification?.handlers);
+
+  return (
+    <Box px="xl" pt="lg" pb="md">
+      <Flex justify="space-between" align="center" mb="md">
+        <Group gap="xs">
+          <ActionIcon
+            aria-label={t`Previous alert`}
+            variant="default"
+            size="lg"
+            disabled={previousId == null}
+            onClick={() => previousId != null && onNavigate(previousId)}
+          >
+            <Icon name="chevronup" />
+          </ActionIcon>
+          <ActionIcon
+            aria-label={t`Next alert`}
+            variant="default"
+            size="lg"
+            disabled={nextId == null}
+            onClick={() => nextId != null && onNavigate(nextId)}
+          >
+            <Icon name="chevrondown" />
+          </ActionIcon>
+        </Group>
+        <Group gap={4}>
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <ActionIcon
+                aria-label={t`More actions`}
+                size="lg"
+                disabled={notification == null || isBulkLoading}
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {notification?.active ? (
+                <Menu.Item
+                  leftSection={<Icon name="archive" />}
+                  onClick={() => notification && onArchive(notification)}
+                >
+                  {t`Archive`}
+                </Menu.Item>
+              ) : (
+                <Menu.Item
+                  leftSection={<Icon name="unarchive" />}
+                  onClick={() => notification && onUnarchive(notification)}
+                >
+                  {t`Unarchive`}
+                </Menu.Item>
+              )}
+              <Menu.Item
+                leftSection={<Icon name="person" />}
+                onClick={() => notification && onChangeOwner(notification)}
+              >
+                {t`Change owner`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+          <ActionIcon aria-label={t`Edit`} size="lg" disabled={true}>
+            <Icon name="pencil" />
+          </ActionIcon>
+          <ActionIcon aria-label={t`Close`} size="lg" onClick={onClose}>
+            <Icon name="close" />
+          </ActionIcon>
+        </Group>
+      </Flex>
+
+      {notification && (
+        <Flex align="center" gap="md">
+          <ChannelAvatar channel={primaryChannel} />
+          <Stack gap={2}>
+            <Text size="xs" c="text-secondary">
+              {t`Alert ${notification.id}`}
+            </Text>
+            <Title order={3} lh={1.2} c="text-primary">
+              {cardName}
+            </Title>
+          </Stack>
+        </Flex>
+      )}
+    </Box>
+  );
+};
+
+const ChannelAvatar = ({
+  channel,
+}: {
+  channel: NotificationHandler["channel_type"] | null;
+}) => {
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      w={36}
+      h={36}
+      bg="background-info"
+      style={{ borderRadius: "50%", flexShrink: 0 }}
+    >
+      <Icon
+        name={channel ? getChannelIconName(channel) : "bell"}
+        c="brand"
+        size={16}
+      />
+    </Flex>
+  );
+};
+
+const getPrimaryChannel = (
+  handlers: NotificationHandler[] | undefined,
+): NotificationHandler["channel_type"] | null => {
+  if (!handlers || handlers.length === 0) {
+    return null;
+  }
+  return handlers[0].channel_type;
+};
+
+const SidebarBody = ({
+  notification,
+}: {
+  notification: AdminNotificationDetail;
+}) => {
+  const handlers = notification.handlers ?? [];
+  const emailHandler = findEmailHandler(handlers);
+  const slackHandler = findSlackHandler(handlers);
+  const httpHandler = findHttpHandler(handlers);
+  const emailRecipientCount = emailHandler?.recipients.length ?? 0;
+  const slackChannelCount = slackHandler?.recipients.length ?? 0;
+
+  return (
+    <Stack gap="xl" mt="lg">
+      <DetailsSection
+        notification={notification}
+        emailRecipientCount={emailRecipientCount}
+        slackChannelCount={slackChannelCount}
+        httpHandler={httpHandler}
+      />
+      <RunsSection notification={notification} />
+      {emailHandler && emailRecipientCount > 0 && (
+        <EmailRecipientsSection
+          handler={emailHandler}
+          count={emailRecipientCount}
+        />
+      )}
+      {slackHandler && slackChannelCount > 0 && (
+        <SlackChannelsSection
+          handler={slackHandler}
+          count={slackChannelCount}
+        />
+      )}
+    </Stack>
+  );
+};
+
+const findEmailHandler = (
+  handlers: NotificationHandler[],
+): NotificationHandlerEmail | undefined => {
+  for (const handler of handlers) {
+    if (handler.channel_type === "channel/email") {
+      return handler;
+    }
+  }
+  return undefined;
+};
+
+const findSlackHandler = (
+  handlers: NotificationHandler[],
+): NotificationHandlerSlack | undefined => {
+  for (const handler of handlers) {
+    if (handler.channel_type === "channel/slack") {
+      return handler;
+    }
+  }
+  return undefined;
+};
+
+const findHttpHandler = (
+  handlers: NotificationHandler[],
+): NotificationHandlerHttp | undefined => {
+  for (const handler of handlers) {
+    if (handler.channel_type === "channel/http") {
+      return handler;
+    }
+  }
+  return undefined;
+};
+
+type DetailsSectionProps = {
+  notification: AdminNotificationDetail;
+  emailRecipientCount: number;
+  slackChannelCount: number;
+  httpHandler: NotificationHandlerHttp | undefined;
+};
+
+const DetailsSection = ({
+  notification,
+  emailRecipientCount,
+  slackChannelCount,
+  httpHandler,
+}: DetailsSectionProps) => {
+  const cardId = notification.payload?.card_id;
+  const cardName = notification.payload?.card?.name;
+  const isFailing = notification.status === "failing";
+  const lastDate = formatRelativeDate(notification.last_sent_at);
+  const channelSummary = formatChannelSummary({
+    emailRecipientCount,
+    slackChannelCount,
+    httpHandler,
+  });
+  const ownerName =
+    notification.creator?.common_name ??
+    notification.creator?.email ??
+    t`Unknown`;
+
+  return (
+    <SidebarSection title={t`Details`}>
+      <DetailsTable>
+        <DetailsRow
+          label={t`Question`}
+          value={
+            cardId != null && cardName ? (
+              <MBLink
+                variant="brand"
+                to={Urls.card({ id: cardId, name: cardName })}
+              >
+                {cardName}
+              </MBLink>
+            ) : (
+              (cardName ?? t`Unknown`)
+            )
+          }
+          bold
+        />
+        <DetailsRow label={t`Owner`} value={ownerName} />
+        <DetailsRow
+          label={t`Channel`}
+          value={channelSummary || t`No channels`}
+        />
+        <DetailsRow label={t`Last checked`} value={lastDate} />
+        <DetailsRow
+          label={t`Last send attempt`}
+          tall
+          value={
+            <Stack gap={4}>
+              <Text size="md" c="text-primary">
+                {lastDate}
+              </Text>
+              {isFailing && (
+                <Flex align="center" gap="xs">
+                  <Text size="sm" c="error">
+                    {t`Error with the SMTP server`}
+                  </Text>
+                  <Icon name="warning_round" c="error" size={14} />
+                </Flex>
+              )}
+            </Stack>
+          }
+        />
+      </DetailsTable>
+    </SidebarSection>
+  );
+};
+
+const formatChannelSummary = ({
+  emailRecipientCount,
+  slackChannelCount,
+  httpHandler,
+}: {
+  emailRecipientCount: number;
+  slackChannelCount: number;
+  httpHandler: NotificationHandlerHttp | undefined;
+}): string => {
+  const parts: string[] = [];
+  if (emailRecipientCount > 0) {
+    parts.push(
+      emailRecipientCount === 1
+        ? t`1 email recipient`
+        : t`${emailRecipientCount} email recipients`,
+    );
+  }
+  if (slackChannelCount > 0) {
+    parts.push(
+      slackChannelCount === 1
+        ? t`1 Slack channel`
+        : t`${slackChannelCount} Slack channels`,
+    );
+  }
+  if (httpHandler && httpHandler.recipients.length > 0) {
+    const count = httpHandler.recipients.length;
+    parts.push(count === 1 ? t`1 webhook` : t`${count} webhooks`);
+  }
+  return parts.join(", ");
+};
+
+const RunsSection = ({
+  notification,
+}: {
+  notification: AdminNotificationDetail;
+}) => {
+  const cardId = notification.payload?.card_id;
+  const { data: taskRunsData, isLoading } = useListTaskRunsQuery(
+    cardId != null
+      ? {
+          limit: RECENT_RUNS_LIMIT,
+          offset: 0,
+          "run-type": "alert",
+          "entity-type": "card",
+          "entity-id": cardId,
+        }
+      : undefined,
+    { skip: cardId == null },
+  );
+
+  if (cardId == null) {
+    return null;
+  }
+
+  const taskRuns = taskRunsData?.data ?? [];
+  const runsUrl = Urls.adminToolsTasksRunsFor({
+    runType: "alert",
+    entityType: "card",
+    entityId: cardId,
+    startedAt: "past30days~",
+  });
+
+  return (
+    <SidebarSection
+      title={t`Last checks and send attempts`}
+      titleAside={
+        <Anchor component={Link} to={runsUrl} c="brand" fz="md" fw="bold">
+          {t`View all alert runs`}
+        </Anchor>
+      }
+    >
+      <DetailsTable>
+        <RunsHeaderRow />
+        {isLoading || taskRuns.length === 0 ? (
+          <DetailsRow
+            label={isLoading ? t`Loading…` : t`No runs in the past 30 days.`}
+            value=""
+            bold={false}
+            spanLabel
+          />
+        ) : (
+          taskRuns.map((taskRun) => (
+            <RunsRow key={taskRun.id} taskRun={taskRun} />
+          ))
+        )}
+      </DetailsTable>
+    </SidebarSection>
+  );
+};
+
+const RunsHeaderRow = () => (
+  <Flex bg="background-secondary" h={48}>
+    <Flex
+      align="center"
+      px="md"
+      flex={1}
+      style={{
+        borderRight: "1px solid var(--mb-color-border)",
+        borderBottom: "1px solid var(--mb-color-border)",
+      }}
+    >
+      <Text size="md" c="text-secondary">
+        {t`Question checks`}
+      </Text>
+    </Flex>
+    <Flex
+      align="center"
+      px="md"
+      flex={1}
+      style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+    >
+      <Text size="md" c="text-secondary">
+        {t`Alert send attempts`}
+      </Text>
+    </Flex>
+  </Flex>
+);
+
+const RunsRow = ({ taskRun }: { taskRun: TaskRun }) => {
+  const formatted = formatRelativeDate(taskRun.started_at);
+  return (
+    <Flex h={48}>
+      <Flex
+        align="center"
+        px="md"
+        flex={1}
+        style={{
+          borderRight: "1px solid var(--mb-color-border)",
+          borderBottom: "1px solid var(--mb-color-border)",
+        }}
+      >
+        <Text size="md" c="text-primary">
+          {formatted}
+        </Text>
+      </Flex>
+      <Flex
+        align="center"
+        justify="space-between"
+        px="md"
+        flex={1}
+        gap="sm"
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+      >
+        <Text size="md" c="text-primary">
+          {formatted}
+        </Text>
+        <RunStatusBadge status={taskRun.status} />
+      </Flex>
+    </Flex>
+  );
+};
+
+const RunStatusBadge = ({ status }: { status: TaskRunStatus }) => {
+  if (status === "failed" || status === "abandoned") {
+    return (
+      <Badge color="error" variant="light" radius="lg" tt="none" fw="normal">
+        {t`Failed`}
+      </Badge>
+    );
+  }
+  if (status === "started") {
+    return (
+      <Badge color="warning" variant="light" radius="lg" tt="none" fw="normal">
+        {t`Running`}
+      </Badge>
+    );
+  }
+  return null;
+};
+
+type EmailRecipientsSectionProps = {
+  handler: NotificationHandlerEmail;
+  count: number;
+};
+
+const EmailRecipientsSection = ({
+  handler,
+  count,
+}: EmailRecipientsSectionProps) => {
+  const title =
+    count === 1 ? t`1 email recipient` : t`${count} email recipients`;
+
+  return (
+    <SidebarSection title={title}>
+      <DetailsTable>
+        {handler.recipients.map((recipient, index) => (
+          <EmailRow
+            key={recipient.id ?? index}
+            recipient={recipient}
+            isLast={index === handler.recipients.length - 1}
+          />
+        ))}
+      </DetailsTable>
+    </SidebarSection>
+  );
+};
+
+const EmailRow = ({
+  recipient,
+  isLast,
+}: {
+  recipient: NotificationRecipient;
+  isLast: boolean;
+}) => {
+  const { name, email } = getEmailRowText(recipient);
+  return (
+    <Flex
+      h={48}
+      align="center"
+      justify="space-between"
+      px="md"
+      gap="sm"
+      style={{
+        borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
+      }}
+    >
+      <Text size="md" c="text-primary">
+        {name}
+      </Text>
+      {email && (
+        <Text size="md" c="text-secondary">
+          {email}
+        </Text>
+      )}
+    </Flex>
+  );
+};
+
+const getEmailRowText = (
+  recipient: NotificationRecipient,
+): { name: string; email: string | null } => {
+  if (recipient.type === "notification-recipient/user") {
+    const user = recipient.user;
+    if (!user) {
+      return { name: t`Deactivated user`, email: null };
+    }
+    return {
+      name: user.common_name ?? user.email ?? t`Unknown`,
+      email: user.email ?? null,
+    };
+  }
+  if (recipient.type === "notification-recipient/raw-value") {
+    const value = recipient.details?.value ?? "";
+    return { name: value, email: null };
+  }
+  return { name: t`Group recipient`, email: null };
+};
+
+type SlackChannelsSectionProps = {
+  handler: NotificationHandlerSlack;
+  count: number;
+};
+
+const SlackChannelsSection = ({
+  handler,
+  count,
+}: SlackChannelsSectionProps) => {
+  const title = count === 1 ? t`1 Slack channel` : t`${count} Slack channels`;
+
+  return (
+    <SidebarSection title={title}>
+      <DetailsTable>
+        {handler.recipients.map((recipient, index) => (
+          <SlackRow
+            key={recipient.id ?? index}
+            value={recipient.details?.value ?? ""}
+            isLast={index === handler.recipients.length - 1}
+          />
+        ))}
+      </DetailsTable>
+    </SidebarSection>
+  );
+};
+
+const SlackRow = ({ value, isLast }: { value: string; isLast: boolean }) => (
+  <Flex
+    h={48}
+    align="center"
+    px="md"
+    style={{
+      borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
+    }}
+  >
+    <Text size="md" c="text-primary">
+      {value}
+    </Text>
+  </Flex>
+);
+
+type SidebarSectionProps = {
+  title: string;
+  titleAside?: React.ReactNode;
+  children: React.ReactNode;
+};
+
+const SidebarSection = ({
+  title,
+  titleAside,
+  children,
+}: SidebarSectionProps) => (
+  <Stack gap="sm">
+    <Flex justify="space-between" align="center">
+      <Text fw="bold" size="md" c="text-primary">
+        {title}
+      </Text>
+      {titleAside}
+    </Flex>
+    {children}
+  </Stack>
+);
+
+const DetailsTable = ({ children }: { children: React.ReactNode }) => (
+  <Box
+    style={{
+      border: "1px solid var(--mb-color-border)",
+      borderRadius: "1rem",
+      overflow: "hidden",
+    }}
+  >
+    {children}
+  </Box>
+);
+
+type DetailsRowProps = {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  bold?: boolean;
+  tall?: boolean;
+  spanLabel?: boolean;
+};
+
+const DetailsRow = ({
+  label,
+  value,
+  bold,
+  tall,
+  spanLabel,
+}: DetailsRowProps) => {
+  if (spanLabel) {
+    return (
+      <Flex h={48} align="center" px="md" bg="background-primary">
+        <Text size="md" c="text-secondary">
+          {label}
+        </Text>
+      </Flex>
+    );
+  }
+  return (
+    <Flex mih={tall ? 124 : 48}>
+      <Flex
+        w={160}
+        align={tall ? "flex-start" : "center"}
+        px="md"
+        py={tall ? "md" : 0}
+        bg="background-secondary"
+        style={{
+          borderRight: "1px solid var(--mb-color-border)",
+          borderBottom: "1px solid var(--mb-color-border)",
+        }}
+      >
+        <Text size="md" c="text-secondary">
+          {label}
+        </Text>
+      </Flex>
+      <Flex
+        flex={1}
+        align={tall ? "flex-start" : "center"}
+        px="md"
+        py={tall ? "md" : 0}
+        miw={0}
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+      >
+        {typeof value === "string" ? (
+          <Text size="md" fw={bold ? "bold" : "normal"} c="text-primary">
+            {value}
+          </Text>
+        ) : (
+          <Box w="100%">{value}</Box>
+        )}
+      </Flex>
+    </Flex>
+  );
+};

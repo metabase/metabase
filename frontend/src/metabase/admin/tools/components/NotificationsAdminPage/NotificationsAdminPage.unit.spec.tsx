@@ -13,7 +13,7 @@ import {
 } from "__support__/ui";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import * as Urls from "metabase/urls";
-import type { AdminNotificationListItem } from "metabase-types/api";
+import type { AdminNotification } from "metabase-types/api";
 import {
   createMockAdminNotificationListItem,
   createMockCard,
@@ -26,7 +26,7 @@ import { NotificationsAdminPage } from "./NotificationsAdminPage";
 const PATHNAME = Urls.adminToolsNotifications();
 
 interface SetupOpts {
-  notifications?: AdminNotificationListItem[];
+  notifications?: AdminNotification[];
   location?: Location;
 }
 
@@ -41,7 +41,13 @@ const setup = ({
   setupAdminListNotificationsEndpoint(notifications);
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={NotificationsAdminPage} />,
+    <>
+      <Route path={PATHNAME} component={NotificationsAdminPage} />
+      <Route
+        path={`${PATHNAME}/:notificationId`}
+        component={NotificationsAdminPage}
+      />
+    </>,
     {
       initialRoute: `${location.pathname}${location.search}`,
       withRouter: true,
@@ -49,9 +55,7 @@ const setup = ({
   );
 };
 
-const alertFor = (
-  overrides: Partial<AdminNotificationListItem>,
-): AdminNotificationListItem =>
+const alertFor = (overrides: Partial<AdminNotification>): AdminNotification =>
   createMockAdminNotificationListItem({
     payload: {
       id: 1,
@@ -99,22 +103,27 @@ describe("NotificationsAdminPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Orphaned")).toBeInTheDocument();
-    expect(screen.getByText("No owner")).toBeInTheDocument();
+    expect(screen.getByText("Deactivated owner")).toBeInTheDocument();
     expect(screen.getByText("Failing")).toBeInTheDocument();
-    expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
+    expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
   });
 
-  it("uses 'Filter by X' placeholders like the Tasks/Runs pages", async () => {
+  it("renders the search input and a filter popover with the underlying selects", async () => {
     setup();
     await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByPlaceholderText(
+        "Search by question, creator, or recipient email…",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Show filters" }));
 
     expect(screen.getByPlaceholderText("Filter by active")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Filter by status")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Filter by channel"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("Filter by recipient email"),
     ).toBeInTheDocument();
   });
 
