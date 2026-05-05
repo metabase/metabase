@@ -7,7 +7,6 @@ import {
 } from "metabase/common/utils/card";
 import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
-import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
@@ -41,6 +40,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackNewQuestionSaved } from "../../analytics";
+import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   getCard,
   getIsResultDirty,

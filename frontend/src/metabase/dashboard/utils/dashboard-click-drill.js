@@ -3,15 +3,15 @@ import querystring from "querystring";
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import * as Urls from "metabase/urls";
-import { renderLinkURLForClick } from "metabase/utils/formatting/link";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import {
   formatSourceForTarget,
   getDataFromClicked,
   getTargetForQueryParams,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
+} from "metabase/parameters/utils/click-behavior";
+import * as Urls from "metabase/urls";
+import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 import { getStructuredQuestionUrlWithParameters } from "./question-url";

@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
-import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
+import { canArchiveItem } from "metabase/collections/utils";
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
-import { useSetArchive } from "metabase/common/hooks";
+import { canMoveItem, useSetArchive } from "metabase/common/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { Collection, CollectionItem } from "metabase-types/api";
 

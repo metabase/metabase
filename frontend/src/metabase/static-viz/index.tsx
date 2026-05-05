@@ -8,15 +8,12 @@ import ReactDOMServer from "react-dom/server";
 import enterpriseOverrides from "ee-overrides";
 import "metabase/utils/dayjs";
 
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import type { ColorPalette } from "metabase/ui/colors/types";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue as internalFormatValue } from "metabase/utils/formatting/value";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
@@ -28,7 +25,6 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
-import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 import type {
   Card,
   DashCardVisualizationSettings,
@@ -43,24 +39,6 @@ import type {
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
-type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
-  __METABASE_VIZ_API__?: Omit<
-    NonNullable<Window["__METABASE_VIZ_API__"]>,
-    // unsupported in static viz
-    "measureText" | "measureTextHeight" | "measureTextWidth"
-  >;
-};
-
-// Expose React, jsxRuntime, and utils for custom viz bundles that reference
-// window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
-(window as StaticVizApiWindow).__METABASE_VIZ_API__ = {
-  columnTypes: customVizColumnTypes,
-  formatValue: (value: unknown, options?: OptionsType) => {
-    const result = internalFormatValue(value, { ...options, jsx: false });
-    return String(result ?? "");
-  },
-};
-
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
@@ -70,7 +48,6 @@ export type RenderChartOptions = {
   applicationColors: ColorPalette;
   customFormatting: FormattingSettings;
   startOfWeek: DayOfWeekId | null | undefined;
-  locale?: string | null;
 };
 
 type RenderChartDashcardSettings = DashCardVisualizationSettings & {
@@ -137,37 +114,23 @@ function getVisualizerRawSeries(
   ];
 }
 
-export function registerCustomVizPlugin(
-  factory: Parameters<typeof PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin>[0],
-  identifier: string,
-  assets: Record<string, string> | undefined,
-) {
-  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, assets);
-}
-
-/**
- * Initialize the static viz context: set settings and apply enterprise overrides.
- * Must be called before registerCustomVizPlugin so that the EE registry is active.
- */
-export function initializeContext(options: RenderChartOptions) {
-  MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
-  MetabaseSettings.set("site-locale", options.locale ?? "en");
-
-  if (typeof enterpriseOverrides === "function") {
-    enterpriseOverrides();
-  }
-}
-
 export function RenderChart(
   rawSeries: RawSeries,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
 ) {
+  MetabaseSettings.set("token-features", options.tokenFeatures);
+  MetabaseSettings.set(
+    "application-colors" as SettingKey,
+    options.applicationColors,
+  );
+
+  if (typeof enterpriseOverrides === "function") {
+    enterpriseOverrides();
+  }
+
+  MetabaseSettings.set("custom-formatting", options.customFormatting);
+
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
   );

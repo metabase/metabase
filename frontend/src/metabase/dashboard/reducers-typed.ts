@@ -5,6 +5,7 @@ import { omit } from "underscore";
 import {
   createDashboardPublicLink,
   deleteDashboardPublicLink,
+  updateDashboard,
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
@@ -323,6 +324,13 @@ export const dashboards = createReducer(
         if (draftDashboard) {
           draftDashboard.collection_id = payload.dashboard.collection_id;
           draftDashboard.collection = payload.dashboard.collection;
+        }
+      })
+      .addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+        const draftDashboard = state[payload.id];
+        if (draftDashboard) {
+          draftDashboard.collection_id = payload.collection_id;
+          draftDashboard.collection = payload.collection;
         }
       })
       .addMatcher(

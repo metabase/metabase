@@ -20,6 +20,16 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 const AGGREGATED_VALUE = "18760";
 const AGGREGATED_VALUE_FORMATTED = "18,760";
 
+function drillThroughDemoVizClick() {
+  cy.intercept("POST", "/api/dataset").as("demoVizDrillDataset");
+  cy.findByTestId("demo-viz-click-target").click();
+  cy.findByTestId("click-actions-view")
+    .findByText(/See these Orders/)
+    .should("be.visible")
+    .click();
+  cy.wait("@demoVizDrillDataset");
+}
+
 function buildDocumentWithCustomVizCard(cardId: CardId): DocumentContent {
   return {
     type: "doc",
@@ -114,7 +124,6 @@ describe("admin > custom visualizations", () => {
         });
 
         H.activateToken("bleeding-edge");
-        H.setupCustomVizRepo();
         H.updateSetting("custom-viz-enabled", true);
         H.visitCustomVizSettings();
         H.getAddVisualizationLink().click();
@@ -129,7 +138,7 @@ describe("admin > custom visualizations", () => {
           .findByRole("link", { name: /Custom visualizations/ })
           .should("have.attr", "data-active", "true");
 
-        cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+        H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
         cy.findByRole("button", { name: "Add visualization" }).click();
         cy.findByRole("link", { name: /demo-viz/ }).click();
 
@@ -687,10 +696,11 @@ describe("admin > custom visualizations", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
 
-      cy.findByTestId("demo-viz-click-target").click();
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      H.popover().findByText("See these Orders").should("be.visible").click();
-      cy.wait("@dataset");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      drillThroughDemoVizClick();
 
       // Drill opens an ad-hoc question showing the underlying Orders rows
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
@@ -847,13 +857,7 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      H.getDashboardCard().findByTestId("demo-viz-click-target").click();
-      cy.findByTestId("click-actions-view")
-        .findByText(/See these Orders/)
-        .should("be.visible")
-        .click();
-      cy.wait("@dataset");
+      drillThroughDemoVizClick();
 
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       // The demo plugin's query is `count(Orders)` with no breakout, so the

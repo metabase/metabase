@@ -15,7 +15,6 @@ import {
   canArchiveItem,
   canBookmarkItem,
   canCopyItem,
-  canMoveItem,
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
@@ -24,6 +23,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import {
   type ArchivableItem,
+  canMoveItem,
   canPinItem,
   isPinnable,
   useSetArchive,

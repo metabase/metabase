@@ -2598,7 +2598,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -2610,7 +2609,6 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   xrays
@@ -3327,6 +3325,7 @@
            lib
            logger
            models
+           permissions
            plugins
            premium-features
            search

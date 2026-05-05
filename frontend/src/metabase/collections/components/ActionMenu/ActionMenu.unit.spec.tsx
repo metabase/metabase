@@ -159,7 +159,6 @@ describe("ActionMenu", () => {
         name: "Collection",
         model: "collection",
         can_write: true,
-        setCollection: jest.fn(),
       });
       fetchMock.put("path:/api/collection/1", { ...item, archived: true });
 
@@ -187,13 +186,11 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: true,
         personal_owner_id: 1,
-        setCollection: jest.fn(),
-        copy: true,
       });
 
       setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -203,13 +200,11 @@ describe("ActionMenu", () => {
         name: "My Read Only collection",
         model: "collection",
         can_write: false,
-        setCollection: jest.fn(),
-        copy: true,
       });
 
       setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
