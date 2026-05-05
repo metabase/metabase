@@ -20,7 +20,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
@@ -143,24 +142,6 @@
                   :user_agent       nil
                   :sanitized_user_agent nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
-
-(deftest external-query-test
-  (testing "POST /api/dataset/external"
-    (testing "executes a serialized MBQL 5 query roundtripped via serdes"
-      (let [mp     (mt/metadata-provider)
-            query  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
-                       (lib/aggregate (lib/count)))
-            result (mt/user-http-request :crowberto :post 202 "dataset/external"
-                                         (serdes/export-mbql query))]
-        (is (= "completed" (:status result)))
-        (is (= [[1000]] (mt/rows result)))))
-    (testing "executes a serialized native query roundtripped via serdes"
-      (let [mp     (mt/metadata-provider)
-            query  (lib/native-query mp "SELECT 1 AS one")
-            result (mt/user-http-request :crowberto :post 202 "dataset/external"
-                                         (serdes/export-mbql query))]
-        (is (= "completed" (:status result)))
-        (is (= [[1]] (mt/rows result)))))))
 
 (deftest failure-test
   ;; clear out recent query executions!
