@@ -8,13 +8,13 @@
       of `[line-num row]` tuples from the file (JSON or YAML, dispatched by
       extension).
     - [[metabase-enterprise.serialization.metadata-file-import.processors]] runs the
-      per-batch SQL — validate, match, insert, update, upsert. Under the
-      portable-id design each processor self-resolves cross-table references
-      via batched natural-key SELECTs; the loader carries no id-map state.
+      per-batch SQL — validate, match, insert, update, upsert. Each processor
+      self-resolves cross-table references via batched natural-key SELECTs; the
+      loader carries no id-map state.
     - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines the
       per-row Malli schemas, shared with the parsers' callers.
 
-  Phases (per METADATA_FILE_IMPORT_PLAN.md §5):
+  Phases:
 
     1. Databases — match by `(name, engine)`, never create. Track matched
        target-db-ids for the post-import sync-status flip and the unfilled-
@@ -23,7 +23,7 @@
        a target int via SELECT, match-or-insert by
        `(target-db-id, schema, name)`. No id-map; portable references resolve
        per-batch.
-    3. Fields — single-pass with stubs (§11c). `process-fields!` self-resolves
+    3. Fields — single-pass with stubs. `process-fields!` self-resolves
        portable `:table_id` and `:parent_id`. When a child references a parent
        that doesn't yet exist on target, the processor inserts a placeholder
        stub for the parent (recursively, depth-first). When the parent's real
@@ -35,13 +35,9 @@
        `:fk_target_field_id` portable id, batched UPDATE.
 
   After phases 1–4 complete: a `warn-on-unfilled-stubs!` self-check scans the
-  matched databases for stubs that never got filled (per §A10 of
-  `STUBS_REWRITE_PLAN.md`); operator gets a structured WARN line. Then
-  `initial_sync_status` is flipped to `\"complete\"` on every matched target
-  Database so the UI surfaces tables immediately.
-
-  No `version` field handling — see plan §4 (deferred until export-side
-  coordination)."
+  matched databases for stubs that never got filled; operator gets a structured
+  WARN line. Then `initial_sync_status` is flipped to `\"complete\"` on every
+  matched target Database so the UI surfaces tables immediately."
   (:require
    [clojure.string :as str]
    [environ.core :as env]
@@ -86,11 +82,10 @@
 ;;; ============================== Phase 1: databases ==============================
 
 (defn- load-databases!
-  "Phase 1 — stream the `databases` array, run [[processors/process-databases!]]
-  per batch. Returns a set of `target-db-id`s (the appdb integer ids of every
-  source database that matched), used downstream to scope
-  `warn-on-unfilled-stubs!` and the `initial_sync_status` flip. Unmatched
-  source databases are logged WARN; phase 1 is non-fatal per §10."
+  "Stream the `databases` array, run [[processors/process-databases!]] per
+  batch. Returns a set of `target-db-id`s (the appdb integer ids of every
+  source database that matched). Unmatched source databases are logged WARN;
+  non-fatal."
   [^File file]
   (let [matched-ids (volatile! #{})]
     (parsers/stream-array-batches!
@@ -112,10 +107,9 @@
 ;;; ============================== Phase 2: tables ==============================
 
 (defn- run-phase-2!
-  "Phase 2 — stream the `tables` array. [[processors/process-tables!]]
-  self-resolves portable `:db_id`. Rows whose `:db_id` doesn't resolve produce
-  `:no-target-db` results which are logged WARN; phase 3 self-resolves
-  table_id from scratch so no map is threaded through."
+  "Stream the `tables` array. [[processors/process-tables!]] self-resolves
+  portable `:db_id`. Rows whose `:db_id` doesn't resolve produce `:no-target-db`
+  results which are logged WARN."
   [^File file]
   (parsers/stream-array-batches!
    file :tables processors/import-batch-size
@@ -134,9 +128,9 @@
 ;;; ============================== Phase 3: fields (single-pass with stubs) ==============================
 
 (defn- run-phase-3!
-  "Phase 3 — single-pass over the `fields` array (§11c). The processor inserts
-  placeholder stubs for any missing parents on-the-fly so out-of-order children
-  are no problem. No multi-pass loop, no cycle case (`nfc_path` is a tree)."
+  "Single-pass over the `fields` array. The processor inserts placeholder
+  stubs for any missing parents on-the-fly so out-of-order children are no
+  problem. No multi-pass loop, no cycle case (`nfc_path` is a tree)."
   [^File file]
   (parsers/stream-array-batches!
    file :fields processors/import-batch-size
@@ -155,10 +149,10 @@
 ;;; ============================== Phase 4: fields-fk-resolve ==============================
 
 (defn- run-phase-4!
-  "Phase 4 — walk the `fields` array a second time. The processor self-resolves
-  both the row's own portable id and its `:fk_target_field_id` portable id,
-  then issues one batched UPDATE. Rows without `:fk_target_field_id` flow
-  through as `:no-fk` (no SQL written for them)."
+  "Walk the `fields` array a second time. The processor self-resolves both the
+  row's own portable id and its `:fk_target_field_id` portable id, then issues
+  one batched UPDATE. Rows without `:fk_target_field_id` flow through as
+  `:no-fk` (no SQL written for them)."
   [^File file]
   (parsers/stream-array-batches!
    file :fields processors/import-batch-size
@@ -168,17 +162,13 @@
 ;;; ============================== Post-phase-3: unfilled-stubs scan ==============================
 
 (def ^:private ^:const unfilled-stubs-sample-cap
-  "Maximum number of unfilled stubs reported in the WARN line. Full
-  diagnostic should be obtained via direct DB query."
+  "Maximum number of unfilled stubs reported in the WARN line."
   50)
 
 (defn- warn-on-unfilled-stubs!
-  "Self-check: scan target appdb for rows still carrying the stub sentinel
-  (§11c), bounded to the matched-target-db-ids so pre-existing stubs from
-  unrelated imports don't pollute this run's report. Emits a structured WARN
-  line; **does not throw** — there's no easy rollback, and hard-failing at
-  boot would brick repeated boots (per the 2026-04-29 stubs-policy decision,
-  see plan front-matter)."
+  "Self-check: scan target appdb for rows still carrying the stub sentinel,
+  bounded to the matched-target-db-ids so pre-existing stubs from unrelated
+  imports don't pollute this run's report. Emits a structured WARN line."
   [matched-target-db-ids]
   (when (seq matched-target-db-ids)
     (let [stubs (t2/select [:model/Field :id :name :table_id :nfc_path]
@@ -209,12 +199,12 @@
                 {:initial_sync_status "complete"})))
 
 (defn import-metadata-file!
-  "Run the full sub-project-A import pipeline against the given files.
+  "Run the full metadata import pipeline against the given file.
 
   `metadata-file` — `java.io.File` or path-string for the metadata file
                     (databases / tables / fields).
 
-  Returns `:ok` on success; throws on any of the hard-fail conditions in §10."
+  Returns `:ok` on success; throws on hard-fail conditions."
   [metadata-file]
   (let [^File m-file (if (instance? File metadata-file)
                        metadata-file

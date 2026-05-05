@@ -560,16 +560,9 @@
     (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
 
 (defn- new-field-row
-  "Row for inserting a real field during phase 3. `resolved-parent-id` is the
-  resolved target int (or nil for root / Convention-B leaves); `store-nfc-path`
-  is the storage `nfc_path` to write (a vector or nil). `is_defective_duplicate`
-  is always FALSE per §11a. `fk_target_field_id` starts NULL — phase 4 fills it
-  in.
-
-  Per the wire-format contract, `store-nfc-path` is taken verbatim from the
-  caller's `:nfc_path` (the wire's `:nfc_path` already encodes both Convention A
-  parent ancestry and Convention B's full path-including-leaf). No convention
-  branching happens here."
+  "Insert payload for a real field. Caller has already resolved
+  `resolved-parent-id` and `store-nfc-path`. `fk_target_field_id` starts
+  NULL — set by [[process-fields-fk-resolve!]]."
   [{:keys [name base_type database_type description effective_type
            semantic_type coercion_strategy]}
    target-table-id
@@ -595,19 +588,8 @@
 
 (defn- classify-fields-batch
   "Resolve `:target-table-id`, `:resolved-parent`, and `:store-nfc-path` for
-  each row. Per the wire-format contract, the per-row mapping is uniform —
-  no convention branching required:
-
-    - `storage.parent_id` ← if `:parent_id` present on the wire, resolve via
-      the per-batch parent cache (with stubs for missing ancestors per §11c);
-      otherwise NULL.
-    - `storage.nfc_path` ← `:nfc_path` from the wire verbatim, or NULL if
-      absent.
-    - `storage.table_id` ← target int looked up from the wire `:table_id`.
-
-  Returns `[{:line :row :target-table-id :resolved-parent :store-nfc-path}]`,
-  preserving input order. Drops rows whose `:table_id` doesn't resolve — the
-  caller emits `:no-target-table` for those by re-scanning the original batch."
+  each row. Returns `[{:line :row :target-table-id :resolved-parent :store-nfc-path}]`,
+  preserving input order. Drops rows whose `:table_id` doesn't resolve."
   [batch table-id-map parent-cache!]
   (into []
         (keep (fn [[ln line]]
@@ -625,10 +607,8 @@
         batch))
 
 (defn- clobber-matched-fields!
-  "Clobber-on-match (§11b): for every classified row that matches an existing
-  target field (real or stub), issue an UPDATE writing the full `field-clobber`
-  payload. The same UPDATE handles both real-row matches (re-import) and stub
-  fills (real row arriving after a child stubbed it)."
+  "Overwrites each matched target field with the [[field-clobber]] payload.
+  Stubs and real-row re-imports go through the same path."
   [in-rows match-idx]
   (doseq [{:as in-row :keys [row]} in-rows
           :let [match-key (field-match-key in-row)
@@ -650,16 +630,10 @@
     (zipmap (map field-match-key unmatched) new-ids)))
 
 (defn process-fields!
-  "Phase-3 batch processor for fields — single-pass with stubs (§11c). Validates
-  every row, self-resolves the portable `:table_id` and `:parent_id` references
-  via batched natural-key SELECTs, inserts placeholder stubs for any missing
-  parents (depth-first, per §11c's `ensure-ancestors!`), match-or-inserts each
-  real row, and clobbers metadata on match (§11b). Returns an eduction.
+  "Process a batch of `[line-num row]` field tuples. Match-or-insert against
+  the target appdb (overwrites matched rows; stubs absent parents). Returns
+  an eduction of result maps:
 
-  Tuple shape: `[line-num row]`. The loader passes batches straight through
-  without pre-resolution.
-
-  Result shapes:
     `{:source-id <portable-field-id> :target-id M :status :matched}`
     `{:source-id <portable-field-id> :target-id M :status :inserted}`
     `{:source-id <portable-field-id> :status :no-target-table :line L :detail S}`
@@ -684,8 +658,7 @@
                              in-rows))]
     (clobber-matched-fields! in-rows match-idx)
     (let [id-by-key (bulk-insert-unmatched-fields! in-rows match-idx)
-          ;; Lookup-by-line for results — classified rows are filtered, so build
-          ;; an index from line-number to its classified record.
+          ;; line-number → classified record (some lines may have been filtered out).
           by-line   (into {} (map (juxt :line identity)) in-rows)]
       (eduction
        (map (fn [[ln line]]
@@ -701,7 +674,7 @@
                                      (pr-str (vec (:table_id line))))}))))
        batch))))
 
-;;; ==================== fields (batch) — phase-4 fk resolve ====================
+;;; ==================== fields (batch) — fk resolve ====================
 
 (defn- finalize-batch-sql+params
   "Build a single `UPDATE metabase_field` statement that sets `fk_target_field_id` for
@@ -726,19 +699,10 @@
     (into [sql] (concat values-params id-params))))
 
 (defn process-fields-fk-resolve!
-  "Phase-4 batch processor that resolves and writes `:fk_target_field_id`.
-
-  For every row with a non-nil `:fk_target_field_id` (a portable field id):
-  resolve both the row's own target int id and the FK target's target int id
-  via one batched natural-key SELECT (`resolve-parent-ids-batch` over the union
-  of own-vecs and fk-vecs), then issue ONE UPDATE per batch via the VALUES-table
-  pattern (§5 phase 4). The SQL writes ONLY `fk_target_field_id`.
-
-  By end of phase 3, every field referenced anywhere in the file (own row OR
-  any fk target) exists in target appdb as either a real or stub row. Misses
-  on either resolve hard-fail per §10 (corrupt file).
-
-  Tuple shape: `[line-num row]`. Bare batches.
+  "Process a batch of `[line-num row]` field tuples, writing `:fk_target_field_id`
+  on rows that have one. By the time this runs, every referenced field (own row
+  or fk target) exists in the appdb as a real or stub row, so a resolve miss is
+  treated as a corrupt file (hard-fail).
 
   Result shapes:
     `{:source-id <portable-field-id> :target-id M :status :updated}` (rows with fk-target)
