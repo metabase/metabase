@@ -2,7 +2,7 @@ import {
   getAllowedIframeAttributes,
   getIframeDomainName,
   isAllowedIframeUrl,
-} from "./utils";
+} from "./iframe";
 
 describe("getAllowedIframeAttributes", () => {
   describe("share to embed link transformation", () => {
