@@ -36,7 +36,7 @@ type CollectionRowMenuProps = {
     previousParentId: CollectionId | null;
     newParentId: CollectionId | null;
   }) => void;
-  onArchiveSuccess?: (collection: Collection) => void;
+  onArchiveSuccess?: () => void;
   customArchiveMessage?: string;
 };
 
@@ -84,7 +84,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
         }),
       );
       invalidateTags();
-      onArchiveSuccess?.(collection);
+      onArchiveSuccess?.();
     } catch (error) {
       void dispatch(
         addUndo({

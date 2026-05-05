@@ -124,6 +124,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
                   namespaces: collection.namespace
                     ? [collection.namespace]
                     : [],
+                  disableRecentLogging: true,
                 }}
               />
               <Group justify="flex-end">

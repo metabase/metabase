@@ -10,13 +10,13 @@ import {
   isValidCollectionId,
 } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
-import type {
-  EntityPickerOptions,
-  EntityPickerProps,
-  FilterItemsInPersonalCollection,
-  OmniPickerItem,
+import {
+  CollectionPickerModal,
+  type EntityPickerModalProps,
+  type EntityPickerOptions,
+  type FilterItemsInPersonalCollection,
+  type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -34,7 +34,7 @@ interface FormCollectionPickerProps extends InputWrapperProps {
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
-  collectionPickerModalProps?: Partial<EntityPickerProps>;
+  collectionPickerModalProps?: Partial<EntityPickerModalProps>;
   onCollectionSelect?: (collection: OmniPickerItem) => void;
 }
 

@@ -34,18 +34,15 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
     [refreshMetricCollections, refreshTableCollections, collection.type],
   );
 
-  const onArchiveSuccess = useCallback(
-    (collection: Collection) => {
-      const parentId = getParentCollectionId(collection);
+  const onArchiveSuccess = useCallback(() => {
+    const parentId = getParentCollectionId(collection);
 
-      if (parentId == null) {
-        return;
-      }
+    if (parentId == null) {
+      return;
+    }
 
-      refreshCollections([parentId]);
-    },
-    [refreshCollections],
-  );
+    refreshCollections([parentId]);
+  }, [collection, refreshCollections]);
 
   return (
     <CollectionRowMenu
