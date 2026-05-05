@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-complexity-score.cli
-  "CLI entrypoint for computing the data complexity score against a representation
-  directory (see [[metabase-enterprise.data-complexity-score.representation]]). Intended for offline
-  scoring in benchmarks, CI, or exploratory analysis where a live Metabase instance isn't
+  "CLI entrypoint for computing the data complexity score against on-disk representations.
+
+  Intended for offline scoring in benchmarks, CI, or exploratory analysis where a live Metabase instance isn't
   available.
 
   Invoke via:
@@ -62,10 +62,10 @@
     (print (pretty result))))
 
 (defn- run-cli
-  "Pure core of the CLI: validates options, loads representation, computes the score. Returns the
-  result map so tests can call this directly without intercepting `System/exit`. Throws `ex-info`
-  for validation failures (with `:cli-validation true` in the ex-data) and propagates `load-dir`'s
-  `ex-info` (e.g. missing `--embeddings` override). `-main` converts those into user-facing
+  "Pure core of the CLI: validates options, loads representation, computes the score.
+  Returns the result map so tests can call this directly without intercepting `System/exit`.
+  Throws `ex-info` for validation failures (with `:cli-validation true` in the ex-data) and propagates
+  `load-dir`'s `ex-info` (e.g. missing `--embeddings` override). `-main` converts those into user-facing
   `fail!`; library callers can inspect the ex-data and render errors their own way."
   [{:keys [representation-dir embeddings]}]
   (when-not representation-dir

@@ -1,72 +1,156 @@
 (ns metabase-enterprise.data-complexity-score.representation
-  "Load a directory of JSON representation files into the shape the complexity scorer expects.
+  "Load a serdes export directory into the shape the complexity scorer expects.
 
-  The directory is laid out with one JSON file per section — `collections.json`, `tables.json`,
-  `fields.json`, `cards.json`, `measures.json`, `embeddings.json`. Missing files are treated as
-  empty.
+  Format: the official Metabase serdes/representation YAML, byte-compatible with what
+  `serdes/store` emits and what `metabase-enterprise.checker` parses.
 
-  The loader is the offline counterpart of the app-db enumeration in
-  [[metabase-enterprise.data-complexity-score.complexity]]: it produces library + universe entity vectors
-  matching the same `{:id :name :kind :field-count :measure-names}` shape, plus a file-backed
-  embedder. Given identical content, scoring via this loader returns the same result as scoring
-  against a live instance."
+  Layout (subset that the scorer reads):
+
+      <dir>/databases/<db>/<db>.yaml
+      <dir>/databases/<db>/schemas/<schema>/tables/<table>/<table>.yaml
+      <dir>/databases/<db>/schemas/<schema>/tables/<table>/fields/<field>.yaml
+      <dir>/databases/<db>/schemas/<schema>/tables/<table>/measures/<measure>.yaml
+      <dir>/databases/<db>/tables/<table>/...        (schema-less variant)
+      <dir>/collections/<coll>/<coll>.yaml           (Collection metadata; type: library marks the root)
+      <dir>/collections/<coll>/cards/<card>.yaml
+      <dir>/embeddings.json                          (sidecar — not part of the serdes spec)
+
+  Library membership is derived from `Collection.type = \"library\"` plus the `parent_id` chain.
+
+  Caveats vs. the live appdb scorer in [[metabase-enterprise.data-complexity-score.complexity]]:
+    - Audit DB: serdes exports normally exclude it, so we don't filter it. Audit content in the
+      export will count toward the score.
+    - `:metabot` catalog: requires premium-feature gates and a Metabot config row that aren't in
+      an export. The CLI flags `:metabot` as a universe fallback (see `cli/run-cli`)."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
-   [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.yaml :as yaml])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
-(defn- read-section
-  "Read `<section>.json` from `dir`, decoding into Clojure data. Returns `default` when the file
-  is absent so fixtures can omit sections they don't need.
+;;; ------------------------------------------- file walking -------------------------------------------
 
-  Arrays-of-entities (collections, tables, fields, cards, measures) have stable
-  keyword fields, so we keywordize. The embeddings map is keyed by actual entity name strings
-  (`\"orders\"`, `\"audit_events\"`), so `keywordize?` must be false for that section."
-  [dir section {:keys [keywordize? default]}]
-  (let [f (io/file dir (str section ".json"))]
-    (if (.exists f)
-      (json/decode (slurp f) keywordize?)
-      default)))
+(defn- yaml-file? [^File f]
+  (and (.isFile f) (str/ends-with? (.getName f) ".yaml")))
+
+(defn- list-dirs ^java.util.List [^File dir]
+  (when (.isDirectory dir) (filterv #(.isDirectory ^File %) (.listFiles dir))))
+
+(defn- list-yamls [^File dir]
+  (when (.isDirectory dir) (filterv yaml-file? (.listFiles dir))))
+
+(defn- entity-model
+  "Read the serdes model name (e.g. \"Collection\", \"Card\") from a parsed YAML map.
+  Returns nil for files without a `serdes/meta` block."
+  [yaml-map]
+  (some-> yaml-map (get :serdes/meta) last :model))
+
+(defn- load-yaml [^File f]
+  (yaml/parse-string (slurp f)))
+
+;;; ------------------------------------- collections + cards -------------------------------------
+
+(defn- walk-collections-tree
+  "Walk `collections/` and bucket by serdes model.
+  Returns `{:collections [...] :cards [...]}`; everything else (Dashboard, Document, Snippet,
+  Transform, Segment, Measure) is ignored — measures live under the database tree."
+  [^File collections-dir]
+  (if (.isDirectory collections-dir)
+    (reduce
+     (fn [acc ^File f]
+       (let [parsed (load-yaml f)]
+         (case (entity-model parsed)
+           "Collection" (update acc :collections conj parsed)
+           "Card"       (update acc :cards conj parsed)
+           acc)))
+     {:collections [] :cards []}
+     (filter yaml-file? (file-seq collections-dir)))
+    {:collections [] :cards []}))
 
 (defn- library-collection-ids
-  "Set of collection IDs in the Library subtree — the Library root (identified by `:type`) plus
-  every descendant (identified by `:location` starting with `/{root-id}/`). Matches the live
-  scorer's `library-collection` + `descendant-ids` pair instead of relying on each descendant
-  carrying a library-flavoured `:type`, which only holds for the two seed children."
+  "Set of collection entity_ids in the Library subtree — root + every descendant reachable via
+  the `parent_id` chain. Empty when no library-typed collection exists."
   [collections]
-  (if-let [{root-id :id} (u/seek #(= collections/library-collection-type (:type %)) collections)]
-    (let [prefix (str "/" root-id "/")]
-      (into #{root-id}
-            (keep (fn [{:keys [id location]}]
-                    (when (and location (str/starts-with? location prefix)) id)))
+  (if-let [root (u/seek #(= collections/library-collection-type (:type %)) collections)]
+    (let [root-eid    (:entity_id root)
+          parent-of   (into {} (map (juxt :entity_id :parent_id)) collections)
+          in-library? (fn [eid]
+                        (loop [cur eid, seen #{}]
+                          (cond
+                            (= cur root-eid)           true
+                            (or (nil? cur) (seen cur)) false
+                            :else                      (recur (parent-of cur) (conj seen cur)))))]
+      (into #{root-eid}
+            (keep #(when (in-library? (:entity_id %)) (:entity_id %)))
             collections))
     #{}))
 
-(defn- ->table-entity [fields-by-table measures-by-table {:keys [id name] :as _table}]
-  {:id            id
-   :name          name
-   :kind          :table
-   :field-count   (count (filter :active (fields-by-table id)))
-   :measure-names (mapv :name (remove :archived (measures-by-table id)))})
+;;; ------------------------------------- tables, fields, measures -------------------------------------
 
-(defn- ->card-entity [{:keys [id name type] :as _card}]
-  {:id            id
+(defn- table-self-yaml
+  "Path to the Table's self-named `<dir>.yaml` inside `table-dir`, or nil if missing."
+  ^File [^File table-dir]
+  (let [f (io/file table-dir (str (.getName table-dir) ".yaml"))]
+    (when (.exists f) f)))
+
+(defn- list-table-dirs
+  "All Table directories under one database — both schema-qualified and schema-less variants."
+  [^File db-dir]
+  (concat (mapcat (fn [^File schema-dir] (list-dirs (io/file schema-dir "tables")))
+                  (list-dirs (io/file db-dir "schemas")))
+          (list-dirs (io/file db-dir "tables"))))
+
+(defn- load-table
+  "Load one Table directory into `{:table :fields :measures}`, or nil if its self-yaml is missing."
+  [^File table-dir]
+  (when-let [self (table-self-yaml table-dir)]
+    {:table    (load-yaml self)
+     :fields   (mapv load-yaml (list-yamls (io/file table-dir "fields")))
+     :measures (mapv load-yaml (list-yamls (io/file table-dir "measures")))}))
+
+(defn- walk-databases-tree
+  "Walk `<dir>/databases/<db>/...` and return one `{:table :fields :measures}` per Table dir."
+  [^File databases-dir]
+  (if (.isDirectory databases-dir)
+    (vec (keep load-table (mapcat list-table-dirs (list-dirs databases-dir))))
+    []))
+
+;;; ------------------------------------------- entity shaping -------------------------------------------
+
+(defn- table-path-id
+  "Stable `:id` for a Table, since serdes Table YAMLs carry no entity_id.
+  Format: `\"<db>/<schema>/<name>\"`; `<schema>` is the empty string for schema-less databases."
+  [{:keys [db_id schema name]}]
+  (str db_id "/" (or schema "") "/" name))
+
+(defn- ->table-entity [{:keys [table fields measures]}]
+  {:id            (table-path-id table)
+   :name          (:name table)
+   :kind          :table
+   :field-count   (count (filter #(get % :active true) fields))
+   :measure-names (mapv :name (remove #(get % :archived false) measures))})
+
+(defn- ->card-entity [{:keys [entity_id name type]}]
+  {:id            entity_id
    :name          name
    :kind          (keyword type)
    :field-count   0
    :measure-names []})
 
+;;; ------------------------------------------- embeddings sidecar -------------------------------------------
+
 (defn- resolve-embeddings-file
-  "Resolve an explicit `:embeddings-path` override against `dir` when it is relative, and return the
-  `File`. Throws when the file doesn't exist — silently falling back to `{}` would mask a typo and
-  produce a misleadingly low complexity score."
-  ^java.io.File [dir embeddings-path]
+  "Resolve `embeddings-path` against `dir` (relative paths) or as-is (absolute).
+  Throws ex-info when the file is missing — silent fallback would mask a typo and produce a
+  misleadingly low score."
+  ^File [dir embeddings-path]
   (let [given (io/file embeddings-path)
         f     (if (.isAbsolute given) given (io/file dir embeddings-path))]
     (when-not (.exists f)
@@ -76,53 +160,47 @@
                        :dir             (str dir)})))
     f))
 
-(defn load-dir
-  "Load representation files from `dir` and derive everything the complexity scorer needs.
+(defn- load-embeddings
+  "Decode the embeddings sidecar — explicit override, then default `embeddings.json`, else `{}`."
+  [dir embeddings-path]
+  (if embeddings-path
+    (json/decode (slurp (resolve-embeddings-file dir embeddings-path)) false)
+    (let [default (io/file dir "embeddings.json")]
+      (if (.exists default) (json/decode (slurp default) false) {}))))
 
-  Returns `{:library [...entities] :universe [...entities] :embedder fn}` where the entities are
-  shaped for [[metabase-enterprise.data-complexity-score.complexity/score-from-entities]].
+;;; ------------------------------------------- public entry point -------------------------------------------
+
+(defn load-dir
+  "Load a serdes export and return `{:library :universe :embedder}` for the complexity scorer.
+
+  Filters mirror the live appdb scorer:
+    - Universe Cards : `type ∈ {metric model}`, not archived
+    - Universe Tables: `active` (defaults true)
+    - Library Cards  : Universe Card whose `collection_id` is in the Library subtree
+    - Library Tables : Universe Table with `is_published true` and `collection_id` in the Library
 
   Options:
-    `:embeddings-path` — explicit path to a JSON embeddings file. When provided, overrides the
-      default `embeddings.json` in `dir`. Relative paths are resolved against `dir` (so a value
-      like `embeddings/names_arctic-l_1024d.json` points inside the representation directory, not
-      the process working directory). Throws if the resolved file is missing — the caller asked
-      for a specific embeddings source, so silently scoring with no embeddings would be wrong."
+    `:embeddings-path` — explicit JSON embeddings file. Relative paths resolve against `dir`.
+      Throws when the resolved file is missing. Defaults to `<dir>/embeddings.json` when absent."
   [dir & {:keys [embeddings-path]}]
-  (let [kw                {:keywordize? true  :default []}
-        str-keyed         {:keywordize? false :default {}}
-        collections       (read-section dir "collections" kw)
-        tables            (read-section dir "tables"      kw)
-        fields            (read-section dir "fields"      kw)
-        cards             (read-section dir "cards"       kw)
-        measures          (read-section dir "measures"    kw)
-        embeddings        (if embeddings-path
-                            (json/decode (slurp (resolve-embeddings-file dir embeddings-path)) false)
-                            (read-section dir "embeddings" str-keyed))
-        fields-by-table   (group-by :table_id fields)
-        meas-by-table     (group-by :table_id measures)
-        lib-coll-ids      (library-collection-ids collections)
-        ;; Mirror the live `enumerate-catalogs`: `:universe` excludes audit content, and `:library`
-        ;; is derived *from* that audit-filtered universe, so it excludes audit content too. The
-        ;; `some?` guard matches SQL `<>`'s three-valued logic — a row with `NULL` `db_id` would
-        ;; have been dropped by `:not= audit/audit-db-id` in Toucan, but `(not= nil id)` is `true`.
-        non-audit-db?     (fn [id] (and (some? id) (not= id audit/audit-db-id)))
-        universe-table?   (fn [t] (and (:active t)
-                                       (non-audit-db? (:db_id t))))
-        library-table?    (fn [t] (and (universe-table? t)
-                                       (:is_published t)
-                                       (contains? lib-coll-ids (:collection_id t))))
-        model-or-metric?  (fn [c] (and (not (:archived c))
-                                       (contains? #{"model" "metric"} (:type c))))
-        universe-card?    (fn [c] (and (model-or-metric? c)
-                                       (non-audit-db? (:database_id c))))
-        library-card?     (fn [c] (and (universe-card? c)
-                                       (contains? lib-coll-ids (:collection_id c))))
-        ->table           #(->table-entity fields-by-table meas-by-table %)
-        library           (concat (mapv ->card-entity (filter library-card?   cards))
-                                  (mapv ->table       (filter library-table?  tables)))
-        universe          (concat (mapv ->card-entity (filter universe-card?  cards))
-                                  (mapv ->table       (filter universe-table? tables)))]
-    {:library  (vec library)
-     :universe (vec universe)
+  (let [dir-file        (io/file dir)
+        {:keys [collections cards]} (walk-collections-tree (io/file dir-file "collections"))
+        tables          (walk-databases-tree (io/file dir-file "databases"))
+        embeddings      (load-embeddings dir embeddings-path)
+        lib-coll-ids    (library-collection-ids collections)
+        ;; In serdes: Card.archived is in :copy without a default → absent means false.
+        ;; Field.active defaults to true; Measure.archived defaults to false (in shapers).
+        universe-card?  (fn [c] (and (contains? #{"metric" "model"} (:type c))
+                                     (not (get c :archived false))))
+        library-card?   (fn [c] (and (universe-card? c)
+                                     (contains? lib-coll-ids (:collection_id c))))
+        universe-table? (fn [{t :table}] (get t :active true))
+        library-table?  (fn [{t :table :as bundle}]
+                          (and (universe-table? bundle)
+                               (:is_published t)
+                               (contains? lib-coll-ids (:collection_id t))))]
+    {:library  (vec (concat (mapv ->card-entity  (filter library-card?  cards))
+                            (mapv ->table-entity (filter library-table? tables))))
+     :universe (vec (concat (mapv ->card-entity  (filter universe-card?  cards))
+                            (mapv ->table-entity (filter universe-table? tables))))
      :embedder (embedders/file-embedder embeddings)}))

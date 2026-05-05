@@ -47,9 +47,9 @@
       (into {} (filter val) (zipmap names vectors)))))
 
 (defn file-embedder
-  "Build an embedder from a pre-loaded `{name -> [float ...]}` map. Keys are run through
-  [[normalize-name]] here so callers can hand in raw display names (`\"Revenue\"`, `\" Orders \"`)
-  and still match what scoring looks up. Values may be seqs/vectors of floats or `^floats` arrays.
+  "Build an embedder from a pre-loaded `{name -> [float ...]}` map.
+  Keys are run through [[normalize-name]] here so callers can hand in raw display names.
+  Values may be seqs/vectors of floats or `^floats` arrays.
   Entities whose normalized name isn't in the map get no vector — same contract as the other embedders."
   [name->vec]
   (let [normalized (into {}
