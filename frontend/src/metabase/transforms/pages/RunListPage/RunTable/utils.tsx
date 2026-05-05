@@ -1,9 +1,15 @@
 import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Box, Group, SortableHeaderPill, Text, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Group,
+  SortableHeaderPill,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import {
   TRANSFORM_RUN_SORT_COLUMNS,
   type TransformRun,

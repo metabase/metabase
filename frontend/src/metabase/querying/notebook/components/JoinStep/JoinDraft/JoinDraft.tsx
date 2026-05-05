@@ -3,8 +3,8 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Text, rem } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";

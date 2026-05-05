@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getIcon } from "metabase/lib/icon";
-import { getName } from "metabase/lib/name";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { getIcon } from "metabase/common/utils/icon";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
+import { getName } from "metabase/utils/name";
 import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";

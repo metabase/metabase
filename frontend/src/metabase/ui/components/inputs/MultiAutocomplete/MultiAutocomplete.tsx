@@ -19,9 +19,6 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-
 import { Icon } from "../../icons";
 
 import S from "./MultiAutocomplete.module.css";
@@ -51,10 +48,16 @@ export type MultiAutocompleteProps = BoxProps &
     parseValue?: (rawValue: string) => string | null;
     renderValue?: (props: MultiAutocompleteRenderValueProps) => ReactNode;
     renderOption?: (props: MultiAutocompleteRenderOptionProps) => ReactNode;
+    sortComparator?: (a: string, b: string) => number;
     onChange: (newValues: string[]) => void;
     onSearchChange?: (newValue: string) => void;
   };
 
+/**
+ * Base multi-value autocomplete component. For most use cases, prefer
+ * {@link MultiAutocompleteWithTranslation} from `metabase/common/components/MultiAutocomplete`
+ * which adds content translation and translation-aware sorting.
+ */
 export function MultiAutocomplete({
   value,
   data = [],
@@ -86,6 +89,7 @@ export function MultiAutocomplete({
   parseValue = defaultParseValue,
   renderValue = defaultRenderValue,
   renderOption,
+  sortComparator,
   onChange,
   onSearchChange,
   onDropdownOpen,
@@ -93,42 +97,30 @@ export function MultiAutocomplete({
   onOptionSubmit,
   ...otherProps
 }: MultiAutocompleteProps) {
-  const tc = useTranslateContent();
-  const sortByTranslation =
-    PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
-
   const sortedData = useMemo(() => {
     const parsedData = getParsedComboboxData(data);
-
-    const hasTranslations = parsedData.some((item) => {
-      if (isOptionsGroup(item)) {
-        return item.items.some((option) => tc(option.value) !== option.value);
-      }
-      return tc(item.value) !== item.value;
-    });
-
-    if (hasTranslations) {
-      return parsedData
-        .map((item) => {
-          if (isOptionsGroup(item)) {
-            return {
-              ...item,
-              items: [...item.items].sort((a, b) =>
-                sortByTranslation(tc(a.value), tc(b.value)),
-              ),
-            };
-          }
-          return item;
-        })
-        .sort((a, b) => {
-          const aValue = isOptionsGroup(a) ? a.group : a.value;
-          const bValue = isOptionsGroup(b) ? b.group : b.value;
-          return sortByTranslation(tc(aValue), tc(bValue));
-        });
+    if (!sortComparator) {
+      return parsedData;
     }
 
-    return parsedData;
-  }, [data, tc, sortByTranslation]);
+    return parsedData
+      .map((item) => {
+        if (isOptionsGroup(item)) {
+          return {
+            ...item,
+            items: [...item.items].sort((a, b) =>
+              sortComparator(a.value, b.value),
+            ),
+          };
+        }
+        return item;
+      })
+      .sort((a, b) => {
+        const aValue = isOptionsGroup(a) ? a.group : a.value;
+        const bValue = isOptionsGroup(b) ? b.group : b.value;
+        return sortComparator(aValue, bValue);
+      });
+  }, [data, sortComparator]);
 
   const {
     combobox,

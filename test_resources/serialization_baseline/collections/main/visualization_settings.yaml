@@ -1,0 +1,8 @@
+name: Visualization Settings
+entity_id: cOlViZsEtTiNgS0ExAmP1
+slug: visualization_settings
+created_at: '2026-04-02T02:59:02.778668Z'
+serdes/meta:
+- id: cOlViZsEtTiNgS0ExAmP1
+  label: visualization_settings
+  model: Collection

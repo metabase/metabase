@@ -28,6 +28,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "isGuest",
     "jwtProviderUri",
     "pluginsConfig",
+    "guestEmbedProviderUri",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -39,6 +40,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "hiddenParameters",
     "drills",
     "enableEntityNavigation",
+    "customContext",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
@@ -50,6 +52,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "hiddenParameters",
     "drills",
     "entityTypes",
+    "customContext",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
     "template",

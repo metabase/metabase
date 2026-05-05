@@ -1,25 +1,25 @@
 import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
-import { createMockCloudAddOns } from "metabase-types/api/mocks/add-ons";
+import {
+  createMockCloudAddOns,
+  mockAdvancedTransformsAddOn,
+} from "metabase-types/api/mocks/add-ons";
+import type { AddOnProductType } from "metabase-types/api/store";
 
 export function setupBillingEndpoints({
   billingPeriodMonths = 12,
   hasBasicTransformsAddOn = true,
   hasAdvancedTransformsAddOn = true,
-  transformsBasicPrice = 100,
-  transformsAdvancedPrice = 250,
-  trialDays,
+  skipCloudAddOns = false,
   previousAddOns = [],
 }: {
   billingPeriodMonths?: number;
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
-  transformsBasicPrice?: number;
-  transformsAdvancedPrice?: number;
-  trialDays?: number;
+  skipCloudAddOns?: boolean;
   previousAddOns?: Array<{
-    product_type: string;
+    product_type: AddOnProductType;
     self_service: boolean;
   }>;
 } = {}) {
@@ -28,22 +28,23 @@ export function setupBillingEndpoints({
       ? [
           {
             id: 1,
-            name: "Transforms (basic)",
-            short_name: "Transforms",
+            name: "Basic Transforms Add-on metered",
+            short_name: "Basic Transforms - metered",
             description: null,
             active: true,
             self_service: true,
-            deployment: "cloud",
+            deployment: "hosting",
             billing_period_months: billingPeriodMonths,
-            default_base_fee: transformsBasicPrice,
+            default_base_fee: 0,
             default_included_units: 0,
-            default_prepaid_units: 0,
-            default_price_per_unit: 0,
-            default_total_units: 0,
-            is_metered: false,
-            product_type: "transforms-basic",
-            token_features: [],
-            trial_days: trialDays,
+            default_prepaid_units: 1,
+            default_price_per_unit: 0.01,
+            default_total_units: 1,
+            free_units: 1000,
+            is_metered: true,
+            product_type: "transforms-basic-metered",
+            token_features: ["transforms-basic"],
+            trial_days: 0,
             product_tiers: [],
           },
         ]
@@ -51,30 +52,17 @@ export function setupBillingEndpoints({
     ...(hasAdvancedTransformsAddOn
       ? [
           {
-            id: 2,
-            name: "Transforms (advanced)",
-            short_name: "Transforms + Python",
-            description: null,
-            active: true,
-            self_service: true,
-            deployment: "cloud",
+            ...mockAdvancedTransformsAddOn,
             billing_period_months: billingPeriodMonths,
-            default_base_fee: transformsAdvancedPrice,
-            default_included_units: 0,
-            default_prepaid_units: 0,
-            default_price_per_unit: 0,
-            default_total_units: 0,
-            is_metered: false,
-            product_type: "transforms-advanced",
-            token_features: [],
-            trial_days: trialDays,
-            product_tiers: [],
           },
         ]
       : []),
   ];
 
-  fetchMock.get("path:/api/ee/cloud-add-ons/addons", cloudAddOns);
+  if (!skipCloudAddOns) {
+    fetchMock.get("path:/api/ee/cloud-add-ons/addons", cloudAddOns);
+  }
+
   fetchMock.get("path:/api/ee/billing", {
     version: "0",
     data: {

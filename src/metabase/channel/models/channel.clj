@@ -1,7 +1,8 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.interface :as mi]
@@ -71,10 +72,21 @@
 
 (defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
 
+(defmethod serdes/load-find-local "Channel"
+  [path]
+  (t2/select-one :model/Channel :name (:id (last path))))
+
+(defmethod serdes/generate-path "Channel" [_ channel]
+  [(serdes/infer-self-path "Channel" channel)])
+
+(defmethod serdes/storage-path "Channel" [channel _ctx]
+  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
+
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy      [:name :description :type :details :active]
-   :transform {:created_at (serdes/date)}})
+  {:copy           [:name :description :type :details :active]
+   :transform      {:created_at (serdes/date)}
+   :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;
@@ -155,10 +167,10 @@
                  (name action) channel_type template-type api/*current-user-id* (pr-str (:body details)))
       (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
                  (name action) channel_type template-type api/*current-user-id*))
-    (prometheus/inc! (case action
-                       :create :metabase-notification/template-create
-                       :update :metabase-notification/template-update)
-                     {:channel-type channel_type})))
+    (analytics/inc! (case action
+                      :create :metabase-notification/template-create
+                      :update :metabase-notification/template-update)
+                    {:channel-type channel_type})))
 
 (t2/define-before-insert :model/ChannelTemplate
   [instance]
@@ -183,8 +195,8 @@
 ;; Currently only email channel has templates, but this is extensible
 (def ^:private template-channel-labels [{:channel-type :channel/email}])
 
-(defmethod prometheus/known-labels :metabase-notification/template-create [_] template-channel-labels)
-(defmethod prometheus/known-labels :metabase-notification/template-update [_] template-channel-labels)
+(defmethod analytics.core/known-labels :metabase-notification/template-create [_] template-channel-labels)
+(defmethod analytics.core/known-labels :metabase-notification/template-update [_] template-channel-labels)
 
 (defmethod mi/can-write? :model/ChannelTemplate
   [& _]

@@ -1,5 +1,5 @@
-import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { Icon, Text, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { ModerationReview, User } from "metabase-types/api";
 
 import { getIconForReview, getModeratorDisplayText } from "../../service";

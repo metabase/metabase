@@ -21,7 +21,13 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as domUtils from "metabase/lib/dom";
+import type { DashboardState } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -29,12 +35,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { DashboardState } from "metabase-types/store";
-import {
-  createMockDashboardState,
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import MainNavbar from "../MainNavbar";
 
@@ -65,9 +65,17 @@ export const PERSONAL_COLLECTION_BASE = createMockCollection({
   originalName: "John's Personal Collection",
 });
 
+export const NESTED_COLLECTION = createMockCollection({
+  id: 3,
+  name: "Nested collection",
+  location: "/2/",
+  parent_id: 2,
+});
+
 export const TEST_COLLECTION = createMockCollection({
   id: 2,
   name: "Test collection",
+  children: [NESTED_COLLECTION],
 });
 
 export async function setup({
@@ -91,7 +99,7 @@ export async function setup({
   applicationName = "Metabase",
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+    jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
   }
 
   const SAMPLE_DATABASE = createMockDatabase({
@@ -141,7 +149,7 @@ export async function setup({
     currentUserId: user?.id,
   });
   setupCollectionByIdEndpoint({
-    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
+    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);

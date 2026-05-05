@@ -156,6 +156,8 @@ embedding_sdk_host_sample_apps:
 snowplow: &snowplow
   - ".github/workflows/snowplow.yml"
   - "snowplow/**"
+  - "bin/lint-snowplow-schemas.bb"
+  - "bin/lint-snowplow-schemas-test.bb"
 
 e2e_all:
   - *default
@@ -199,6 +201,10 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+serialization_baseline:
+  - ".github/workflows/serialization.yml"
+  - "test_resources/serialization_baseline/**"
 
 openapi:
   - ".github/workflows/openapi.yml"

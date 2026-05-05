@@ -26,10 +26,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.string-extracts-test :as string-extracts-test]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -1039,3 +1039,20 @@
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (testing "Reject connection strings with malicious properties"
+    (are [bad-option] (let [details (assoc (tx/dbdef->connection-details :mysql :db
+                                                                         {:database-name "argent"})
+                                           :additional-options bad-option)
+                            result (try (driver/can-connect? :mysql details)
+                                        ::did-not-throw
+                                        (catch Exception e e))]
+                        (is (instance? clojure.lang.ExceptionInfo result))
+                        (is (partial= {:cause "Potentially dangerous keys in additional options"}
+                                      (Throwable->map result))))
+      "allowLoadLocalInfile=true"
+      "allowLoadLocalInfileInPath=1"
+      "allowUrlInLocalInfile=1"
+      "autoDeserialize=1"
+      "serverRSAPublicKeyFile=/path/to/file")))

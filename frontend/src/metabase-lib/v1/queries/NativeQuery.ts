@@ -1,7 +1,7 @@
 import slugg from "slugg";
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -133,8 +133,8 @@ export default class NativeQuery {
   canRun() {
     return Boolean(
       this.hasData() &&
-        this.queryText().length > 0 &&
-        this._allTemplateTagsAreValid(),
+      this.queryText().length > 0 &&
+      this._allTemplateTagsAreValid(),
     );
   }
 
@@ -235,12 +235,22 @@ export default class NativeQuery {
     // template tags, and the order is determined by the key order
     const query = this._query();
     const tags = this.templateTags();
-    const oldIndex = tags.findIndex((tag) => tag.id === id);
 
-    const newTags = [...tags];
+    // NOTE: The snippet tags are part of the snippet tags map, but they do
+    // not appear in the parameter lists. To correctly reorder the parameters
+    // and keep track of indexes, we need to pluck out the snippet tags first.
+    // We then tack them on before returning the reordered tags map.
+    // The order of snippet tags is not consequential, which allows us to do this.
+    const nonSnippetTags = tags.filter((tag) => tag.type !== "snippet");
+    const snippetTags = tags.filter((tag) => tag.type === "snippet");
+
+    const oldIndex = nonSnippetTags.findIndex((tag) => tag.id === id);
+    const newTags = [...nonSnippetTags];
     newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
+
+    const newTagsWithSnippets = [...snippetTags, ...newTags];
     const newTagsMap = Object.fromEntries(
-      newTags.map((tag) => [tag.name, tag]),
+      newTagsWithSnippets.map((tag) => [tag.name, tag]),
     );
 
     return this._setQuery(Lib.withTemplateTags(query, newTagsMap));

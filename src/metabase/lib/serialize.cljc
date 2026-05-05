@@ -1,5 +1,5 @@
 (ns metabase.lib.serialize
-  "Logic for preparising an MLv2 query for JSON serialization (for the REST API or app DB). Removes things like
+  "Logic for preparising an MBQL 5 query for JSON serialization (for the REST API or app DB). Removes things like
   QP-specific keys added during preprocessing."
   (:require
    [malli.core :as mc]

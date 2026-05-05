@@ -3,7 +3,7 @@ import utc from "dayjs/plugin/utc";
 
 import { useUpdateSettingMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { isEEBuild } from "metabase/lib/utils";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { TokenStatus } from "metabase-types/api";
 
 dayjs.extend(utc);
@@ -76,7 +76,7 @@ export function useLicenseTokenMissingBanner(isAdmin: boolean = false) {
   const shouldShowLicenseTokenMissingBanner = shouldShowBanner({
     tokenStatus,
     lastDismissed,
-    isEEBuild: isEEBuild(),
+    isEEBuild: PLUGIN_IS_EE_BUILD.isEEBuild(),
     isAdmin,
   });
 

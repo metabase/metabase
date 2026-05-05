@@ -2,6 +2,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EntityModerationIcon } from "./components/EntityModerationIcon";
+import { MetabotVerifiedContentConfigurationPane } from "./components/MetabotVerifiedContentConfigurationPane";
 import {
   ModerationReviewBanner,
   ModerationReviewTextForDashboard,
@@ -34,6 +35,7 @@ export function initializePlugin() {
       getModerationTimelineEvents,
       useCardMenuItems,
       useDashboardMenuItems,
+      MetabotVerifiedContentConfigurationPane,
     });
   }
 }

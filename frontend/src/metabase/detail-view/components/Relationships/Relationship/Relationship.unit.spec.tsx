@@ -6,6 +6,7 @@ import { Route } from "react-router";
 import { setupCardDataset } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Table } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
 import {
@@ -19,7 +20,6 @@ import {
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { Relationship } from "./Relationship";
 
@@ -61,7 +61,7 @@ function setup({ dataset = DATASET }: SetupOpts = {}) {
     <Relationship fk={FK} rowId={ROW_ID} onClick={onClick} />
   );
 
-  setupCardDataset(dataset);
+  setupCardDataset({ dataset });
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {
     withRouter: true,

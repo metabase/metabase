@@ -1,6 +1,6 @@
 import Color from "color";
 
-import { checkNumber, isNotNull } from "metabase/lib/types";
+import { checkNumber, isNotNull } from "metabase/utils/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getTrendLineFunction } from "metabase/visualizations/lib/trends";
 import type {

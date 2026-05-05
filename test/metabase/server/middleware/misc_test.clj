@@ -72,3 +72,54 @@
             (is (nil?
                  (get-in @captured [:headers "x-metabase-version"]))
                 "header should not be set for non-API calls")))))))
+
+(defn- call-add-content-type
+  "Helper: wrap `response` with `add-content-type` middleware, send `request`, return the response."
+  [request response]
+  (let [handler  (mw.misc/add-content-type (fn [_ respond _] (respond response)))
+        captured (atom nil)]
+    (handler request
+             (fn [resp] (reset! captured resp))
+             (fn [_] (is false "should not go to raise")))
+    @captured))
+
+(deftest ^:parallel add-content-type-api-string-body-test
+  (testing "API request with string body gets text/plain"
+    (is (= "text/plain"
+           (get-in (call-add-content-type (ring.mock/request :get "/api/foo")
+                                          {:status 200 :headers {} :body "ok"})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-api-collection-body-test
+  (testing "API request with collection body gets application/json"
+    (is (= "application/json; charset=utf-8"
+           (get-in (call-add-content-type (ring.mock/request :get "/api/foo")
+                                          {:status 200 :headers {} :body {:a 1}})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-auth-string-body-test
+  (testing "auth request with string body gets text/plain"
+    (is (= "text/plain"
+           (get-in (call-add-content-type (ring.mock/request :get "/auth/sso")
+                                          {:status 200 :headers {} :body "ok"})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-auth-collection-body-test
+  (testing "auth request with collection body gets application/json"
+    (is (= "application/json; charset=utf-8"
+           (get-in (call-add-content-type (ring.mock/request :get "/auth/sso")
+                                          {:status 200 :headers {} :body {:a 1}})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-preserves-existing-header-test
+  (testing "auth request with existing Content-Type is preserved"
+    (is (= "text/html"
+           (get-in (call-add-content-type (ring.mock/request :get "/auth/sso")
+                                          {:status 200 :headers {"Content-Type" "text/html"} :body "ok"})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-skips-non-api-non-auth-test
+  (testing "non-API, non-auth request does not get Content-Type"
+    (is (nil? (get-in (call-add-content-type (ring.mock/request :get "/app/foo")
+                                             {:status 200 :headers {} :body "ok"})
+                      [:headers "Content-Type"])))))

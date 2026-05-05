@@ -12,6 +12,7 @@ export const ItemTitle = styled(Text)<TextProps>`
 
 export const ItemIcon = styled(Icon)`
   justify-self: end;
+  color: var(--mb-color-brand);
 `;
 
 const activeItemCss = css`
@@ -43,11 +44,13 @@ export const BaseItemRoot = styled.li<{
     margin-bottom: 0;
   }
 
-  ${(props) => props.isSelected && activeItemCss}
-
-  &:hover {
-    ${activeItemCss}
+  @media (hover: hover) {
+    &:hover {
+      ${activeItemCss}
+    }
   }
+
+  ${(props) => props.isSelected && activeItemCss}
 `;
 
 const getGridTemplateColumns = (hasLeftIcon: boolean, hasRightIcon: boolean) =>

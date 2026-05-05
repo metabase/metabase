@@ -1,8 +1,8 @@
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { getShouldShowTransformPermissions } from "./permission-editor";
 

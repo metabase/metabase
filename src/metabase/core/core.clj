@@ -3,9 +3,8 @@
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
    [environ.core :as env]
-   [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
@@ -20,6 +19,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
+   [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -67,14 +67,14 @@
 
 ;;; --------------------------------------------------- Info Metric---------------------------------------------------
 
-(defmethod analytics/known-labels :metabase-info/build
+(defmethod analytics.core/known-labels :metabase-info/build
   [_]
   ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
   [(merge (select-keys config/mb-version-info [:tag :hash :date])
           {:version       config/mb-version-string
            :major-version (config/current-major-version)})])
 
-(defmethod analytics/initial-value :metabase-info/build [_ _] 1)
+(defmethod analytics.core/initial-value :metabase-info/build [_ _] 1)
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -108,12 +108,13 @@
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (tracing/shutdown!)
-  (analytics/shutdown!)
+  (analytics.core/shutdown!)
   (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
   (perf/stop-monitoring!)
+  (shutdown-agents)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -169,6 +170,9 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Set up Prometheus
+  (log/info "Setting up prometheus metrics")
+  (analytics.core/setup!)
   ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
   (tracing/init!)
   ;; load any plugins as needed
@@ -189,12 +193,10 @@
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
   (init-status/set-progress! 0.4)
-  ;; Set up Prometheus
-  (log/info "Setting up prometheus metrics")
-  (analytics/setup!)
+  (analytics.core/observe-initial-values)
   (init-status/set-progress! 0.5)
   (task/init-scheduler!)
-  (analytics/add-listeners-to-scheduler!)
+  (analytics.core/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
@@ -221,10 +223,12 @@
 
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
+  (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)
@@ -235,17 +239,17 @@
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
-  (let [start-time          (t/zoned-date-time)
-        jvm-start-time      (.getStartTime (ManagementFactory/getRuntimeMXBean))]
+  (let [timer          (u/start-timer)
+        jvm-start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))]
     (init!*)
-    (let [init-duration-ms  (.toMillis (t/duration start-time (t/zoned-date-time)))
+    (let [init-duration-ms   (u/since-ms timer)
           jvm-to-complete-ms (u/since-ms-wall-clock jvm-start-time)]
       (log/infof "Metabase Initialization COMPLETE in %s (JVM uptime: %s)"
                  (u/format-milliseconds init-duration-ms)
                  (u/format-milliseconds jvm-to-complete-ms))
       (system/startup-time-millis! init-duration-ms)
-      (prometheus/set! :metabase-startup/init-duration-millis init-duration-ms)
-      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
+      (analytics/set-gauge! :metabase-startup/init-duration-millis init-duration-ms)
+      (analytics/set-gauge! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

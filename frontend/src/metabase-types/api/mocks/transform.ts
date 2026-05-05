@@ -40,7 +40,7 @@ export function createMockTransformSource(): TransformSource {
 
 export function createMockPythonTransformSource({
   sourceDatabase = 1,
-  sourceTables = {},
+  sourceTables = [],
   body = "# Python script\nprint('Hello, world!')",
 }: {
   sourceDatabase?: DatabaseId;

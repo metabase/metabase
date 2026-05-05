@@ -1,5 +1,5 @@
-import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { DataKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -38,7 +38,7 @@ export type {
 
 type LayoutParams = {
   chartModel: BoxPlotChartModel;
-  chartMeasurements: ChartMeasurements;
+  cartesianLayout: ChartLayout;
   settings: ComputedVisualizationSettings;
   chartWidth: number;
   renderingContext: RenderingContext;
@@ -454,13 +454,13 @@ export const getBoxPlotLayoutModel = (
 ): BoxPlotLayoutModel => {
   const {
     chartModel,
-    chartMeasurements,
+    cartesianLayout,
     settings,
     chartWidth,
     renderingContext,
   } = params;
 
-  const { bounds, padding: basePadding } = chartMeasurements;
+  const { bounds, padding: basePadding } = cartesianLayout;
   const boundsWidth = bounds.right - bounds.left;
   const boundsHeight = bounds.bottom - bounds.top;
 
@@ -513,6 +513,7 @@ export const getBoxPlotLayoutModel = (
   const xAxisOffset = labelOverflow.bottom;
 
   return {
+    ...cartesianLayout,
     xValuesCount,
     xValueWidth,
     labelLayoutMode,
@@ -527,6 +528,5 @@ export const getBoxPlotLayoutModel = (
     sideLabelOverflow,
     adjustedPadding,
     xAxisOffset,
-    chartMeasurements,
   };
 };

@@ -6,7 +6,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

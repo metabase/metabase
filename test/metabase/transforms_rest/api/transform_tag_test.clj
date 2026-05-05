@@ -2,9 +2,9 @@
   "Tests for transform tag CRUD API endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.transforms.transform-tag]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform-tag]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

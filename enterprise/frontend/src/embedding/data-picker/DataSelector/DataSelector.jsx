@@ -12,7 +12,7 @@ import { Questions } from "metabase/entities/questions";
 import { Schemas } from "metabase/entities/schemas";
 import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";

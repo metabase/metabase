@@ -110,12 +110,13 @@
         (driver.conn/with-write-connection
           (let [conn-spec         (driver/connection-spec driver db)
                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
-                run-fn            (fn [cancel-chan]
+                run-fn            (fn [cancel-chan source-range-params]
                                     (let [result (transforms-base.i/execute-base!
                                                   transform
                                                   {:cancelled?           #(boolean (a/poll! cancel-chan))
                                                    :cancel-chan          cancel-chan
                                                    :run-id               run-id
+                                                   :source-range-params  source-range-params
                                                    :message-log          message-log
                                                    :with-stage-timing-fn (fn [rid stage thunk]
                                                                            (transforms.instrumentation/with-stage-timing [rid stage]
@@ -126,13 +127,9 @@
                                       result))
                 ex-message-fn     #(exceptional-run-message message-log %)
                 result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                    (transforms.u/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
-            ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
-            (transforms-base.u/complete-execution! transform
-                                                   {:run-id               run-id
-                                                    :with-stage-timing-fn (fn [rid stage thunk]
-                                                                            (transforms.instrumentation/with-stage-timing [rid stage]
-                                                                              (thunk)))})
+                                    (transforms.u/run-cancelable-transform! run-id transform driver transform-details run-fn :ex-message-fn ex-message-fn))]
+            ;; Post-processing: sync, transform_id, events
+            (transforms-base.u/complete-execution! transform {})
             {:run_id run-id :result result}))))
     (catch Throwable t
       (log/error t "Error executing Python transform")

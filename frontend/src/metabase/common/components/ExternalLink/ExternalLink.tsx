@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { getUrlTarget } from "metabase/lib/dom";
+import { getUrlTarget } from "metabase/utils/dom";
 
 import S from "./ExternalLink.module.css";
 

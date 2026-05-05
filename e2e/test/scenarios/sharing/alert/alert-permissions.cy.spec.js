@@ -155,7 +155,8 @@ function createBasicAlert({ includeNormal } = {}) {
   H.popover().findByText("Create an alert").click();
 
   if (includeNormal) {
-    cy.findByText("Email")
+    cy.findByTestId("alert-configured-channel")
+      .findByText("Email")
       .closest('[data-testid="channel-block"]')
       .findByTestId("token-field")
       .click();

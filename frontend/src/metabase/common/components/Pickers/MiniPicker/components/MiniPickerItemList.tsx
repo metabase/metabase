@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,15 +12,25 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
+import { getIcon } from "metabase/common/utils/icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Menu,
+  Repeat,
+  Skeleton,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import type {
   CollectionItem,
   SchemaName,
@@ -28,23 +38,25 @@ import type {
   SearchRequest,
 } from "metabase-types/api";
 
-import { useMiniPickerContext } from "../context";
+import { type MiniPickerSearchParams, useMiniPickerContext } from "../context";
 import type {
   MiniPickerCollectionItem,
   MiniPickerDatabaseItem,
+  MiniPickerMeasureItem,
   MiniPickerPickableItem,
   MiniPickerSchemaItem,
   MiniPickerTableItem,
 } from "../types";
+import { getOurAnalytics } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
 import styles from "./MiniPickerItem.module.css";
 
 export function MiniPickerItemList() {
-  const { path, searchQuery } = useMiniPickerContext();
+  const { path, searchQuery, forceSearch } = useMiniPickerContext();
 
-  if (searchQuery) {
-    return <SearchItemList query={searchQuery} />;
+  if (searchQuery || forceSearch) {
+    return <SearchItemList query={searchQuery ?? ""} />;
   }
 
   if (path.length === 0) {
@@ -132,20 +144,22 @@ function RootItemList() {
           }}
         />
       )) ?? <MiniPickerListLoader />}
-      <MiniPickerItem
-        name={rootCollectionError ? t`Collections` : t`Our analytics`}
-        model="collection"
-        isFolder
-        onClick={() => {
-          setPath([
-            {
-              model: "collection",
-              id: "root" as any, // cmon typescript, trust me
-              name: rootCollectionError ? t`Collections` : t`Our analytics`,
-            },
-          ]);
-        }}
-      />
+      {!isHidden(getOurAnalytics()) && (
+        <MiniPickerItem
+          name={rootCollectionError ? t`Collections` : t`Our analytics`}
+          model="collection"
+          isFolder
+          onClick={() => {
+            setPath([
+              {
+                model: "collection",
+                id: "root" as any, // cmon typescript, trust me
+                name: rootCollectionError ? t`Collections` : t`Our analytics`,
+              },
+            ]);
+          }}
+        />
+      )}
     </ItemList>
   );
 }
@@ -308,23 +322,44 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   }
 }
 
-function SearchItemList({ query }: { query: string }) {
-  const { onChange, models, isHidden } = useMiniPickerContext();
+function SearchItemList({ query: externalQuery }: { query: string }) {
+  const {
+    onChange,
+    models,
+    isHidden,
+    showSearchInput,
+    searchInputPlaceholder,
+    searchParams,
+    onSearchResults,
+  } = useMiniPickerContext();
+  const [localQuery, setLocalQuery] = useState("");
+  const query = showSearchInput ? localQuery : externalQuery;
+
   const debouncedQuery = useDebouncedValue(query, 500);
 
   const makeQueryArgs = (
     query: string,
     models: MiniPickerPickableItem["model"][],
-  ): SearchRequest => ({
-    q: query,
-    models: models as SearchModel[],
-    limit: 50,
-    // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
-  });
+    searchParams?: MiniPickerSearchParams,
+  ): SearchRequest => {
+    const params: SearchRequest = {
+      q: query,
+      models: models as SearchModel[],
+      limit: 50,
+    };
+    const extraParams =
+      typeof searchParams === "function" ? searchParams(params) : searchParams;
+
+    return {
+      ...params,
+      // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
+      ...(extraParams || {}),
+    };
+  };
 
   const rawQueryArgs = useMemo(
-    () => makeQueryArgs(query, models),
-    [query, models],
+    () => makeQueryArgs(query, models, searchParams),
+    [query, models, searchParams],
   );
 
   const cachedSearch = useSelector(
@@ -334,45 +369,70 @@ function SearchItemList({ query }: { query: string }) {
 
   const effectiveQuery = hasCachedResults ? query : debouncedQuery;
   const searchQueryArgs = useMemo(
-    () => makeQueryArgs(effectiveQuery, models),
-    [effectiveQuery, models],
+    () => makeQueryArgs(effectiveQuery, models, searchParams),
+    [effectiveQuery, models, searchParams],
   );
 
   const { data: searchResponse, isFetching } = useSearchQuery(searchQueryArgs);
 
   const isSearching =
     isFetching || (!hasCachedResults && query !== debouncedQuery);
-  const searchResults: MiniPickerPickableItem[] = (
-    searchResponse?.data ?? []
-  ).filter((i) => !isHidden(i));
+
+  const searchResults: MiniPickerPickableItem[] = useMemo(() => {
+    return (searchResponse?.data ?? []).filter((i) => !isHidden(i));
+  }, [searchResponse, isHidden]);
+
+  useEffect(() => {
+    onSearchResults?.(searchResults);
+  }, [searchResults, onSearchResults]);
 
   return (
-    <ItemList>
-      {!isSearching && searchResults.length === 0 && (
-        <Box>
-          <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
-        </Box>
+    <>
+      {showSearchInput && (
+        <>
+          <TextInput
+            placeholder={searchInputPlaceholder ?? t`Search…`}
+            value={localQuery}
+            onChange={(e) => setLocalQuery(e.target.value)}
+            autoFocus
+            px="sm"
+            pt="2px"
+            pb="sm"
+          />
+          <Menu.Divider mx="sm" />
+        </>
       )}
-      {isSearching && <MiniPickerListLoader />}
-      {!isSearching &&
-        searchResults.map((item) => {
-          return (
-            <MiniPickerItem
-              key={`${item.model}-${item.id}`}
-              name={item.name}
-              model={item.model}
-              onClick={() => {
-                onChange(item);
-              }}
-              rightSection={<LocationInfo item={item} />}
-              classNames={{
-                itemLabel: styles.leftSection,
-                itemSection: styles.rightSection,
-              }}
-            />
-          );
-        })}
-    </ItemList>
+      <ItemList>
+        {!isSearching && searchResults.length === 0 && (
+          <Box>
+            <Text
+              px="md"
+              py="sm"
+              c="text-secondary"
+            >{t`No search results`}</Text>
+          </Box>
+        )}
+        {isSearching && <MiniPickerListLoader />}
+        {!isSearching &&
+          searchResults.map((item) => {
+            return (
+              <MiniPickerItem
+                key={`${item.model}-${item.id}`}
+                name={item.name}
+                model={item.model}
+                onClick={() => {
+                  onChange(item);
+                }}
+                rightSection={<LocationInfo item={item} />}
+                classNames={{
+                  itemLabel: styles.leftSection,
+                  itemSection: styles.rightSection,
+                }}
+              />
+            );
+          })}
+      </ItemList>
+    </>
   );
 }
 
@@ -389,6 +449,10 @@ export const MiniPickerListLoader = () => (
   </Stack>
 );
 
+const ItemList = ({ children }: { children: React.ReactNode[] }) => {
+  return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
+};
+
 const isTableInDb = (
   item: MiniPickerPickableItem,
 ): item is MiniPickerTableItem => {
@@ -401,27 +465,37 @@ const isTableInDb = (
   );
 };
 
-const ItemList = ({ children }: { children: React.ReactNode[] }) => {
-  return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
+const isMeasure = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerMeasureItem => {
+  return item.model === "measure";
+};
+
+const getLocationDetails = (item: MiniPickerPickableItem) => {
+  if (isTableInDb(item)) {
+    return {
+      itemText: `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`,
+      iconProps: null,
+    };
+  }
+  if (isMeasure(item)) {
+    return {
+      itemText: item.table_display_name ?? item.table_name,
+      iconProps: { name: "table" as const },
+    };
+  }
+  return {
+    itemText: item?.collection?.name ?? t`Our analytics`,
+    iconProps: getIcon({ ...item.collection, model: "collection" }),
+  };
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const isTable = isTableInDb(item);
-
-  const itemText = isTable
-    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
-    : (item?.collection?.name ?? t`Our analytics`);
+  const { itemText, iconProps } = getLocationDetails(item);
 
   if (!itemText) {
     return null;
   }
-
-  const iconProps = isTable
-    ? null
-    : getIcon({
-        ...item.collection,
-        model: "collection",
-      });
 
   return (
     <Flex gap="xs" align="center" ml="auto" style={{ overflow: "hidden" }}>

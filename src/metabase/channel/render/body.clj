@@ -9,6 +9,7 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
+   [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
@@ -60,15 +61,6 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Helper Fns                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn show-in-table?
-  "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [visibility_type] :as _column}]
-  (not (contains? #{:details-only :retired :sensitive} visibility_type)))
-
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (mu/defn- format-scalar-value
@@ -98,15 +90,6 @@
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
-(defn- create-remapping-lookup
-  "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
-  should be replaced with"
-  [cols]
-  (into {}
-        (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
-              :when remapped_from]
-          [remapped_from col-idx])))
-
 (defn- column-name
   "Returns first column name from a hierarchy of possible column names"
   [card col]
@@ -126,7 +109,7 @@
   [remapping-lookup card cols]
   {:row
    (for [maybe-remapped-col cols
-         :when              (show-in-table? maybe-remapped-col)
+         :when              (table-data/show-in-table? maybe-remapped-col)
          :let               [col (if (:remapped_to maybe-remapped-col)
                                    (nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                    maybe-remapped-col)
@@ -145,7 +128,7 @@
     (for [row rows]
       {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
-                             (show-in-table? maybe-remapped-col))
+                             (table-data/show-in-table? maybe-remapped-col))
                   :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
                                                 (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
                                                   [(nth formatters remapped-index)
@@ -159,7 +142,7 @@
   ([timezone-id :- [:maybe :string]
     card
     {:keys [cols rows viz-settings], :as _data}]
-   (let [remapping-lookup (create-remapping-lookup cols)
+   (let [remapping-lookup (table-data/create-remapping-lookup cols)
          row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row remapping-lookup card cols)
@@ -195,7 +178,7 @@
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map
-   [:attachments                  [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
+   [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      [:sequential :any]]
    [:render/text {:optional true} [:maybe :string]]])
 
@@ -242,7 +225,7 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
-        filtered-cols               (filter show-in-table? ordered-cols)
+        filtered-cols               (filter table-data/show-in-table? ordered-cols)
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
@@ -535,25 +518,81 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
-(defn- get-funnel-axis-fns
-  "Return [x-axis-fn y-axis-fn] tuple for indexing into the funnel data for the appropriate axis' data"
+(defn- summable-col?
+  "Check if a column is summable (numeric but not temporal, location, or entity).
+   Works with snake_case column keys from result metadata."
+  [col]
+  (let [effective-type (or (:effective_type col) (:base_type col))
+        semantic-type  (:semantic_type col)]
+    (and (isa? effective-type :type/Number)
+         (not (isa? effective-type :type/Temporal))
+         (not (isa? semantic-type :type/Address))
+         (not (isa? semantic-type :type/FK))
+         (not (isa? semantic-type :type/PK))
+         (not (isa? semantic-type :type/Name)))))
+
+(defn- metric-col?
+  "Check if a column should be treated as a metric, matching frontend isMetric logic.
+   A metric is summable, not from breakout, not named like an ID, and not binned."
+  [col]
+  (and (not= (:source col) "breakout")
+       (summable-col? col)
+       (not (:binning_info col))
+       (let [col-name (some-> (:name col) u/lower-case-en)]
+         (not (or (= col-name "id")
+                  (str/ends-with? col-name "_id")
+                  (str/ends-with? col-name "-id"))))))
+
+(defn- reorder-cols-for-funnel
+  "Reorder :cols and :rows so that the dimension column is first and metric column is second.
+   Finds columns by name, mirroring the frontend FunnelNormal.tsx findIndex logic."
+  [data dim-col-name metric-col-name]
+  (let [cols    (:cols data)
+        dim-idx (first (keep-indexed (fn [i c] (when (= (:name c) dim-col-name) i)) cols))
+        met-idx (first (keep-indexed (fn [i c] (when (= (:name c) metric-col-name) i)) cols))]
+    (if (and dim-idx met-idx)
+      (-> data
+          (assoc :cols [(nth cols dim-idx) (nth cols met-idx)])
+          (update :rows (fn [rs] (mapv (fn [r] (let [v (vec r)] [(v dim-idx) (v met-idx)])) rs))))
+      data)))
+
+(defn- swap-first-two-cols
+  "Swap the first two columns in data, reordering both :cols and :rows."
+  [data]
+  (-> data
+      (update :cols (fn [cs] (vec (cons (second cs) (cons (first cs) (drop 2 cs))))))
+      (update :rows (fn [rs] (mapv (fn [r] (let [v (vec r)] (into [(v 1) (v 0)] (subvec v 2)))) rs)))))
+
+(defn- normalize-funnel-data
+  "Ensure funnel data has dimension column first and metric column second.
+   Reorders both :cols and :rows if needed. When explicit funnel.dimension and
+   funnel.metric settings are present, finds columns by name (like the frontend)."
   [card dashcard data]
-  (if (render.util/is-visualizer-dashcard? dashcard)
-    ;; x-axis looks for :funnel.dimension
-    ;; y-axis looks for :funnel.metric
-    (let [x-axis-is-first (= (:name (first (:cols data))) (get-in data [:viz-settings :funnel.dimension]))]
-      (if x-axis-is-first
-        [first second]
-        [second first]))
-    (formatter/graphing-column-row-fns card data)))
+  (let [cols (:cols data)]
+    (if (or (< (count cols) 2)
+            (and (not= :funnel (:display card))
+                 (not (render.util/is-visualizer-dashcard? dashcard))))
+      data
+      (let [viz-settings     (if (render.util/is-visualizer-dashcard? dashcard)
+                               (:viz-settings data)
+                               (:visualization_settings card))
+            dimension-col-name (get viz-settings :funnel.dimension)
+            metric-col-name    (get viz-settings :funnel.metric)]
+        (if (and dimension-col-name metric-col-name)
+          ;; Both dimension and metric specified: find by name regardless of position
+          (reorder-cols-for-funnel data dimension-col-name metric-col-name)
+          ;; Auto-detect: metric col should be second, non-metric col should be first
+          (let [[col1 col2] cols]
+            (if (and (metric-col? col1) (not (metric-col? col2)))
+              (swap-first-two-cols data)
+              data)))))))
 
 (mu/defmethod render :funnel_normal :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [[x-axis-rowfn
-         y-axis-rowfn] (get-funnel-axis-fns card dashcard data)
+  [_chart-type render-type _timezone-id card dashcard data]
+  (let [{:keys [rows cols viz-settings]} (normalize-funnel-data card dashcard data)
         funnel-viz    (:funnel.rows viz-settings)
-        raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
-                            (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        raw-rows      (map (juxt first second)
+                           (formatter/row-preprocess first second rows))
         rows          (if (and funnel-viz (all-unique? funnel-viz))
                         (funnel-rows funnel-viz raw-rows)
                         raw-rows)

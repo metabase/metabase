@@ -1,0 +1,213 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 0,
+    "response": {
+      "id": "resp_text_tool_001",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "status": "in_progress",
+      "output": []
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 1,
+    "response": {
+      "id": "resp_text_tool_001",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "status": "in_progress",
+      "output": []
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 2,
+    "output_index": 0,
+    "item": {
+      "id": "msg_text_tool_001",
+      "type": "message",
+      "status": "in_progress",
+      "role": "assistant",
+      "content": []
+    }
+  },
+  {
+    "type": "response.content_part.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "text": ""
+    }
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": "I'll"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 5,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " check"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " the"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 7,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " time"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 8,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " in"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 9,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " Kyiv"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 10,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " for you."
+  },
+  {
+    "type": "response.output_text.done",
+    "sequence_number": 11,
+    "output_index": 0,
+    "content_index": 0,
+    "text": "I'll check the time in Kyiv for you."
+  },
+  {
+    "type": "response.content_part.done",
+    "sequence_number": 12,
+    "output_index": 0,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "text": "I'll check the time in Kyiv for you."
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 13,
+    "output_index": 0,
+    "item": {
+      "id": "msg_text_tool_001",
+      "type": "message",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "I'll check the time in Kyiv for you."
+        }
+      ]
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 14,
+    "output_index": 1,
+    "item": {
+      "id": "call_get_time_001",
+      "type": "function_call",
+      "status": "in_progress",
+      "name": "get-time",
+      "call_id": "call_get_time_001",
+      "arguments": ""
+    }
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 15,
+    "output_index": 1,
+    "delta": "{\"tz\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 16,
+    "output_index": 1,
+    "delta": ": \"Europe"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 17,
+    "output_index": 1,
+    "delta": "/Kyiv\"}"
+  },
+  {
+    "type": "response.function_call_arguments.done",
+    "sequence_number": 18,
+    "output_index": 1,
+    "arguments": "{\"tz\": \"Europe/Kyiv\"}"
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 19,
+    "output_index": 1,
+    "item": {
+      "id": "call_get_time_001",
+      "type": "function_call",
+      "status": "completed",
+      "name": "get-time",
+      "call_id": "call_get_time_001",
+      "arguments": "{\"tz\": \"Europe/Kyiv\"}"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 20,
+    "response": {
+      "id": "resp_text_tool_001",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 45,
+        "output_tokens": 30,
+        "total_tokens": 75
+      },
+      "output": [
+        {
+          "id": "msg_text_tool_001",
+          "type": "message",
+          "status": "completed",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "I'll check the time in Kyiv for you."
+            }
+          ]
+        },
+        {
+          "id": "call_get_time_001",
+          "type": "function_call",
+          "status": "completed",
+          "name": "get-time",
+          "call_id": "call_get_time_001",
+          "arguments": "{\"tz\": \"Europe/Kyiv\"}"
+        }
+      ]
+    }
+  }
+]

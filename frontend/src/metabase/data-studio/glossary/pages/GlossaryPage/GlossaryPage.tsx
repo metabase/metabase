@@ -14,12 +14,14 @@ import {
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { GlossaryTable } from "metabase/reference/glossary/GlossaryTable";
 import { Box, Card } from "metabase/ui";
 
 import S from "./GlossaryPage.module.css";
 
 export function GlossaryPage() {
+  usePageTitle(t`Glossary`);
   const { data: glossary = [] } = useListGlossaryQuery();
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();

@@ -140,6 +140,18 @@ describe("pie chart label utilities", () => {
       expect(result).toBe(0);
     });
 
+    it("returns donutThickness for large radial slice arc > PI even though chord is small (metabase#68802)", () => {
+      const result = calcAvailableDonutSliceLabelLength(
+        50,
+        100,
+        0,
+        6.2, // ~355 degrees
+        12,
+        "radial",
+      );
+      expect(result).toBe(50); // should return donutThickness
+    });
+
     it("calculates horizontal label length correctly", () => {
       const result = calcAvailableDonutSliceLabelLength(
         50,

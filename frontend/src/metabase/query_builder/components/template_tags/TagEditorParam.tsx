@@ -2,14 +2,15 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { type DispatchFn, connect } from "metabase/lib/redux";
-import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
+import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
+import { type DispatchFn, connect } from "metabase/redux";
 import { fetchField } from "metabase/redux/metadata";
+import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -37,7 +38,6 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import TagEditorParamS from "./TagEditorParam.module.css";
 import {
@@ -184,6 +184,7 @@ class TagEditorParamInner extends Component<
         default: undefined,
         dimension: undefined,
         alias: undefined,
+        "emit-alias": type === "table" ? true : undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
         "table-id": undefined,
       });
@@ -299,6 +300,13 @@ class TagEditorParamInner extends Component<
     }
   };
 
+  setEmitAlias = (emitAlias: boolean) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["emit-alias"] !== emitAlias) {
+      setTemplateTag({ ...tag, "emit-alias": emitAlias });
+    }
+  };
+
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
@@ -371,6 +379,7 @@ class TagEditorParamInner extends Component<
             database={database}
             databases={databases}
             onChange={this.setTableId}
+            onChangeEmitAlias={this.setEmitAlias}
           />
         )}
 

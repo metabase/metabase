@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -16,8 +17,8 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -44,11 +45,7 @@ import { strategyValidationSchema } from "../constants/complex";
 import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
-import {
-  cronToScheduleSettings,
-  getDefaultValueForField,
-  getLabelString,
-} from "../utils";
+import { getDefaultValueForField, getLabelString } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
 import {

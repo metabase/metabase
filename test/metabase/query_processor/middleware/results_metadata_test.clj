@@ -12,11 +12,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -89,8 +90,8 @@
                    (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0
                                                                           :max 74.0
                                                                           :avg 29.98
-                                                                          :q1  6.9
-                                                                          :q3  49.24
+                                                                          :q1  7.0
+                                                                          :q3  49.0
                                                                           :sd  23.06}}))]
     (assoc column :display_name (:name column))))
 
@@ -289,7 +290,7 @@
                 :semantic_type :type/Quantity
                 :fingerprint  {:global {:distinct-count 3
                                         :nil%           0.0}
-                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.25, :sd 143.5}}}
+                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 235.0, :q3 498.0, :sd 143.5}}}
                 :field_ref    [:aggregation 0]}]
               (-> card
                   card-metadata
@@ -504,3 +505,73 @@
                                                                 :description    "The date and time an order was submitted."
                                                                 :display_name   "Created At: Quarter"
                                                                 :effective_type :type/DateTime}])))))
+
+(deftest different-filters-update-result-metadata-test
+  ;; When the query itself changes (different filter baked in), result_metadata should update.
+  (mt/with-temp [:model/Card {card-id :id}
+                 {:dataset_query   (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})
+                  :result_metadata nil}]
+    (let [run-with-filter!
+          (fn [product-id]
+            (t2/update! :model/Card card-id
+                        {:dataset_query (mt/mbql-query orders
+                                          {:aggregation [[:count] [:sum $total]]
+                                           :breakout    [$product_id]
+                                           :filter      [:= $product_id product-id]})})
+            (mt/as-admin
+              (qp/process-query-for-card
+               card-id :api
+               :make-run (constantly
+                          (fn [query info]
+                            (qp/process-query (assoc query :info info))))))
+            (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+      ;; First run establishes baseline metadata
+      (run-with-filter! 1)
+      ;; Second run with different filter — metadata should update because the query changed
+      (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            _           (run-with-filter! 50)
+            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        (is (not= meta-before meta-after)
+            "result_metadata should update when the query changes"))
+      ;; Third run with original filter — metadata updates again
+      (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            _           (run-with-filter! 1)
+            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        (is (not= meta-before meta-after)
+            "result_metadata should update when the query changes back")))))
+
+(deftest parameterized-queries-do-not-thrash-result-metadata-test
+  ;; When parameters are applied via :parameters, result_metadata should not be updated.
+  ;; See QUE2-502 for details.
+  (mt/with-temp [:model/Card {card-id :id}
+                 {:dataset_query   (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})
+                  :result_metadata nil}]
+    (let [run-with-parameters!
+          (fn [product-id]
+            ;; Bind *allow-arbitrary-mbql-parameters* as the dashboard code path does.
+            (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+              (mt/as-admin
+                (qp/process-query-for-card
+                 card-id :api
+                 :parameters [{:id     "product-id-param"
+                               :type   :id
+                               :target [:dimension (mt/$ids orders $product_id)]
+                               :value  [product-id]}]
+                 :make-run (constantly
+                            (fn [query info]
+                              (qp/process-query (assoc query :info info)))))))
+            (t2/select-one-fn :result_metadata :model/Card :id card-id))
+          ;; First run establishes baseline metadata
+          _           (run-with-parameters! 1)
+          meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+          ;; Second run with different parameter
+          _           (run-with-parameters! 50)
+          meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+      (is (some? meta-before)
+          "Baseline metadata should be established by first run")
+      (is (= meta-before meta-after)
+          "result_metadata should not change for parameterized queries"))))

@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build-sdk-package:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

@@ -9,7 +9,6 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import * as Urls from "metabase/lib/urls";
 import type { CheckDependenciesFormProps } from "metabase/plugins";
 import {
   Anchor,
@@ -22,6 +21,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
 import type {
   Card as ApiCard,
@@ -155,7 +155,7 @@ function getItemName(item: DependencyItem) {
 function getItemLink(item: DependencyItem) {
   switch (item.type) {
     case "card":
-      return Urls.question(item.card);
+      return Urls.card(item.card);
     default:
       return Urls.transform(item.transform.id);
   }

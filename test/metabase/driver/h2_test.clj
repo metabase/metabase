@@ -17,9 +17,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -90,17 +90,17 @@
                    (catch Exception e e)))]
       (testing "connection-uri"
         (let [result (f {:connection-uri conn})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify connection-uri in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"connection-uri"}} (ex-data result)))))
       (testing "subprotocol"
         (let [result (f {:db conn, :subprotocol "h2"})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify subprotocol in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"subprotocol"}} (ex-data result)))))
-      (testing "subprotocol"
+      (testing "classname"
         (let [result (f {:db conn, :classname "org.h2.Driver"})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify classname in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 

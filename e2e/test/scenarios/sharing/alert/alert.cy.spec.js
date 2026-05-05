@@ -31,11 +31,11 @@ describe("scenarios > alert", () => {
         cy.findByText("Set up Slack")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications");
+          .should("have.attr", "href", "/admin/settings/slack");
         cy.findByText("Add a webhook")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications");
+          .should("have.attr", "href", "/admin/settings/webhooks");
       });
     });
 

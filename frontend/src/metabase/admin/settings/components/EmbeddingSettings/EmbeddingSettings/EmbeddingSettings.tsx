@@ -14,11 +14,11 @@ import {
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
+  PLUGIN_IS_EE_BUILD,
 } from "metabase/plugins";
 import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 
@@ -28,7 +28,7 @@ import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSettings";
 
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
-  const isEE = isEEBuild();
+  const isEE = PLUGIN_IS_EE_BUILD.isEEBuild();
   const isUsingTenants = useSetting("use-tenants");
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 

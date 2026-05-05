@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards-test :as qp.updated-used-cards-test]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

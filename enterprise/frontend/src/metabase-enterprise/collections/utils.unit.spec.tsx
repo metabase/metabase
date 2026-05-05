@@ -2,11 +2,11 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   filterOutItemsFromInstanceAnalytics,
@@ -88,7 +88,11 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official collection", () => {
         expect(
           getIcon({ model: "collection", authority_level: "official" }),
-        ).toEqual({ name: "official_collection", color: "saturated-yellow" });
+        ).toEqual({
+          name: "official_collection",
+          color: "saturated-yellow",
+          tooltip: "Official collection",
+        });
       });
 
       it("should return the correct icon for a remote synced collection", () => {

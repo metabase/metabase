@@ -19,10 +19,11 @@ import { GeneralSettingsPage } from "./settings/components/SettingsPages/General
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "./settings/components/SettingsPages/LocalizationSettingsPage";
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
-import { NotificationSettingsPage } from "./settings/components/SettingsPages/NotificationSettingsPage";
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
+import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
+import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
 
 export const getSettingsRoutes = () => (
   <Route
@@ -36,7 +37,8 @@ export const getSettingsRoutes = () => (
     <Route path="general" component={GeneralSettingsPage} />
     <Route path="updates" component={UpdatesSettingsPage} />
     <Route path="email" component={EmailSettingsPage} />
-    <Route path="notifications" component={NotificationSettingsPage} />
+    <Route path="slack" component={SlackSettingsPage} />
+    <Route path="webhooks" component={WebhooksSettingsPage} />
     <Route
       path="authentication"
       component={() => <AuthenticationSettingsPage tab="authentication" />}

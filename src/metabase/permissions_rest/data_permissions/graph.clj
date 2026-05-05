@@ -9,7 +9,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
@@ -46,7 +45,7 @@
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [graph & [_opts]]
   graph)
 
@@ -135,7 +134,8 @@
   (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])
+                                                                     [:= :router_database_id nil]]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -155,7 +155,8 @@
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
         db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                                    {:where [:and
-                                                                            (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                            (when-not audit? [:not= :id audit/audit-db-id])
+                                                                            [:= :router_database_id nil]]}))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -207,7 +208,10 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])
+                                       [:not-in :db_id {:select [:id]
+                                                        :from   [:metabase_database]
+                                                        :where  [:not= :router_database_id nil]}]]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -261,7 +265,7 @@
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
   "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
   EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [_])
 
 (defn ee-permissions-exception
@@ -480,14 +484,13 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
-     (cluster-lock/with-cluster-lock ::update-data-perms-graph
+     (perms/with-global-permissions-lock
        (let [group-updates (:groups graph-updates)]
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
-         (t2/with-transaction [_conn]
-           (update-data-perms-graph!* group-updates)
-           (delete-impersonations-if-needed-after-permissions-change! group-updates)
-           (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

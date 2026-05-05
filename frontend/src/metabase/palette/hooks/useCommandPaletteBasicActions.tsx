@@ -5,15 +5,16 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
-import { Collections } from "metabase/entities/collections/collections";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
+import type { ModalName } from "metabase/redux/store/modal";
 import {
   closeModal,
   setOpenModal,
@@ -27,7 +28,7 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
-import type { ModalName } from "metabase-types/store/modal";
+import * as Urls from "metabase/urls";
 
 import {
   type RegisterShortcutProps,
@@ -49,6 +50,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-user-settings",
   "navigate-trash",
   "navigate-home",
+  "navigate-data-studio",
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
@@ -59,9 +61,7 @@ export const useCommandPaletteBasicActions = ({
   ...props
 }: WithRouterProps & { isLoggedIn: boolean }) => {
   const dispatch = useDispatch();
-  const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
-  );
+  const collectionId = useInitialCollectionId(props) ?? undefined;
 
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
@@ -73,6 +73,7 @@ export const useCommandPaletteBasicActions = ({
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
@@ -193,16 +194,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () => {
           trackMetricCreateStarted("command_palette");
           dispatch(closeModal());
-          dispatch(push("metric/query"));
-          dispatch(
-            push(
-              Urls.newQuestion({
-                mode: "query",
-                cardType: "metric",
-                collectionId,
-              }),
-            ),
-          );
+          dispatch(push(Urls.newMetric({ collectionId })));
         },
       });
     }
@@ -268,6 +260,13 @@ export const useCommandPaletteBasicActions = ({
       },
     );
 
+    if (hasDataStudioAccess) {
+      actions.push({
+        id: "navigate-data-studio",
+        perform: () => dispatch(push("/data-studio")),
+      });
+    }
+
     const browseActions: RegisterShortcutProps[] = [
       {
         id: "navigate-browse-model",
@@ -302,6 +301,7 @@ export const useCommandPaletteBasicActions = ({
   }, [
     dispatch,
     hasDataAccess,
+    hasDataStudioAccess,
     hasNativeWrite,
     collectionId,
     openNewModal,

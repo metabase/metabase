@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 
+import { getIcon } from "metabase/common/utils/icon";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
-import { getIcon } from "metabase/lib/icon";
-import { getName } from "metabase/lib/name";
-import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
+import { type UrlableModel, modelToUrl } from "metabase/urls/modelToUrl";
+import { getName } from "metabase/utils/name";
 import type {
   Database,
   MentionableUser,

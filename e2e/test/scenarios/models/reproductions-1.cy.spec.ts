@@ -420,19 +420,19 @@ describe("issue 41785, issue 46756", () => {
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("Ean").should("have.length", 1);
-      cy.findAllByText("Products → Ean").should("have.length", 1);
+      cy.findAllByText("Products_2 → Ean").should("have.length", 1);
 
       cy.button("Add or remove columns").click();
       cy.findAllByText("Ean").should("have.length", 1);
       cy.findByLabelText("Ean").should("be.checked");
 
-      cy.findByLabelText("Products → Ean").should("be.checked");
-      cy.findAllByText("Products → Ean").should("have.length", 1).click();
+      cy.findByLabelText("Products_2 → Ean").should("be.checked");
+      cy.findAllByText("Products_2 → Ean").should("have.length", 1).click();
 
       cy.wait("@dataset");
 
       cy.log("Only the clicked column should be removed (metabase#46756)");
-      cy.findByLabelText("Products → Ean").should("not.be.checked");
+      cy.findByLabelText("Products_2 → Ean").should("not.be.checked");
       cy.findByLabelText("Ean").should("be.checked");
     });
 
@@ -505,6 +505,11 @@ describe("issue 40635", () => {
 
     cy.button("Save").click();
     H.modal().button("Save").click();
+
+    H.undoToast()
+      .should("contain", "Add this to a dashboard")
+      .icon("close")
+      .click();
 
     assertSettingsSidebar();
     assertVisualizationColumns();

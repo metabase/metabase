@@ -11,7 +11,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { Search } from "metabase/entities/search";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,

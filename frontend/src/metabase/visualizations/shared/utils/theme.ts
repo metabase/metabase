@@ -1,8 +1,8 @@
 import Color from "color";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
-import { color } from "metabase/lib/colors";
 import type { MantineThemeOther } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 

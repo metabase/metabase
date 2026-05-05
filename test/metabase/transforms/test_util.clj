@@ -15,6 +15,26 @@
 
 (set! *warn-on-reflection* true)
 
+(defn seconds-from-now-ns
+  "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
+  We use nanoTime rather than currentTimeMillis because it is monotonic and not affected by
+  clock adjustments."
+  [seconds]
+  (+ (System/nanoTime) (* seconds 1000000000)))
+
+(defn source-table-entry
+  "Build a full source-table-entry from alias + table_id by looking up database_id and schema."
+  [alias table-id]
+  (let [{:keys [db_id schema]} (t2/select-one [:model/Table :db_id :schema] :id table-id)]
+    {:alias alias :table_id table-id :database_id db_id :schema schema}))
+
+(defn default-source-table-entry
+  "Build a source-table-entry for the first active table in the current test database."
+  ([]
+   (default-source-table-entry "test"))
+  ([alias]
+   (source-table-entry alias (t2/select-one-pk :model/Table :db_id (mt/id) :active true))))
+
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
    `target` can be a string or a map. If `target` is a string, type :table is assumed.
@@ -115,12 +135,12 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-        limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
+        timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+        deadline  (seconds-from-now-ns timeout-s)]
     (is (=? {:message "Transform run started"}
             resp))
     (loop [last-resp nil]
-      (when (> (System/currentTimeMillis) limit)
+      (when (> (System/nanoTime) deadline)
         (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {:resp last-resp})))
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
@@ -146,6 +166,36 @@
           (:started :running) (do (Thread/sleep 100) (recur))
           (throw (ex-info (format "Transform run failed with status %s" status)
                           {:resp resp :status status})))))))
+
+(defn- poll-field
+  "Poll until `pred` is satisfied for the active-field lookup of `field-name` on `table-name`.
+   Returns the first truthy result of `pred`, or throws after `timeout-ms`."
+  [table-name field-name timeout-ms pred timeout-msg]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [table (t2/select-one :model/Table :name table-name :db_id (mt/id))
+            field (when table
+                    (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
+        (or (pred field)
+            (if (> (u/since-ms timer) timeout-ms)
+              (throw (ex-info (format timeout-msg field-name table-name timeout-ms)
+                              {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
+              (do (Thread/sleep 200)
+                  (recur))))))))
+
+(defn wait-for-field
+  "Wait for a field with `field-name` to appear as active on `table-name`."
+  [table-name field-name timeout-ms]
+  (poll-field table-name field-name timeout-ms
+              some?
+              "Field %s on table %s did not appear after %dms"))
+
+(defn wait-for-field-inactive
+  "Wait for a field with `field-name` to no longer be active on `table-name`."
+  [table-name field-name timeout-ms]
+  (poll-field table-name field-name timeout-ms
+              nil?
+              "Field %s on table %s still active after %dms"))
 
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.

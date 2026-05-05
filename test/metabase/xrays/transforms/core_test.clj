@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -65,7 +65,7 @@
 
 (deftest ^:parallel tableset-test
   (testing "Can we get a tableset for a given schema?"
-    (is (= (t2/select-pks-set :model/Table :db_id (mt/id))
+    (is (= (t2/select-pks-set :model/Table :db_id (mt/id) :schema "PUBLIC")
            (set (map u/the-id (#'tf/tableset (mt/id) "PUBLIC")))))))
 
 (deftest ^:parallel find-tables-with-domain-entity-test

@@ -2,8 +2,8 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
+import type { DatasetEditorTab } from "metabase/redux/store";
 import { Icon } from "metabase/ui";
-import type { DatasetEditorTab } from "metabase-types/store";
 
 import EditorTabsS from "./EditorTabs.module.css";
 

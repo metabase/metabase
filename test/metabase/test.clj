@@ -20,8 +20,8 @@
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.request.core]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -186,6 +186,7 @@
 
  [metabase.test.util.dynamic-redefs
   dynamic-value
+  original-fn
   with-dynamic-fn-redefs]
 
  [premium-features.test-util

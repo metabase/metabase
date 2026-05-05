@@ -67,7 +67,6 @@ export const HeaderCellWrapper = ({
       })}
       hasHover={false}
       align={align}
-      role="columnheader"
       data-testid="header-cell"
     >
       {children}

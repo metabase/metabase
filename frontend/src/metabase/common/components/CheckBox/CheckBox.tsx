@@ -8,8 +8,8 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import {
   CheckBoxContainer,
@@ -27,8 +27,10 @@ import {
 } from "./constants";
 import { isEllipsisActive } from "./utils";
 
-export interface CheckBoxProps
-  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
+export interface CheckBoxProps extends Omit<
+  HTMLAttributes<HTMLElement>,
+  "onChange" | "onFocus" | "onBlur"
+> {
   name?: string;
   label?: ReactNode;
   labelEllipsis?: boolean;

@@ -509,7 +509,9 @@
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
-  (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
+  (let [details (-> details
+                    (update :port #(or % (default-ssh-tunnel-target-port driver)))
+                    (ssh/resolve-known-hosts driver))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver

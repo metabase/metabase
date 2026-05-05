@@ -979,9 +979,10 @@
 (deftest jwt-token-not-configured-test
   (testing "should not return a session token when jwt is not configured"
     (mt/with-temporary-setting-values
-      [jwt-enabled true
+      [jwt-enabled              true
        jwt-identity-provider-uri nil
-       jwt-shared-secret nil]
+       jwt-shared-secret        nil
+       slack-connect-enabled    false]
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
@@ -997,7 +998,7 @@
               result       (client/client-real-response :get 400 "/auth/sso"
                                                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
-          (is result nil))))))
+          (is result))))))
 
 (deftest jwt-token-embedding-disabled-test
   (testing "should not return a session token when embedding is disabled"
@@ -1017,7 +1018,7 @@
               result       (client/client-real-response :get 402 "/auth/sso"
                                                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
-          (is result nil))))))
+          (is result))))))
 
 (deftest jwt-token-no-hash-test
   (testing "should not return a session token when token=false"
@@ -1038,7 +1039,7 @@
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt       jwt-payload)]
-          (is result nil))))))
+          (is result))))))
 
 (deftest tenant-user-assigned-to-tenant-group-via-mapping-test
   (testing "JWT user with tenant claim can be assigned to tenant user groups via group mapping"

@@ -84,6 +84,10 @@ import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
 import camera_component from "./camera.svg?component";
 import camera_source from "./camera.svg?source";
+import chart_layout_default_component from "./chart_layout_default.svg?component";
+import chart_layout_default_source from "./chart_layout_default.svg?source";
+import chart_layout_stack_component from "./chart_layout_stack.svg?component";
+import chart_layout_stack_source from "./chart_layout_stack.svg?source";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import check_filled_component from "./check_filled.svg?component";
@@ -242,6 +246,8 @@ import grid_component from "./grid.svg?component";
 import grid_source from "./grid.svg?source";
 import grid_2x2_component from "./grid_2x2.svg?component";
 import grid_2x2_source from "./grid_2x2.svg?source";
+import grid_bordered_component from "./grid_bordered.svg?component";
+import grid_bordered_source from "./grid_bordered.svg?source";
 import group_component from "./group.svg?component";
 import group_source from "./group.svg?source";
 import history_component from "./history.svg?component";
@@ -364,6 +370,8 @@ import person_component from "./person.svg?component";
 import person_source from "./person.svg?source";
 import pie_component from "./pie.svg?component";
 import pie_source from "./pie.svg?source";
+import pie_slice_component from "./pie_slice.svg?component";
+import pie_slice_source from "./pie_slice.svg?source";
 import pin_component from "./pin.svg?component";
 import pin_source from "./pin.svg?source";
 import pinmap_component from "./pinmap.svg?component";
@@ -402,6 +410,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import rename_component from "./rename.svg?component";
+import rename_source from "./rename.svg?source";
 import repository_component from "./repository.svg?component";
 import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
@@ -424,8 +434,6 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
-import segment2_component from "./segment2.svg?component";
-import segment2_source from "./segment2.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
 import settings_component from "./settings.svg?component";
@@ -725,6 +733,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: camera_component,
       source: camera_source,
     },
+    chart_layout_default: {
+      component: chart_layout_default_component,
+      source: chart_layout_default_source,
+    },
+    chart_layout_stack: {
+      component: chart_layout_stack_component,
+      source: chart_layout_stack_source,
+    },
     check: {
       component: check_component,
       source: check_source,
@@ -1017,6 +1033,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: grid_2x2_component,
       source: grid_2x2_source,
     },
+    grid_bordered: {
+      component: grid_bordered_component,
+      source: grid_bordered_source,
+    },
     group: {
       component: group_component,
       source: group_source,
@@ -1257,6 +1277,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: pie_component,
       source: pie_source,
     },
+    pie_slice: {
+      component: pie_slice_component,
+      source: pie_slice_source,
+    },
     pin: {
       component: pin_component,
       source: pin_source,
@@ -1413,6 +1437,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: refresh_downstream_component,
       source: refresh_downstream_source,
     },
+    rename: {
+      component: rename_component,
+      source: rename_source,
+    },
     repository: {
       component: repository_component,
       source: repository_source,
@@ -1440,10 +1468,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     segment: {
       component: segment_component,
       source: segment_source,
-    },
-    segment2: {
-      component: segment2_component,
-      source: segment2_source,
     },
     send: {
       component: send_component,
@@ -1747,6 +1771,8 @@ export type IconName =
   | "burger"
   | "calendar"
   | "camera"
+  | "chart_layout_default"
+  | "chart_layout_stack"
   | "check"
   | "check_filled"
   | "code_block"
@@ -1824,6 +1850,7 @@ export type IconName =
   | "grabber"
   | "grid"
   | "grid_2x2"
+  | "grid_bordered"
   | "group"
   | "google"
   | "google_drive"
@@ -1885,6 +1912,7 @@ export type IconName =
   | "permissions_limited"
   | "person"
   | "pie"
+  | "pie_slice"
   | "pin"
   | "pinmap"
   | "pivot_table"
@@ -1923,6 +1951,7 @@ export type IconName =
   | "reference"
   | "refresh"
   | "refresh_downstream"
+  | "rename"
   | "repository"
   | "rocket"
   | "ruler"
@@ -1931,7 +1960,6 @@ export type IconName =
   | "search_check"
   | "section"
   | "segment"
-  | "segment2"
   | "shield"
   | "shield_outline"
   | "sidebar_closed"

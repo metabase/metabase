@@ -8,6 +8,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
@@ -15,8 +17,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { NavbarLibrarySection } from "../NavbarLibrarySection";
 

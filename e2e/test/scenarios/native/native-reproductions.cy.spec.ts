@@ -335,13 +335,23 @@ describe("issue 54124", () => {
   it("should be possible to close the data reference sidebar (metabase#54124)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@questionId").then((questionId) => {
-      H.NativeEditor.type(
-        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
-      );
-    });
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
 
-    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.get("@questionId").then((questionId) => {
+      H.NativeEditor.type(`{{#${questionId}-reference-question }}`, {
+        allowFastSet: true,
+      });
+    });
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
     cy.findByTestId("sidebar-content").should("not.exist");
 
     cy.log("moving cursor should open the reference sidebar again");
@@ -1004,5 +1014,45 @@ describe("issue 59075", () => {
       const { bottom } = editor.get()[0].getBoundingClientRect();
       cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
     });
+  });
+});
+
+describe("issue 69160", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createSnippet({
+      name: "A and B",
+      content: "{{ a }} and {{ b }}",
+    });
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{ snippet: A and B }}", {
+      allowFastSet: true,
+    }).blur();
+  });
+
+  const options = {
+    force: true,
+    isPrimary: true,
+    button: 0,
+  };
+
+  it("should be possible to reorder parameters when there are snippets in the query (metabase#69160)", () => {
+    cy.log("reorder parameters");
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("listitem")
+      .first()
+      .as("param");
+
+    cy.get("@param").trigger("mousedown", 5, 5, options).wait(200);
+    cy.get("@param").trigger("mousemove", 20, 20, options).wait(200);
+    cy.get("@param").trigger("mousemove", 200, 0, options).wait(200);
+    cy.get("@param").trigger("mouseup", options).wait(200);
+
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("textbox")
+      .first()
+      .should("have.attr", "placeholder", "B");
   });
 });

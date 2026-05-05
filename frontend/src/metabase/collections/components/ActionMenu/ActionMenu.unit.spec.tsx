@@ -1,11 +1,17 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Collection,
@@ -19,10 +25,6 @@ import {
   createMockCollectionItem,
   createMockDashboard,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import ActionMenu, { getParentEntityLink } from "./ActionMenu";
 
@@ -75,8 +77,8 @@ describe("ActionMenu", () => {
           model,
           collection_position: 1,
           collection_preview: true,
-          setCollectionPreview: jest.fn(),
         });
+        setupCardEndpoints(createMockCard({ id: item.id }));
 
         setup({ item });
 
@@ -85,7 +87,20 @@ describe("ActionMenu", () => {
           await screen.findByText("Don’t show visualization"),
         );
 
-        expect(item.setCollectionPreview).toHaveBeenCalledWith(false);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/card/${item.id}`,
+          { method: "PUT" },
+        );
+        expect(JSON.parse(call?.options.body as string)).toEqual({
+          collection_preview: false,
+        });
       },
     );
 
@@ -96,15 +111,28 @@ describe("ActionMenu", () => {
           model,
           collection_position: 1,
           collection_preview: false,
-          setCollectionPreview: jest.fn(),
         });
+        setupCardEndpoints(createMockCard({ id: item.id }));
 
         setup({ item });
 
         await userEvent.click(getIcon("ellipsis"));
         await userEvent.click(await screen.findByText("Show visualization"));
 
-        expect(item.setCollectionPreview).toHaveBeenCalledWith(true);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/card/${item.id}`,
+          { method: "PUT" },
+        );
+        expect(JSON.parse(call?.options.body as string)).toEqual({
+          collection_preview: true,
+        });
       },
     );
 
@@ -113,7 +141,6 @@ describe("ActionMenu", () => {
         item: createMockCollectionItem({
           model: "dataset",
           collection_position: 1,
-          setCollectionPreview: jest.fn(),
         }),
       });
 
@@ -128,12 +155,12 @@ describe("ActionMenu", () => {
   describe("moving and archiving", () => {
     it("should allow to move and archive regular collections", async () => {
       const item = createMockCollectionItem({
+        id: 1,
         name: "Collection",
         model: "collection",
         can_write: true,
-        setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
       });
+      fetchMock.put("path:/api/collection/1", { ...item, archived: true });
 
       const { onMove } = setup({ item });
 
@@ -143,7 +170,14 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       await userEvent.click(await screen.findByText("Move to trash"));
-      expect(item.setArchived).toHaveBeenCalledWith(true);
+
+      const calls = fetchMock.callHistory.calls("path:/api/collection/1");
+      expect(calls).toHaveLength(1);
+      const [putCall] = calls;
+      expect(putCall.options.method).toBe("PUT");
+      expect(JSON.parse(putCall.options.body as string)).toMatchObject({
+        archived: true,
+      });
     });
 
     it("should not allow to move and archive personal collections", async () => {
@@ -152,14 +186,11 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: true,
         personal_owner_id: 1,
-        setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
-        copy: true,
       });
 
       setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -169,14 +200,11 @@ describe("ActionMenu", () => {
         name: "My Read Only collection",
         model: "collection",
         can_write: false,
-        setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
-        copy: true,
       });
 
       setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });

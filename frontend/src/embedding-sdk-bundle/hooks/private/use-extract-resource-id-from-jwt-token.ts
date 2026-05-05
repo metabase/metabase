@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
-import { extractResourceIdFromJwtToken, isJWT } from "metabase/lib/utils";
+import { extractResourceIdFromJwtToken, isJWT } from "metabase/utils/jwt";
 
 export const useExtractResourceIdFromJwtToken = <TEntityId>({
   isGuestEmbed,
@@ -13,14 +13,11 @@ export const useExtractResourceIdFromJwtToken = <TEntityId>({
   resourceId: TEntityId | undefined;
   token: SdkEntityToken | undefined;
 }): {
-  resourceId: TEntityId | null;
+  resourceId: TEntityId | number | null;
   token: SdkEntityToken | null;
   tokenError?: string;
 } => {
-  return useMemo<{
-    resourceId: TEntityId | null;
-    token: SdkEntityToken | null;
-  }>(() => {
+  return useMemo(() => {
     if (isJWT(resourceId)) {
       return {
         resourceId: null,

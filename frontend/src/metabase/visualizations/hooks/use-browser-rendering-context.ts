@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
-import { color } from "metabase/lib/colors";
-import { measureTextHeight, measureTextWidth } from "metabase/lib/measure-text";
 import { useMantineTheme } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import {
+  measureTextHeight,
+  measureTextWidth,
+} from "metabase/utils/measure-text";
 import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 

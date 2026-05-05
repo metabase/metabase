@@ -150,8 +150,13 @@ Metabase's reference documentation.
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
-- [Setting up Metabot](./ai/settings.md)
-- [SQL generation](./ai/sql-generation.md)
+- [AI settings](./ai/settings.md)
+- [AI usage controls](./ai/usage-controls.md)
+- [AI customization](./ai/customization.md)
+- [AI system prompts](./ai/system-prompts.md)
+- [Agent API](./ai/agent-api.md)
+- [MCP server](./ai/mcp.md)
+- [Metabot in Slack](./ai/metabot-slack.md)
 
 ### Exploration and organization
 
@@ -180,6 +185,8 @@ Metabase's reference documentation.
 #### Paid SSO options
 
 - [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
+- [OIDC-based authentication](./people-and-groups/authenticating-with-oidc.md)
+  - [OIDC with Keycloak](./people-and-groups/oidc-keycloak.md)
 - [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
   - [SAML with Auth0](./people-and-groups/saml-auth0.md)
   - [SAML with Microsoft Entra ID](./people-and-groups/saml-azure.md)
@@ -213,6 +220,7 @@ Metabase's reference documentation.
   - [SDK](./embedding/sdk/introduction.md)
 - [Full app embedding](./embedding/full-app-embedding.md)
 - [Securing embeds](./embedding/securing-embeds.md)
+- [AI agent resources](./embedding/ai-agent-resources.md)
 
 ### Configuration
 

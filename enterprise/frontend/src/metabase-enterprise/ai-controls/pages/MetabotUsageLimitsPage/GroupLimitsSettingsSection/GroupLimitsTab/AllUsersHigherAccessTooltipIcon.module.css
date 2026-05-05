@@ -1,0 +1,8 @@
+.InfoIcon {
+  align-self: center;
+  color: var(--mb-color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: absolute;
+  right: -22px;
+}

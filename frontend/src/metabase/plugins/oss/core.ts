@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard } from "metabase-types/api";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
   State,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { Dashboard } from "metabase-types/api";
 
 // Types
 export type IllustrationValue = {
@@ -131,7 +131,6 @@ const getDefaultReducers = () => ({
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  metabotPlugin: () => null,
   documents: () => null,
   remoteSyncPlugin: () => null,
 });
@@ -140,7 +139,6 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
-  metabotPlugin: any;
   documents: any;
   remoteSyncPlugin: any;
 } = getDefaultReducers();

@@ -1,6 +1,6 @@
 import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
 import {
   createBrandingElement,
@@ -39,10 +39,15 @@ export const saveChartImage = async ({
   // Appending any element to the node does not automatically increase the canvas height.
   const canvasHeight = contentHeight + verticalOffset;
 
+  // Ensure fonts are fully loaded before capturing, otherwise
+  // html2canvas may render text with fallback fonts.
+  await document.fonts.ready;
+
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
+    cspNonce: window.MetabaseNonce,
     height: canvasHeight,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
@@ -69,13 +74,19 @@ export const saveChartImage = async ({
     },
   });
 
-  canvas.toBlob((blob) => {
+  if (isStorybookActive) {
+    // In storybook/loki we must wait for the blob and image to be ready
+    // before the play function returns, otherwise the async callback may
+    // be garbage-collected ("Promise was collected").
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve),
+    );
     if (blob) {
-      if (isStorybookActive) {
-        // if we're running storybook we open the image in place
-        // so we can test the export result with loki
-        openImageBlobOnStorybook({ canvas, blob });
-      } else {
+      openImageBlobOnStorybook({ canvas, blob });
+    }
+  } else {
+    canvas.toBlob((blob) => {
+      if (blob) {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.rel = "noopener";
@@ -85,6 +96,6 @@ export const saveChartImage = async ({
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }
-    }
-  });
+    });
+  }
 };

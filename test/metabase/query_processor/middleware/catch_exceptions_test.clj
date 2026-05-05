@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
@@ -13,6 +12,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users])
   (:import

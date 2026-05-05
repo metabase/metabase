@@ -1,4 +1,4 @@
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
 
 export interface CommonBucketPickerProps {

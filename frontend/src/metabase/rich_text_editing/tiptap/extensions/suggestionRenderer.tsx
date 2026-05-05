@@ -209,8 +209,10 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
   };
 };
 
-export interface BareSuggestionRendererProps<I = unknown, TSelected = unknown>
-  extends SuggestionProps<I, TSelected> {
+export interface BareSuggestionRendererProps<
+  I = unknown,
+  TSelected = unknown,
+> extends SuggestionProps<I, TSelected> {
   onClose: () => void;
 }
 

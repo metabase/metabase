@@ -4,13 +4,12 @@ import {
   type ColumnListItem,
   QueryColumnPicker,
 } from "metabase/common/components/QueryColumnPicker";
+import * as Lib from "metabase-lib";
+
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions/ExpressionWidget";
-import type { DefinedClauseName } from "metabase/querying/expressions";
-import * as Lib from "metabase-lib";
-
+} from "../../../../../components/expressions/ExpressionWidget";
 import { getJoinStrategyIcon } from "../../utils";
 
 import S from "./JoinColumnDropdown.module.css";
@@ -46,7 +45,7 @@ export function JoinColumnDropdown({
     isEditingExpressionInitially(expression),
   );
   const [initialExpressionClause, setInitialExpressionClause] =
-    useState<DefinedClauseName | null>(null);
+    useState<Lib.DefinedClauseName | null>(null);
 
   const { columns, columnGroups } = useMemo(() => {
     const getColumns = isLhsPicker
@@ -75,7 +74,7 @@ export function JoinColumnDropdown({
     onClose();
   };
 
-  const handleExpressionClauseSelect = (clause?: DefinedClauseName) => {
+  const handleExpressionClauseSelect = (clause?: Lib.DefinedClauseName) => {
     setInitialExpressionClause(clause ?? null);
     setIsEditingExpression(true);
   };

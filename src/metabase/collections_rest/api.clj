@@ -303,7 +303,8 @@
     "no_models"
     "timeline"
     "table"
-    "transform"})
+    "transform"
+    "measure"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -431,6 +432,7 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
+               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
@@ -895,8 +897,12 @@
             update-personal-collection)))))
 
 (defmethod post-process-collection-children :table
-  [_ _ _collection rows]
-  (map #(update % :archived api/bit->boolean) rows))
+  [_ {:keys [models]} _collection rows]
+  (let [tables (map #(-> (t2/instance :model/Table %)
+                         (update :archived api/bit->boolean)) rows)]
+    (if (contains? models :measure)
+      (t2/hydrate tables :measures)
+      tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated

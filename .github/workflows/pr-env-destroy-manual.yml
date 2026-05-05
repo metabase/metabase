@@ -14,7 +14,7 @@ on:
 
 jobs:
   approve:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     environment: pr-env-admin
     steps:
       - name: Approved

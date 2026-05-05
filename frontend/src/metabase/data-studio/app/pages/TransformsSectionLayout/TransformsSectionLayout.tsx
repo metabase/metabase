@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
 import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
 
@@ -17,7 +17,7 @@ type TransformsSectionLayoutProps = {
 export function TransformsSectionLayout({
   children,
 }: TransformsSectionLayoutProps) {
-  usePageTitle(t`Transforms`);
+  usePageTitle(t`Transforms`, { titleIndex: 1 });
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsEnabled = useSetting("transforms-enabled");
   const isHosted = useSetting("is-hosted?");

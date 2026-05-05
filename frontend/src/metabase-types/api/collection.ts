@@ -1,9 +1,6 @@
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
 import type {
   BaseEntityId,
   CollectionEssentials,
-  Dashboard,
   DashboardId,
   PaginationRequest,
   PaginationResponse,
@@ -56,22 +53,6 @@ export type LastEditInfo = Pick<
   timestamp: string;
 };
 
-export type CollectionAuthorityLevelConfig = {
-  type: CollectionAuthorityLevel;
-  name: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
-};
-
-export type CollectionInstanceAnaltyicsConfig = {
-  type: CollectionType;
-  name?: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
-};
-
 export interface Collection {
   id: CollectionId;
   name: string;
@@ -119,6 +100,7 @@ export const COLLECTION_ITEM_MODELS = [
   "document",
   "table",
   "transform",
+  "measure",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -156,15 +138,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  setArchived?: (
-    isArchived: boolean,
-    opts?: Record<string, unknown>,
-  ) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
-  setCollection?: (
-    collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
-  ) => void;
-  setCollectionPreview?: (isEnabled: boolean) => void;
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
   is_remote_synced?: boolean;
@@ -200,6 +173,7 @@ export type ListCollectionItemsRequest = {
   namespace?: CollectionNamespace;
   collection_type?: CollectionType;
   include_can_run_adhoc_query?: boolean;
+  show_dashboard_questions?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
@@ -262,8 +236,7 @@ export interface DashboardQuestionCandidate {
   };
 }
 
-export interface GetCollectionDashboardQuestionCandidatesRequest
-  extends PaginationRequest {
+export interface GetCollectionDashboardQuestionCandidatesRequest extends PaginationRequest {
   collectionId: CollectionId;
 }
 

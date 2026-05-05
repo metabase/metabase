@@ -6,7 +6,7 @@ redirect_from:
 
 # Table metadata editing
 
-> Prefer using [Data Studio > Data structure](../data-studio/data-structure.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
+> Prefer using [Data Studio > Tables](../data-studio/managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
 _Admin > Table metadata_
 
@@ -28,7 +28,7 @@ You can search for tables, or use the tree navigation to find each of your conne
 
 To edit a table's display name or description in the table metadata tab, click into the box that contains the current table name or description and edit it. Changes will be saved automatically once you click out of the box.
 
-Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when view the table. Decscriptions help people find the right table for their use case.
+Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when viewing the table. Descriptions help people find the right table for their use case.
 
 ### Table sync options
 
@@ -153,7 +153,7 @@ _Admin > Table Metadata > Database > Table > Field_
 
 ### Semantic type
 
-You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL. Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
+You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL). Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
 
 The semantic types you can choose from depend on the data type. If none of the options describe the values in the column, you can set this setting to "No semantic type".
 

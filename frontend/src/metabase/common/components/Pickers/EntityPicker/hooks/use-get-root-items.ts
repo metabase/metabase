@@ -13,8 +13,8 @@ import {
   useSetting,
 } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
+import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type {
   Collection,
