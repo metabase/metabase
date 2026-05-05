@@ -56,3 +56,15 @@
                                 premium-features/transform-metered-as
                                 metered-as->meter-key)]
      (true? (get (premium-features/locked-meters) meter-key)))))
+
+(defn transforms-meter-locked?
+  "True if either of the two transforms meters (`:transform-basic-runs` or
+   `:transform-advanced-runs`) is currently locked. Per harbormaster's
+   mutual-exclusivity constraint, at most one of these is populated for a
+   given customer, so this aggregate reduces to 'is the customer's active
+   transforms meter, if any, locked?'. Used by the `/api/transform/settings`
+   endpoint to expose a single instance-wide lock flag to the frontend."
+  []
+  (let [meters (premium-features/locked-meters)]
+    (boolean (or (true? (:transform-basic-runs meters))
+                 (true? (:transform-advanced-runs meters))))))

@@ -4,7 +4,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-job]
@@ -153,16 +152,11 @@
                                              [:enabled :boolean]
                                              [:is_locked [:maybe :boolean]]]
   "Get instance-wide transform feature settings: whether transforms are enabled,
-   and whether the customer's active transforms meter is locked (trial quota exhausted).
-   Per harbormaster's mutual-exclusivity constraint, at most one of `:transform-basic-runs`
-   or `:transform-advanced-runs` is present, so the OR aggregate reduces to the single
-   active meter (if any)."
+   and whether the customer's active transforms meter is locked (trial quota exhausted)."
   []
-  (let [meters (premium-features/locked-meters)]
-    {:enabled   (or (transforms.gating/query-transforms-enabled?)
-                    (transforms.gating/python-transforms-enabled?))
-     :is_locked (boolean (or (true? (:transform-basic-runs meters))
-                             (true? (:transform-advanced-runs meters))))}))
+  {:enabled   (or (transforms.gating/query-transforms-enabled?)
+                  (transforms.gating/python-transforms-enabled?))
+   :is_locked (transforms.gating/transforms-meter-locked?)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

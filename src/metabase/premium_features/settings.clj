@@ -44,6 +44,7 @@
   :type       :json
   :visibility :internal
   :audit      :never
+  :export?    false
   :default    {}
   :doc        false)
 

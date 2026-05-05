@@ -440,35 +440,31 @@
                     (is (= "metabase_transforms_locked" (:error-code response)))))))))))))
 
 (deftest get-transform-settings-test
-  (testing "GET /api/transform/settings returns the aggregate enabled+is_locked shape the FE consumes"
-    (testing "OSS / no premium features → enabled=false, is_locked=false"
-      (mt/with-premium-features #{}
-        (mt/with-temporary-setting-values [locked-meters {}]
-          ;; OSS gets query transforms when self-hosted, so :enabled is true; assert shape
-          (let [response (mt/user-http-request :crowberto :get 200 "transform/settings")]
-            (is (false? (:is_locked response)))
-            (is (contains? response :enabled))
-            (is (= #{:enabled :is_locked} (set (keys response))))))))
-    (testing "hosted basic, no locks → enabled=true, is_locked=false"
+  (testing "GET /api/transform/settings — integration coverage for the endpoint.
+            Lock-state matrix is owned by metabase.transforms.feature-gating-test/transforms-meter-locked?-test;
+            this test focuses on the API surface: response shape, :enabled gating, auth, and round-trip wiring."
+    (testing "response shape and :enabled gating"
+      (testing "OSS, self-hosted, no features → :enabled true (OSS gets query transforms), :is_locked false"
+        (mt/with-premium-features #{}
+          (mt/with-temporary-setting-values [locked-meters {}]
+            (let [response (mt/user-http-request :crowberto :get 200 "transform/settings")]
+              (is (= #{:enabled :is_locked} (set (keys response))) "schema is closed")
+              (is (false? (:is_locked response)))))))
+      (testing "hosted, no premium → :enabled false (no transforms-basic and is-hosted)"
+        (mt/with-premium-features #{:hosting}
+          (mt/with-temporary-setting-values [locked-meters {}]
+            (is (= {:enabled false :is_locked false}
+                   (mt/user-http-request :crowberto :get 200 "transform/settings")))))))
+    (testing "wiring: lock state from setting is reflected in :is_locked"
       (mt/with-premium-features #{:hosting :transforms-basic}
-        (mt/with-temporary-setting-values [locked-meters {}]
-          (is (= {:enabled true :is_locked false}
-                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
-    (testing "basic-bucket lock → is_locked=true"
-      (mt/with-premium-features #{:hosting :transforms-basic}
-        (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
-          (is (= {:enabled true :is_locked true}
-                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
-    (testing "advanced-bucket lock → is_locked=true"
-      (mt/with-premium-features #{:hosting :transforms-basic}
-        (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
-          (is (= {:enabled true :is_locked true}
-                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
-    (testing "non-transform meter (e.g. AI tokens) does not show up as transform lock"
-      (mt/with-premium-features #{:hosting :transforms-basic}
-        (mt/with-temporary-setting-values [locked-meters {:metabase-ai-tokens true}]
-          (is (= {:enabled true :is_locked false}
-                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
+        (testing "unlocked → false"
+          (mt/with-temporary-setting-values [locked-meters {}]
+            (is (= {:enabled true :is_locked false}
+                   (mt/user-http-request :crowberto :get 200 "transform/settings")))))
+        (testing "locked → true"
+          (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+            (is (= {:enabled true :is_locked true}
+                   (mt/user-http-request :crowberto :get 200 "transform/settings")))))))
     (testing "data-analyst (non-admin) can read the endpoint"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
