@@ -8,7 +8,7 @@
 (defsetting experiments-enabled
   (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")
   :type       :boolean
-  :default    true
+  :default    false
   :visibility :admin
   :export?    false
   :audit      :getter)
