@@ -803,6 +803,18 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-client-secret"?: string | null;
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
+  "starrez-api-url"?: string | null;
+  "starrez-api-username"?: string | null;
+  "starrez-api-token"?: string | null;
+  "starrez-blob-sas-url"?: string | null;
+  "starrez-export-tables"?: string | null;
+  "starrez-export-reports"?: string | null;
+  "starrez-sort-field"?: string | null;
+  "starrez-keep-versions"?: number | null;
+  "starrez-pg-host"?: string | null;
+  "starrez-pg-database"?: string | null;
+  "starrez-pg-user"?: string | null;
+  "starrez-pg-password"?: string | null;
   /**
    * @deprecated
    */

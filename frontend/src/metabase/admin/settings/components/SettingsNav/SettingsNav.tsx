@@ -104,6 +104,11 @@ export function SettingsNav() {
         icon="share"
       />
       <NavDivider />
+      <SettingsNavItem
+        path="starrez"
+        label={t`StarRez Export`}
+        icon="download"
+      />
       <SettingsNavItem path="license" label={t`License`} icon="store" />
       <SettingsNavItem
         path="cloud"

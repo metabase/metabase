@@ -65,6 +65,7 @@
    [metabase.slackbot.init]
    [metabase.sql-tools.init]
    [metabase.sso.init]
+   [metabase.starrez.init]
    [metabase.store-api.init]
    [metabase.sync.init]
    [metabase.system.init]

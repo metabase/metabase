@@ -1,0 +1,40 @@
+services:
+  metabase:
+    image: ${IMAGE}
+    restart: unless-stopped
+    environment:
+      MB_DB_TYPE: ${MB_DB_TYPE:-postgres}
+      MB_DB_HOST: ${MB_DB_HOST}
+      MB_DB_PORT: ${MB_DB_PORT:-5432}
+      MB_DB_DBNAME: ${MB_DB_DBNAME}
+      MB_DB_USER: ${MB_DB_USER}
+      MB_DB_PASS: ${MB_DB_PASS}
+      MB_ENCRYPTION_SECRET_KEY: ${MB_ENCRYPTION_SECRET_KEY}
+      MB_SITE_URL: ${MB_SITE_URL}
+      MB_JETTY_HOST: 0.0.0.0
+      MB_JETTY_PORT: 3000
+    expose:
+      - "3000"
+    volumes:
+      - metabase-plugins:/plugins
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - metabase
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  metabase-plugins:
+  caddy-data:
+  caddy-config:
