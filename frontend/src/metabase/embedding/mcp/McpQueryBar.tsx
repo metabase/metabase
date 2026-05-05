@@ -41,12 +41,7 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
     handleDateFilterClear,
   } = useDateFilter(question, updateQuestion, rawTemporalColumn);
 
-  if (
-    !question ||
-    !queryResults ||
-    sensibleChartTypes.length === 0 ||
-    hasOnlyTable
-  ) {
+  if (!question || !queryResults || hasOnlyTable) {
     return null;
   }
 
@@ -71,6 +66,13 @@ export function McpQueryBar({ app, instanceUrl }: McpQueryBarProps) {
           onChange: handleBucketChange,
         }
       : undefined;
+
+  const hasControls =
+    sensibleChartTypes.length > 0 || timeRange || timeGranularity || app;
+
+  if (!hasControls) {
+    return null;
+  }
 
   async function handleExploreClicked() {
     if (!instanceUrl || !question || !app) {
