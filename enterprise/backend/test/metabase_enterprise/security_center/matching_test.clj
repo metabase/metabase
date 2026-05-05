@@ -260,6 +260,72 @@
           (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
             (is (not= :active (:match_status reloaded)))))))))
 
+(deftest evaluate-advisory!-reactivation-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
+    (let [acked-at #t "2026-04-01T00:00:00Z"
+          notified #t "2026-04-02T00:00:00Z"]
+      (testing "acked unaffected advisory transitioning to :active or :error clears the ack but preserves last_notified_at"
+        (doseq [prior-status        ["resolved" "not_affected"]
+                [label new-status query]
+                [["active" :active {:default {:select [1] :from [:core_user] :limit 1}}]
+                 ["error"  :error  {:default {:select [1] :from [:nonexistent_table] :limit 1}}]]]
+          (testing (str prior-status " -> " label)
+            (mt/with-temp [:model/SecurityAdvisory advisory
+                           {:advisory_id       (str "SC-REACT-" prior-status "-" label)
+                            :severity          "high"
+                            :title             "Test"
+                            :description       "Test"
+                            :remediation       "Upgrade"
+                            :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                            :matching_query    query
+                            :match_status      prior-status
+                            :acknowledged_at   acked-at
+                            :acknowledged_by   (mt/user->id :rasta)
+                            :last_notified_at  notified
+                            :published_at      #t "2026-03-24T00:00:00Z"
+                            :updated_at        #t "2026-03-24T00:00:00Z"}]
+              (matching/evaluate-advisory! advisory)
+              (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+                (is (= new-status (:match_status reloaded)))
+                (is (nil? (:acknowledged_at reloaded)))
+                (is (nil? (:acknowledged_by reloaded)))
+                (is (= (t/instant notified) (t/instant (:last_notified_at reloaded)))))))))
+      (testing "advisory already :active stays acked"
+        (mt/with-temp [:model/SecurityAdvisory advisory
+                       {:advisory_id       "SC-REACT-NOOP"
+                        :severity          "high"
+                        :title             "Test"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
+                        :match_status      "active"
+                        :acknowledged_at   acked-at
+                        :acknowledged_by   (mt/user->id :rasta)
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}]
+          (matching/evaluate-advisory! advisory)
+          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+            (is (= :active (:match_status reloaded)))
+            (is (= (t/instant acked-at) (t/instant (:acknowledged_at reloaded))))
+            (is (= (mt/user->id :rasta) (:acknowledged_by reloaded))))))
+      (testing "unacked advisory transitioning to :active is unaffected by reactivation logic"
+        (mt/with-temp [:model/SecurityAdvisory advisory
+                       {:advisory_id       "SC-REACT-UNACKED"
+                        :severity          "high"
+                        :title             "Test"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
+                        :match_status      "not_affected"
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}]
+          (matching/evaluate-advisory! advisory)
+          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+            (is (= :active (:match_status reloaded)))
+            (is (nil? (:acknowledged_at reloaded)))))))))
+
 (deftest evaluate-all-advisories!-test
   (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
     (mt/with-temp [:model/SecurityAdvisory _active
