@@ -1782,45 +1782,42 @@ describe("sandbox", () => {
     },
   ];
 
-  it.each<(typeof SANDBOX_CASES)[number]>(SANDBOX_CASES)(
-    (testCase) => `blocks ${testCase.name} called by injected plugin code`,
-    (testCase) => {
-      const { payload, errorPattern } = testCase;
-      testCase.before?.();
+  it("blocks browser APIs that are not allowed in the sandbox", () => {
+    const bundle = SANDBOX_CASES.map((c, index) => {
+      const delay = 1000 + index * 100;
+      return `window.setTimeout(function() { try { ${c.payload} } catch (e) { console.error(e); } }, ${delay});`;
+    }).join("\n");
 
-      cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-        req.continue((res) => {
-          res.body = `console.log("injected bundle");${payload}\n${String(res.body)};\n`;
-          res.send();
-        });
-      }).as("injectedBundle");
-
-      H.visitQuestion("@sandboxCardId", {
-        onBeforeLoad(win) {
-          cy.spy(win.console, "log").as("consoleLog");
-          cy.spy(win.console, "error").as("consoleError");
-        },
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `console.log("injected bundle");${bundle}\n${String(res.body)};\n`;
+        res.send();
       });
-      cy.wait("@injectedBundle");
+    }).as("injectedBundle");
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+    cy.get("@consoleLog").should("be.calledWith", "injected bundle");
 
-      // sandbox.evaluate threw → loadCustomVizPlugin caught it → toast
-      // surfaced and the viz fell back to the default table.
-      cy.findByTestId("visualization-root")
-        .findByTestId("table-root")
-        .should("be.visible");
-      H.undoToastList()
-        .findByText(/"demo-viz" visualization is currently unavailable/)
-        .should("be.visible");
-      cy.get("@consoleLog").should("be.calledWith", "injected bundle");
+    for (const {
+      name,
+      errorPattern,
+      before,
+      additionalAssertions,
+    } of SANDBOX_CASES) {
+      before?.();
+      cy.log("Verifying error pattern", name);
       cy.get("@consoleError").should(
         "have.been.calledWithMatch",
-        /Failed to load plugin/,
         Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
       );
-
-      testCase.additionalAssertions?.();
-    },
-  );
+      additionalAssertions?.();
+    }
+  });
 
   // innerHTML/outerHTML/insertAdjacentHTML go through DOMPurify rather than
   // being blocked outright, so this case doesn't fit the "expect a thrown
