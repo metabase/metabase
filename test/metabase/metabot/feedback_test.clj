@@ -266,15 +266,18 @@
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (metabot.feedback/persist-source-feedback!
-               (source-payload {:message-id external-id :source-id 7 :source-type "table" :positive true}))
+               (source-payload {:message-id  external-id
+                                :source-id   7
+                                :source-type "model"
+                                :positive    true}))
               (let [first-row   (t2/select-one :model/MetabotSourceFeedback :message_id msg-id)
                     updated-row (tu/poll-until
                                  2000
                                  (do
                                    (metabot.feedback/persist-source-feedback!
-                                    (source-payload {:message-id external-id
+                                    (source-payload {:message-id  external-id
                                                      :source-id   7
-                                                     :source-type "table"
+                                                     :source-type "model"
                                                      :positive    false}))
                                    (let [updated-row (t2/select-one :model/MetabotSourceFeedback :message_id msg-id)]
                                      (when (not= (:updated_at first-row) (:updated_at updated-row))

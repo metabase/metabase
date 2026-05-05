@@ -11,7 +11,7 @@
   (derive :metabase/model))
 
 (def ^:private valid-source-types
-  #{"table" "card"})
+  #{"table" "card" "model"})
 
 (defn- validate-source-type
   [{:keys [source_type]}]

@@ -297,7 +297,7 @@
             [:metabot_id   ms/PositiveInt]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]
-            [:source_type  [:enum "table" "card"]]
+            [:source_type  [:enum "table" "card" "model"]]
             [:positive     :boolean]]]
   (metabot.config/check-metabot-enabled!)
   (let [message (metabot.feedback/persist-source-feedback! body)]

@@ -41,7 +41,7 @@ databaseChangeLog:
                   type: varchar(64)
                   constraints:
                     nullable: false
-                  remarks: Type of source object, e.g. table or card
+                  remarks: Type of source object, e.g. table, card, or model
               - column:
                   name: positive
                   type: ${boolean.type}

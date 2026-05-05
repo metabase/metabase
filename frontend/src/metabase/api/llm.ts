@@ -1,20 +1,23 @@
 import type {
-  ExtractTablesRequest,
-  ExtractTablesResponse,
+  ExtractSourcesRequest,
+  ExtractSourcesResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 
 export const llmApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    extractTables: builder.query<ExtractTablesResponse, ExtractTablesRequest>({
+    extractSources: builder.query<
+      ExtractSourcesResponse,
+      ExtractSourcesRequest
+    >({
       query: (body) => ({
         method: "POST",
-        url: "/api/llm/extract-tables",
+        url: "/api/llm/extract-sources",
         body,
       }),
     }),
   }),
 });
 
-export const { useExtractTablesQuery } = llmApi;
+export const { useExtractSourcesQuery } = llmApi;

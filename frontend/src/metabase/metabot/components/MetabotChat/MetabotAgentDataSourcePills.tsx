@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import {
   skipToken,
-  useExtractTablesQuery,
+  useExtractSourcesQuery,
   useGetCardQuery,
   useGetDatabaseQuery,
   useGetFieldTableIdsQuery,
@@ -39,6 +39,7 @@ import type {
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
   NativeDatasetQuery,
+  TemplateTags,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentDataPartMessage.module.css";
@@ -54,6 +55,7 @@ type DecodedQuery =
       kind: "native";
       databaseId: number;
       sql: string;
+      templateTags?: TemplateTags;
     }
   | { kind: "none" };
 
@@ -81,7 +83,12 @@ const decodeQueryFromPath = (path: string): DecodedQuery => {
       const sql = datasetQuery.native.query;
       const databaseId = datasetQuery.database;
       if (typeof sql === "string" && typeof databaseId === "number") {
-        return { kind: "native", databaseId, sql };
+        return {
+          kind: "native",
+          databaseId,
+          sql,
+          templateTags: datasetQuery.native["template-tags"],
+        };
       }
       return { kind: "none" };
     }
@@ -402,7 +409,10 @@ const CardPill = ({ id, messageId }: { id: number; messageId?: string }) => {
         parts: getCollectionLocationParts(card.collection?.name),
       }}
       messageId={messageId}
-      source={{ source_id: id, source_type: "card" }}
+      source={{
+        source_id: id,
+        source_type: card.type === "model" ? "model" : "card",
+      }}
       to={Urls.card(card)}
     />
   );
@@ -534,17 +544,21 @@ const NativeSourcesRow = ({
   databaseId,
   messageId,
   sql,
+  templateTags,
 }: {
   databaseId: number;
   messageId?: string;
   sql: string;
+  templateTags?: TemplateTags;
 }) => {
-  const { data, isLoading } = useExtractTablesQuery({
+  const { data, isLoading } = useExtractSourcesQuery({
     database_id: databaseId,
     sql,
+    ...(templateTags ? { template_tags: templateTags } : {}),
   });
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
   const tables = data?.tables ?? [];
+  const cardIds = data?.card_ids ?? [];
 
   if (isLoading) {
     return (
@@ -554,7 +568,7 @@ const NativeSourcesRow = ({
     );
   }
 
-  if (tables.length === 0) {
+  if (tables.length === 0 && cardIds.length === 0) {
     return null;
   }
 
@@ -584,6 +598,9 @@ const NativeSourcesRow = ({
           />
         );
       })}
+      {cardIds.map((id) => (
+        <CardPill id={id} key={`c-${id}`} messageId={messageId} />
+      ))}
     </SourceDataSection>
   );
 };
@@ -607,6 +624,7 @@ export const NavigateToTablePills = ({
         databaseId={decoded.databaseId}
         messageId={messageId}
         sql={decoded.sql}
+        templateTags={decoded.templateTags}
       />
     );
   }

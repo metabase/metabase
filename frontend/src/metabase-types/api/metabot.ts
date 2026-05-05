@@ -264,7 +264,7 @@ export type MetabotFeedback = {
   freeform_feedback?: string;
 } & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
 
-export type MetabotSourceType = "table" | "card";
+export type MetabotSourceType = "table" | "card" | "model";
 
 export type MetabotSourceFeedback = {
   metabot_id: MetabotId;

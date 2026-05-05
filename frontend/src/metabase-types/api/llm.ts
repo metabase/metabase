@@ -1,11 +1,13 @@
 import type { DatabaseId } from "./database";
+import type { TemplateTags } from "./dataset";
 
-export interface ExtractTablesRequest {
+export interface ExtractSourcesRequest {
   database_id: DatabaseId;
   sql: string;
+  template_tags?: TemplateTags;
 }
 
-export interface ExtractTablesColumn {
+export interface ExtractSourcesColumn {
   id: number;
   name: string;
   database_type?: string | null;
@@ -17,15 +19,16 @@ export interface ExtractTablesColumn {
   };
 }
 
-export interface ExtractTablesTable {
+export interface ExtractSourcesTable {
   id: number;
   name: string;
   schema?: string | null;
   display_name?: string | null;
   description?: string | null;
-  columns: ExtractTablesColumn[];
+  columns: ExtractSourcesColumn[];
 }
 
-export interface ExtractTablesResponse {
-  tables: ExtractTablesTable[];
+export interface ExtractSourcesResponse {
+  tables: ExtractSourcesTable[];
+  card_ids: number[];
 }

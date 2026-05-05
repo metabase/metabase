@@ -6,6 +6,7 @@ import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
+  TemplateTags,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -19,7 +20,7 @@ import {
 } from "./MetabotAgentDataSourcePills";
 
 const SOURCE_FEEDBACK_ENDPOINT = "path:/api/metabot/source-feedback";
-const EXTRACT_TABLES_ENDPOINT = "path:/api/llm/extract-tables";
+const EXTRACT_SOURCES_ENDPOINT = "path:/api/llm/extract-sources";
 const FIELD_TABLE_IDS_ENDPOINT = "path:/api/field/table-ids";
 
 const ORDERS_TABLE = createMockTable({
@@ -60,11 +61,18 @@ const createMbqlPath = (query: Record<string, unknown>, database = 1) =>
     query,
   });
 
-const createNativePath = (sql = "SELECT * FROM ORDERS", database = 1) =>
+const createNativePath = (
+  sql = "SELECT * FROM ORDERS",
+  database = 1,
+  templateTags?: TemplateTags,
+) =>
   createQuestionPath({
     type: "native",
     database,
-    native: { query: sql },
+    native: {
+      query: sql,
+      ...(templateTags ? { "template-tags": templateTags } : {}),
+    },
   });
 
 const setupTableEndpoints = (...tables: (typeof ORDERS_TABLE)[]) => {
@@ -76,7 +84,7 @@ const setupTableEndpoints = (...tables: (typeof ORDERS_TABLE)[]) => {
 
 const setupNativeEndpoints = ({ delay = 0 }: { delay?: number } = {}) => {
   fetchMock.post(
-    EXTRACT_TABLES_ENDPOINT,
+    EXTRACT_SOURCES_ENDPOINT,
     {
       tables: [
         {
@@ -88,6 +96,7 @@ const setupNativeEndpoints = ({ delay = 0 }: { delay?: number } = {}) => {
           columns: [],
         },
       ],
+      card_ids: [],
     },
     { delay },
   );
@@ -237,7 +246,7 @@ describe("MetabotAgentDataSourcePills", () => {
     ).toHaveLength(1);
   });
 
-  it("parses native SQL queries and requests extracted tables", async () => {
+  it("parses native SQL queries and requests extracted sources", async () => {
     const sql = "SELECT * FROM ORDERS";
     setupNativeEndpoints();
 
@@ -252,13 +261,73 @@ describe("MetabotAgentDataSourcePills", () => {
       await screen.findByRole("link", { name: "Orders" }),
     ).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls(EXTRACT_TABLES_ENDPOINT, {
+      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
         body: {
           database_id: 1,
           sql,
         },
       }),
     ).toHaveLength(1);
+  });
+
+  it("renders extracted native query model sources", async () => {
+    const sql = "SELECT * FROM {{#4-revenue_model}}";
+    const templateTags: TemplateTags = {
+      "#4-revenue_model": {
+        id: "1",
+        name: "#4-revenue_model",
+        "display-name": "Revenue Model",
+        type: "card",
+        "card-id": 4,
+      },
+    };
+    fetchMock.post(EXTRACT_SOURCES_ENDPOINT, {
+      tables: [],
+      card_ids: [4],
+    });
+    fetchMock.get(
+      "path:/api/card/4",
+      createMockCard({ id: 4, name: "Revenue Model", type: "model" }),
+    );
+    fetchMock.get("path:/api/database/1", DATABASE);
+    fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
+
+    renderWithProviders(
+      <NavigateToTablePills
+        messageId="message-5-model"
+        path={createNativePath(sql, 1, templateTags)}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Revenue Model" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
+        body: {
+          database_id: 1,
+          sql,
+          template_tags: templateTags,
+        },
+      }),
+    ).toHaveLength(1);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Source is correct" }),
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
+          body: {
+            metabot_id: FIXED_METABOT_IDS.DEFAULT,
+            message_id: "message-5-model",
+            source_id: 4,
+            source_type: "model",
+            positive: true,
+          },
+        }),
+      ).toHaveLength(1),
+    );
   });
 
   it("shows source links without feedback buttons when message id is not provided", async () => {
