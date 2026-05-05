@@ -21,8 +21,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
-                                             with-quoting]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -35,16 +34,13 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
+   [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql
-    Connection
-    ResultSet
-    ResultSetMetaData
-    Statement
-    Types)
+   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -1284,13 +1280,23 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :postgres
-  [_ role]
+(def ^{:arglists '([driver conn role])} memoized-quote-identifier
+  "Call `quote_ident(?) on Postgres to quote an identifier; presumably this should never change so use a bounded cache
+  to avoid the overhead of calling this on every query.
+
+  Takes `driver` as a parameter so this function can also be used by Redshift without sharing the same cache."
+  (memoize/bounded
+   (-> (fn [_driver conn role]
+         (:quote_ident (next.jdbc/execute-one! conn ["SELECT quote_ident(?);" role])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[driver _conn role]] [driver role])))))
+
+(defmethod sql-jdbc/set-role-statement :postgres
+  [driver conn role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET ROLE \"%s\";" role)
-      (format "SET ROLE %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (memoized-quote-identifier driver conn))]
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]

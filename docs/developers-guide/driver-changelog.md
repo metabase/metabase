@@ -15,6 +15,10 @@ title: Driver interface changelog
   emit bare table names (MySQL, Mongo) should override to `[]`; drivers that emit a 3-part
   `catalog.schema.table` identifier (BigQuery) should override to `[:db :schema]`.
 
+- `metabase.driver.sql/set-role-statement` has been deprecated in favor of
+  `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
+  the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.

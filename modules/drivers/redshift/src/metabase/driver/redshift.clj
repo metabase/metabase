@@ -7,7 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.postgres :as postgres]
+   [metabase.driver.postgres :as driver.postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -665,13 +665,13 @@
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------
 
-(defmethod driver.sql/set-role-statement :redshift
-  [_ role]
+(defmethod sql-jdbc/set-role-statement :redshift
+  [driver conn role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET SESSION AUTHORIZATION \"%s\";" role)
-      (format "SET SESSION AUTHORIZATION %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (driver.postgres/memoized-quote-identifier driver conn))]
+    (format "SET SESSION AUTHORIZATION %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :redshift
   [_ _]
@@ -761,7 +761,7 @@
 (defn- assert-no-public-create-grant!
   [conn schema-name]
   (when (public-create-grant? conn schema-name)
-    (postgres/raise-public-create-grant! schema-name)))
+    (driver.postgres/raise-public-create-grant! schema-name)))
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]

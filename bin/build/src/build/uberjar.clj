@@ -152,14 +152,7 @@
       (u/step (format "Copy resources from %s" path)
         (b/copy-dir {:target-dir class-dir
                      :src-dirs   [path]
-                     :ignores    resource-ignore-patterns})))
-    ;; Drivers excluded from AOT need their source files in the jar so they can be compiled lazily at runtime.
-    (doseq [driver drivers-excluded-from-aot]
-      (let [src-dir (u/filename u/project-root-directory "modules" "drivers" driver "src")]
-        (when (.isDirectory (io/file src-dir))
-          (u/step (format "Copy source for non-AOT driver %s" driver)
-            (b/copy-dir {:target-dir class-dir
-                         :src-dirs   [src-dir]})))))))
+                     :ignores    resource-ignore-patterns})))))
 
 (def ^:private dependency-ignore-patterns
   "Files to ignore when copying resources from our dependencies."
@@ -200,6 +193,25 @@
   (.write (manifest) os)
   (.flush os))
 
+(defn- add-non-aot-driver-sources!
+  "Inject source files for drivers excluded from AOT directly into the uberjar.
+  These drivers can't be AOT-compiled (their ns forms reference JDBC classes not bundled due to licensing), so they
+  ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips all .clj files from
+  class-dir."
+  []
+  (u/step "Add non-AOT driver sources to uberjar"
+    (u/with-open-jar-file-system [fs uberjar-filename]
+      (doseq [driver drivers-excluded-from-aot
+              :let [src-dir (io/file (u/filename u/project-root-directory "modules" "drivers" driver "src"))]
+              :when (.isDirectory src-dir)]
+        (u/step (format "Add source for %s" driver)
+          (doseq [^File f (file-seq src-dir)
+                  :when (.isFile f)]
+            (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
+                  target   (u/get-path-in-filesystem fs rel-path)]
+              (Files/createDirectories (.getParent target) (into-array java.nio.file.attribute.FileAttribute []))
+              (Files/copy (.toPath f) target (into-array java.nio.file.CopyOption [])))))))))
+
 (defn update-manifest!
   "Start a build step that updates the manifest.
   The customizations we need to make are not currently supported by tools.build -- see
@@ -226,5 +238,6 @@
         (compile-sources! basis)
         (copy-resources! basis)
         (create-uberjar! basis)
+        (add-non-aot-driver-sources!)
         (update-manifest!))
       (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))
