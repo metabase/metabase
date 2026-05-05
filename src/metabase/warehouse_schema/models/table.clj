@@ -387,22 +387,11 @@
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping
    & [{:keys [include-published-via-collection? active-only?]}]]
-  (let [opts (cond-> {}
-               (some? active-only?) (assoc :active-only? active-only?))
-        {:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping opts)]
-    (if-let [published-clause (and include-published-via-collection?
-                                   (perms/published-table-visible-clause column-or-exp user-info))]
-      {:clause [:or clause
-                [:and
-                 [:in column-or-exp (perms/visible-table-filter-select
-                                     :id
-                                     user-info
-                                     {:perms/view-data :unrestricted}
-                                     opts)]
-                 published-clause]]
-       :with with}
-      {:clause clause
-       :with with})))
+  (perms/visible-table-filter-with-cte
+   column-or-exp user-info permission-mapping
+   (cond-> {}
+     (some? active-only?) (assoc :active-only? active-only?)
+     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
