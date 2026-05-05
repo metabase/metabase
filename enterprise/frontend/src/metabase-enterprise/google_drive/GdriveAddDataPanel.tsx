@@ -193,7 +193,7 @@ export const GdriveAddDataPanel = ({
   // Finally, all conditions have been met, and all screens below this line depend only
   // on the status of the attempted connection
 
-  if (status === "active") {
+  if (status === "active" || status === "syncing") {
     return (
       <PanelWrapper title={t`Import Google Sheets`}>
         <DriveConnectionDisplay />
@@ -262,7 +262,7 @@ export const GdriveAddDataPanel = ({
   }
 
   const buttonText = match(status)
-    .with("syncing", () => t`Connecting...`)
+    .with("initializing", () => t`Connecting...`)
     .with("error", () => t`Something went wrong`)
     .exhaustive();
 
