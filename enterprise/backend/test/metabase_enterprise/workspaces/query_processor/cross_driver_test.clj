@@ -81,6 +81,18 @@
 
 ;;; ----------------------------- Helpers --------------------------------------
 
+(def ^:private cross-driver-test-drivers
+  "Drivers we exercise with these end-to-end remap tests. Restricted to a small
+   set on purpose: the [[with-workspace-tables!]] fixture sends literal DDL
+   (`INT`, `DOUBLE PRECISION`, etc.) to whatever driver runs, and the test queries assume
+   case-insensitive identifier handling. That holds on H2 / Postgres but breaks
+   on ClickHouse (case-sensitive, no `LEFT JOIN`) and SQL Server (different type names).
+   Other drivers' workspace remap
+   behavior is covered by [[metabase-enterprise.workspaces.table-remapping-test]]
+   unit tests and the SQLGlot corpus tests in
+   [[metabase-enterprise.workspaces.query-processor.driver-corpus-test]]."
+  #{:h2 :postgres})
+
 (defn- canonical-schema
   "Schema of the orders table on the current driver."
   []
@@ -195,7 +207,7 @@
 
 (deftest single-remapped-table-cross-driver-test
   (testing "QP read against canonical name resolves to the workspace copy on the warehouse"
-    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+    (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
       (mt/with-premium-features #{:workspaces}
         ;; Workspace table has 2 rows; canonical orders has many thousands.
@@ -215,7 +227,7 @@
 
 (deftest non-remapped-passthrough-cross-driver-test
   (testing "0/1: a query against a non-remapped table still hits canonical even when an unrelated remap exists"
-    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+    (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
       (mt/with-premium-features #{:workspaces}
         ;; Setup: a workspace `orders` table with 2 rows + a remap orders -> workspace.
@@ -243,7 +255,7 @@
 
 (deftest join-one-side-remapped-cross-driver-test
   (testing "1/2: an MBQL join with only the orders side remapped reads workspace orders + canonical people"
-    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+    (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
       (mt/with-premium-features #{:workspaces}
         ;; Workspace orders has 2 rows; both have user_id values that exist in canonical people.
@@ -277,7 +289,7 @@
 
 (deftest join-both-sides-remapped-cross-driver-test
   (testing "2/2: an MBQL join with both sides remapped reads workspace orders + workspace people"
-    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+    (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
       (mt/with-premium-features #{:workspaces}
         ;; Workspace orders has user_id 999; workspace people has id 999.
@@ -288,11 +300,33 @@
         ;; this when the join target is itself remapped.
         (with-workspace-tables!
           [{:canonical-kw :orders
-            :columns      "ID BIGINT, USER_ID INT, PRODUCT_ID INT, SUBTOTAL DOUBLE, TAX DOUBLE, TOTAL DOUBLE, DISCOUNT DOUBLE, CREATED_AT TIMESTAMP, QUANTITY INT"
+            :columns      (str/join " " ["ID BIGINT,"
+                                         "USER_ID INT,"
+                                         "PRODUCT_ID INT,"
+                                         "SUBTOTAL DOUBLE PRECISION,"
+                                         "TAX DOUBLE PRECISION,"
+                                         "TOTAL DOUBLE PRECISION,"
+                                         "DISCOUNT DOUBLE PRECISION,"
+                                         "CREATED_AT TIMESTAMP,"
+                                         "QUANTITY INT"])
             :insert-rows  [[1 999 "NULL" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL"]]}
            {:canonical-kw :people
-            :columns      "ID BIGINT, ADDRESS VARCHAR(256), EMAIL VARCHAR(256), PASSWORD VARCHAR(256), NAME VARCHAR(256), CITY VARCHAR(256), LONGITUDE DOUBLE, STATE VARCHAR(256), SOURCE VARCHAR(256), BIRTH_DATE DATE, ZIP VARCHAR(256), LATITUDE DOUBLE, CREATED_AT TIMESTAMP"
-            :insert-rows  [[999 "NULL" "NULL" "NULL" "'ws-only-person'" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL" "NULL"]]}]
+            :columns      (str/join " " ["ID BIGINT,"
+                                         "ADDRESS VARCHAR(256),"
+                                         "EMAIL VARCHAR(256),"
+                                         "PASSWORD VARCHAR(256),"
+                                         "NAME VARCHAR(256),"
+                                         "CITY VARCHAR(256),"
+                                         "LONGITUDE DOUBLE PRECISION,"
+                                         "STATE VARCHAR(256),"
+                                         "SOURCE VARCHAR(256),"
+                                         "BIRTH_DATE DATE,"
+                                         "ZIP VARCHAR(256),"
+                                         "LATITUDE DOUBLE PRECISION,"
+                                         "CREATED_AT TIMESTAMP"])
+            :insert-rows  [[999 "NULL" "NULL" "NULL" "'ws-only-person'"
+                            "NULL" "NULL" "NULL" "NULL" "NULL"
+                            "NULL" "NULL" "NULL"]]}]
           (fn [ws-schema]
             (with-remapping! (canonical-schema) (t2/select-one-fn :name :model/Table :id (mt/id :orders))
               ws-schema (t2/select-one-fn :name :model/Table :id (mt/id :orders))

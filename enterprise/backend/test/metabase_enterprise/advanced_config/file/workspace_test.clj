@@ -158,7 +158,7 @@
             (is (some? (ws/instance-workspace))
                 ":workspace section ran")))))))
 
-(defn- ran-without-error?
+(defn- try-initialize!
   "Run `initialize!` and report whether it returned `:ok` cleanly. Catches every
   Throwable so the OSS-bypass attack tests below can ask 'did anything block
   this?' without caring which layer (spec validation or the premium-token gate)
@@ -179,7 +179,7 @@
                      :config {:users [{:first_name "X" :last_name "Y"
                                        :email "x@example.com" :password "pw"}]
                               :workspace {}}}]
-            (is (false? (ran-without-error?))
+            (is (false? (try-initialize!))
                 "empty :workspace doesn't unlock the gate")))
         (testing "workspace missing :databases"
           (binding [advanced-config.file/*config*
@@ -187,14 +187,14 @@
                      :config {:users [{:first_name "X" :last_name "Y"
                                        :email "x@example.com" :password "pw"}]
                               :workspace {:name "Just a name"}}}]
-            (is (false? (ran-without-error?)))))
+            (is (false? (try-initialize!)))))
         (testing "workspace with empty :databases map"
           (binding [advanced-config.file/*config*
                     {:version 1
                      :config {:users [{:first_name "X" :last_name "Y"
                                        :email "x@example.com" :password "pw"}]
                               :workspace {:name "n" :databases {}}}}]
-            (is (false? (ran-without-error?)))))))))
+            (is (false? (try-initialize!)))))))))
 
 (deftest valid-workspace-section?-test
   (testing "valid-workspace-section? matches the spec used by the gate"

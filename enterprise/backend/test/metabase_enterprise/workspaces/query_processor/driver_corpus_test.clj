@@ -161,7 +161,7 @@
   (def dir "/path/to/query_corpus/drivers")
 
   ;; Run a single dialect:
-  (time (run-corpus-for-dialect dir "postgres.md" :postgres))
+  (run-corpus-for-dialect dir "postgres.md" :postgres)
   ;; => {:total 1384, :passed 1257, :no-tables 124, :source-parse-failed 3, :errors []}
 
   ;; Run all dialects:
