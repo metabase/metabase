@@ -315,16 +315,52 @@
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
           (is (not= past (:last_evaluated_at (fetch "SC-EVAL-001")))))
-        (testing "acknowledged + not_affected advisories are skipped"
+        (testing "acknowledged + not_affected + in-range advisories are still re-evaluated"
           (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-002"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
-          (is (= (t/instant past)
-                 (t/instant (:last_evaluated_at (fetch "SC-EVAL-002"))))))
+          (is (not= past (:last_evaluated_at (fetch "SC-EVAL-002")))))
         (testing "acknowledged + error advisories are still re-evaluated"
           (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-003"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
-          (is (not= past (:last_evaluated_at (fetch "SC-EVAL-003")))))))))
+          (is (not= past (:last_evaluated_at (fetch "SC-EVAL-003")))))))
+    (testing "acknowledged + terminal + out-of-range advisories are skipped (version-range opt)"
+      (let [past #t "2020-01-01T00:00:00Z"]
+        (mt/with-temp [:model/SecurityAdvisory _resolved
+                       {:advisory_id       "SC-EVAL-OOR-001"
+                        :severity          "high"
+                        :title             "Out-of-range resolved"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                        ;; would error if executed — proves the short-circuit avoids the query
+                        :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                        :match_status      "resolved"
+                        :acknowledged_at   (mi/now)
+                        :acknowledged_by   (mt/user->id :rasta)
+                        :last_evaluated_at past
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}
+                       :model/SecurityAdvisory _not-affected
+                       {:advisory_id       "SC-EVAL-OOR-002"
+                        :severity          "low"
+                        :title             "Out-of-range not_affected"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                        :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                        :match_status      "not_affected"
+                        :acknowledged_at   (mi/now)
+                        :acknowledged_by   (mt/user->id :rasta)
+                        :last_evaluated_at past
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}]
+          (matching/evaluate-all-advisories!)
+          (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))]
+            (is (= (t/instant past) (t/instant (:last_evaluated_at (fetch "SC-EVAL-OOR-001")))))
+            (is (= :resolved (:match_status (fetch "SC-EVAL-OOR-001"))))
+            (is (= (t/instant past) (t/instant (:last_evaluated_at (fetch "SC-EVAL-OOR-002")))))
+            (is (= :not_affected (:match_status (fetch "SC-EVAL-OOR-002"))))))))))

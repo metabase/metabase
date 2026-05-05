@@ -132,26 +132,24 @@
    (evaluate-advisory! advisory (parse-version (:tag config/mb-version-info))))
   ([advisory instance-version]
    (let [in-range? (affected-by-version? instance-version (:affected_versions advisory))]
-     (when-not (and (not in-range?) (#{:resolved :not_affected} (:match_status advisory)))
+     (when (or in-range? (not (#{:resolved :not_affected} (:match_status advisory))))
        (let [match-status (evaluate-advisory in-range? (execute-matching-query! (:matching_query advisory)))]
          (t2/update! :model/SecurityAdvisory (:id advisory)
                      {:match_status      match-status
                       :last_evaluated_at (mi/now)}))))))
 
 (defn evaluate-all-advisories!
-  "Re-evaluate all non-acknowledged advisories, plus any acknowledged advisories
-   that are still active or in error state."
+  "Re-evaluate every advisory, including acknowledged ones — an acked
+   advisory may apply again if appdb state changes."
   []
-  (let [instance-version (parse-version (:tag config/mb-version-info))
-        advisories       (t2/select :model/SecurityAdvisory
-                                    {:where [:or
-                                             [:= :acknowledged_at nil]
-                                             [:in :match_status ["active" "error"]]]})]
-    (doseq [advisory advisories]
-      (try
-        (evaluate-advisory! advisory instance-version)
-        (catch Exception e
-          (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
-          (t2/update! :model/SecurityAdvisory (:id advisory)
-                      {:match_status      :error
-                       :last_evaluated_at (mi/now)}))))))
+  (let [instance-version (parse-version (:tag config/mb-version-info))]
+    (->>
+     (t2/reducible-select :model/SecurityAdvisory)
+     (run! (fn [advisory]
+             (try
+               (evaluate-advisory! advisory instance-version)
+               (catch Exception e
+                 (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
+                 (t2/update! :model/SecurityAdvisory (:id advisory)
+                             {:match_status      :error
+                              :last_evaluated_at (mi/now)}))))))))
