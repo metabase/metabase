@@ -640,7 +640,7 @@
         (is (= (:id u) (:creator_id (first docs))))))))
 
 (deftest exploration-documents-list-and-create-test
-  (testing "GET/POST /thread/:thread-id/documents list and create additional documents"
+  (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Findings"
     (mt/with-temp [:model/User u {:email "docs-api@example.com"}]
       (let [exp     (mt/user-http-request u :post 200 "exploration" {:name "doc host"})
             tid     (-> exp :threads first :id)
@@ -648,11 +648,32 @@
             initial (mt/user-http-request u :get 200 url)]
         (is (= ["Findings"] (mapv :name initial))
             "Listing returns the auto-created Findings doc")
-        (let [created (mt/user-http-request u :post 200 url {:name "Notes"})]
-          (is (= "Notes" (:name created)))
-          (is (= tid (:exploration_thread_id created))))
+        (let [d2 (mt/user-http-request u :post 200 url {})]
+          (is (= "Findings 2" (:name d2)))
+          (is (= tid (:exploration_thread_id d2)))
+          (is (= {:type "doc" :content []} (:document (t2/select-one :model/Document :id (:id d2))))))
+        (let [d3 (mt/user-http-request u :post 200 url {})]
+          (is (= "Findings 3" (:name d3))))
         (let [after (mt/user-http-request u :get 200 url)]
-          (is (= #{"Findings" "Notes"} (set (map :name after)))))))))
+          (is (= #{"Findings" "Findings 2" "Findings 3"} (set (map :name after)))))))))
+
+(deftest exploration-documents-next-findings-name-skips-gaps-test
+  (testing "Auto-naming picks max+1 even with gaps and ignores non-Findings docs"
+    (mt/with-temp [:model/User u {:email "naming@example.com"}]
+      (let [exp (mt/user-http-request u :post 200 "exploration" {:name "naming"})
+            tid (-> exp :threads first :id)
+            url (str "exploration/thread/" tid "/documents")]
+        (t2/insert! :model/Document {:name "Findings 5"
+                                     :document {:type "doc" :content []}
+                                     :content_type "application/json+vnd.prose-mirror"
+                                     :creator_id (:id u)
+                                     :exploration_thread_id tid})
+        (t2/insert! :model/Document {:name "Notes"
+                                     :document {:type "doc" :content []}
+                                     :content_type "application/json+vnd.prose-mirror"
+                                     :creator_id (:id u)
+                                     :exploration_thread_id tid})
+        (is (= "Findings 6" (:name (mt/user-http-request u :post 200 url {}))))))))
 
 (deftest exploration-documents-permissions-test
   (testing "Other users can't list or add documents on someone else's exploration thread"
@@ -662,7 +683,7 @@
             tid (-> exp :threads first :id)
             url (str "exploration/thread/" tid "/documents")]
         (mt/user-http-request other :get 403 url)
-        (mt/user-http-request other :post 403 url {:name "sneaky"})))))
+        (mt/user-http-request other :post 403 url {})))))
 
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"

@@ -387,11 +387,6 @@
    [:created_at            {:optional true} [:maybe :any]]
    [:updated_at            {:optional true} [:maybe :any]]])
 
-(def ^:private CreateExplorationDocument
-  [:map
-   [:name     ms/NonBlankString]
-   [:document {:optional true} :any]])
-
 (def ^:private document-summary-columns
   [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
 
@@ -419,15 +414,33 @@
              :archived false
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
+(defn- next-findings-name
+  "Pick the next \"Findings\"-style name for a thread. Looks at existing non-archived documents
+  on the thread whose name is \"Findings\" or \"Findings <n>\":
+    - none                            -> \"Findings\"
+    - just \"Findings\"               -> \"Findings 2\"
+    - any with a numeric suffix       -> \"Findings <max+1>\" (treating bare \"Findings\" as 1)"
+  [thread-id]
+  (let [names (->> (t2/select-fn-set :name :model/Document
+                                     :exploration_thread_id thread-id
+                                     :archived false
+                                     :name [:like "Findings%"])
+                   (keep (fn [n]
+                           (cond
+                             (= n "Findings") 1
+                             :else (when-let [m (re-matches #"Findings (\d+)" n)]
+                                     (parse-long (second m)))))))]
+    (if (empty? names)
+      "Findings"
+      (str "Findings " (inc (apply max names))))))
+
 (api.macros/defendpoint :post "/thread/:thread-id/documents" :- ::ExplorationDocument
-  "Create an additional document on an exploration thread."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]
-   _query-params
-   {:keys [name document]} :- CreateExplorationDocument]
+  "Create an additional empty document on an exploration thread."
+  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
   (write-check-thread thread-id)
   (let [doc-id (t2/insert-returning-pk! :model/Document
-                                        {:name                  name
-                                         :document              (or document {:type "doc" :content []})
+                                        {:name                  (next-findings-name thread-id)
+                                         :document              {:type "doc" :content []}
                                          :content_type          documents/prose-mirror-content-type
                                          :creator_id            api/*current-user-id*
                                          :exploration_thread_id thread-id})]
