@@ -106,6 +106,8 @@ export function AddMetricsModal({
     return { groupByRowId, dimensionsById };
   }, [groupRows, visibleGroups]);
 
+  const isValid = selectedMetrics.length > 0 && selectedDimensions.length > 0;
+
   // Reset the draft from props whenever the modal opens.
   useEffect(() => {
     if (opened) {
@@ -153,24 +155,32 @@ export function AddMetricsModal({
         const nextDimensions = selectedDimensions.filter(
           (d) => !removedDimIds.has(d.id) || stillUsedDimIds.has(d.id),
         );
-        if (nextDimensions.length !== selectedDimensions.length) {
-          setSelectedDimensions(nextDimensions);
-        }
+        setSelectedDimensions(nextDimensions);
       } else {
         setSelectedMetrics([...selectedMetrics, metric]);
         const have = new Set(selectedDimensions.map((d) => d.id));
         const merged = [...selectedDimensions];
+
+        const hasInterestingDimensions = metric.dimension_ids.some((id) => {
+          const dimension = dimensionsById.get(id);
+          return dimension && isInterestingDimension(dimension);
+        });
+
         for (const id of metric.dimension_ids) {
           if (!have.has(id)) {
             const dimension = dimensionsById.get(id);
-            if (dimension && isInterestingDimension(dimension)) {
+            if (
+              dimension &&
+              (hasInterestingDimensions
+                ? isInterestingDimension(dimension)
+                : true)
+            ) {
               merged.push(dimension);
             }
           }
         }
-        if (merged.length !== selectedDimensions.length) {
-          setSelectedDimensions(merged);
-        }
+
+        setSelectedDimensions(merged);
       }
     },
     [selectedDimensions, selectedMetrics, selectedMetricIds, dimensionsById],
@@ -297,7 +307,11 @@ export function AddMetricsModal({
             </Flex>
           </LoadingAndErrorWrapper>
           <Flex justify="flex-end" mt="lg">
-            <Button variant="filled" onClick={handleDone}>{t`Done`}</Button>
+            <Button
+              variant="filled"
+              disabled={!isValid}
+              onClick={handleDone}
+            >{t`Done`}</Button>
           </Flex>
         </Modal.Body>
       </Modal.Content>

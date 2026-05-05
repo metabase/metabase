@@ -211,7 +211,7 @@ describe("AddMetricsModal", () => {
     );
   });
 
-  it("Done commits a deselected dimension and only orphaned metrics", async () => {
+  it("disables Done after deselecting the only shared dimension orphans all metrics", async () => {
     const { onSelectedItemsChange } = setup({
       initialMetrics: [revenueAsMetric, churnAsMetric],
       initialDimensions: [dimShared],
@@ -219,10 +219,14 @@ describe("AddMetricsModal", () => {
 
     await screen.findByText("Country");
     await userEvent.click(screen.getByText("Country"));
-    await clickDone();
 
-    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
-    expect(onSelectedItemsChange.mock.calls[0]).toEqual([[], []]);
+    // Deselecting "Country" orphans both metrics, leaving the draft empty.
+    // Done must be disabled in this invalid state and clicking it must be a
+    // no-op.
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    expect(doneButton).toBeDisabled();
+    await userEvent.click(doneButton);
+    expect(onSelectedItemsChange).not.toHaveBeenCalled();
   });
 
   it("Done keeps a metric whose other dimension is still selected", async () => {
@@ -284,12 +288,43 @@ describe("AddMetricsModal", () => {
   });
 
   it("invokes onClose when Done is clicked", async () => {
-    const { onClose } = setup();
+    const { onClose } = setup({
+      initialMetrics: [revenueAsMetric],
+      initialDimensions: [dimRevenue],
+    });
 
     await screen.findByText("Monthly recurring revenue");
     await clickDone();
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Done until at least one metric and one dimension are picked", async () => {
+    const { onSelectedItemsChange } = setup();
+
+    await screen.findByText("Monthly recurring revenue");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+
+    // Empty draft → disabled.
+    expect(doneButton).toBeDisabled();
+
+    // Checking a metric auto-adds its interesting dimension(s), so both
+    // lists become non-empty and Done turns enabled.
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Active users" }),
+    );
+    expect(doneButton).toBeEnabled();
+
+    // Unchecking the metric drops the auto-added dim too, returning the
+    // draft to the empty state — Done goes back to disabled.
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Active users" }),
+    );
+    expect(doneButton).toBeDisabled();
+
+    // Clicking the disabled button must not commit.
+    await userEvent.click(doneButton);
+    expect(onSelectedItemsChange).not.toHaveBeenCalled();
   });
 
   it("renders metric description alongside the name", async () => {
