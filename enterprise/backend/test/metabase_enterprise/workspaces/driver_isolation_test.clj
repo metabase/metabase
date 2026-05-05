@@ -157,6 +157,30 @@
           (is (some? sqle)
               (format "expected SQLException for %s; got %s" label (class t))))))))
 
+(defn- verify-jdbc-destroy!
+  "Assert post-destroy state for a JDBC workspace: the workspace user can no
+   longer open a fresh connection, and the output namespace is gone from the
+   admin's catalog. Called right after `destroy-workspace-isolation!` to
+   confirm cleanup actually happened.
+
+   `user-spec` is an unpooled JDBC spec — each `jdbc/query` opens a new
+   connection, so after destroy the auth handshake must fail (user/role
+   dropped on most drivers). Any exception is acceptable; what specifically
+   fails is driver-defined."
+  [driver admin-spec user-spec out-schema]
+  (testing "workspace user cannot open a fresh connection"
+    (try
+      (jdbc/query user-spec ["SELECT 1"])
+      (is false "workspace user unexpectedly succeeded querying after destroy")
+      (catch Throwable t
+        (is (some? t)
+            (format "workspace user denied after destroy: %s" (ex-message t))))))
+  (testing "output namespace was dropped"
+    (let [visible-after (visible-namespaces driver admin-spec)]
+      (is (not (contains? visible-after (u/lower-case-en out-schema)))
+          (format "output namespace %s should not appear in catalog after destroy. visible=%s"
+                  out-schema visible-after)))))
+
 (defn- escalation-attempt-sqls
   "Per-driver list of `[label sql]` pairs that probe the privilege-escalation
    surface — account-/server-/role-level operations the workspace user should
@@ -182,6 +206,35 @@
                  [:create-role  (str "CREATE ROLE \"" hacker-name "_r\"")]]
     :clickhouse [[:create-user  (str "CREATE USER `" hacker-name "` IDENTIFIED WITH plaintext_password BY 'Pass1234X'")]
                  [:create-role  (str "CREATE ROLE `" hacker-name "_r`")]]))
+
+(defn- storage-escape-sqls
+  "Per-driver list of `[label sql]` pairs probing the warehouse's bridges to
+   external storage (S3, internal stages, etc.) — the high-value bypass paths
+   that would let a workspace user exfiltrate granted-input or output data
+   outside the warehouse sandbox. Each SQL is shaped to fail at permission
+   check, not parse: if denial flips to success, the workspace user has
+   storage perms it shouldn't.
+
+   Drivers without a meaningful storage-bridge primitive (postgres / mysql /
+   sqlserver / clickhouse — all of which keep data in-engine without an
+   external-storage SQL surface) return an empty list."
+  [driver hacker-name]
+  (case driver
+    :snowflake [;; Internal Snowflake stage — needs CREATE STAGE on the schema,
+                ;; which `dataEditor`-equivalent grants don't include.
+                [:create-stage          (str "CREATE STAGE \"" hacker-name "_stage\"")]
+                ;; External stage referencing S3 — needs CREATE STAGE plus a
+                ;; STORAGE INTEGRATION the workspace user has USAGE on.
+                [:create-external-stage (str "CREATE STAGE \"" hacker-name "_s3_stage\" "
+                                             "URL='s3://nonexistent-mb-iso-bucket/'")]]
+    :redshift  [;; COPY from S3 — needs S3 read perms via IAM_ROLE; workspace user
+                ;; has no IAM role assumption privilege.
+                [:copy-from-s3   (str "COPY \"" hacker-name "_tmp\" FROM 's3://nonexistent-mb-iso-bucket/data.csv' "
+                                      "IAM_ROLE 'arn:aws:iam::000000000000:role/nonexistent-role'")]
+                ;; UNLOAD to S3 — write side of the same path; equally denied.
+                [:unload-to-s3   (str "UNLOAD ('SELECT 1') TO 's3://nonexistent-mb-iso-bucket/' "
+                                      "IAM_ROLE 'arn:aws:iam::000000000000:role/nonexistent-role'")]]
+    (:postgres :mysql :sqlserver :clickhouse) []))
 
 (defn- random-suffix
   "Eight hex chars from a random UUID. Per-run unique enough to avoid collisions
@@ -305,28 +358,23 @@
               (let [hacker-name (str "ws_iso_hacker_" run-id)]
                 (doseq [[label sql] (escalation-attempt-sqls driver hacker-name)]
                   (expect-sql-denied! user-spec sql label))))
+            (testing "workspace user cannot exfiltrate via storage/external escapes"
+              ;; Snowflake stages and Redshift COPY/UNLOAD are the SQL-level bridges
+              ;; to external object storage on those warehouses — high-value bypass
+              ;; paths because they let a sandboxed user pull data in (COPY) or push
+              ;; data out (UNLOAD) without going through grant-mediated tables. The
+              ;; other JDBC drivers (postgres / mysql / sqlserver / clickhouse) have
+              ;; no equivalent SQL surface and are no-ops here.
+              (let [hacker-name (str "ws_iso_storage_" run-id)]
+                (doseq [[label sql] (storage-escape-sqls driver hacker-name)]
+                  (expect-sql-denied! user-spec sql label))))
             (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
               ;; Explicit destroy here (instead of relying on the `finally`) lets us
               ;; assert that the cleanup actually happened. Drivers' destroy impls are
               ;; idempotent (`IF EXISTS` everywhere), so the `finally` calling destroy
               ;; a second time is a no-op.
               (driver/destroy-workspace-isolation! driver database ws-with-details)
-              (testing "workspace user cannot open a fresh connection"
-                ;; `user-spec` is an unpooled jdbc spec — each `jdbc/query` opens a new
-                ;; connection, which after destroy must fail at password/auth time
-                ;; (user/role dropped). Any exception is acceptable; what fails is
-                ;; specifically driver-defined.
-                (try
-                  (jdbc/query user-spec ["SELECT 1"])
-                  (is false "workspace user unexpectedly succeeded querying after destroy")
-                  (catch Throwable t
-                    (is (some? t)
-                        (format "workspace user denied after destroy: %s" (ex-message t))))))
-              (testing "output namespace was dropped"
-                (let [visible-after (visible-namespaces driver admin-spec)]
-                  (is (not (contains? visible-after (u/lower-case-en out-schema)))
-                      (format "output namespace %s should not appear in catalog after destroy. visible=%s"
-                              out-schema visible-after))))))
+              (verify-jdbc-destroy! driver admin-spec user-spec out-schema)))
           (finally
             ;; Always attempt destroy first — drivers' impls are idempotent (`IF EXISTS`
             ;; everywhere) so this is safe whether init succeeded fully, partially, or
@@ -554,3 +602,113 @@
             ;; created, then taken-over) output namespace, drop it directly.
             (doseq [sql (drop-input-namespace-sqls driver out-schema [])]
               (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+
+;; --- cross-database isolation -----------------------------------------------
+;; Workspace tests above all live within a single `(mt/db)` database. Snowflake,
+;; SQL Server, and BigQuery host *many* databases/projects on one account/server,
+;; and a workspace user/SA could in principle reach another database it was
+;; never granted on. The drivers without a meaningful "outside-the-current-db"
+;; surface (postgres / mysql / clickhouse / redshift — they treat each database
+;; as a separate connection and the existing ungranted-namespace assertion in
+;; `workspace-isolation-perms-test` already exercises the equivalent isolation)
+;; are excluded from this fanout. BigQuery's "different project" requires
+;; second-project billing setup we don't have in test infra, so it's deferred
+;; to a follow-up.
+
+(defn- supports-cross-database-isolation-test?
+  "True for drivers where a second database can be created in the test admin
+   connection and the workspace user (created in the first DB) is naturally
+   excluded from it. Snowflake (DATABASE > SCHEMA hierarchy) and SQL Server
+   (separate user mappings per DB) qualify; the rest don't fit the shape."
+  [driver]
+  (contains? #{:snowflake :sqlserver} driver))
+
+(defn- create-second-db-sql
+  "DDL the admin connection runs to create a second database used by the
+   cross-database test. Both supported engines accept a single `CREATE DATABASE`
+   statement, but identifier quoting differs."
+  [driver db-name]
+  (case driver
+    :snowflake (str "CREATE DATABASE \"" db-name "\"")
+    :sqlserver (str "CREATE DATABASE [" db-name "]")))
+
+(defn- drop-second-db-sql
+  [driver db-name]
+  (case driver
+    :snowflake (str "DROP DATABASE IF EXISTS \"" db-name "\"")
+    :sqlserver (str "DROP DATABASE IF EXISTS [" db-name "]")))
+
+(defn- create-table-in-second-db-sqls
+  "DDL to create a `secret` table inside the second database. Snowflake's
+   default schema after CREATE DATABASE is `PUBLIC`; SQL Server's is `dbo`."
+  [driver db-name table-name]
+  (case driver
+    :snowflake [(str "CREATE TABLE \"" db-name "\".\"PUBLIC\".\"" table-name "\" (id INT, secret VARCHAR(64))")
+                (str "INSERT INTO \"" db-name "\".\"PUBLIC\".\"" table-name "\" VALUES (1, 'cross-db-secret')")]
+    :sqlserver [(str "CREATE TABLE [" db-name "].dbo.[" table-name "] (id INT, secret VARCHAR(64))")
+                (str "INSERT INTO [" db-name "].dbo.[" table-name "] VALUES (1, 'cross-db-secret')")]))
+
+(defn- second-db-qualified
+  "Driver-specific fully-qualified `db.schema.table` reference used for the
+   workspace user's denied SELECT."
+  [driver db-name table-name]
+  (case driver
+    :snowflake (str "\"" db-name "\".\"PUBLIC\".\"" table-name "\"")
+    :sqlserver (str "[" db-name "].dbo.[" table-name "]")))
+
+(deftest ^:synchronized cross-database-isolation-test
+  ;; Verifies that a workspace user provisioned against `(mt/db)` cannot reach
+  ;; data in *another* database created on the same warehouse account/server.
+  ;; The threat model: warehouses where one account/server hosts many isolated
+  ;; databases. If the workspace user can traverse `db_a.schema.table` →
+  ;; `db_b.schema.table` the isolation contract is broken, since the design
+  ;; assumes per-database scoping.
+  (mt/test-drivers (filter supports-cross-database-isolation-test?
+                           (mt/normal-drivers-with-feature :workspace))
+    (testing "workspace user cannot read tables in a different database on the same account/server"
+      (let [driver       driver/*driver*
+            database     (mt/db)
+            details      (:details database)
+            admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
+            run-id       (random-suffix)
+            in-schema    (str "mb_iso_in_" run-id)
+            src-name     (str "ws_iso_src_" run-id)
+            other-db     (str "mb_iso_otherdb_" run-id)
+            secret-tbl   (str "secret_" run-id)
+            workspace    {:id   (Long/parseLong run-id 16)
+                          :name (str "wsd-crossdb-" run-id)}
+            ws-state     (atom (merge workspace
+                                      {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+                                       :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))
+            second-db-created? (atom false)]
+        (try
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema src-name)
+                                          " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          ;; Provision a second database, create a `secret` table in it, populate.
+          (jdbc/execute! admin-spec [(create-second-db-sql driver other-db)])
+          (reset! second-db-created? true)
+          (doseq [sql (create-table-in-second-db-sqls driver other-db secret-tbl)]
+            (jdbc/execute! admin-spec [sql]))
+          (let [init-result     (driver/init-workspace-isolation! driver database workspace)
+                ws-with-details (merge workspace init-result)
+                _               (reset! ws-state ws-with-details)
+                user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))]
+            (driver/grant-workspace-read-access! driver database ws-with-details
+                                                 [{:schema in-schema :name src-name}])
+            (testing "workspace user denied SELECT against a fully-qualified table in another database"
+              (expect-sql-denied! user-spec
+                                  (str "SELECT id, secret FROM " (second-db-qualified driver other-db secret-tbl))
+                                  :select-other-database)))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database @ws-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during cross-database test cleanup"
+                              driver)))
+            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))
+            (when @second-db-created?
+              (try (jdbc/execute! admin-spec [(drop-second-db-sql driver other-db)])
+                   (catch Throwable t
+                     (log/warnf t "DROP DATABASE %s failed for %s during cross-database test cleanup"
+                                other-db driver))))))))))
