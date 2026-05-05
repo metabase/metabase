@@ -82,13 +82,17 @@ export function useHandleMcpDrillThrough(
                   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Model context for the MCP host, not rendered UI.
                   "The user is viewing a Metabase drill-through result in the current MCP UI.",
                   `The active query handle is ${handle}.`,
-                  "Use this handle as the current query context for follow-up requests that modify, regroup, filter, or summarize the visible chart.",
+                  "Use the current query JSON below as context for follow-up requests. If the user asks to modify the visible chart, create a new query from the same source and field ids.",
+                  "",
+                  "Current query JSON:",
+                  JSON.stringify(nextCard.dataset_query, null, 2),
                 ].join("\n"),
               },
             ],
             structuredContent: {
               currentMetabaseView: "drill-through",
               activeQueryHandle: handle,
+              currentQuery: nextCard.dataset_query,
             },
           });
         } catch {
