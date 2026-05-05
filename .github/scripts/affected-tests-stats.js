@@ -8,10 +8,7 @@ const {
   elements,
   rules,
 } = require("../../frontend/lint/module-boundaries");
-const {
-  SUITES,
-  createTestSelection,
-} = require("../../frontend/lint/test-suites");
+const { SUITES, createTestSelection } = require("./test-suites");
 
 const { decideAll } = createTestSelection({ elements, rules, suites: SUITES });
 
