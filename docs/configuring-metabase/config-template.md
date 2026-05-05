@@ -149,6 +149,7 @@ config:
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    experiments-enabled: false
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null

@@ -700,6 +700,14 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 
 Allow users to explore data using X-rays.
 
+### `MB_EXPERIMENTS_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `experiments-enabled`
+
+Enable or disable all code experiments. When disabled, only the production code path runs.
+
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
 - Type: boolean

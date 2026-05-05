@@ -58,6 +58,31 @@
                 "type" : "integer",
                 "minimum" : 1
               },
+              "sync_started_at" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "url" : {
+                "type" : "string",
+                "minLength" : 1
+              }
+            },
+            "required" : [ "url", "created_at", "sync_started_at", "created_by_id", "db_id" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "created_at" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "created_by_id" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "db_id" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
               "last_sync_at" : {
                 "type" : "integer",
                 "minimum" : 1
@@ -2138,6 +2163,128 @@
           }
         },
         "required" : [ "min", "fixed" ]
+      },
+      "metabase-enterprise.serialization.schema.database-info" : {
+        "type" : "object",
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-database-id"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "engine" ]
+      },
+      "metabase-enterprise.serialization.schema.external-database-id" : {
+        "type" : "string"
+      },
+      "metabase-enterprise.serialization.schema.external-field-id" : { },
+      "metabase-enterprise.serialization.schema.external-table-id" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "type" : "string"
+        }, {
+          "oneOf" : [ {
+            "type" : "string"
+          }, {
+            "type" : "null"
+          } ]
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "metabase-enterprise.serialization.schema.field-info" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-field-id"
+          },
+          "coercion_strategy" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-table-id"
+          },
+          "nfc_path" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "effective_type" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-field-id"
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-field-id"
+          }
+        },
+        "required" : [ "id", "table_id", "name", "base_type" ]
+      },
+      "metabase-enterprise.serialization.schema.metadata-export-response" : {
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.database-info"
+            }
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.field-info"
+            }
+          },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.table-info"
+            }
+          }
+        }
+      },
+      "metabase-enterprise.serialization.schema.table-info" : {
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-database-id"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-table-id"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name" ]
       },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
@@ -14064,146 +14211,6 @@
           "required" : [ "enabled" ]
         }
       },
-      "metabase.warehouses-rest.api.database-info" : {
-        "type" : "object",
-        "properties" : {
-          "engine" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name", "engine" ]
-      },
-      "metabase.warehouses-rest.api.databases-metadata-response" : {
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.database-info"
-            }
-          },
-          "fields" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-info"
-            }
-          },
-          "tables" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.table-info"
-            }
-          }
-        },
-        "required" : [ "databases", "tables", "fields" ]
-      },
-      "metabase.warehouses-rest.api.field-info" : {
-        "type" : "object",
-        "properties" : {
-          "base_type" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "coercion_strategy" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "semantic_type" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "effective_type" : {
-            "type" : "string"
-          },
-          "parent_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "database_type" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "fk_target_field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          }
-        },
-        "required" : [ "id", "table_id", "name", "base_type" ]
-      },
-      "metabase.warehouses-rest.api.field-values-info" : {
-        "type" : "object",
-        "properties" : {
-          "field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "has_more_values" : {
-            "type" : "boolean"
-          },
-          "human_readable_values" : {
-            "type" : "array",
-            "items" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "values" : {
-            "type" : "array",
-            "items" : {
-              "type" : "array",
-              "items" : { }
-            }
-          }
-        },
-        "required" : [ "field_id", "values", "has_more_values" ]
-      },
-      "metabase.warehouses-rest.api.field-values-response" : {
-        "type" : "object",
-        "properties" : {
-          "field_values" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-values-info"
-            }
-          }
-        },
-        "required" : [ "field_values" ]
-      },
-      "metabase.warehouses-rest.api.table-info" : {
-        "type" : "object",
-        "properties" : {
-          "db_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "schema" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "db_id", "name" ]
-      },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
@@ -21435,60 +21442,6 @@
                 "required" : [ "name", "engine", "details", "is_full_sync", "is_on_demand", "connection_source" ]
               }
             }
-          }
-        },
-        "tags" : [ "/api/database" ]
-      }
-    },
-    "/api/database/field-values" : {
-      "get" : {
-        "operationId" : "get-api-database-field-values",
-        "summary" : "GET /api/database/field-values",
-        "description" : "Get sampled field values for every field in the instance, streamed as a single\n  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,\n  optional `human_readable_values`, and `has_more_values`.\n\n  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and\n  linked-filter variants are user-specific and would bypass their own enforcement\n  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve\n  `field_id` to table and field names. Response is streamed for efficiency with large\n  schemas.\n\n  Admin-only: this endpoint exposes cached values computed over the unrestricted\n  dataset, so it would leak data past sandbox / impersonation rules if served to\n  regular users.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-values-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/database" ]
-      }
-    },
-    "/api/database/metadata" : {
-      "get" : {
-        "operationId" : "get-api-database-metadata",
-        "summary" : "GET /api/database/metadata",
-        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/database" ]
@@ -29907,6 +29860,69 @@
                 "required" : [ "file" ]
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
+    "/api/ee/serialization/metadata/export" : {
+      "get" : {
+        "operationId" : "get-api-ee-serialization-metadata-export",
+        "summary" : "GET /api/ee/serialization/metadata/export",
+        "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user, with all references emitted in serdes-portable form (database names, table\n  `[db schema name]` tuples, field `[db schema table name | nfc-path...]` tuples).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "with-databases",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-tables",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-fields",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.metadata-export-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/serialization" ]
