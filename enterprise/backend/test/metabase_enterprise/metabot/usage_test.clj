@@ -170,40 +170,42 @@
       ;; (the LLM adapter pre-sums to match OpenAI semantics).
       ;; 2100 = 100 fresh + 400 cache_creation + 1600 cache_read.
       (mt/with-test-user :rasta
-        (usage/log-ai-usage!
-         {:source                "cache-tokens-test"
-          :model                 "anthropic/claude-test"
-          :prompt-tokens         2100
-          :completion-tokens     50
-          :cache-creation-tokens 400
-          :cache-read-tokens     1600})
-        (try
-          (let [row (t2/select-one :model/AiUsageLog :source "cache-tokens-test"
-                                   {:order-by [[:id :desc]]})]
-            (is (= 2100 (:prompt_tokens row)))
-            (is (= 400  (:cache_creation_tokens row)))
-            (is (= 1600 (:cache_read_tokens row)))
-            (testing "total_tokens = prompt + completion (prompt already includes cache breakdown)"
-              (is (= 2150 (:total_tokens row)))))
-          (finally
-            (t2/delete! :model/AiUsageLog :source "cache-tokens-test")))))))
+        (let [model "anthropic/claude-cache-tokens-test"]
+          (usage/log-ai-usage!
+           {:source                "metabot_agent"
+            :model                 model
+            :prompt-tokens         2100
+            :completion-tokens     50
+            :cache-creation-tokens 400
+            :cache-read-tokens     1600})
+          (try
+            (let [row (t2/select-one :model/AiUsageLog :source "metabot_agent" :model model
+                                     {:order-by [[:id :desc]]})]
+              (is (= 2100 (:prompt_tokens row)))
+              (is (= 400  (:cache_creation_tokens row)))
+              (is (= 1600 (:cache_read_tokens row)))
+              (testing "total_tokens = prompt + completion (prompt already includes cache breakdown)"
+                (is (= 2150 (:total_tokens row)))))
+            (finally
+              (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
 
 (deftest log-ai-usage!-cache-tokens-default-to-zero-test
   (mt/with-premium-features #{:ai-controls}
     (testing "log-ai-usage! defaults cache token columns to 0 when not provided"
       (mt/with-test-user :rasta
-        (usage/log-ai-usage!
-         {:source            "cache-tokens-default-test"
-          :model             "test/model"
-          :prompt-tokens     1
-          :completion-tokens 1})
-        (try
-          (let [row (t2/select-one :model/AiUsageLog :source "cache-tokens-default-test"
-                                   {:order-by [[:id :desc]]})]
-            (is (= 0 (:cache_creation_tokens row)))
-            (is (= 0 (:cache_read_tokens row))))
-          (finally
-            (t2/delete! :model/AiUsageLog :source "cache-tokens-default-test")))))))
+        (let [model "anthropic/claude-cache-tokens-default-test"]
+          (usage/log-ai-usage!
+           {:source            "metabot_agent"
+            :model             model
+            :prompt-tokens     1
+            :completion-tokens 1})
+          (try
+            (let [row (t2/select-one :model/AiUsageLog :source "metabot_agent" :model model
+                                     {:order-by [[:id :desc]]})]
+              (is (= 0 (:cache_creation_tokens row)))
+              (is (= 0 (:cache_read_tokens row))))
+            (finally
+              (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
