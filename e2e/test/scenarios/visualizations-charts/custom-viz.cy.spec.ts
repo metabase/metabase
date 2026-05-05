@@ -1608,6 +1608,16 @@ describe("sandbox", () => {
       payload: 'document.createElement("script");',
       errorPattern: blockedPattern(/createElement: script/),
     },
+    {
+      name: 'createElement("a")',
+      payload: 'document.createElement("a");',
+      errorPattern: blockedPattern(/createElement: a/),
+    },
+    {
+      name: 'createElementNS(SVG, "use")',
+      payload: 'document.createElementNS("http://www.w3.org/2000/svg", "use");',
+      errorPattern: blockedPattern(/createElementNS: use/),
+    },
     // `eval` / `new Function(...)` Near membrane allows these in the sandbox, but
     // it still catches anything they evaluate (e.g. `eval('window.fetch(...)')` triggers the fetch
     // distortion), so it's not an escape — just not blocked at access.
@@ -1761,19 +1771,11 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: window\.Notification/),
     },
     {
+      // `.click()` is on HTMLElement.prototype, so any non-blocked element
+      // exercises the same membrane path as a synthesized anchor would.
       name: "HTMLElement.click()",
-      payload: 'document.createElement("a").click();',
+      payload: 'document.createElement("div").click();',
       errorPattern: blockedPattern(/API call: HTMLElement\.click/),
-    },
-    {
-      name: "HTMLAnchorElement href setter",
-      payload: 'document.createElement("a").href = "https://evilsite.example";',
-      errorPattern: blockedPattern(/API call: HTMLAnchorElement\.set href/),
-    },
-    {
-      name: "HTMLAnchorElement target setter",
-      payload: 'document.createElement("a").target = "_blank";',
-      errorPattern: blockedPattern(/API call: HTMLAnchorElement\.set target/),
     },
     {
       name: "FontFace.load",

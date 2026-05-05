@@ -81,7 +81,8 @@ export function sanitizedSetterDistortion(
   };
 }
 
-// Tags that must never be created — they can load or execute arbitrary code.
+// Tags that must never be created — they can load or execute arbitrary
+// code, or are tags we don't want plugins rendering at all.
 const BLOCKED_TAGS = new Set([
   "script",
   "iframe",
@@ -90,6 +91,14 @@ const BLOCKED_TAGS = new Set([
   "link",
   "meta",
   "base",
+  "frame",
+  "form",
+  "a",
+  // SVG external-resource / mutation-XSS vectors
+  "use",
+  "image",
+  "feimage",
+  "foreignobject",
 ]);
 
 export function createElementDistortion(pluginId: CustomVizPluginId) {
