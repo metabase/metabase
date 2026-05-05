@@ -587,6 +587,24 @@
           (is (some? test-field))
           (is (not (contains? test-field :fk_target_field_id))))))))
 
+(deftest metadata-export-inactive-table-test
+  (testing "GET /api/ee/serialization/metadata/export — inactive tables and all of their fields are excluded"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:name "inactive-t-db" :engine :h2}
+                     :model/Table    {t-id :id}  {:db_id db-id :name "inactive-table" :schema "PUBLIC"
+                                                  :active false}
+                     :model/Field    _           {:table_id t-id :name "active-field"
+                                                  :base_type :type/Integer}
+                     :model/Field    _           {:table_id t-id :name "inactive-field"
+                                                  :base_type :type/Integer
+                                                  :active false}]
+        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
+                                                            "ee/serialization/metadata/export"
+                                                            :with-tables true :with-fields true)]
+          (is (not-any? (comp #{"inactive-table"} :name) tables))
+          (is (not-any? (comp #{"active-field"}   :name) fields))
+          (is (not-any? (comp #{"inactive-field"} :name) fields)))))))
+
 (deftest metadata-export-sensitive-field-test
   (testing "GET /api/ee/serialization/metadata/export — sensitive fields are excluded"
     (mt/with-premium-features #{:serialization}
@@ -619,6 +637,23 @@
               test-field (m/find-first (comp #{"ssn_ref"} :name) fields)]
           (is (some? test-field))
           (is (not (contains? test-field :fk_target_field_id))))))))
+
+(deftest metadata-export-inactive-field-test
+  (testing "GET /api/ee/serialization/metadata/export — inactive fields are excluded; their active sibling and table still appear"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:name "inactive-f-db" :engine :h2}
+                     :model/Table    {t-id :id}  {:db_id db-id :name "active-table" :schema "PUBLIC"}
+                     :model/Field    _           {:table_id t-id :name "active-field"
+                                                  :base_type :type/Integer}
+                     :model/Field    _           {:table_id t-id :name "inactive-field"
+                                                  :base_type :type/Integer
+                                                  :active false}]
+        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
+                                                            "ee/serialization/metadata/export"
+                                                            :with-tables true :with-fields true)]
+          (is (some     (comp #{"active-table"}   :name) tables))
+          (is (some     (comp #{"active-field"}   :name) fields))
+          (is (not-any? (comp #{"inactive-field"} :name) fields)))))))
 
 (deftest metadata-export-db-routing-test
   (testing "GET /api/ee/serialization/metadata/export — router (mirror) databases are excluded"
