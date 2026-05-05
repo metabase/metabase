@@ -1,4 +1,4 @@
-import { Api } from "./api";
+import { LegacyApi } from "./legacy-client";
 
 type OnBeforeRequestHandlerData = {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -11,10 +11,10 @@ type OnBeforeRequestHandlerData = {
 
 describe("api", () => {
   describe("apiRequestManipulationMiddleware", () => {
-    let apiInstance: Api;
+    let apiInstance: LegacyApi;
 
     beforeEach(() => {
-      apiInstance = new Api();
+      apiInstance = new LegacyApi();
     });
 
     it("should return the original data when there are no handlers", async () => {

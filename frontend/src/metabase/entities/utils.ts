@@ -7,6 +7,7 @@ import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
 
+import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { PLUGIN_ENTITIES } from "metabase/plugins";
 import { combineReducers, compose, withAction } from "metabase/redux";
 import {
@@ -20,7 +21,6 @@ import {
 } from "metabase/redux/requests";
 import type { Dispatch, EntitiesState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import { delay } from "metabase/utils/promise";
 
 // backend returns model = "card" instead of "question"

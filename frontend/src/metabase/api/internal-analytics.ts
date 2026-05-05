@@ -1,4 +1,4 @@
-import { POST } from "metabase/utils/api";
+import { POST } from "metabase/api/legacy-client";
 
 type InternalAnalyticsEvent = {
   op: "inc" | "dec" | "set" | "observe" | "clear";

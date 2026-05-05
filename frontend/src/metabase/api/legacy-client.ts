@@ -88,7 +88,7 @@ type ResponseErrorInfo = {
   metabaseVersion: string | null;
 };
 
-export class Api extends EventEmitter {
+export class LegacyApi extends EventEmitter {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
@@ -570,7 +570,7 @@ export class Api extends EventEmitter {
   }
 }
 
-const instance = new Api();
+const instance = new LegacyApi();
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default instance;
