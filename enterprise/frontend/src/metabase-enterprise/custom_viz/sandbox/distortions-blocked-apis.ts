@@ -64,6 +64,11 @@ block(method(Document.prototype, "writeln"), "Document.writeln");
 block(method(Document.prototype, "open"), "Document.open");
 block(method(Document.prototype, "close"), "Document.close");
 block(method(Document.prototype, "execCommand"), "Document.execCommand");
+block(setter(Document.prototype, "designMode"), "Document.set designMode");
+block(
+  setter(HTMLElement.prototype, "contentEditable"),
+  "HTMLElement.set contentEditable",
+);
 
 // Cookie / domain
 block(getter(Document.prototype, "cookie"), "Document.get cookie");

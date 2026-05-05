@@ -1856,6 +1856,18 @@ describe("sandbox", () => {
       payload: "var x = document.baseURI;",
       errorPattern: blockedPattern(/API call: Node\.get baseURI/),
     },
+    {
+      name: "document.designMode setter",
+      payload: 'document.designMode = "on";',
+      errorPattern: blockedPattern(/API call: Document\.set designMode/),
+    },
+    {
+      name: "element.contentEditable setter",
+      payload: 'document.createElement("div").contentEditable = "true";',
+      errorPattern: blockedPattern(
+        /API call: HTMLElement\.set contentEditable/,
+      ),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {
