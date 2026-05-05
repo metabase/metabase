@@ -143,20 +143,26 @@
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
 ;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
-;; calls. Each row carries a fresh UUID handle that the iframe passes to the agent
-;; so the LLM never carries the encoded query.
+;; calls. Each row carries a fresh UUID handle that the iframe (drill-through) or
+;; agent (construct_query) passes through downstream so the LLM never carries the
+;; encoded query.
 
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the MCP session, and return
-   the freshly minted handle UUID. Materializes the backing `core_session` so
-   cleanup happens via cascade when the session row is reaped."
+   the freshly minted handle UUID.
+
+   When `user-id` is non-nil, materializes the backing `core_session` so cleanup
+   happens via cascade when the session row is reaped. When nil — e.g. agent flows
+   that don't render an iframe — the row is stored without a `core_session_id` and
+   relies on explicit `delete!` for cleanup."
   [session-id user-id encoded-query]
-  (let [core-session (get-or-create-embedding-session! session-id user-id)
-        handle-id    (str (UUID/randomUUID))]
+  (let [core-session-id (when user-id
+                          (:id (get-or-create-embedding-session! session-id user-id)))
+        handle-id       (str (UUID/randomUUID))]
     (t2/insert! :model/McpQueryHandle
                 {:id              handle-id
                  :mcp_session_id  session-id
-                 :core_session_id (:id core-session)
+                 :core_session_id core-session-id
                  :encoded_query   encoded-query})
     handle-id))
 

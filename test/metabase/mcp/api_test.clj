@@ -427,7 +427,8 @@
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
 
 (deftest tools-list-no-refs-test
-  (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
+  (testing "tool inputSchemas have no $ref, no $defs, root type is always object,
+            and no top-level oneOf/anyOf/allOf (rejected by mcpjam)"
     (let [tools (mcp.tools/list-tools nil)]
       (doseq [tool tools]
         (when-let [schema (:inputSchema tool)]
@@ -438,7 +439,10 @@
               (is (not (contains? schema :$defs))
                   (str (:name tool) " should have no $defs"))
               (is (= "object" (:type schema))
-                  (str (:name tool) " root type should be object")))))))))
+                  (str (:name tool) " root type should be object"))
+              (doseq [k [:oneOf :anyOf :allOf]]
+                (is (not (contains? schema k))
+                    (str (:name tool) " should have no top-level " k))))))))))
 
 (deftest tools-call-get-table-query-params-test
   (testing "get_table passes query params correctly (with-fields default true)"
@@ -469,7 +473,7 @@
                                         {:source     {:type "table" :id (mt/id :orders)}
                                          :operations [["limit" 5]]})
               execute-data   (call-tool session-id "execute_query"
-                                        {:query (:query construct-data)})]
+                                        {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
           (is (=? {:status    "completed"
                    :row_count 5
@@ -501,6 +505,48 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle (str (random-uuid))}})
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test
+  (testing "visualize_query echoes the inline query"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query "ZW5jb2RlZA=="}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query resolves a stored handle"
+    (let [user-id        (mt/user->id :crowberto)
+          [session-id _] (initialize!)
+          handle         (mt/with-current-user user-id
+                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle handle}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query asks for an argument when neither query nor handle is provided"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Provide either")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query returns 'handle not found' when query_handle is unknown"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle (str (random-uuid))}})
                            {"mcp-session-id" session-id}))))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
