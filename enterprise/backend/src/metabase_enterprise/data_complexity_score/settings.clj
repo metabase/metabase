@@ -34,11 +34,8 @@
 (defsetting data-complexity-scoring-use-search-index-embedder
   (deferred-tru
    (str "Source the synonym-axis embeddings from the active semantic-search pgvector index "
-        "instead of calling the synonym-axis embedder configured below. The default (off) is "
-        "the better-calibrated signal — see "
-        "https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb "
-        "— but the search-index path does not require ai-service to be reachable, which is "
-        "useful for instances where it is not deployed."))
+        "instead of calling the synonym-axis embedder configured below. This saves us doing "
+        "additional calculations, but the results seem less reliable."))
   :encryption :no
   :visibility :admin
   :default    false
@@ -57,10 +54,7 @@
 
 (defsetting data-complexity-scoring-synonym-embedding-model
   (deferred-tru
-   (str "Model name passed to the synonym-axis embedding provider. Defaults to "
-        "sentence-transformers/all-MiniLM-L6-v2 — an STS-trained Sentence-Transformers model "
-        "calibrated against names-split preprocessing at threshold 0.80. See the synonym "
-        "calibration analysis before swapping this."))
+   "Model name passed to the synonym-axis embedding provider.")
   :encryption :no
   :visibility :admin
   :default    "sentence-transformers/all-MiniLM-L6-v2"

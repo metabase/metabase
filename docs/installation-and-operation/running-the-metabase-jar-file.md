@@ -103,7 +103,7 @@ Metabase will start using the default settings. You should see some log entries 
 
 At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at `http://localhost:3000`.
 
-You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
+You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md#mb_jetty_port) before running the jar.
 
 If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../installation-and-operation/activating-the-enterprise-edition.md).
 
