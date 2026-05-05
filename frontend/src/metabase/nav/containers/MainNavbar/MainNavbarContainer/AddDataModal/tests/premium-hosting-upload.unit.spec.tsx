@@ -91,7 +91,7 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
     setupProUpload({
       isAdmin: true,
       enableGoogleSheets: true,
-      status: "syncing",
+      status: "initializing",
     });
     await assertSheetsOpened();
 

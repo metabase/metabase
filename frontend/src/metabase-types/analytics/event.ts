@@ -781,6 +781,11 @@ export type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
   event: "metrics_viewer_dimension_tab_removed";
 }>;
 
+export type StackedSeriesEnabledEvent = ValidateEvent<{
+  event: "stack_series_enabled";
+  triggered_from: "metrics_viewer" | "viz_settings";
+}>;
+
 export type MetricsViewerEvent =
   | MetricsViewerMetricAddedEvent
   | MetricsViewerMetricRemovedEvent
@@ -853,4 +858,5 @@ export type SimpleEvent =
   | UnsavedChangesWarningDisplayedEvent
   | SecurityCenterPageViewedEvent
   | MetricPageShowMoreClickedEvent
+  | StackedSeriesEnabledEvent
   | MetricsViewerEvent;
