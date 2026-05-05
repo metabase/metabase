@@ -115,6 +115,7 @@ type OnChangeCardAndRunOpts = {
   nextCard: Card;
   previousCard: Card;
   objectId?: number;
+  drillName?: string;
 };
 
 type VisualizationOwnProps = {
@@ -602,7 +603,8 @@ class Visualization extends PureComponent<
   handleOnChangeCardAndRun = ({
     nextCard,
     objectId,
-  }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
+    drillName,
+  }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId" | "drillName">) => {
     const { dashcard, rawSeries, visualizerRawSeries, onChangeCardAndRun } =
       this.props;
 
@@ -615,6 +617,7 @@ class Visualization extends PureComponent<
       ),
       nextCard,
       objectId,
+      drillName,
     });
   };
 

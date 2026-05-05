@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
    [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
@@ -181,6 +182,7 @@
     "get_table"
     "get_table_field_values"
     "query"
+    "render_drill_through"
     "search"
     "visualize_query"})
 
@@ -462,14 +464,14 @@
 (deftest tools-call-get-table-query-params-test
   (testing "get_table passes query params correctly (with-fields default true)"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool nil "get_table" {:id (mt/id :orders)}))]
+                   (mcp.tools/call-tool nil nil "get_table" {:id (mt/id :orders)}))]
       (is (not (:isError result)))
       (let [table-data (json/decode+kw (:text (first (:content result))))]
         (is (seq (:fields table-data))
             "with-fields defaults to true, so fields should be present"))))
   (testing "get_table with with-fields=false omits fields"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool nil "get_table" {:id (mt/id :orders) :with-fields false}))]
+                   (mcp.tools/call-tool nil nil "get_table" {:id (mt/id :orders) :with-fields false}))]
       (is (not (:isError result)))
       (let [table-data (json/decode+kw (:text (first (:content result))))]
         (is (empty? (:fields table-data))
@@ -493,7 +495,8 @@
 
 (deftest tools-call-smoke-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
-    (is (= (disj (set (map :name (mcp.tools/list-tools nil))) "visualize_query")
+    (is (= (apply disj (set (map :name (mcp.tools/list-tools nil)))
+                  ["visualize_query" "render_drill_through"])
            smoke-tested-tools)
         "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
   (testing "every tool returns a successful response with valid parameters"
@@ -543,9 +546,9 @@
 
 (deftest tools-call-visualize-query-direct-test
   (testing "visualize_query returns UI structured content"
-    (let [result (mcp.tools/call-tool nil "visualize_query" {:query "card__1"})]
+    (let [result (mcp.tools/call-tool nil nil "visualize_query" {:query "card__1"})]
       (is (not (:isError result)))
-      (is (=? {:content           [{:type "text" :text "Visualizing query..."}]
+      (is (=? {:content           [{:type "text"}]
                :structuredContent {:query "card__1"}}
               result)))))
 
@@ -569,6 +572,32 @@
                    :data      {:cols sequential?
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
+
+;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
+
+(deftest tools-call-render-drill-through-test
+  (testing "render_drill_through resolves a stored handle to its encoded query"
+    (let [user-id        (mt/user->id :crowberto)
+          [session-id _] (initialize!)
+          handle         (mt/with-current-user user-id
+                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+      ;; The error path returns no :structuredContent, so asserting it is present is
+      ;; equivalent to asserting :isError is not set.
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle handle}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "render_drill_through returns an error when the handle is unknown"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle (str (random-uuid))}})
+                           {"mcp-session-id" session-id}))))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 
@@ -772,17 +801,17 @@
 (deftest tools-call-scope-enforcement-test
   (testing "tool call is rejected when token scopes don't include the required scope"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
+                   (mcp.tools/call-tool #{"agent:search"} nil "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
       (is (str/includes? (-> result :content first :text) "Insufficient scope")
           "Scope enforcement error from defendpoint middleware")))
   (testing "tool call with matching scope is not rejected by scope enforcement"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
+                   (mcp.tools/call-tool #{"agent:table:read"} nil "get_table" {:id (mt/id :orders)}))]
       (is (not (:isError result)))))
   (testing "tool call with empty scopes is rejected for scoped tools"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
-                   (mcp.tools/call-tool #{} "get_table" {:id (mt/id :orders)}))]
+                   (mcp.tools/call-tool #{} nil "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
       (is (str/includes? (-> result :content first :text) "Insufficient scope")
           "Scope enforcement error from defendpoint middleware"))))
@@ -834,7 +863,7 @@
   (testing "MCP tool calls still work when the external Agent API is disabled"
     (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
       (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (mcp.tools/call-tool #{::scope/unrestricted} "get_table" {:id (mt/id :orders)}))]
+                     (mcp.tools/call-tool #{::scope/unrestricted} nil "get_table" {:id (mt/id :orders)}))]
         (is (not (:isError result)))))))
 
 ;;; ------------------------------------------------- Throttling ---------------------------------------------------

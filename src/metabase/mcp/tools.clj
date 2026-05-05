@@ -210,13 +210,14 @@
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
    agent-api request so that scope restrictions are enforced by the agent API's
-   `defendpoint` middleware.
+   `defendpoint` middleware. UI tool response-fns receive `{:session-id session-id}`
+   as opts in case a tool needs to scope reads to the calling MCP session.
    Returns MCP content on success, or error content on failure."
-  [token-scopes tool-name arguments]
+  [token-scopes session-id tool-name arguments]
   (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
     (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
       (error-content (str "Insufficient scope to call tool: " tool-name))
-      ((:response-fn ui-tool) arguments))
+      ((:response-fn ui-tool) arguments {:session-id session-id}))
     (if-let [tool-def (get (tool-index) tool-name)]
       (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
