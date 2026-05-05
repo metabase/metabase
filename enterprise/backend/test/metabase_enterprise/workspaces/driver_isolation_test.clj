@@ -810,3 +810,114 @@
                    (catch Throwable t
                      (log/warnf t "DROP DATABASE %s failed for %s during cross-database test cleanup"
                                 other-db driver))))))))))
+
+;; --- PUBLIC / anonymous default-grant probes --------------------------------
+;; Defense-in-depth tests for the original review's #10 concern: assert that
+;; init+grant did not accidentally land any grant on a "default" principal
+;; (Snowflake's PUBLIC role, MySQL's anonymous `''@'%'` user). These are
+;; principals that all users implicitly inherit; a stray grant on them would
+;; break workspace isolation for every other connecting user.
+;;
+;; Postgres / Redshift's `public` schema CREATE-grant case is already covered
+;; in production by `assert-no-public-create-grant!`. ClickHouse / SQL Server
+;; don't have an analogous default-principal threat that's tractable here.
+
+(defn- supports-public-default-grant-test?
+  "True for drivers with a meaningful default principal (PUBLIC role / anonymous
+   user) whose grants on workspace resources we want to verify are absent."
+  [driver]
+  (contains? #{:snowflake :mysql} driver))
+
+(defn- public-grant-probe-sql
+  "Per-driver SQL that, run as admin, returns rows iff PUBLIC / the anonymous
+   user holds *any* grant whose target name contains `ws-fragment` (the
+   workspace's deterministic id-derived suffix). The workspace's role,
+   schema/database, and user names all embed `ws-fragment`, so a single LIKE
+   match catches every flavor.
+
+   Snowflake: `SHOW GRANTS TO ROLE PUBLIC` lists each grant the PUBLIC role
+   has been given; we filter into a temp result via RESULT_SCAN. Returning
+   `name` makes it easy to sanity-check failures.
+   MySQL: `mysql.tables_priv` and `mysql.db` are the system tables that store
+   per-table and per-database grants; filtering by `User = ''` finds anonymous-
+   user grants. The anonymous user is often disabled on modern installs (no
+   row exists), so the query returns 0 rows in the happy path."
+  [driver ws-fragment]
+  (case driver
+    :snowflake (str "SELECT \"name\" AS resource FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())) "
+                    "WHERE \"name\" ILIKE '%" ws-fragment "%'")
+    :mysql     (str "SELECT CONCAT(Db, '.', COALESCE(Table_name, '*')) AS resource "
+                    "FROM mysql.tables_priv WHERE User = '' AND Db LIKE '%" ws-fragment "%' "
+                    "UNION ALL "
+                    "SELECT Db AS resource FROM mysql.db WHERE User = '' AND Db LIKE '%" ws-fragment "%'")))
+
+(defn- public-grant-pre-query-sql
+  "Some drivers need an introspection query run *before* the probe (e.g.,
+   Snowflake's `SHOW GRANTS` populates `RESULT_SCAN` for the next statement).
+   Returns nil for drivers that don't need a setup step."
+  [driver]
+  (case driver
+    :snowflake "SHOW GRANTS TO ROLE PUBLIC"
+    :mysql     nil))
+
+(deftest ^:synchronized no-public-default-grant-test
+  ;; Verifies that after `init-workspace-isolation!` and
+  ;; `grant-workspace-read-access!`, no grant has landed on a default principal
+  ;; (Snowflake's PUBLIC role, MySQL's anonymous `''@'%'` user). A stray grant
+  ;; on PUBLIC would silently leak the workspace's resources to every other
+  ;; user/role on the warehouse.
+  ;;
+  ;; The probe queries the warehouse's own grants catalog as admin, filtering
+  ;; for any row whose target name contains the workspace's deterministic id-
+  ;; derived suffix. Workspace role, schema/db, and user names all embed that
+  ;; suffix, so a single substring match catches every flavor of accidental
+  ;; grant. Empty result = test passes (no leakage); any row = regression.
+  (mt/test-drivers (filter supports-public-default-grant-test?
+                           (mt/normal-drivers-with-feature :workspace))
+    (testing "init+grant did not place any grant on PUBLIC / anonymous principal"
+      (let [driver       driver/*driver*
+            database     (mt/db)
+            details      (:details database)
+            admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
+            run-id       (random-suffix)
+            in-schema    (str "mb_iso_in_" run-id)
+            src-name     (str "ws_iso_src_" run-id)
+            src          (qualify driver in-schema src-name)
+            workspace    {:id   (Long/parseLong run-id 16)
+                          :name (str "wsd-public-" run-id)}
+            ws-fragment  (driver.u/workspace-isolation-namespace-name workspace)
+            ws-state     (atom (merge workspace
+                                      {:schema           ws-fragment
+                                       :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
+        (try
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          (let [init-result     (driver/init-workspace-isolation! driver database workspace)
+                ws-with-details (merge workspace init-result)]
+            (reset! ws-state ws-with-details)
+            (driver/grant-workspace-read-access! driver database ws-with-details
+                                                 [{:schema in-schema :name src-name}])
+            (testing "no leakage to default principal after init+grant"
+              ;; Search both the workspace-namespace name and the workspace-user
+              ;; name fragment, since per-driver grants can land on either.
+              (let [user-fragment (driver.u/workspace-isolation-user-name workspace)
+                    leaks         (atom #{})]
+                (doseq [fragment [ws-fragment user-fragment]]
+                  (when-let [pre-sql (public-grant-pre-query-sql driver)]
+                    (try (jdbc/query admin-spec [pre-sql]) (catch Throwable _ nil)))
+                  (let [rows (try (jdbc/query admin-spec [(public-grant-probe-sql driver fragment)])
+                                  (catch Throwable t
+                                    (log/warnf t "public-grant probe failed on %s; skipping" driver)
+                                    nil))]
+                    (when (seq rows)
+                      (swap! leaks into (map :resource rows)))))
+                (is (empty? @leaks)
+                    (format "PUBLIC / anonymous principal unexpectedly has grants on workspace resources: %s"
+                            @leaks)))))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database @ws-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during public-grant test cleanup"
+                              driver)))
+            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
