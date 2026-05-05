@@ -66,7 +66,7 @@ For an exhaustive, up-to-date list of every dashboard (with the cards it contain
 
 ### Performance overview on MySQL or MariaDB
 
-> If you're using MySQL or MariaDB as your application database, the Performance overview dashboard won't display results for the cards showing 50th and 90th percentile query running times, because MySQL and MariaDB don't support the [Percentile aggregation](../questions/query-builder/expressions-list.md#percentile). We recommend using PostgreSQL as your application database.
+If you're using MySQL or MariaDB as your application database, the Performance overview dashboard won't display results for the cards showing 50th and 90th percentile query running times, because MySQL and MariaDB don't support the [Percentile aggregation](../questions/query-builder/expressions-list.md#percentile). We recommend using PostgreSQL as your application database.
 
 ### Notes on selected models
 
