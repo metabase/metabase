@@ -56,6 +56,7 @@
   format-nanoseconds
   format-seconds
   format-plural
+  qualified-key
   qualified-name])
 
 #?(:clj (p/import-vars [u.jvm
