@@ -37,21 +37,16 @@ function funnel(data, settings, tokenFeatures) {
 }
 
 
-function initialize_context(options) {
-  StaticViz.initializeContext(JSON.parse(options));
-}
-
-function register_custom_viz_plugin(identifier, assetsJson) {
-  if (typeof __customVizPlugin__ === "function") {
-    var assets = assetsJson ? JSON.parse(assetsJson) : {};
-    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier, assets);
-  }
-}
-
 function javascript_visualization(rawSeries, dashcardSettings, options) {
-  var parsedSeries = JSON.parse(rawSeries);
-  var content = StaticViz.RenderChart(parsedSeries, JSON.parse(dashcardSettings), JSON.parse(options));
-  var type = content.startsWith("<svg") ? "svg" : "html";
+  const content = StaticViz.RenderChart(
+    JSON.parse(rawSeries),
+    JSON.parse(dashcardSettings),
+    JSON.parse(options),
+  );
+  const type = content.startsWith("<svg") ? "svg" : "html";
 
-  return JSON.stringify({ type, content });
+  return JSON.stringify({
+    type,
+    content,
+  });
 }
