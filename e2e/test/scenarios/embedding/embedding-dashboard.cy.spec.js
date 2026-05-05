@@ -904,7 +904,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
     // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
     H.selectDropdown().findByText("Oswald").click();
     H.modal().within(() => {
-      H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        'Oswald, "Roboto Condensed", sans-serif',
+      );
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
     });
   });
@@ -1030,7 +1034,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
     // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
     H.selectDropdown().findByText("Oswald").click();
     H.modal().within(() => {
-      H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        'Oswald, "Roboto Condensed", sans-serif',
+      );
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
     });
   });
@@ -1163,7 +1171,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
       },
     );
 
-    H.main().should("have.css", "font-family", "Roboto, sans-serif");
+    H.main().should(
+      "have.css",
+      "font-family",
+      'Roboto, "Noto Sans", sans-serif',
+    );
   });
 
   it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
