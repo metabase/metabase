@@ -1868,6 +1868,21 @@ describe("sandbox", () => {
         /API call: HTMLElement\.set contentEditable/,
       ),
     },
+    {
+      name: "HTMLDialogElement.showModal",
+      payload: 'document.createElement("dialog").showModal();',
+      errorPattern: blockedPattern(/API call: HTMLDialogElement\.showModal/),
+    },
+    {
+      name: "Element.requestFullscreen",
+      payload: 'document.createElement("div").requestFullscreen();',
+      errorPattern: blockedPattern(/API call: Element\.requestFullscreen/),
+    },
+    {
+      name: "PaymentRequest constructor",
+      payload: "new PaymentRequest([], {});",
+      errorPattern: blockedPattern(/API call: PaymentRequest/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {

@@ -112,6 +112,17 @@ block(method(Window.prototype, "prompt"), "window.prompt");
 block(method(Window.prototype, "print"), "window.print");
 block(window.Notification, "window.Notification");
 
+// UI hijack
+block(
+  method(HTMLDialogElement.prototype, "showModal"),
+  "HTMLDialogElement.showModal",
+);
+block(
+  method(Element.prototype, "requestFullscreen"),
+  "Element.requestFullscreen",
+);
+block(window.PaymentRequest, "PaymentRequest");
+
 // Navigator getters — credential / device leaks
 const NAVIGATOR_BLOCKED_GETTERS = [
   "clipboard",
